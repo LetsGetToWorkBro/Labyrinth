@@ -1,0 +1,517 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --button-outline: rgba(255,255,255, .10);
+  --badge-outline: rgba(255,255,255, .05);
+  --opaque-button-border-intensity: 9;
+  --elevate-1: rgba(255,255,255, .04);
+  --elevate-2: rgba(255,255,255, .09);
+  --background: 0 0% 4%;
+  --foreground: 0 0% 94%;
+  --border: 0 0% 13%;
+  --card: 0 0% 7%;
+  --card-foreground: 0 0% 94%;
+  --card-border: 0 0% 10%;
+  --sidebar: 0 0% 7%;
+  --sidebar-foreground: 0 0% 94%;
+  --sidebar-border: 0 0% 13%;
+  --sidebar-primary: 42 50% 54%;
+  --sidebar-primary-foreground: 0 0% 4%;
+  --sidebar-accent: 0 0% 10%;
+  --sidebar-accent-foreground: 0 0% 94%;
+  --sidebar-ring: 42 50% 54%;
+  --popover: 0 0% 7%;
+  --popover-foreground: 0 0% 94%;
+  --popover-border: 0 0% 13%;
+  --primary: 42 50% 54%;
+  --primary-foreground: 0 0% 4%;
+  --secondary: 0 0% 10%;
+  --secondary-foreground: 0 0% 94%;
+  --muted: 0 0% 10%;
+  --muted-foreground: 0 0% 60%;
+  --accent: 0 0% 10%;
+  --accent-foreground: 0 0% 94%;
+  --destructive: 0 70% 50%;
+  --destructive-foreground: 0 0% 98%;
+  --input: 0 0% 20%;
+  --ring: 42 50% 54%;
+  --chart-1: 42 50% 54%;
+  --chart-2: 142 40% 45%;
+  --chart-3: 217 70% 55%;
+  --chart-4: 30 80% 55%;
+  --chart-5: 270 50% 55%;
+  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-serif: Georgia, serif;
+  --font-mono: "SF Mono", Menlo, monospace;
+  --radius: .625rem;
+  --shadow-2xs: 0px 2px 0px 0px hsl(0 0% 0% / 0.00);
+  --shadow-xs: 0px 2px 0px 0px hsl(0 0% 0% / 0.00);
+  --shadow-sm: 0px 2px 0px 0px hsl(0 0% 0% / 0.00);
+  --shadow: 0px 2px 0px 0px hsl(0 0% 0% / 0.00);
+  --shadow-md: 0px 2px 0px 0px hsl(0 0% 0% / 0.00);
+  --shadow-lg: 0px 2px 0px 0px hsl(0 0% 0% / 0.00);
+  --shadow-xl: 0px 2px 0px 0px hsl(0 0% 0% / 0.00);
+  --shadow-2xl: 0px 2px 0px 0px hsl(0 0% 0% / 0.00);
+  --tracking-normal: 0em;
+  --spacing: 0.25rem;
+
+  --gold: #C8A24C;
+  --gold-dim: #A6853D;
+  --surface: #111111;
+  --surface-2: #1A1A1A;
+  --text-primary: #F0F0F0;
+  --text-muted: #999999;
+  --text-faint: #666666;
+  --border-subtle: #222222;
+  --border-medium: #333333;
+  --success: #4CAF80;
+  --warning: #E08228;
+  --error: #E05555;
+
+  --belt-white: #F0F0F0;
+  --belt-blue: #3B6FD8;
+  --belt-purple: #8B4FBF;
+  --belt-brown: #8B5E3C;
+  --belt-black: #555555;
+  --belt-grey: #888888;
+  --belt-yellow: #D4A843;
+  --belt-orange: #D4783C;
+  --belt-green: #3CAF50;
+
+  --org-jjwl: #22c55e;
+  --org-ibjjf: #3b82f6;
+  --org-adcc: #f59e0b;
+  --org-other: #6b7280;
+
+  --sidebar-primary-border: hsl(var(--sidebar-primary));
+  --sidebar-accent-border: hsl(var(--sidebar-accent));
+  --primary-border: hsl(var(--primary));
+  --secondary-border: hsl(var(--secondary));
+  --muted-border: hsl(var(--muted));
+  --accent-border: hsl(var(--accent));
+  --destructive-border: hsl(var(--destructive));
+}
+
+.dark {
+  --button-outline: rgba(255,255,255, .10);
+  --badge-outline: rgba(255,255,255, .05);
+  --opaque-button-border-intensity: 9;
+  --elevate-1: rgba(255,255,255, .04);
+  --elevate-2: rgba(255,255,255, .09);
+  --background: 0 0% 4%;
+  --foreground: 0 0% 94%;
+  --border: 0 0% 13%;
+  --card: 0 0% 7%;
+  --card-foreground: 0 0% 94%;
+  --card-border: 0 0% 10%;
+  --sidebar: 0 0% 7%;
+  --sidebar-foreground: 0 0% 94%;
+  --sidebar-border: 0 0% 13%;
+  --sidebar-primary: 42 50% 54%;
+  --sidebar-primary-foreground: 0 0% 4%;
+  --sidebar-accent: 0 0% 10%;
+  --sidebar-accent-foreground: 0 0% 94%;
+  --sidebar-ring: 42 50% 54%;
+  --popover: 0 0% 7%;
+  --popover-foreground: 0 0% 94%;
+  --popover-border: 0 0% 13%;
+  --primary: 42 50% 54%;
+  --primary-foreground: 0 0% 4%;
+  --secondary: 0 0% 10%;
+  --secondary-foreground: 0 0% 94%;
+  --muted: 0 0% 10%;
+  --muted-foreground: 0 0% 60%;
+  --accent: 0 0% 10%;
+  --accent-foreground: 0 0% 94%;
+  --destructive: 0 70% 50%;
+  --destructive-foreground: 0 0% 98%;
+  --input: 0 0% 20%;
+  --ring: 42 50% 54%;
+  --chart-1: 42 50% 54%;
+  --chart-2: 142 40% 45%;
+  --chart-3: 217 70% 55%;
+  --chart-4: 30 80% 55%;
+  --chart-5: 270 50% 55%;
+  --shadow-2xs: 0px 2px 0px 0px hsl(0 0% 0% / 0.00);
+  --shadow-xs: 0px 2px 0px 0px hsl(0 0% 0% / 0.00);
+  --shadow-sm: 0px 2px 0px 0px hsl(0 0% 0% / 0.00);
+  --shadow: 0px 2px 0px 0px hsl(0 0% 0% / 0.00);
+  --shadow-md: 0px 2px 0px 0px hsl(0 0% 0% / 0.00);
+  --shadow-lg: 0px 2px 0px 0px hsl(0 0% 0% / 0.00);
+  --shadow-xl: 0px 2px 0px 0px hsl(0 0% 0% / 0.00);
+  --shadow-2xl: 0px 2px 0px 0px hsl(0 0% 0% / 0.00);
+  --sidebar-primary-border: hsl(var(--sidebar-primary));
+  --sidebar-accent-border: hsl(var(--sidebar-accent));
+  --primary-border: hsl(var(--primary));
+  --secondary-border: hsl(var(--secondary));
+  --muted-border: hsl(var(--muted));
+  --accent-border: hsl(var(--accent));
+  --destructive-border: hsl(var(--destructive));
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply font-sans antialiased bg-background text-foreground;
+    -webkit-tap-highlight-color: transparent;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    overscroll-behavior: none;
+  }
+  html, body, #root {
+    height: 100%;
+    overflow: hidden;
+  }
+}
+
+/* Mobile app feel */
+.app-shell {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  max-width: 430px;
+  margin: 0 auto;
+  position: relative;
+  overflow: hidden;
+  width: 100%;
+}
+
+/* Ensure game pages stay within bounds */
+.app-shell > * {
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
+.app-content {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+/* Bottom tab bar */
+.tab-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+  background: #0A0A0A;
+  border-top: 1px solid #222;
+  padding: 8px 0;
+  padding-bottom: max(8px, env(safe-area-inset-bottom, 8px));
+  flex-shrink: 0;
+}
+
+.tab-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 4px 12px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  color: #666;
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  text-decoration: none;
+  position: relative;
+}
+
+.tab-item.active {
+  color: var(--gold);
+}
+
+.tab-item.active svg {
+  filter: drop-shadow(0 0 6px rgba(200, 162, 76, 0.3));
+}
+
+/* Skeleton loading */
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+.skeleton {
+  background: linear-gradient(90deg, #1A1A1A 25%, #222 50%, #1A1A1A 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s ease-in-out infinite;
+  border-radius: 6px;
+}
+
+/* Belt badge */
+.belt-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 10px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+/* Progress ring for sauna */
+.progress-ring-circle {
+  transition: stroke-dashoffset 0.5s ease;
+  transform: rotate(-90deg);
+  transform-origin: 50% 50%;
+}
+
+/* Pull to refresh hint */
+.pull-indicator {
+  text-align: center;
+  padding: 12px;
+  color: #666;
+  font-size: 12px;
+}
+
+/* Animated counter */
+@keyframes countUp {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.count-up {
+  animation: countUp 0.6s ease-out forwards;
+}
+
+/* Signature pad */
+.signature-canvas {
+  background: #1A1A1A;
+  border: 1px solid #333;
+  border-radius: 8px;
+  touch-action: none;
+}
+
+/* Toast */
+.toast-enter {
+  animation: slideUp 0.3s ease-out;
+}
+
+@keyframes slideUp {
+  from { transform: translateY(100%); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+/* Calendar dot */
+.event-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+/* Scrollbar hide for mobile feel */
+.app-content::-webkit-scrollbar {
+  display: none;
+}
+.app-content {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* ===== BJJ POSITION CHESS — GAME ANIMATIONS ===== */
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes staminaPulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+@keyframes popupIn {
+  0% { transform: scale(0.8); opacity: 0; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+@keyframes victoryBurst {
+  0% { transform: scale(0.3); opacity: 0; }
+  50% { transform: scale(1.1); }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+@keyframes critFlash {
+  0% { box-shadow: 0 0 30px rgba(200,162,76,0.8); }
+  100% { box-shadow: 0 0 0px rgba(200,162,76,0); }
+}
+
+@keyframes slideInRight {
+  0% { transform: translateX(60px); opacity: 0; }
+  100% { transform: translateX(0); opacity: 1; }
+}
+
+@keyframes slideOutLeft {
+  0% { transform: translateX(0); opacity: 1; }
+  100% { transform: translateX(-60px); opacity: 0; }
+}
+
+@keyframes bigEmojiBurst {
+  0% { transform: scale(0) rotate(-10deg); opacity: 0; }
+  40% { transform: scale(1.3) rotate(5deg); opacity: 1; }
+  100% { transform: scale(1) rotate(0deg); opacity: 0; }
+}
+
+@keyframes confettiDrop {
+  0% { transform: translateY(-20px) rotate(0deg); opacity: 1; }
+  100% { transform: translateY(100vh) rotate(720deg); opacity: 0; }
+}
+
+@keyframes radarPulse {
+  0% { transform: scale(0.8); opacity: 0.3; }
+  50% { opacity: 0.15; }
+  100% { transform: scale(1.5); opacity: 0; }
+}
+
+@keyframes fadeIn {
+  0% { opacity: 0; }
+  100% { opacity: 1; }
+}
+
+@keyframes fadeOut {
+  0% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+@keyframes bounceIn {
+  0% { transform: scale(0.5); opacity: 0; }
+  60% { transform: scale(1.08); opacity: 1; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+@keyframes pulseGlow {
+  0%, 100% { filter: drop-shadow(0 0 8px rgba(200,162,76,0.4)); }
+  50% { filter: drop-shadow(0 0 20px rgba(200,162,76,0.7)); }
+}
+
+@keyframes slideDown {
+  0% { transform: translateY(0); }
+  100% { transform: translateY(100%); }
+}
+
+@keyframes goldFlash {
+  0% { background: rgba(200,162,76,0.3); }
+  100% { background: transparent; }
+}
+
+@keyframes redFlash {
+  0% { background: rgba(224,85,85,0.3); }
+  100% { background: transparent; }
+}
+
+@keyframes rankUpPulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.15); }
+}
+
+@keyframes particleFall {
+  0% { 
+    transform: translateY(0) translateX(0) rotate(0deg); 
+    opacity: 1; 
+  }
+  100% { 
+    transform: translateY(calc(100vh)) translateX(var(--drift, 0px)) rotate(var(--spin, 720deg)); 
+    opacity: 0; 
+  }
+}
+
+@keyframes screenShake {
+  0%, 100% { transform: translate(0, 0); }
+  10% { transform: translate(-8px, -6px); }
+  20% { transform: translate(8px, 4px); }
+  30% { transform: translate(-6px, 8px); }
+  40% { transform: translate(6px, -4px); }
+  50% { transform: translate(-4px, 6px); }
+  60% { transform: translate(4px, -8px); }
+  70% { transform: translate(-8px, 4px); }
+  80% { transform: translate(8px, -6px); }
+  90% { transform: translate(-4px, -4px); }
+}
+
+@keyframes explosionRing {
+  0% { transform: scale(0); opacity: 1; border-width: 8px; }
+  100% { transform: scale(3); opacity: 0; border-width: 1px; }
+}
+
+@keyframes submissionFlash {
+  0% { opacity: 0; }
+  15% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+@keyframes floatUp {
+  0% { transform: translateY(0) scale(1); opacity: 1; }
+  100% { transform: translateY(-80px) scale(0.5); opacity: 0; }
+}
+
+@keyframes lowStaminaPulse {
+  0%, 100% { box-shadow: inset 0 0 30px rgba(224, 85, 85, 0.0); }
+  50% { box-shadow: inset 0 0 30px rgba(224, 85, 85, 0.15); }
+}
+
+@keyframes bigTextSlam {
+  0% { transform: scale(3) rotate(-5deg); opacity: 0; }
+  40% { transform: scale(1.1) rotate(2deg); opacity: 1; }
+  60% { transform: scale(0.95) rotate(-1deg); }
+  100% { transform: scale(1) rotate(0deg); opacity: 1; }
+}
+
+@layer utilities {
+  input[type="search"]::-webkit-search-cancel-button {
+    @apply hidden;
+  }
+  [contenteditable][data-placeholder]:empty::before {
+    content: attr(data-placeholder);
+    color: hsl(var(--muted-foreground));
+    pointer-events: none;
+  }
+  .no-default-hover-elevate {}
+  .no-default-active-elevate {}
+  .toggle-elevate::before,
+  .toggle-elevate-2::before {
+    content: "";
+    pointer-events: none;
+    position: absolute;
+    inset: 0px;
+    border-radius: inherit;
+    z-index: -1;
+  }
+  .toggle-elevate.toggle-elevated::before {
+    background-color: var(--elevate-2);
+  }
+  .border.toggle-elevate::before {
+    inset: -1px;
+  }
+  .hover-elevate:not(.no-default-hover-elevate),
+  .active-elevate:not(.no-default-active-elevate),
+  .hover-elevate-2:not(.no-default-hover-elevate),
+  .active-elevate-2:not(.no-default-active-elevate) {
+    position: relative;
+    z-index: 0;
+  }
+  .hover-elevate:not(.no-default-hover-elevate)::after,
+  .active-elevate:not(.no-default-active-elevate)::after,
+  .hover-elevate-2:not(.no-default-hover-elevate)::after,
+  .active-elevate-2:not(.no-default-active-elevate)::after {
+    content: "";
+    pointer-events: none;
+    position: absolute;
+    inset: 0px;
+    border-radius: inherit;
+    z-index: 999;
+  }
+  .hover-elevate:hover:not(.no-default-hover-elevate)::after,
+  .active-elevate:active:not(.no-default-active-elevate)::after {
+    background-color: var(--elevate-1);
+  }
+  .hover-elevate-2:hover:not(.no-default-hover-elevate)::after,
+  .active-elevate-2:active:not(.no-default-active-elevate)::after {
+    background-color: var(--elevate-2);
+  }
+}
