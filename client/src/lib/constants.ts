@@ -115,7 +115,7 @@ export const CLASS_SCHEDULE: ClassScheduleItem[] = [
 
   // ── Sunday ──────────────────────────────────────────────────
   { day: "Sunday", time: "10:30 AM", name: "Open Mat",           type: "open",      category: "adult" },
-  { day: "Sunday", time: "12:00 PM", name: "Pans Prep",          type: "comp",      category: "adult" },
+  { day: "Sunday", time: "12:00 PM", name: "Pans Prep",          type: "comp",      category: "kids" },
   { day: "Sunday", time: "1:00 PM",  name: "Wrestling (7–17)",   type: "wrestling", category: "kids"  },
 ];
 
