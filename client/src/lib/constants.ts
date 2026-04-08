@@ -71,47 +71,68 @@ export interface ClassScheduleItem {
 }
 
 export const CLASS_SCHEDULE: ClassScheduleItem[] = [
-  // Monday
-  { day: "Monday", time: "6:30 AM", name: "Adult BJJ", type: "gi", category: "adult" },
-  { day: "Monday", time: "11:00 AM", name: "Adult BJJ", type: "gi", category: "adult" },
-  { day: "Monday", time: "4:45 PM", name: "Kids BJJ (3-6)", type: "gi", category: "kids" },
-  { day: "Monday", time: "5:15 PM", name: "Kids BJJ (7-12)", type: "gi", category: "kids" },
-  { day: "Monday", time: "6:30 PM", name: "Adult BJJ", type: "gi", category: "adult" },
-  // Tuesday
-  { day: "Tuesday", time: "6:30 AM", name: "Adult BJJ", type: "nogi", category: "adult" },
-  { day: "Tuesday", time: "4:45 PM", name: "Kids BJJ (3-6)", type: "gi", category: "kids" },
-  { day: "Tuesday", time: "5:15 PM", name: "Kids BJJ (7-12)", type: "gi", category: "kids" },
-  { day: "Tuesday", time: "6:30 PM", name: "Adult BJJ", type: "nogi", category: "adult" },
-  // Wednesday
-  { day: "Wednesday", time: "11:00 AM", name: "Adult BJJ", type: "nogi", category: "adult" },
-  { day: "Wednesday", time: "4:45 PM", name: "Kids BJJ (3-6)", type: "gi", category: "kids" },
-  { day: "Wednesday", time: "5:15 PM", name: "Kids BJJ (7-12)", type: "gi", category: "kids" },
-  { day: "Wednesday", time: "6:30 PM", name: "Adult BJJ", type: "gi", category: "adult" },
-  // Thursday
-  { day: "Thursday", time: "6:30 AM", name: "Adult BJJ", type: "nogi", category: "adult" },
-  { day: "Thursday", time: "4:45 PM", name: "Kids BJJ (3-6)", type: "gi", category: "kids" },
-  { day: "Thursday", time: "5:15 PM", name: "Kids BJJ (7-12)", type: "gi", category: "kids" },
-  { day: "Thursday", time: "6:30 PM", name: "Adult BJJ", type: "nogi", category: "adult" },
-  // Friday
-  { day: "Friday", time: "6:30 AM", name: "Adult BJJ", type: "gi", category: "adult" },
-  { day: "Friday", time: "11:00 AM", name: "Adult BJJ", type: "gi", category: "adult" },
-  { day: "Friday", time: "4:45 PM", name: "Kids BJJ (3-6)", type: "gi", category: "kids" },
-  { day: "Friday", time: "5:15 PM", name: "Kids Comp (7-12) / Teens Comp (12-15)", type: "comp", category: "kids" },
-  { day: "Friday", time: "6:30 PM", name: "Competition Class", type: "comp", category: "adult" },
-  // Saturday
-  { day: "Saturday", time: "9:00 AM", name: "Competition No-Gi", type: "comp", category: "adult" },
-  { day: "Saturday", time: "10:00 AM", name: "Youth Wrestling", type: "wrestling", category: "kids" },
-  { day: "Saturday", time: "11:00 AM", name: "Adults & Teens No-Gi", type: "nogi", category: "adult" },
-  // Sunday
-  { day: "Sunday", time: "10:30 AM", name: "Open Mat", type: "open", category: "adult" },
+  // ── Monday ──────────────────────────────────────────────────
+  { day: "Monday", time: "6:30 AM",  name: "Adult BJJ",           type: "gi",   category: "adult" },
+  { day: "Monday", time: "11:00 AM", name: "Adult BJJ",           type: "gi",   category: "adult" },
+  { day: "Monday", time: "4:45 PM",  name: "Kids BJJ (3–6)",      type: "gi",   category: "kids"  },
+  { day: "Monday", time: "5:15 PM",  name: "Kids BJJ (7–12)",     type: "gi",   category: "kids"  },
+  { day: "Monday", time: "6:30 PM",  name: "Adult BJJ",           type: "gi",   category: "adult" },
+
+  // ── Tuesday ─────────────────────────────────────────────────
+  { day: "Tuesday", time: "6:30 AM", name: "Adult BJJ",                type: "nogi", category: "adult" },
+  { day: "Tuesday", time: "5:15 PM", name: "Kids Grappling (7–12)",    type: "nogi", category: "kids"  },
+  { day: "Tuesday", time: "5:15 PM", name: "Teens Grappling (12–15)",  type: "nogi", category: "kids"  },
+  { day: "Tuesday", time: "6:30 PM", name: "Adult BJJ",                type: "nogi", category: "adult" },
+
+  // ── Wednesday ───────────────────────────────────────────────
+  { day: "Wednesday", time: "11:00 AM", name: "Adult BJJ",          type: "nogi",      category: "adult" },
+  { day: "Wednesday", time: "4:45 PM",  name: "Kids BJJ (3–6)",     type: "gi",        category: "kids"  },
+  { day: "Wednesday", time: "5:15 PM",  name: "Kids BJJ (7–12)",    type: "gi",        category: "kids"  },
+  { day: "Wednesday", time: "6:30 PM",  name: "Adult BJJ",          type: "gi",        category: "adult" },
+  { day: "Wednesday", time: "7:30 PM",  name: "Wrestling (7–17)",   type: "wrestling", category: "kids"  },
+
+  // ── Thursday ────────────────────────────────────────────────
+  { day: "Thursday", time: "6:30 AM", name: "Adult BJJ",                type: "nogi",      category: "adult" },
+  { day: "Thursday", time: "5:15 PM", name: "Kids Grappling (7–12)",    type: "nogi",      category: "kids"  },
+  { day: "Thursday", time: "5:15 PM", name: "Teens Grappling (12–15)",  type: "nogi",      category: "kids"  },
+  { day: "Thursday", time: "6:30 PM", name: "Adult BJJ",                type: "nogi",      category: "adult" },
+  { day: "Thursday", time: "7:30 PM", name: "Wrestling (7–17)",         type: "wrestling", category: "kids"  },
+
+  // ── Friday ──────────────────────────────────────────────────
+  { day: "Friday", time: "6:30 AM",  name: "Adult BJJ",               type: "gi",   category: "adult" },
+  { day: "Friday", time: "11:00 AM", name: "Adult BJJ",               type: "gi",   category: "adult" },
+  { day: "Friday", time: "4:45 PM",  name: "Kids BJJ (3–6)",          type: "gi",   category: "kids"  },
+  { day: "Friday", time: "5:15 PM",  name: "Kids BJJ Comp (7–12)",    type: "comp", category: "kids"  },
+  { day: "Friday", time: "5:15 PM",  name: "Teens BJJ Comp (12–15)",  type: "comp", category: "kids"  },
+  { day: "Friday", time: "6:30 PM",  name: "Adult Comp",              type: "comp", category: "adult" },
+
+  // ── Saturday ────────────────────────────────────────────────
+  { day: "Saturday", time: "9:00 AM",  name: "Adult Comp",              type: "comp", category: "adult" },
+  { day: "Saturday", time: "10:00 AM", name: "Kids Grappling (7–12)",   type: "nogi", category: "kids"  },
+  { day: "Saturday", time: "11:00 AM", name: "Adult & Teens",           type: "nogi", category: "adult" },
+  { day: "Saturday", time: "12:00 PM", name: "Kids Grappling (7–12)",   type: "nogi", category: "kids"  },
+  { day: "Saturday", time: "12:00 PM", name: "Teens Grappling (12–15)", type: "nogi", category: "kids"  },
+
+  // ── Sunday ──────────────────────────────────────────────────
+  { day: "Sunday", time: "10:30 AM", name: "Open Mat",           type: "open",      category: "adult" },
+  { day: "Sunday", time: "12:00 PM", name: "Pans Prep",          type: "comp",      category: "adult" },
+  { day: "Sunday", time: "1:00 PM",  name: "Wrestling (7–17)",   type: "wrestling", category: "kids"  },
 ];
 
 export const CLASS_TYPE_COLORS: Record<string, { bg: string; text: string; label: string }> = {
-  gi: { bg: "rgba(59, 111, 216, 0.15)", text: "#5B8FE8", label: "Gi" },
-  nogi: { bg: "rgba(34, 197, 94, 0.15)", text: "#4ADE80", label: "No-Gi" },
-  comp: { bg: "rgba(200, 162, 76, 0.15)", text: "#C8A24C", label: "Comp" },
-  open: { bg: "rgba(200, 162, 76, 0.08)", text: "#999", label: "Open" },
-  wrestling: { bg: "rgba(200, 162, 76, 0.15)", text: "#C8A24C", label: "Wrestling" },
+  gi:        { bg: "rgba(59, 111, 216, 0.15)", text: "#5B8FE8",  label: "Gi"        },
+  nogi:      { bg: "rgba(34, 197, 94, 0.15)",  text: "#4ADE80",  label: "No-Gi"     },
+  comp:      { bg: "rgba(200, 162, 76, 0.15)", text: "#C8A24C",  label: "Comp"      },
+  open:      { bg: "rgba(200, 162, 76, 0.08)", text: "#999999",  label: "Open Mat"  },
+  wrestling: { bg: "rgba(234, 130, 50, 0.15)", text: "#EA8232",  label: "Wrestling" },
 };
 
-export const DAYS_ORDER = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
+export const DAYS_ORDER = [
+  "Monday",
+  "Tuesday",
+  "Wednesday",
+  "Thursday",
+  "Friday",
+  "Saturday",
+  "Sunday",
+];
