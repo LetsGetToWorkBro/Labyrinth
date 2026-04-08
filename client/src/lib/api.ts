@@ -1,7 +1,7 @@
 // Labyrinth BJJ API Service Layer
 // All API calls go through a single Google Apps Script endpoint
 
-const GAS_ENDPOINT = "https://script.google.com/macros/s/AKfycbxgN7s3fekmJXEydJ8N9yCxGbiCkHqo0cuSFTYLK--7rog5cqqFeYJyxxHt5sfi61yJ/exec";
+const GAS_ENDPOINT = "https://script.google.com/macros/s/AKfycbwkxkV6XlqKy3DDot_MTfb40WeAfd6KMgBwgcrCNStEFM5vcAQNYG9eR2OOFpCwJ3AJ/exec";
 
 // CSV endpoints for public data
 const SHEET_BASE = "https://docs.google.com/spreadsheets/d/1rUtzsV6l1fHcgYuCjaqCh-oG2XosggrW1el3aqaDOME/gviz/tq?tqx=out:csv";
