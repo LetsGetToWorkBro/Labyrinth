@@ -19,6 +19,9 @@ export default function SchedulePage() {
 
   const today = new Date().toLocaleDateString("en-US", { weekday: "long" });
 
+  const emptyCategoryLabel =
+    category === "adult" ? "adults" : category === "kids" ? "kids" : "";
+
   return (
     <div className="app-content">
       <ScreenHeader title="Schedule" subtitle="Class Timetable" />
@@ -27,13 +30,13 @@ export default function SchedulePage() {
       <div className="px-5 mb-3">
         <div className="flex gap-1 p-1 rounded-xl" style={{ backgroundColor: "#111" }}>
           {[
-            { key: "all", label: "All" },
-            { key: "adult", label: "Adults" },
-            { key: "kids", label: "Kids & Teens" },
+            { key: "all",   label: "All"          },
+            { key: "adult", label: "Adults"        },
+            { key: "kids",  label: "Kids & Teens"  },
           ].map(cat => (
             <button
               key={cat.key}
-              onClick={() => setCategory(cat.key as any)}
+              onClick={() => setCategory(cat.key as "all" | "adult" | "kids")}
               className="flex-1 py-2 text-xs font-medium rounded-lg transition-all"
               style={{
                 backgroundColor: category === cat.key ? "#C8A24C" : "transparent",
@@ -82,12 +85,14 @@ export default function SchedulePage() {
         {dayClasses.length === 0 ? (
           <div className="text-center py-12">
             <Clock size={32} style={{ color: "#333", margin: "0 auto 8px" }} />
-            <p className="text-sm" style={{ color: "#666" }}>No classes {category !== "all" ? `for ${category}s` : ""} on {selectedDay}</p>
+            <p className="text-sm" style={{ color: "#666" }}>
+              No classes{emptyCategoryLabel ? ` for ${emptyCategoryLabel}` : ""} on {selectedDay}
+            </p>
           </div>
         ) : (
           <div className="space-y-2">
-            {dayClasses.map((cls, i) => (
-              <ClassCard key={i} cls={cls} />
+            {dayClasses.map((cls) => (
+              <ClassCard key={`${cls.day}-${cls.time}-${cls.name}`} cls={cls} />
             ))}
           </div>
         )}
@@ -107,7 +112,8 @@ export default function SchedulePage() {
 }
 
 function ClassCard({ cls }: { cls: ClassScheduleItem }) {
-  const typeStyle = CLASS_TYPE_COLORS[cls.type] || CLASS_TYPE_COLORS.gi;
+  const typeStyle = CLASS_TYPE_COLORS[cls.type] ?? CLASS_TYPE_COLORS.gi;
+  const [timePart, ampm] = cls.time.split(" ");
 
   return (
     <div
@@ -117,8 +123,8 @@ function ClassCard({ cls }: { cls: ClassScheduleItem }) {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <div className="w-12 text-center">
-            <p className="text-sm font-bold" style={{ color: "#F0F0F0" }}>{cls.time.split(" ")[0]}</p>
-            <p className="text-[10px]" style={{ color: "#666" }}>{cls.time.split(" ")[1]}</p>
+            <p className="text-sm font-bold" style={{ color: "#F0F0F0" }}>{timePart}</p>
+            <p className="text-[10px]" style={{ color: "#666" }}>{ampm ?? ""}</p>
           </div>
           <div className="w-px h-8" style={{ backgroundColor: "#222" }} />
           <div>
