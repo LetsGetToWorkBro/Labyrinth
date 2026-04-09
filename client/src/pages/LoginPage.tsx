@@ -1,130 +1,222 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAuth } from "@/lib/auth-context";
-import { Loader2, Eye, EyeOff, ArrowLeft } from "lucide-react";
-import logoMazeGold from "@assets/maze-gold.png";
+import { Loader2, Eye, EyeOff, ArrowRight, CheckCircle } from "lucide-react";
+import logoKanji from "@assets/logo-kanji-framed.webp";
+import { gasCall } from "@/lib/api-internal";
 
-export default function LoginPage({ onBack }: { onBack?: () => void } = {}) {
+type Mode = "login" | "request";
+
+export default function LoginPage() {
   const { login } = useAuth();
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [error, setError] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [showPassword, setShowPassword] = useState(false);
+
+  // Animate in on mount
+  const [visible, setVisible] = useState(false);
+  useEffect(() => { const t = setTimeout(() => setVisible(true), 30); return () => clearTimeout(t); }, []);
+
+  const [mode, setMode] = useState<Mode>("login");
+
+  // Login state
+  const [email, setEmail]           = useState("");
+  const [password, setPassword]     = useState("");
+  const [showPw, setShowPw]         = useState(false);
+  const [loginError, setLoginError] = useState("");
+  const [loginLoading, setLoginLoading] = useState(false);
+
+  // Request access state
+  const [reqName, setReqName]       = useState("");
+  const [reqEmail, setReqEmail]     = useState("");
+  const [reqNote, setReqNote]       = useState("");
+  const [reqLoading, setReqLoading] = useState(false);
+  const [reqError, setReqError]     = useState("");
+  const [reqSent, setReqSent]       = useState(false);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email || !password) {
-      setError("Please enter email and password");
-      return;
-    }
-    setLoading(true);
-    setError("");
+    if (!email || !password) { setLoginError("Please enter email and password"); return; }
+    setLoginLoading(true);
+    setLoginError("");
     const result = await login(email, password);
-    setLoading(false);
-    if (!result.success) {
-      setError(result.error || "Login failed");
+    setLoginLoading(false);
+    if (!result.success) setLoginError(result.error || "Invalid email or password");
+  };
+
+  const handleRequest = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!reqName || !reqEmail) { setReqError("Name and email are required"); return; }
+    setReqLoading(true);
+    setReqError("");
+    try {
+      const result = await gasCall("requestAccess", { name: reqName, email: reqEmail, note: reqNote });
+      if (result && result.success) {
+        setReqSent(true);
+      } else {
+        setReqError(result?.error || "Could not send request. Try again.");
+      }
+    } catch {
+      setReqError("Connection error. Please try again.");
     }
+    setReqLoading(false);
   };
 
   return (
-    <div className="min-h-full flex flex-col items-center justify-center px-6" style={{ backgroundColor: "#0A0A0A" }}>
+    <div
+      className="login-screen"
+      style={{
+        opacity: visible ? 1 : 0,
+        transform: visible ? "none" : "translateY(12px)",
+        transition: "opacity 0.4s ease, transform 0.4s ease",
+      }}
+    >
+      {/* Ambient background glow */}
+      <div className="login-glow-1" />
+      <div className="login-glow-2" />
+
       {/* Logo */}
-      <div className="mb-8 text-center flex flex-col items-center">
-        <img src={logoMazeGold} alt="Labyrinth BJJ" style={{ width: 80, height: 80 }} />
-        <h1 className="text-2xl font-bold" style={{ color: "#F0F0F0" }}>Labyrinth BJJ</h1>
-        <p className="text-sm mt-1" style={{ color: "#666" }}>Member Portal</p>
+      <div className="login-logo-wrap">
+        <div className="login-logo-ring">
+          <img src={logoKanji} alt="Labyrinth BJJ" className="login-logo-img" />
+        </div>
+        <h1 className="login-title">LABYRINTH BJJ</h1>
+        <p className="login-subtitle">Member Portal</p>
       </div>
 
-      {/* Login Form */}
-      <form onSubmit={handleLogin} className="w-full max-w-sm space-y-4">
-        <div>
-          <label className="block text-xs font-medium mb-1.5" style={{ color: "#999" }}>Email</label>
-          <input
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            placeholder="your@email.com"
-            className="w-full px-4 py-3 rounded-lg text-sm outline-none transition-colors"
-            style={{
-              backgroundColor: "#111",
-              border: "1px solid #222",
-              color: "#F0F0F0",
-            }}
-            data-testid="input-email"
-          />
-        </div>
-        <div>
-          <label className="block text-xs font-medium mb-1.5" style={{ color: "#999" }}>Password</label>
-          <div className="relative">
+      {/* Mode toggle */}
+      <div className="login-toggle">
+        <button
+          className={`login-toggle-btn ${mode === "login" ? "active" : ""}`}
+          onClick={() => { setMode("login"); setLoginError(""); setReqError(""); }}
+        >
+          Sign In
+        </button>
+        <button
+          className={`login-toggle-btn ${mode === "request" ? "active" : ""}`}
+          onClick={() => { setMode("request"); setLoginError(""); setReqError(""); }}
+        >
+          Request Access
+        </button>
+      </div>
+
+      {/* ── Sign In ── */}
+      {mode === "login" && (
+        <form onSubmit={handleLogin} className="login-form" style={{ animation: "loginSlideIn 0.25s ease" }}>
+          <div className="login-field">
+            <label>Email</label>
             <input
-              type={showPassword ? "text" : "password"}
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="Enter password"
-              className="w-full px-4 py-3 rounded-lg text-sm outline-none transition-colors pr-10"
-              style={{
-                backgroundColor: "#111",
-                border: "1px solid #222",
-                color: "#F0F0F0",
-              }}
-              data-testid="input-password"
+              type="email"
+              value={email}
+              onChange={e => setEmail(e.target.value)}
+              placeholder="your@email.com"
+              autoComplete="email"
+              autoFocus
+              data-testid="input-email"
             />
-            <button
-              type="button"
-              onClick={() => setShowPassword(!showPassword)}
-              className="absolute right-3 top-1/2 -translate-y-1/2"
-              style={{ color: "#666" }}
-              data-testid="button-toggle-password"
-            >
-              {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+          </div>
+          <div className="login-field">
+            <label>Password</label>
+            <div className="login-pw-wrap">
+              <input
+                type={showPw ? "text" : "password"}
+                value={password}
+                onChange={e => setPassword(e.target.value)}
+                placeholder="Enter password"
+                autoComplete="current-password"
+                data-testid="input-password"
+              />
+              <button type="button" className="login-pw-toggle" onClick={() => setShowPw(!showPw)} tabIndex={-1}>
+                {showPw ? <EyeOff size={17} /> : <Eye size={17} />}
+              </button>
+            </div>
+          </div>
+
+          {loginError && <div className="login-error">{loginError}</div>}
+
+          <button type="submit" disabled={loginLoading} className="login-submit" data-testid="button-login">
+            {loginLoading
+              ? <><Loader2 size={16} className="animate-spin" /> Signing in…</>
+              : <><span>Sign In</span><ArrowRight size={16} /></>
+            }
+          </button>
+
+          <p className="login-hint">
+            Don't have an account?{" "}
+            <button type="button" className="login-link" onClick={() => setMode("request")}>
+              Request access
             </button>
-          </div>
-        </div>
-
-        {error && (
-          <div className="text-sm px-3 py-2 rounded-lg" style={{ backgroundColor: "rgba(224, 85, 85, 0.1)", color: "#E05555" }}>
-            {error}
-          </div>
-        )}
-
-        <button
-          type="submit"
-          disabled={loading}
-          className="w-full py-3 rounded-lg text-sm font-semibold transition-all active:scale-[0.98]"
-          style={{
-            backgroundColor: "#C8A24C",
-            color: "#0A0A0A",
-            opacity: loading ? 0.7 : 1,
-          }}
-          data-testid="button-login"
-        >
-          {loading ? (
-            <span className="flex items-center justify-center gap-2">
-              <Loader2 size={16} className="animate-spin" />
-              Signing in...
-            </span>
-          ) : (
-            "Sign In"
-          )}
-        </button>
-      </form>
-
-      {/* Back / Guest access */}
-      {onBack ? (
-        <button
-          onClick={onBack}
-          className="mt-6 flex items-center gap-1 text-xs"
-          style={{ color: "#666" }}
-          data-testid="button-back-from-login"
-        >
-          <ArrowLeft size={14} />
-          Back to app
-        </button>
-      ) : (
-        <p className="mt-8 text-xs text-center" style={{ color: "#666" }}>
-          Don't have an account? Contact the front desk.
-        </p>
+          </p>
+        </form>
       )}
+
+      {/* ── Request Access ── */}
+      {mode === "request" && !reqSent && (
+        <form onSubmit={handleRequest} className="login-form" style={{ animation: "loginSlideIn 0.25s ease" }}>
+          <p className="login-request-desc">
+            Already a Labyrinth BJJ member? Submit your info and you'll be connected to your account.
+          </p>
+
+          <div className="login-field">
+            <label>Full Name</label>
+            <input
+              type="text"
+              value={reqName}
+              onChange={e => setReqName(e.target.value)}
+              placeholder="John Smith"
+              autoFocus
+            />
+          </div>
+          <div className="login-field">
+            <label>Email</label>
+            <input
+              type="email"
+              value={reqEmail}
+              onChange={e => setReqEmail(e.target.value)}
+              placeholder="your@email.com"
+              autoComplete="email"
+            />
+          </div>
+          <div className="login-field">
+            <label>Note <span style={{ color: "#555", fontWeight: 400 }}>(optional)</span></label>
+            <textarea
+              value={reqNote}
+              onChange={e => setReqNote(e.target.value)}
+              placeholder="e.g. I train on Tuesday evenings…"
+              rows={2}
+            />
+          </div>
+
+          {reqError && <div className="login-error">{reqError}</div>}
+
+          <button type="submit" disabled={reqLoading} className="login-submit">
+            {reqLoading
+              ? <><Loader2 size={16} className="animate-spin" /> Sending…</>
+              : <><span>Send Request</span><ArrowRight size={16} /></>
+            }
+          </button>
+
+          <p className="login-hint">
+            Already have an account?{" "}
+            <button type="button" className="login-link" onClick={() => setMode("login")}>
+              Sign in
+            </button>
+          </p>
+        </form>
+      )}
+
+      {/* ── Request sent confirmation ── */}
+      {mode === "request" && reqSent && (
+        <div className="login-form login-success" style={{ animation: "loginSlideIn 0.25s ease" }}>
+          <CheckCircle size={40} style={{ color: "#4CAF80", marginBottom: 12 }} />
+          <h3>Request sent!</h3>
+          <p>
+            We'll review your request and send you a setup link at <strong>{reqEmail}</strong>.
+            If your email matches an existing member account it will be connected automatically.
+          </p>
+          <button className="login-submit" style={{ marginTop: 20 }} onClick={() => { setMode("login"); setReqSent(false); setReqEmail(""); setReqName(""); setReqNote(""); }}>
+            Back to Sign In
+          </button>
+        </div>
+      )}
+
+      <p className="login-footer">Labyrinth BJJ · Fulshear, TX</p>
     </div>
   );
 }

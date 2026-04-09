@@ -1,7 +1,8 @@
 import { useAuth } from "@/lib/auth-context";
 import type { FamilyMember, PaymentCard } from "@/lib/api";
 import logoMazeGold from "@assets/maze-gold-md.png";
-import { BeltBadge } from "@/components/BeltBadge";
+import { BeltIcon } from "@/components/BeltIcon";
+import { getBeltColor } from "@/lib/constants";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import {
   CreditCard, FileText, ChevronRight, LogOut, LogIn,
@@ -188,7 +189,13 @@ export default function HomePage() {
                 Family
               </button>
             )}
-            <BeltBadge belt={member.belt} size="md" />
+            {/* Belt SVG icon — same as Belt Journey page */}
+            <BeltIcon
+              belt={member.belt || "white"}
+              stripes={0}
+              width={72}
+              style={{ filter: `drop-shadow(0 1px 6px ${getBeltColor(member.belt)}40)` }}
+            />
           </div>
         </div>
 

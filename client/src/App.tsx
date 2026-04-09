@@ -19,8 +19,9 @@ import BeltJourneyPage from "@/pages/BeltJourneyPage";
 import ChatPage from "@/pages/ChatPage";
 import GamesPage from "@/pages/GamesPage";
 import AdminPage from "@/pages/AdminPage";
+import MessagesPage from "@/pages/MessagesPage";
 import NotFound from "@/pages/not-found";
-import { Home, Calendar, MessageCircle, Clock, MoreHorizontal, Award, ShieldCheck } from "lucide-react";
+import { Home, Calendar, MessageCircle, Clock, MoreHorizontal, Award, ShieldCheck, Send } from "lucide-react";
 import { useEffect, useCallback } from "react";
 import { useHashLocation as useHashLoc } from "wouter/use-hash-location";
 
@@ -36,8 +37,11 @@ function TabBar() {
     { path: "/belt",    icon: Award,         label: "Belts"    },
     { path: "/schedule",icon: Clock,         label: "Schedule" },
     { path: "/more",    icon: MoreHorizontal,label: "More"     },
-    // Admin tab — only visible to admin/owner/coach
-    ...(isAdmin ? [{ path: "/admin", icon: ShieldCheck, label: "Admin" }] : []),
+    // Admin-only tabs
+    ...(isAdmin ? [
+      { path: "/messages", icon: Send,        label: "Blast"  },
+      { path: "/admin",    icon: ShieldCheck,  label: "Admin"  },
+    ] : []),
   ];
 
   const hiddenPaths = ["/waiver", "/book"];
@@ -54,7 +58,7 @@ function TabBar() {
             href={`/#${tab.path}`}
             className={`tab-item ${isActive ? "active" : ""}`}
             data-testid={`tab-${tab.label.toLowerCase()}`}
-            style={tab.path === "/admin" ? { color: isActive ? "#C8A24C" : "#888" } : undefined}
+            style={(tab.path === "/admin" || tab.path === "/messages") ? { color: isActive ? "#C8A24C" : "#888" } : undefined}
           >
             <Icon size={22} strokeWidth={isActive ? 2.2 : 1.5} />
             <span>{tab.label}</span>
@@ -77,7 +81,10 @@ function MorePage() {
     { href: "/#/calendar",icon: "🏆", label: "Tournament Calendar", desc: "Events and registrations" },
     { href: "/#/book",    icon: "📅", label: "Book Trial Class",  desc: "Schedule a free trial" },
     { href: "/#/waiver",  icon: "📝", label: "Waiver & Agreement",desc: "Sign or review documents" },
-    ...(isAdmin ? [{ href: "/#/admin", icon: "🛡️", label: "Admin Panel", desc: "Member management, stats, notes" }] : []),
+    ...(isAdmin ? [
+      { href: "/#/messages", icon: "📨", label: "Message Blast", desc: "Email or text all members" },
+      { href: "/#/admin",    icon: "🛡️", label: "Admin Panel",   desc: "Member management, stats, notes" },
+    ] : []),
   ];
 
   return (
@@ -178,6 +185,7 @@ function AuthenticatedApp() {
         <Route path="/book"      component={BookingPage} />
         <Route path="/games"     component={GamesPage} />
         <Route path="/more"      component={MorePage} />
+        <Route path="/messages"  component={MessagesPage} />
         <Route path="/admin"     component={AdminPageWrapper} />
         <Route component={NotFound} />
       </Switch>
