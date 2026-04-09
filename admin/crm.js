@@ -157,35 +157,39 @@ function beltImgHtml(belt, type, width) {
 }
 
 /* ── API LAYER ──────────────────────────────────────────── */
-async function api(action, data = {}) {
+// GAS cold starts regularly take 20-25 seconds. Timeout must exceed that.
+const GAS_TIMEOUT_MS = 35000;  // 35s — comfortably above worst-case cold start
+const GAS_MAX_RETRIES = 2;     // retry up to 2x on timeout/network error
+
+async function api(action, data = {}, _retryCount = 0) {
   if (DEMO_MODE) return demoApi(action, data);
+
+  // Show a subtle "connecting..." status on the first cold-start retry
+  if (_retryCount === 1) {
+    showToast('Backend is waking up, retrying…', 'info', 4000);
+  }
 
   try {
     const baseUrl = window._activeApiUrl || API_URL;
     const payload = JSON.stringify({ action, ...data });
 
     // Use POST for large payloads (signatures, etc.), GET for everything else
-    // POST to GAS: send as text/plain, follow the redirect manually
     const isLargePayload = payload.length > 5000;
 
-    // AbortController with 15-second timeout — prevents hanging forever
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 15000);
+    const timeoutId = setTimeout(() => controller.abort(), GAS_TIMEOUT_MS);
 
     let resp;
     try {
       if (isLargePayload) {
-        // POST approach: GAS redirects POST, so we follow manually
-        const postResp = await fetch(baseUrl, {
+        resp = await fetch(baseUrl, {
           method: 'POST',
           headers: { 'Content-Type': 'text/plain' },
           body: payload,
           redirect: 'follow',
           signal: controller.signal
         });
-        resp = postResp;
       } else {
-        // GET approach: encode in URL (fast, no redirect issues)
         const url = baseUrl + '?action=' + encodeURIComponent(action)
                   + '&payload=' + encodeURIComponent(payload);
         resp = await fetch(url, { redirect: 'follow', signal: controller.signal });
@@ -199,7 +203,6 @@ async function api(action, data = {}) {
     const text = await resp.text();
 
     if (!resp.ok || !contentType.includes('application/json')) {
-      // GAS returned an HTML error page — extract the error message
       const match = text.match(/<div[^>]*>([^<]*(?:Error|SyntaxError|TypeError|ReferenceError)[^<]*)<\/div>/i);
       const errMsg = match ? match[1].trim() : ('Server error: HTTP ' + resp.status);
       console.error('API error (' + action + '):', errMsg, '\nFull response:', text.substring(0, 500));
@@ -221,9 +224,23 @@ async function api(action, data = {}) {
       return null;
     }
     return result;
+
   } catch (err) {
-    console.error('API connection error (' + action + '):', err);
-    showToast('Connection error [' + action + ']: ' + err.message, 'error');
+    const isTimeout = err.name === 'AbortError' || err.name === 'TimeoutError';
+    const isNetwork = err.name === 'TypeError' || err.message.includes('network') || err.message.includes('fetch');
+
+    // Auto-retry on timeout/network error (GAS cold start)
+    if ((isTimeout || isNetwork) && _retryCount < GAS_MAX_RETRIES) {
+      console.warn('API timeout/network error (' + action + '), retry ' + (_retryCount + 1) + '/' + GAS_MAX_RETRIES + ':', err.message);
+      return api(action, data, _retryCount + 1);
+    }
+
+    console.error('API connection error (' + action + ') after ' + _retryCount + ' retries:', err);
+    if (_retryCount >= GAS_MAX_RETRIES) {
+      showToast('Server not responding after ' + GAS_MAX_RETRIES + ' attempts. Try again in a moment.', 'error');
+    } else {
+      showToast('Connection error [' + action + ']: ' + err.message, 'error');
+    }
     return null;
   }
 }
@@ -5379,8 +5396,9 @@ async function sendAccountSetup(email, name, row) {
 }
 
 /* ── UI HELPERS ─────────────────────────────────────────── */
-function showToast(msg, type = 'info') {
+function showToast(msg, type = 'info', customDuration) {
   const container = document.getElementById('toastContainer');
+  if (!container) return;
   const toast = document.createElement('div');
   toast.className = 'toast ' + type;
   toast.innerHTML = `
@@ -5388,8 +5406,8 @@ function showToast(msg, type = 'info') {
     <button onclick="this.parentElement.remove()" style="background:none;border:none;color:inherit;opacity:0.7;cursor:pointer;padding:2px;margin-left:8px;">&#10005;</button>
   `;
   container.appendChild(toast);
-  const duration = type === 'error' ? 6000 : type === 'warning' ? 5000 : 4000;
-  setTimeout(() => toast.remove(), duration);
+  const duration = customDuration || (type === 'error' ? 6000 : type === 'warning' ? 5000 : 4000);
+  setTimeout(() => { if (toast.parentElement) toast.remove(); }, duration);
 }
 
 function openModal(html, opts) {
