@@ -1,11 +1,13 @@
 import { useAuth } from "@/lib/auth-context";
 import type { FamilyMember, PaymentCard } from "@/lib/api";
+import { beltSavePromotion } from "@/lib/api";
 import { BeltIcon } from "@/components/BeltIcon";
+import { ADULT_BELT_OPTIONS } from "@/components/BeltIcon";
 import { getBeltColor } from "@/lib/constants";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import {
   CreditCard, FileText, ChevronRight, LogOut,
-  Users, Check, Loader2, Plus, Trash2, Star,
+  Users, Check, Loader2, Plus, Trash2, Star, CheckCircle, Shield,
 } from "lucide-react";
 import {
   memberGetCards, memberSetDefaultCard, memberRemoveCard,
@@ -18,6 +20,12 @@ export default function HomePage() {
   const [switchingRow, setSwitchingRow] = useState<number | null>(null);
   const [showFamilySwitcher, setShowFamilySwitcher] = useState(false);
   const [switchError, setSwitchError] = useState("");
+  const [showRankRequest, setShowRankRequest] = useState(false);
+  const [rankBelt, setRankBelt] = useState("");
+  const [rankStripes, setRankStripes] = useState(0);
+  const [rankNote, setRankNote] = useState("");
+  const [rankSubmitting, setRankSubmitting] = useState(false);
+  const [rankSent, setRankSent] = useState(false);
 
   // Card management state
   const [cards, setCards] = useState<PaymentCard[]>([]);
@@ -143,13 +151,23 @@ export default function HomePage() {
                 Family
               </button>
             )}
-            {/* Belt SVG icon — same as Belt Journey page */}
-            <BeltIcon
-              belt={member.belt || "white"}
-              stripes={0}
-              width={72}
-              style={{ filter: `drop-shadow(0 1px 6px ${getBeltColor(member.belt)}40)` }}
-            />
+            {/* Belt SVG — tappable to request rank update */}
+            <button
+              onClick={() => { setShowRankRequest(true); setRankBelt(member.belt || "white"); setRankStripes(0); setRankNote(""); setRankSent(false); }}
+              style={{ background: "none", border: "none", padding: 0, cursor: "pointer", position: "relative" }}
+              title="Request rank update"
+            >
+              <BeltIcon
+                belt={member.belt || "white"}
+                stripes={0}
+                width={72}
+                style={{ filter: `drop-shadow(0 1px 6px ${getBeltColor(member.belt)}40)` }}
+              />
+              {/* Tap hint dot */}
+              <span style={{ position: "absolute", bottom: -2, right: -2, width: 14, height: 14, borderRadius: "50%", backgroundColor: "#C8A24C", border: "2px solid #0A0A0A", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <Shield size={7} style={{ color: "#0A0A0A" }} />
+              </span>
+            </button>
           </div>
         </div>
 
@@ -192,13 +210,33 @@ export default function HomePage() {
           <InfoItem label="Email" value={member.email} />
           <InfoItem label="Phone" value={member.phone || "Not set"} />
         </div>
+
+        {/* Document status row */}
+        <div className="flex gap-3 mt-3 pt-3" style={{ borderTop: "1px solid #1A1A1A" }}>
+          <a href="/#/waiver" className="flex items-center gap-1.5 flex-1 text-xs" style={{ textDecoration: "none" }}>
+            {member.waiverSigned
+              ? <CheckCircle size={13} style={{ color: "#4CAF80", flexShrink: 0 }} />
+              : <FileText size={13} style={{ color: "#E08228", flexShrink: 0 }} />}
+            <span style={{ color: member.waiverSigned ? "#4CAF80" : "#E08228" }}>
+              {member.waiverSigned ? "Waiver signed" : "Sign waiver"}
+            </span>
+          </a>
+          <a href="/#/waiver?tab=agreement" className="flex items-center gap-1.5 flex-1 text-xs" style={{ textDecoration: "none" }}>
+            {member.agreementSigned
+              ? <CheckCircle size={13} style={{ color: "#4CAF80", flexShrink: 0 }} />
+              : <FileText size={13} style={{ color: "#E08228", flexShrink: 0 }} />}
+            <span style={{ color: member.agreementSigned ? "#4CAF80" : "#E08228" }}>
+              {member.agreementSigned ? "Agreement signed" : "Sign agreement"}
+            </span>
+          </a>
+        </div>
       </div>
 
       {/* Warning banners */}
       {hasWarnings && (
         <div className="mx-5 mb-4 space-y-2">
           {!member.waiverSigned && <WarningBanner icon={<FileText size={16} />} text="Liability waiver not signed" action="Sign Now" href="/#/waiver" />}
-          {!member.agreementSigned && <WarningBanner icon={<FileText size={16} />} text="Membership agreement not signed" action="Sign Now" href="/#/waiver" />}
+          {!member.agreementSigned && <WarningBanner icon={<FileText size={16} />} text="Membership agreement not signed" action="Sign Now" href="/#/waiver?tab=agreement" />}
         </div>
       )}
 
@@ -305,6 +343,108 @@ export default function HomePage() {
           <QuickLink href="/#/games" icon="🎮" label="Games" />
         </div>
       </div>
+
+      {/* ── Rank Request Bottom Sheet ── */}
+      {showRankRequest && (
+        <div
+          style={{ position: "fixed", inset: 0, backgroundColor: "rgba(0,0,0,0.7)", zIndex: 50, display: "flex", alignItems: "flex-end", justifyContent: "center" }}
+          onClick={() => setShowRankRequest(false)}
+        >
+          <div
+            style={{ width: "100%", maxWidth: 480, backgroundColor: "#111", borderRadius: "20px 20px 0 0", padding: "20px 20px", paddingBottom: "max(20px, env(safe-area-inset-bottom, 20px))", maxHeight: "85vh", overflowY: "auto" }}
+            onClick={e => e.stopPropagation()}
+          >
+            {/* Handle */}
+            <div style={{ width: 40, height: 4, borderRadius: 2, backgroundColor: "#333", margin: "0 auto 20px" }} />
+
+            {rankSent ? (
+              <div style={{ textAlign: "center", padding: "16px 0" }}>
+                <CheckCircle size={44} style={{ color: "#4CAF80", margin: "0 auto 12px" }} />
+                <h3 style={{ fontSize: 16, fontWeight: 700, color: "#F0F0F0", margin: "0 0 8px" }}>Request Sent!</h3>
+                <p style={{ fontSize: 13, color: "#888", lineHeight: 1.5 }}>Your coach will review and approve your promotion.</p>
+                <button onClick={() => setShowRankRequest(false)}
+                  style={{ marginTop: 20, padding: "11px 32px", borderRadius: 12, backgroundColor: "#C8A24C", color: "#0A0A0A", fontWeight: 700, fontSize: 14, border: "none", cursor: "pointer" }}>
+                  Done
+                </button>
+              </div>
+            ) : (
+              <>
+                <h3 style={{ fontSize: 16, fontWeight: 700, color: "#F0F0F0", margin: "0 0 4px" }}>Request Rank Update</h3>
+                <p style={{ fontSize: 12, color: "#666", margin: "0 0 20px" }}>Your coach will review and approve this before it's recorded.</p>
+
+                {/* Belt selector */}
+                <label style={{ display: "block", fontSize: 11, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.06em", color: "#666", marginBottom: 8 }}>Belt</label>
+                <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 16 }}>
+                  {ADULT_BELT_OPTIONS.map(b => (
+                    <button key={b} onClick={() => setRankBelt(b)}
+                      style={{
+                        padding: "6px 14px", borderRadius: 20, fontSize: 12, fontWeight: 600,
+                        border: rankBelt === b ? `2px solid ${getBeltColor(b)}` : "2px solid #222",
+                        backgroundColor: rankBelt === b ? `${getBeltColor(b)}18` : "#0D0D0D",
+                        color: rankBelt === b ? getBeltColor(b) : "#888",
+                        cursor: "pointer", display: "flex", alignItems: "center", gap: 6,
+                      }}
+                    >
+                      <span style={{ width: 8, height: 8, borderRadius: "50%", backgroundColor: getBeltColor(b), flexShrink: 0 }} />
+                      {b.charAt(0).toUpperCase() + b.slice(1)}
+                    </button>
+                  ))}
+                </div>
+
+                {/* Stripes selector */}
+                <label style={{ display: "block", fontSize: 11, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.06em", color: "#666", marginBottom: 8 }}>Stripes</label>
+                <div style={{ display: "flex", gap: 6, marginBottom: 16 }}>
+                  {[0, 1, 2, 3, 4].map(s => (
+                    <button key={s} onClick={() => setRankStripes(s)}
+                      style={{
+                        width: 44, height: 44, borderRadius: 10, fontSize: 13, fontWeight: 700,
+                        border: rankStripes === s ? "2px solid #C8A24C" : "2px solid #222",
+                        backgroundColor: rankStripes === s ? "rgba(200,162,76,0.12)" : "#0D0D0D",
+                        color: rankStripes === s ? "#C8A24C" : "#888",
+                        cursor: "pointer",
+                      }}
+                    >
+                      {s}
+                    </button>
+                  ))}
+                </div>
+
+                {/* Note */}
+                <label style={{ display: "block", fontSize: 11, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.06em", color: "#666", marginBottom: 8 }}>Note <span style={{ color: "#555", fontWeight: 400 }}>(optional)</span></label>
+                <textarea
+                  value={rankNote}
+                  onChange={e => setRankNote(e.target.value)}
+                  placeholder="e.g. Competed at Houston Open, won gold…"
+                  rows={2}
+                  style={{ width: "100%", backgroundColor: "#0D0D0D", border: "1px solid #222", borderRadius: 10, padding: "10px 12px", fontSize: 13, color: "#F0F0F0", outline: "none", resize: "none", boxSizing: "border-box", marginBottom: 20, fontFamily: "inherit" }}
+                />
+
+                <button
+                  onClick={async () => {
+                    if (!rankBelt) return;
+                    setRankSubmitting(true);
+                    const today = new Date().toISOString().split("T")[0];
+                    const result = await beltSavePromotion({ belt: rankBelt, stripes: rankStripes, date: today, note: rankNote });
+                    setRankSubmitting(false);
+                    if (result?.success) setRankSent(true);
+                  }}
+                  disabled={!rankBelt || rankSubmitting}
+                  style={{
+                    width: "100%", padding: "13px", borderRadius: 12, fontSize: 14, fontWeight: 700,
+                    backgroundColor: rankBelt ? "#C8A24C" : "#1A1A1A",
+                    color: rankBelt ? "#0A0A0A" : "#444",
+                    border: "none", cursor: rankBelt ? "pointer" : "default",
+                    display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
+                    opacity: rankSubmitting ? 0.7 : 1,
+                  }}
+                >
+                  {rankSubmitting ? <><Loader2 size={15} className="animate-spin" /> Sending…</> : "Submit for Coach Approval"}
+                </button>
+              </>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
