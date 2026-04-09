@@ -86,7 +86,6 @@ export default function AdminPage({ onBack }: { onBack: () => void }) {
               display: "flex", alignItems: "center", gap: 6,
               padding: "11px 16px", fontSize: 12, fontWeight: 600,
               color: tab === t.id ? GOLD : "#666",
-              borderBottom: tab === t.id ? `2px solid ${GOLD}` : "2px solid transparent",
               background: "none", border: "none", borderBottom: tab === t.id ? `2px solid ${GOLD}` : "2px solid transparent",
               cursor: "pointer", whiteSpace: "nowrap", transition: "color 0.15s",
             }}

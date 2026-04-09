@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useAuth } from "@/lib/auth-context";
 import { Loader2, Eye, EyeOff, ArrowRight, CheckCircle } from "lucide-react";
 import logoKanji from "@assets/logo-kanji-framed.webp";
-import { gasCall } from "@/lib/api-internal";
+import { gasCall } from "@/lib/api";
 
 type Mode = "login" | "request";
 
