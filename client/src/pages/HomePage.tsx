@@ -1,11 +1,10 @@
 import { useAuth } from "@/lib/auth-context";
 import type { FamilyMember, PaymentCard } from "@/lib/api";
-import logoMazeGold from "@assets/maze-gold-md.png";
 import { BeltIcon } from "@/components/BeltIcon";
 import { getBeltColor } from "@/lib/constants";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import {
-  CreditCard, FileText, ChevronRight, LogOut, LogIn,
+  CreditCard, FileText, ChevronRight, LogOut,
   Users, Check, Loader2, Plus, Trash2, Star,
 } from "lucide-react";
 import {
@@ -13,11 +12,9 @@ import {
   memberAddCard, memberCreateSetupLink,
 } from "@/lib/api";
 import { useState, useEffect, useCallback } from "react";
-import LoginPage from "./LoginPage";
 
 export default function HomePage() {
   const { member, familyMembers, isAuthenticated, logout, switchProfile } = useAuth();
-  const [showLogin, setShowLogin] = useState(false);
   const [switchingRow, setSwitchingRow] = useState<number | null>(null);
   const [showFamilySwitcher, setShowFamilySwitcher] = useState(false);
   const [switchError, setSwitchError] = useState("");
@@ -100,49 +97,6 @@ export default function HomePage() {
     if (result.success) setShowFamilySwitcher(false);
     else setSwitchError(result.error || "Failed to switch profile");
   };
-
-  if (showLogin && !isAuthenticated) {
-    return <div className="app-content"><LoginPage onBack={() => setShowLogin(false)} /></div>;
-  }
-
-  // ─── Guest home ──────────────────────────────────────────────────
-  if (!member) {
-    return (
-      <div className="app-content">
-        <ScreenHeader title="Labyrinth BJJ" />
-        <div className="mx-5 mb-4 flex items-center gap-4 p-5 rounded-xl" style={{ backgroundColor: "#111", border: "1px solid #1A1A1A" }}>
-          <img src={logoMazeGold} alt="Labyrinth BJJ" style={{ width: 48, height: 48 }} className="flex-shrink-0" />
-          <div>
-            <h2 className="text-base font-bold" style={{ color: "#F0F0F0" }}>Welcome to Labyrinth BJJ</h2>
-            <p className="text-xs mt-0.5" style={{ color: "#666" }}>Fulshear, TX</p>
-          </div>
-        </div>
-        <div className="mx-5 mb-4">
-          <button
-            onClick={() => setShowLogin(true)}
-            className="w-full flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-semibold transition-all active:scale-[0.98]"
-            style={{ backgroundColor: "rgba(200, 162, 76, 0.1)", color: "#C8A24C", border: "1px solid rgba(200, 162, 76, 0.2)" }}
-            data-testid="button-member-login"
-          >
-            <LogIn size={16} />
-            Member Sign In
-          </button>
-        </div>
-        <div className="mx-5 mb-6">
-          <h3 className="text-xs font-medium uppercase tracking-wider mb-3" style={{ color: "#666" }}>Explore</h3>
-          <div className="space-y-1">
-            <QuickLink href="/#/belt" icon="🥋" label="Belt Journey" />
-            <QuickLink href="/#/schedule" icon="📅" label="Class Schedule" />
-            <QuickLink href="/#/calendar" icon="🏆" label="Tournament Calendar" />
-            <QuickLink href="/#/stats" icon="📊" label="Academy Stats" />
-            <QuickLink href="/#/sauna" icon="🧖" label="Sauna Dashboard" />
-            <QuickLink href="/#/book" icon="📆" label="Book a Trial Class" />
-            <QuickLink href="/#/games" icon="🎮" label="Games" />
-          </div>
-        </div>
-      </div>
-    );
-  }
 
   // ─── Logged-in home ───────────────────────────────────────────────
   const hasWarnings = !member.waiverSigned || !member.agreementSigned;

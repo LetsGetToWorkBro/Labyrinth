@@ -21,7 +21,7 @@ import GamesPage from "@/pages/GamesPage";
 import AdminPage from "@/pages/AdminPage";
 import MessagesPage from "@/pages/MessagesPage";
 import NotFound from "@/pages/not-found";
-import { Home, Calendar, MessageCircle, Clock, MoreHorizontal, Award, ShieldCheck, Send } from "lucide-react";
+import { Home, MessageCircle, Clock, MoreHorizontal, Award, ShieldCheck, Send } from "lucide-react";
 import { useEffect, useCallback } from "react";
 import { useHashLocation as useHashLoc } from "wouter/use-hash-location";
 
@@ -32,15 +32,14 @@ function TabBar() {
   const { isAdmin } = useAuth();
 
   const tabs = [
-    { path: "/",        icon: Home,          label: "Home"     },
-    { path: "/chat",    icon: MessageCircle, label: "Chat"     },
-    { path: "/belt",    icon: Award,         label: "Belts"    },
-    { path: "/schedule",icon: Clock,         label: "Schedule" },
-    { path: "/more",    icon: MoreHorizontal,label: "More"     },
-    // Admin-only tabs
+    { path: "/",         icon: Home,          label: "Home"     },
+    { path: "/chat",     icon: MessageCircle, label: "Chat"     },
+    { path: "/belt",     icon: Award,         label: "Belts"    },
+    { path: "/schedule", icon: Clock,         label: "Schedule" },
+    { path: "/more",     icon: MoreHorizontal,label: "More"     },
     ...(isAdmin ? [
-      { path: "/messages", icon: Send,        label: "Blast"  },
-      { path: "/admin",    icon: ShieldCheck,  label: "Admin"  },
+      { path: "/messages", icon: Send,       label: "Blast" },
+      { path: "/admin",    icon: ShieldCheck, label: "Admin" },
     ] : []),
   ];
 
@@ -52,13 +51,14 @@ function TabBar() {
       {tabs.map(tab => {
         const isActive = tab.path === "/" ? location === "/" : location.startsWith(tab.path);
         const Icon = tab.icon;
+        const isAdminTab = tab.path === "/admin" || tab.path === "/messages";
         return (
           <a
             key={tab.path}
             href={`/#${tab.path}`}
             className={`tab-item ${isActive ? "active" : ""}`}
             data-testid={`tab-${tab.label.toLowerCase()}`}
-            style={(tab.path === "/admin" || tab.path === "/messages") ? { color: isActive ? "#C8A24C" : "#888" } : undefined}
+            style={isAdminTab ? { color: isActive ? "#C8A24C" : "#888" } : undefined}
           >
             <Icon size={22} strokeWidth={isActive ? 2.2 : 1.5} />
             <span>{tab.label}</span>
@@ -75,15 +75,15 @@ function MorePage() {
   const { logout, isAdmin } = useAuth();
 
   const items = [
-    { href: "/#/games",   icon: "🎮", label: "Games",            desc: "Challenge your teammates" },
-    { href: "/#/sauna",   icon: "🧖", label: "Sauna Dashboard",  desc: "Check in/out, active sessions" },
-    { href: "/#/stats",   icon: "📊", label: "Academy Stats",    desc: "Rankings, athletes, jits.gg" },
-    { href: "/#/calendar",icon: "🏆", label: "Tournament Calendar", desc: "Events and registrations" },
-    { href: "/#/book",    icon: "📅", label: "Book Trial Class",  desc: "Schedule a free trial" },
-    { href: "/#/waiver",  icon: "📝", label: "Waiver & Agreement",desc: "Sign or review documents" },
+    { href: "/#/games",    icon: "🎮", label: "Games",               desc: "Challenge your teammates"        },
+    { href: "/#/sauna",    icon: "🧖", label: "Sauna Dashboard",     desc: "Check in/out, active sessions"   },
+    { href: "/#/stats",    icon: "📊", label: "Academy Stats",       desc: "Rankings, athletes, jits.gg"     },
+    { href: "/#/calendar", icon: "🏆", label: "Tournament Calendar", desc: "Events and registrations"        },
+    { href: "/#/book",     icon: "📅", label: "Book Trial Class",    desc: "Schedule a free trial"           },
+    { href: "/#/waiver",   icon: "📝", label: "Waiver & Agreement",  desc: "Sign or review documents"        },
     ...(isAdmin ? [
-      { href: "/#/messages", icon: "📨", label: "Message Blast", desc: "Email or text all members" },
-      { href: "/#/admin",    icon: "🛡️", label: "Admin Panel",   desc: "Member management, stats, notes" },
+      { href: "/#/messages", icon: "📨", label: "Message Blast", desc: "Email or text all members"         },
+      { href: "/#/admin",    icon: "🛡️", label: "Admin Panel",   desc: "Member management, stats, notes"  },
     ] : []),
   ];
 
@@ -94,9 +94,7 @@ function MorePage() {
       </div>
       <div className="px-5 pb-6 space-y-2">
         {items.map((item, i) => (
-          <a
-            key={i}
-            href={item.href}
+          <a key={i} href={item.href}
             className="flex items-center gap-3 p-4 rounded-xl transition-all active:scale-[0.98]"
             style={{ backgroundColor: "#111", border: "1px solid #1A1A1A" }}
           >
@@ -110,21 +108,16 @@ function MorePage() {
             </svg>
           </a>
         ))}
-
         <div className="mt-6 p-4 rounded-xl" style={{ backgroundColor: "#111", border: "1px solid #1A1A1A" }}>
           <h3 className="text-sm font-semibold mb-2" style={{ color: "#F0F0F0" }}>Labyrinth BJJ</h3>
           <div className="space-y-1.5 text-xs" style={{ color: "#999" }}>
             <p>Fulshear, TX</p>
-            <a href="https://labyrinth.vision" target="_blank" rel="noopener noreferrer" style={{ color: "#C8A24C" }}>
-              labyrinth.vision
-            </a>
+            <a href="https://labyrinth.vision" target="_blank" rel="noopener noreferrer" style={{ color: "#C8A24C" }}>labyrinth.vision</a>
           </div>
         </div>
-
-        <button
-          onClick={logout}
+        <button onClick={logout}
           className="w-full mt-4 py-3 rounded-xl text-sm font-medium transition-all active:scale-[0.98]"
-          style={{ backgroundColor: "rgba(224, 85, 85, 0.08)", color: "#E05555", border: "1px solid rgba(224, 85, 85, 0.15)" }}
+          style={{ backgroundColor: "rgba(224,85,85,0.08)", color: "#E05555", border: "1px solid rgba(224,85,85,0.15)" }}
           data-testid="button-logout-more"
         >
           Sign Out
@@ -134,42 +127,44 @@ function MorePage() {
   );
 }
 
-// ─── Admin page wrapper (route → component, back = navigate away) ─
+// ─── Admin wrappers ───────────────────────────────────────────────
 
 function AdminPageWrapper() {
   const [, navigate] = useHashLoc();
   return <AdminPage onBack={() => navigate("/")} />;
 }
 
-// ─── Keyboard shortcut: Ctrl+Shift+A → open admin panel ──────────
-
 function AdminShortcut() {
   const { isAdmin, isAuthenticated } = useAuth();
   const [, navigate] = useHashLoc();
-
   const handleKey = useCallback((e: KeyboardEvent) => {
     if (e.ctrlKey && e.shiftKey && e.key === "A") {
       e.preventDefault();
-      if (isAuthenticated && isAdmin) {
-        navigate("/admin");
-      } else if (!isAuthenticated) {
-        // Trigger a visible hint only in dev; in prod silently ignore
-        console.info("[Admin] Not authenticated — sign in first.");
-      }
+      if (isAuthenticated && isAdmin) navigate("/admin");
     }
   }, [isAdmin, isAuthenticated, navigate]);
-
   useEffect(() => {
     window.addEventListener("keydown", handleKey);
     return () => window.removeEventListener("keydown", handleKey);
   }, [handleKey]);
-
   return null;
 }
 
-// ─── Authenticated app shell ──────────────────────────────────────
+// ─── Auth gate — shows login until authenticated ──────────────────
 
-function AuthenticatedApp() {
+function AppShell() {
+  const { isAuthenticated } = useAuth();
+
+  // Not logged in → always show the full-screen login
+  if (!isAuthenticated) {
+    return (
+      <div className="app-shell">
+        <LoginPage />
+      </div>
+    );
+  }
+
+  // Logged in → full app
   return (
     <div className="app-shell">
       <AdminShortcut />
@@ -203,7 +198,7 @@ function App() {
           <GuestProfileProvider>
             <GameRecordProvider>
               <Router hook={useHashLocation}>
-                <AuthenticatedApp />
+                <AppShell />
               </Router>
             </GameRecordProvider>
           </GuestProfileProvider>
