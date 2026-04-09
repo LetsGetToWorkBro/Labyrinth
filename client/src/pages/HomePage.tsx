@@ -1,16 +1,20 @@
 import { useAuth } from "@/lib/auth-context";
+import type { FamilyMember } from "@/lib/api";
 import logoMazeGold from "@assets/maze-gold-md.png";
 import { BeltBadge } from "@/components/BeltBadge";
 import { ScreenHeader } from "@/components/ScreenHeader";
-import { CreditCard, FileText, ChevronRight, LogOut, LogIn } from "lucide-react";
+import { CreditCard, FileText, ChevronRight, LogOut, LogIn, Users, Check, Loader2 } from "lucide-react";
 import { memberCreateSetupLink } from "@/lib/api";
 import { useState } from "react";
 import LoginPage from "./LoginPage";
 
 export default function HomePage() {
-  const { member, isAuthenticated, logout } = useAuth();
+  const { member, familyMembers, isAuthenticated, logout, switchProfile } = useAuth();
   const [cardLoading, setCardLoading] = useState(false);
   const [showLogin, setShowLogin] = useState(false);
+  const [switchingRow, setSwitchingRow] = useState<number | null>(null);
+  const [showFamilySwitcher, setShowFamilySwitcher] = useState(false);
+  const [switchError, setSwitchError] = useState("");
 
   // Show login modal
   if (showLogin && !isAuthenticated) {
@@ -68,6 +72,7 @@ export default function HomePage() {
 
   // Logged in — full member profile
   const hasWarnings = !member.waiverSigned || !member.agreementSigned;
+  const hasFamily = familyMembers.length > 1;
 
   const handleSetupCard = async () => {
     setCardLoading(true);
@@ -80,6 +85,22 @@ export default function HomePage() {
       console.error(err);
     }
     setCardLoading(false);
+  };
+
+  const handleSwitchProfile = async (fm: FamilyMember) => {
+    if (fm.row === member.row) {
+      setShowFamilySwitcher(false);
+      return;
+    }
+    setSwitchingRow(fm.row);
+    setSwitchError("");
+    const result = await switchProfile(fm.row);
+    setSwitchingRow(null);
+    if (result.success) {
+      setShowFamilySwitcher(false);
+    } else {
+      setSwitchError(result.error || "Failed to switch profile");
+    }
   };
 
   const joinDate = member.joinDate ? new Date(member.joinDate).toLocaleDateString("en-US", {
@@ -106,14 +127,81 @@ export default function HomePage() {
       {/* Profile Card */}
       <div className="mx-5 rounded-xl p-5 mb-4" style={{ backgroundColor: "#111", border: "1px solid #1A1A1A" }}>
         <div className="flex items-start justify-between mb-4">
-          <div>
+          <div className="flex-1 min-w-0 mr-3">
             <h2 className="text-lg font-bold" style={{ color: "#F0F0F0" }} data-testid="text-member-name">
               {member.name}
             </h2>
             <p className="text-xs mt-0.5" style={{ color: "#666" }}>Member since {joinDate}</p>
           </div>
-          <BeltBadge belt={member.belt} size="md" />
+          <div className="flex items-center gap-2 flex-shrink-0">
+            {hasFamily && (
+              <button
+                onClick={() => setShowFamilySwitcher(!showFamilySwitcher)}
+                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all active:scale-[0.97]"
+                style={{
+                  backgroundColor: showFamilySwitcher ? "rgba(200,162,76,0.15)" : "#1A1A1A",
+                  color: showFamilySwitcher ? "#C8A24C" : "#999",
+                  border: showFamilySwitcher ? "1px solid rgba(200,162,76,0.3)" : "1px solid #222",
+                }}
+                data-testid="button-family-switcher"
+              >
+                <Users size={13} />
+                Family
+              </button>
+            )}
+            <BeltBadge belt={member.belt} size="md" />
+          </div>
         </div>
+
+        {/* Family Member Switcher Dropdown */}
+        {hasFamily && showFamilySwitcher && (
+          <div className="mb-4 rounded-xl overflow-hidden" style={{ border: "1px solid #222" }}>
+            <p className="text-[10px] uppercase tracking-wider px-3 pt-2.5 pb-1.5 font-medium" style={{ color: "#555", backgroundColor: "#0D0D0D" }}>
+              Switch Profile
+            </p>
+            {switchError && (
+              <p className="text-xs px-3 py-1.5" style={{ color: "#E05555", backgroundColor: "rgba(224,85,85,0.07)" }}>
+                {switchError}
+              </p>
+            )}
+            {familyMembers.map((fm) => {
+              const isActive = fm.row === member.row;
+              const isLoading = switchingRow === fm.row;
+              return (
+                <button
+                  key={fm.row}
+                  onClick={() => handleSwitchProfile(fm)}
+                  disabled={!!switchingRow}
+                  className="w-full flex items-center gap-3 px-3 py-2.5 transition-colors text-left"
+                  style={{
+                    backgroundColor: isActive ? "rgba(200,162,76,0.08)" : "#0D0D0D",
+                    borderTop: "1px solid #181818",
+                    opacity: switchingRow && !isLoading ? 0.5 : 1,
+                  }}
+                >
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium truncate" style={{ color: isActive ? "#C8A24C" : "#E0E0E0" }}>
+                      {fm.name}
+                    </p>
+                    <p className="text-[10px] mt-0.5" style={{ color: "#555" }}>
+                      {fm.type} · {fm.belt || "White"} belt
+                      {fm.isPrimary ? " · Primary" : ""}
+                    </p>
+                  </div>
+                  <div className="flex-shrink-0">
+                    {isLoading ? (
+                      <Loader2 size={14} className="animate-spin" style={{ color: "#C8A24C" }} />
+                    ) : isActive ? (
+                      <Check size={14} style={{ color: "#C8A24C" }} />
+                    ) : (
+                      <ChevronRight size={14} style={{ color: "#333" }} />
+                    )}
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        )}
 
         <div className="grid grid-cols-2 gap-3">
           <InfoItem label="Plan" value={member.plan || "—"} />

@@ -37,6 +37,15 @@ export function clearAuth() {
   memberData = null;
 }
 
+export interface FamilyMember {
+  name: string;
+  belt: string;
+  type: string;
+  membership: string;
+  row: number;
+  isPrimary: boolean;
+}
+
 export interface MemberProfile {
   name: string;
   email: string;
@@ -54,6 +63,9 @@ export interface MemberProfile {
   cardExpiration: string;
   joinDate: string;
   type: string;
+  row?: number;
+  isPrimary?: boolean;
+  familyMembers?: FamilyMember[];
 }
 
 export interface LoginResponse {
@@ -169,12 +181,25 @@ export async function memberGetProfile(): Promise<MemberProfile> {
   const token = getToken();
   if (!token) throw new Error("Not authenticated");
   const result = await gasCall("memberGetProfile", { token });
-  if (result.member || result) {
-    const profile = result.member || result;
+  // GAS returns { success, member: {...} } OR flat fields for legacy deployments
+  const profile = result.member ?? (result.success !== false ? result : null);
+  if (profile) {
     setMemberData(profile);
     return profile;
   }
-  throw new Error("Failed to fetch profile");
+  throw new Error(result.error || "Failed to fetch profile");
+}
+
+export async function memberSwitchProfile(targetRow: number): Promise<MemberProfile> {
+  const token = getToken();
+  if (!token) throw new Error("Not authenticated");
+  const result = await gasCall("memberSwitchProfile", { token, targetRow });
+  const profile = result.member ?? (result.success !== false ? result : null);
+  if (profile && result.success !== false) {
+    setMemberData(profile);
+    return profile;
+  }
+  throw new Error(result.error || "Failed to switch profile");
 }
 
 export async function memberUpdateProfile(phone: string): Promise<any> {
