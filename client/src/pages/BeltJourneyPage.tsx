@@ -2,7 +2,9 @@ import { useState, useEffect, useRef } from "react";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { BeltIcon, ADULT_BELT_OPTIONS, KIDS_BELT_OPTIONS, BELT_DISPLAY_NAMES } from "@/components/BeltIcon";
 import { getBeltColor, getBeltTextColor } from "@/lib/constants";
-import { Plus, X, Trophy, Clock, ChevronDown, Sparkles, Calendar, Edit3, Check, Trash2 } from "lucide-react";
+import { useAuth } from "@/lib/auth-context";
+import { beltGetPromotions, beltSavePromotion } from "@/lib/api";
+import { Plus, X, Trophy, Clock, ChevronDown, Sparkles, Calendar, Edit3, Check, Trash2, Loader2 } from "lucide-react";
 
 interface BeltPromotion {
   id: string;
@@ -104,10 +106,9 @@ function ConfettiBurst({ color }: { color: string }) {
 }
 
 export default function BeltJourneyPage() {
-  const [promotions, setPromotions] = useState<BeltPromotion[]>(() => {
-    // Try to load from state (in-memory for sandbox)
-    return [];
-  });
+  const { member, isAuthenticated } = useAuth();
+  const [promotions, setPromotions] = useState<BeltPromotion[]>([]);
+  const [loadingPromotions, setLoadingPromotions] = useState(false);
   const [showAdd, setShowAdd] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [newBelt, setNewBelt] = useState("white");
@@ -116,28 +117,64 @@ export default function BeltJourneyPage() {
   const [newNote, setNewNote] = useState("");
   const [showYouth, setShowYouth] = useState(false);
   const [celebrateId, setCelebrateId] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState("");
   const [quote] = useState(getRandomQuote);
   const timelineRef = useRef<HTMLDivElement>(null);
 
   const beltOptions = showYouth ? YOUTH_BELT_ORDER : BELT_ORDER;
 
-  const addPromotion = () => {
+  // Load existing promotions from GAS on mount
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    setLoadingPromotions(true);
+    beltGetPromotions().then(list => {
+      const sorted = list
+        .map(p => ({
+          id: p.id,
+          belt: p.belt,
+          stripes: p.stripes,
+          date: typeof p.date === "string" ? p.date.split("T")[0] : String(p.date),
+          note: p.note || "",
+          status: (p.status || "pending") as "pending" | "approved" | "rejected",
+        }))
+        .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+      setPromotions(sorted);
+      setLoadingPromotions(false);
+    });
+  }, [isAuthenticated]);
+
+  // Submit to GAS + notify admin via CRM dashboard widget
+  const addPromotion = async () => {
     if (!newDate) return;
+    setSubmitting(true);
+    setSubmitError("");
+
+    const result = await beltSavePromotion({ belt: newBelt, stripes: newStripes, date: newDate, note: newNote });
+
+    if (!result.success) {
+      setSubmitError("Could not submit. Please try again.");
+      setSubmitting(false);
+      return;
+    }
+
+    // Add optimistically with the server-assigned ID
     const promo: BeltPromotion = {
-      id: Date.now().toString(),
+      id: result.promotionId || Date.now().toString(),
       belt: newBelt,
       stripes: newStripes,
       date: newDate,
       note: newNote,
       status: "pending",
     };
-    const updated = [...promotions, promo].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-    setPromotions(updated);
+    setPromotions(prev => [...prev, promo].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()));
     setCelebrateId(promo.id);
     setTimeout(() => setCelebrateId(null), 1500);
+    setSubmitting(false);
     resetForm();
   };
 
+  // Edit + delete remain local-only (no GAS edit/delete endpoint exists yet)
   const updatePromotion = (id: string) => {
     const updated = promotions.map(p =>
       p.id === id ? { ...p, belt: newBelt, stripes: newStripes, date: newDate, note: newNote } : p
@@ -162,10 +199,12 @@ export default function BeltJourneyPage() {
 
   const resetForm = () => {
     setShowAdd(false);
+    setEditingId(null);
     setNewBelt("white");
     setNewStripes(0);
     setNewDate(new Date().toISOString().split("T")[0]);
     setNewNote("");
+    setSubmitError("");
   };
 
   const currentBelt = promotions.length > 0 ? promotions[promotions.length - 1] : null;

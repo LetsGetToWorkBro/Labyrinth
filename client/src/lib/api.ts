@@ -172,7 +172,7 @@ export interface MemberComm {
 
 // ─── GAS call helper (with cold-start retry) ─────────────────────
 
-async function gasCall(action: string, payload: Record<string, any> = {}, retryCount = 0): Promise<any> {
+export async function gasCall(action: string, payload: Record<string, any> = {}, retryCount = 0): Promise<any> {
   const fullPayload = { action, ...payload };
   const encodedPayload = encodeURIComponent(JSON.stringify(fullPayload));
   const url = `${GAS_ENDPOINT}?action=${encodeURIComponent(action)}&payload=${encodedPayload}`;
@@ -517,5 +517,99 @@ export async function adminGetBookings(): Promise<any[]> {
   } catch (err) {
     console.error("adminGetBookings failed:", err);
     return [];
+  }
+}
+
+// ─── Card Management ────────────────────────────────────────────
+
+export interface PaymentCard {
+  id: string;
+  brand: string;
+  last4: string;
+  expMonth: number;
+  expYear: number;
+  isDefault: boolean;
+}
+
+export async function memberGetCards(): Promise<PaymentCard[]> {
+  const token = getToken();
+  if (!token) return [];
+  try {
+    const result = await gasCall("memberGetFamilyCards", { token });
+    return result.cards || [];
+  } catch (err) {
+    console.error("memberGetCards failed:", err);
+    return [];
+  }
+}
+
+export async function memberSetDefaultCard(paymentMethodId: string): Promise<{ success: boolean; error?: string }> {
+  const token = getToken();
+  if (!token) return { success: false };
+  try {
+    return await gasCall("memberSetDefaultCard", { token, paymentMethodId });
+  } catch (err) {
+    console.error("memberSetDefaultCard failed:", err);
+    return { success: false };
+  }
+}
+
+export async function memberRemoveCard(paymentMethodId: string): Promise<{ success: boolean; error?: string }> {
+  const token = getToken();
+  if (!token) return { success: false };
+  try {
+    return await gasCall("memberRemoveCard", { token, paymentMethodId });
+  } catch (err) {
+    console.error("memberRemoveCard failed:", err);
+    return { success: false };
+  }
+}
+
+export async function memberAddCard(): Promise<{ success: boolean; url?: string; error?: string }> {
+  const token = getToken();
+  if (!token) return { success: false };
+  try {
+    const result = await gasCall("memberAddCard", {
+      token,
+      successUrl: window.location.origin + window.location.pathname + "?cardAdded=1",
+      cancelUrl:  window.location.origin + window.location.pathname,
+    });
+    return { success: !!result?.checkoutUrl, url: result?.checkoutUrl };
+  } catch (err) {
+    console.error("memberAddCard failed:", err);
+    return { success: false };
+  }
+}
+
+// ─── Messaging (admin only) ────────────────────────────────────────────────
+
+export type MessageTarget = "all" | "active" | "trials" | "failed";
+
+export async function adminSendEmail(
+  subject: string,
+  htmlBody: string,
+  target: MessageTarget
+): Promise<{ success: boolean; sentCount?: number; errors?: string[]; error?: string }> {
+  const token = getToken();
+  if (!token) return { success: false, error: "Not authenticated" };
+  try {
+    return await gasCall("sendMassEmail", { subject, htmlBody, target, token });
+  } catch (err) {
+    console.error("adminSendEmail failed:", err);
+    return { success: false, error: "Connection error" };
+  }
+}
+
+export async function adminSendSMS(
+  message: string,
+  target: MessageTarget
+): Promise<{ success: boolean; sentCount?: number; errors?: string[]; error?: string }> {
+  const token = getToken();
+  if (!token) return { success: false, error: "Not authenticated" };
+  try {
+    return await gasCall("sendMassSMS", { message, target, token });
+  } catch (err) {
+    console.error("adminSendSMS failed:", err);
+    return { success: false, error: "Connection error" };
   }
 }
