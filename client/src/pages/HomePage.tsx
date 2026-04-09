@@ -351,7 +351,7 @@ export default function HomePage() {
           onClick={() => setShowRankRequest(false)}
         >
           <div
-            style={{ width: "100%", maxWidth: 480, backgroundColor: "#111", borderRadius: "20px 20px 0 0", padding: "20px 20px", paddingBottom: "max(20px, env(safe-area-inset-bottom, 20px))", maxHeight: "85vh", overflowY: "auto" }}
+            style={{ width: "100%", maxWidth: 480, backgroundColor: "#111", borderRadius: "20px 20px 0 0", padding: "20px 20px", paddingBottom: "max(24px, env(safe-area-inset-bottom, 24px))", maxHeight: "92vh", overflowY: "auto", overscrollBehavior: "contain" }}
             onClick={e => e.stopPropagation()}
           >
             {/* Handle */}
