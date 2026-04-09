@@ -174,14 +174,31 @@ export interface MemberComm {
 
 export async function gasCall(action: string, payload: Record<string, any> = {}, retryCount = 0): Promise<any> {
   const fullPayload = { action, ...payload };
-  const encodedPayload = encodeURIComponent(JSON.stringify(fullPayload));
-  const url = `${GAS_ENDPOINT}?action=${encodeURIComponent(action)}&payload=${encodedPayload}`;
+  const jsonPayload = JSON.stringify(fullPayload);
+
+  // Use POST for large payloads (signatures, signed docs) — GET has ~8KB URL limit
+  // A canvas signature PNG in base64 is typically 20-100KB, way over the limit
+  const isLarge = jsonPayload.length > 4000;
 
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), GAS_TIMEOUT_MS);
 
   try {
-    const response = await fetch(url, { method: "GET", redirect: "follow", signal: controller.signal });
+    let response: Response;
+    if (isLarge) {
+      // POST as text/plain — GAS reads via e.postData.contents
+      response = await fetch(GAS_ENDPOINT, {
+        method: "POST",
+        headers: { "Content-Type": "text/plain" },
+        body: jsonPayload,
+        redirect: "follow",
+        signal: controller.signal,
+      });
+    } else {
+      const url = `${GAS_ENDPOINT}?action=${encodeURIComponent(action)}&payload=${encodeURIComponent(jsonPayload)}`;
+      response = await fetch(url, { method: "GET", redirect: "follow", signal: controller.signal });
+    }
+
     clearTimeout(timer);
     const text = await response.text();
     try {

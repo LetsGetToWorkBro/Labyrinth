@@ -14,11 +14,17 @@ export default function CalendarPage() {
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [selectedEvent, setSelectedEvent] = useState<TournamentEvent | null>(null);
 
+  const [offline, setOffline] = useState(false);
+
+  const CACHE_KEY_EVENTS = "lbjj_calendar_events_v1";
+  const CACHE_KEY_REGS   = "lbjj_calendar_regs_v1";
+
   useEffect(() => {
     loadData();
   }, []);
 
   async function loadData() {
+    // Always try live first
     try {
       const [eventsCSV, regsCSV] = await Promise.all([
         fetchCSV(CSV_ENDPOINTS.events),
@@ -37,7 +43,6 @@ export default function CalendarPage() {
         endDate: e.End_Date || e.end_date || e.EndDate || "",
       }));
 
-      // Parse registrations (headers=0, so we need to handle manually)
       const regsLines = regsCSV.trim().split("\n");
       const parsedRegs: Registration[] = regsLines.map((line: string) => {
         const cols = line.split(",").map(c => c.replace(/^"|"$/g, "").trim());
@@ -52,10 +57,25 @@ export default function CalendarPage() {
         };
       });
 
+      // Save to localStorage cache for offline use
+      try {
+        localStorage.setItem(CACHE_KEY_EVENTS, JSON.stringify(parsedEvents));
+        localStorage.setItem(CACHE_KEY_REGS, JSON.stringify(parsedRegs));
+      } catch { /* storage full */ }
+
       setEvents(parsedEvents);
       setRegistrations(parsedRegs);
+      setOffline(false);
     } catch (err) {
-      console.error("Failed to load calendar data:", err);
+      console.warn("Calendar fetch failed, trying cache:", err);
+      // Fall back to cached data
+      try {
+        const cachedEvents = localStorage.getItem(CACHE_KEY_EVENTS);
+        const cachedRegs   = localStorage.getItem(CACHE_KEY_REGS);
+        if (cachedEvents) setEvents(JSON.parse(cachedEvents));
+        if (cachedRegs)   setRegistrations(JSON.parse(cachedRegs));
+        if (cachedEvents || cachedRegs) setOffline(true);
+      } catch { /* cache corrupted */ }
     }
     setLoading(false);
   }
@@ -139,6 +159,15 @@ export default function CalendarPage() {
   return (
     <div className="app-content">
       <ScreenHeader title="Calendar" subtitle="Tournament Schedule" />
+
+      {/* Offline banner */}
+      {offline && (
+        <div className="mx-5 mb-3 flex items-center gap-2 px-3 py-2.5 rounded-xl" style={{ backgroundColor: "rgba(224,130,40,0.08)", border: "1px solid rgba(224,130,40,0.2)" }}>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#E08228" strokeWidth="2" style={{ flexShrink: 0 }}><path d="M1 6s4-4 11-4 11 4 11 4"/><path d="M5 10s2.5-2.5 7-2.5 7 2.5 7 2.5"/><path d="M9 14s1-1 3-1 3 1 3 1"/><circle cx="12" cy="18" r="1" fill="#E08228"/></svg>
+          <p className="text-xs" style={{ color: "#E08228" }}>No connection — showing cached data</p>
+          <button onClick={loadData} className="ml-auto text-xs font-semibold" style={{ color: "#E08228", background: "none", border: "none", cursor: "pointer" }}>Retry</button>
+        </div>
+      )}
 
       {/* Next Houston Event Countdown */}
       {nextHouston && (

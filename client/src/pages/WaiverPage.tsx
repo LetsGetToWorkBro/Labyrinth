@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { useAuth } from "@/lib/auth-context";
 import { memberSaveWaiver, memberSaveAgreement } from "@/lib/api";
-import { CheckCircle, ArrowLeft, Eraser } from "lucide-react";
+import { CheckCircle, ArrowLeft, Eraser, AlertCircle, Loader2 } from "lucide-react";
 
 const WAIVER_TEXT = `LABYRINTH BJJ — LIABILITY WAIVER AND RELEASE
 
@@ -22,6 +22,7 @@ export default function WaiverPage() {
   const [signerName, setSignerName] = useState(member?.name || "");
   const [signed, setSigned] = useState(false);
   const [signing, setSigning] = useState(false);
+  const [signError, setSignError] = useState("");
   const [hasDrawn, setHasDrawn] = useState(false);
   const [tab, setTab] = useState<"waiver" | "agreement">("waiver");
   const isDrawing = useRef(false);
@@ -100,19 +101,27 @@ export default function WaiverPage() {
   const handleSign = async () => {
     if (!hasDrawn || !signerName) return;
     setSigning(true);
+    setSignError("");
     try {
       const canvas = canvasRef.current;
       if (!canvas) return;
       const signatureData = canvas.toDataURL("image/png");
+      let result;
       if (tab === "waiver") {
-        await memberSaveWaiver(signerName, signatureData, "adult");
+        result = await memberSaveWaiver(signerName, signatureData, "adult");
       } else {
-        await memberSaveAgreement(signerName, signatureData, member?.plan || member?.membership || "");
+        result = await memberSaveAgreement(signerName, signatureData, member?.plan || member?.membership || "");
+      }
+      if (!result?.success) {
+        setSignError(result?.error || "Something went wrong. Please try again.");
+        setSigning(false);
+        return;
       }
       setSigned(true);
       await refreshProfile();
-    } catch (err) {
+    } catch (err: any) {
       console.error("Waiver sign failed:", err);
+      setSignError("Connection error. Please check your internet and try again.");
     }
     setSigning(false);
   };
@@ -227,10 +236,16 @@ export default function WaiverPage() {
 
           {/* Sign Button */}
           <div className="px-5 pb-6">
+            {signError && (
+              <div className="flex items-start gap-2 mb-3 p-3 rounded-xl" style={{ backgroundColor: "rgba(224,85,85,0.08)", border: "1px solid rgba(224,85,85,0.2)" }}>
+                <AlertCircle size={15} style={{ color: "#E05555", flexShrink: 0, marginTop: 1 }} />
+                <p className="text-xs" style={{ color: "#E05555" }}>{signError}</p>
+              </div>
+            )}
             <button
               onClick={handleSign}
               disabled={!hasDrawn || !signerName || signing}
-              className="w-full py-3 rounded-xl text-sm font-semibold transition-all active:scale-[0.98]"
+              className="w-full flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-semibold transition-all active:scale-[0.98]"
               style={{
                 backgroundColor: hasDrawn && signerName ? "#C8A24C" : "#1A1A1A",
                 color: hasDrawn && signerName ? "#0A0A0A" : "#666",
@@ -238,7 +253,7 @@ export default function WaiverPage() {
               }}
               data-testid="button-sign-waiver"
             >
-              {signing ? "Submitting..." : "Sign & Submit"}
+              {signing ? <><Loader2 size={15} className="animate-spin" /> Submitting…</> : "Sign & Submit"}
             </button>
           </div>
         </>
