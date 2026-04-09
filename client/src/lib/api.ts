@@ -271,6 +271,12 @@ export async function memberSaveWaiver(signerName: string, signatureData: string
   return gasCall("memberSaveWaiver", { token, signerName, signatureData, participantType });
 }
 
+export async function memberSaveAgreement(signerName: string, signatureData: string, planName?: string): Promise<any> {
+  const token = getToken();
+  if (!token) throw new Error("Not authenticated");
+  return gasCall("memberSaveAgreement", { token, signerName, signatureData, planName: planName || "" });
+}
+
 // ─── Sauna ────────────────────────────────────────────────────────
 
 export async function getSaunaMembers(): Promise<SaunaMember[]> {

@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { useAuth } from "@/lib/auth-context";
-import { memberSaveWaiver } from "@/lib/api";
+import { memberSaveWaiver, memberSaveAgreement } from "@/lib/api";
 import { CheckCircle, ArrowLeft, Eraser } from "lucide-react";
 
 const WAIVER_TEXT = `LABYRINTH BJJ — LIABILITY WAIVER AND RELEASE
@@ -104,7 +104,11 @@ export default function WaiverPage() {
       const canvas = canvasRef.current;
       if (!canvas) return;
       const signatureData = canvas.toDataURL("image/png");
-      await memberSaveWaiver(signerName, signatureData, "adult");
+      if (tab === "waiver") {
+        await memberSaveWaiver(signerName, signatureData, "adult");
+      } else {
+        await memberSaveAgreement(signerName, signatureData, member?.plan || member?.membership || "");
+      }
       setSigned(true);
       await refreshProfile();
     } catch (err) {
