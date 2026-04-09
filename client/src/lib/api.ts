@@ -519,3 +519,64 @@ export async function adminGetBookings(): Promise<any[]> {
     return [];
   }
 }
+
+// ─── Card Management ────────────────────────────────────────────
+
+export interface PaymentCard {
+  id: string;
+  brand: string;
+  last4: string;
+  expMonth: number;
+  expYear: number;
+  isDefault: boolean;
+}
+
+export async function memberGetCards(): Promise<PaymentCard[]> {
+  const token = getToken();
+  if (!token) return [];
+  try {
+    const result = await gasCall("memberGetFamilyCards", { token });
+    return result.cards || [];
+  } catch (err) {
+    console.error("memberGetCards failed:", err);
+    return [];
+  }
+}
+
+export async function memberSetDefaultCard(paymentMethodId: string): Promise<{ success: boolean; error?: string }> {
+  const token = getToken();
+  if (!token) return { success: false };
+  try {
+    return await gasCall("memberSetDefaultCard", { token, paymentMethodId });
+  } catch (err) {
+    console.error("memberSetDefaultCard failed:", err);
+    return { success: false };
+  }
+}
+
+export async function memberRemoveCard(paymentMethodId: string): Promise<{ success: boolean; error?: string }> {
+  const token = getToken();
+  if (!token) return { success: false };
+  try {
+    return await gasCall("memberRemoveCard", { token, paymentMethodId });
+  } catch (err) {
+    console.error("memberRemoveCard failed:", err);
+    return { success: false };
+  }
+}
+
+export async function memberAddCard(): Promise<{ success: boolean; url?: string; error?: string }> {
+  const token = getToken();
+  if (!token) return { success: false };
+  try {
+    const result = await gasCall("memberAddCard", {
+      token,
+      successUrl: window.location.origin + window.location.pathname + "?cardAdded=1",
+      cancelUrl:  window.location.origin + window.location.pathname,
+    });
+    return { success: !!result?.checkoutUrl, url: result?.checkoutUrl };
+  } catch (err) {
+    console.error("memberAddCard failed:", err);
+    return { success: false };
+  }
+}
