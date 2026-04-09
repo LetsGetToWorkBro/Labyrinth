@@ -73,8 +73,14 @@ export default function WaiverPage() {
   const [waiverJustSigned,    setWaiverJustSigned]    = useState(false);
   const [agreementJustSigned, setAgreementJustSigned] = useState(false);
 
-  const waiverAlreadySigned    = !!member?.waiverSigned    || waiverJustSigned;
-  const agreementAlreadySigned = !!member?.agreementSigned || agreementJustSigned;
+  // Only use server-side signed status as the initial state on first load,
+  // NOT as a reactive trigger — prevents the agreement tab auto-showing
+  // as signed when refreshProfile() resolves after signing the waiver
+  const [initWaiverSigned]    = useState(!!member?.waiverSigned);
+  const [initAgreementSigned] = useState(!!member?.agreementSigned);
+
+  const waiverAlreadySigned    = initWaiverSigned    || waiverJustSigned;
+  const agreementAlreadySigned = initAgreementSigned || agreementJustSigned;
   const currentlySigned = tab === "waiver" ? waiverAlreadySigned : agreementAlreadySigned;
 
   // Reset canvas + confirmation state when switching tabs

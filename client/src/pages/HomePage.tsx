@@ -347,11 +347,11 @@ export default function HomePage() {
       {/* ── Rank Request Bottom Sheet ── */}
       {showRankRequest && (
         <div
-          style={{ position: "fixed", inset: 0, backgroundColor: "rgba(0,0,0,0.7)", zIndex: 50, display: "flex", alignItems: "flex-end", justifyContent: "center" }}
+          style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, backgroundColor: "rgba(0,0,0,0.7)", zIndex: 50, display: "flex", flexDirection: "column", justifyContent: "flex-end" }}
           onClick={() => setShowRankRequest(false)}
         >
           <div
-            style={{ width: "100%", maxWidth: 480, backgroundColor: "#111", borderRadius: "20px 20px 0 0", padding: "20px 20px", paddingBottom: "max(24px, env(safe-area-inset-bottom, 24px))", maxHeight: "92vh", overflowY: "auto", overscrollBehavior: "contain" }}
+            style={{ width: "100%", alignSelf: "center", maxWidth: 480, backgroundColor: "#111", borderRadius: "20px 20px 0 0", paddingTop: 20, paddingLeft: 20, paddingRight: 20, paddingBottom: "max(32px, env(safe-area-inset-bottom, 32px))", maxHeight: "88svh", overflowY: "auto", overscrollBehavior: "contain" }}
             onClick={e => e.stopPropagation()}
           >
             {/* Handle */}
