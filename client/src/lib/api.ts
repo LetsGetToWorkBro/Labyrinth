@@ -3,6 +3,10 @@
 
 const GAS_ENDPOINT = "https://script.google.com/macros/s/AKfycbwkxkV6XlqKy3DDot_MTfb40WeAfd6KMgBwgcrCNStEFM5vcAQNYG9eR2OOFpCwJ3AJ/exec";
 
+// GAS cold-starts take ~22s — timeout must clear that
+const GAS_TIMEOUT_MS = 35000;
+const GAS_MAX_RETRIES = 2;
+
 // CSV endpoints for public data
 const SHEET_BASE = "https://docs.google.com/spreadsheets/d/1rUtzsV6l1fHcgYuCjaqCh-oG2XosggrW1el3aqaDOME/gviz/tq?tqx=out:csv";
 export const CSV_ENDPOINTS = {
@@ -12,30 +16,17 @@ export const CSV_ENDPOINTS = {
   athletes: `${SHEET_BASE}&sheet=Athletes`,
 };
 
-// Token management using React state (no localStorage in sandbox)
+// Token management
 let authToken: string | null = null;
 let memberData: MemberProfile | null = null;
 
-export function getToken(): string | null {
-  return authToken;
-}
+export function getToken(): string | null { return authToken; }
+export function setToken(token: string | null) { authToken = token; }
+export function getMemberData(): MemberProfile | null { return memberData; }
+export function setMemberData(data: MemberProfile | null) { memberData = data; }
+export function clearAuth() { authToken = null; memberData = null; }
 
-export function setToken(token: string | null) {
-  authToken = token;
-}
-
-export function getMemberData(): MemberProfile | null {
-  return memberData;
-}
-
-export function setMemberData(data: MemberProfile | null) {
-  memberData = data;
-}
-
-export function clearAuth() {
-  authToken = null;
-  memberData = null;
-}
+// ─── Types ────────────────────────────────────────────────────────
 
 export interface FamilyMember {
   name: string;
@@ -66,6 +57,9 @@ export interface MemberProfile {
   row?: number;
   isPrimary?: boolean;
   familyMembers?: FamilyMember[];
+  // Admin role fields — set from the Members sheet "Role" column
+  role?: string;       // 'owner' | 'admin' | 'coach' | 'instructor' | ''
+  isAdmin?: boolean;   // true when role is owner/admin/coach
 }
 
 export interface LoginResponse {
@@ -134,41 +128,97 @@ export interface AcademyConfig {
   [key: string]: { value: string; lastUpdated: string };
 }
 
-// API call helper - GAS uses GET with encoded payload
-async function gasCall(action: string, payload: Record<string, any> = {}): Promise<any> {
-  // Build payload WITH action inside (matches how the member portal sends it)
+// ─── Admin types ──────────────────────────────────────────────────
+
+export interface AdminMember {
+  ID: string;
+  Name: string;
+  Email: string;
+  Phone: string;
+  Plan: string;
+  Status: string;
+  StartDate: string;
+  BillingDate: string;
+  StripeCustomerID: string;
+  StripeSubscriptionID: string;
+  Notes: string;
+  Belt: string;
+  Type: string;
+  Role: string;
+  _row?: number;
+}
+
+export interface AdminDashboard {
+  activeMembers: number;
+  totalMembers: number;
+  mrr: number;
+  monthlyPaid: number;
+  monthlyScheduled: number;
+  failedPayments: number;
+  newMembers: number;
+  upcomingTrials: number;
+  overduePayments: Array<{ name: string; amount: number; date: string; description: string }>;
+  recentPayments: Array<{ name: string; amount: number; status: string; date: string; type: string }>;
+  recentBookings: Array<{ name: string; classType: string; date: string; status: string; email?: string; phone?: string }>;
+}
+
+export interface MemberComm {
+  date: string;
+  type: string;
+  subject: string;
+  message: string;
+  recipientName?: string;
+}
+
+// ─── GAS call helper (with cold-start retry) ─────────────────────
+
+async function gasCall(action: string, payload: Record<string, any> = {}, retryCount = 0): Promise<any> {
   const fullPayload = { action, ...payload };
   const encodedPayload = encodeURIComponent(JSON.stringify(fullPayload));
   const url = `${GAS_ENDPOINT}?action=${encodeURIComponent(action)}&payload=${encodedPayload}`;
 
-  try {
-    const response = await fetch(url, {
-      method: "GET",
-      redirect: "follow",
-    });
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), GAS_TIMEOUT_MS);
 
-    // GAS web apps redirect (302) — fetch with redirect:follow handles this
-    // But the final response might not have ok=true in all cases
+  try {
+    const response = await fetch(url, { method: "GET", redirect: "follow", signal: controller.signal });
+    clearTimeout(timer);
     const text = await response.text();
     try {
       return JSON.parse(text);
     } catch {
-      // If response isn't JSON, it might be an error page
-      console.error("Non-JSON response from GAS:", text.substring(0, 200));
+      console.error(`gasCall ${action} non-JSON:`, text.substring(0, 200));
       throw new Error("Invalid response from server");
     }
   } catch (err: any) {
+    clearTimeout(timer);
+    const isTimeout = err.name === "AbortError" || err.name === "TimeoutError";
+    const isNetwork = err.name === "TypeError";
+    if ((isTimeout || isNetwork) && retryCount < GAS_MAX_RETRIES) {
+      console.warn(`gasCall ${action} retry ${retryCount + 1}/${GAS_MAX_RETRIES}`);
+      return gasCall(action, payload, retryCount + 1);
+    }
     console.error(`gasCall ${action} failed:`, err);
     throw err;
   }
 }
 
-// Auth API calls
+// ─── Auth ─────────────────────────────────────────────────────────
+
+/** Derive isAdmin from the role field returned by GAS */
+function normalizeAdminRole(profile: any): MemberProfile {
+  const role = (profile?.role || "").toLowerCase();
+  const isAdmin = role === "owner" || role === "admin" || role === "coach" || role === "instructor";
+  return { ...profile, role: profile?.role || "", isAdmin };
+}
+
 export async function memberLogin(email: string, password: string): Promise<LoginResponse> {
   const result = await gasCall("memberLogin", { email, password });
   if (result.success && result.token) {
     setToken(result.token);
-    setMemberData(result.member);
+    const normalized = normalizeAdminRole(result.member);
+    setMemberData(normalized);
+    return { ...result, member: normalized };
   }
   return result;
 }
@@ -181,9 +231,9 @@ export async function memberGetProfile(): Promise<MemberProfile> {
   const token = getToken();
   if (!token) throw new Error("Not authenticated");
   const result = await gasCall("memberGetProfile", { token });
-  // GAS returns { success, member: {...} } OR flat fields for legacy deployments
-  const profile = result.member ?? (result.success !== false ? result : null);
-  if (profile) {
+  const raw = result.member ?? (result.success !== false ? result : null);
+  if (raw) {
+    const profile = normalizeAdminRole(raw);
     setMemberData(profile);
     return profile;
   }
@@ -194,8 +244,9 @@ export async function memberSwitchProfile(targetRow: number): Promise<MemberProf
   const token = getToken();
   if (!token) throw new Error("Not authenticated");
   const result = await gasCall("memberSwitchProfile", { token, targetRow });
-  const profile = result.member ?? (result.success !== false ? result : null);
-  if (profile && result.success !== false) {
+  const raw = result.member ?? (result.success !== false ? result : null);
+  if (raw && result.success !== false) {
+    const profile = normalizeAdminRole(raw);
     setMemberData(profile);
     return profile;
   }
@@ -220,15 +271,15 @@ export async function memberSaveWaiver(signerName: string, signatureData: string
   return gasCall("memberSaveWaiver", { token, signerName, signatureData, participantType });
 }
 
-// Sauna API calls
+// ─── Sauna ────────────────────────────────────────────────────────
+
 export async function getSaunaMembers(): Promise<SaunaMember[]> {
   const result = await gasCall("members");
   return result.members || [];
 }
 
 export async function getSaunaStatus(): Promise<SaunaStatus> {
-  const result = await gasCall("status");
-  return result;
+  return gasCall("status");
 }
 
 export async function saunaCheckin(name: string): Promise<any> {
@@ -239,15 +290,11 @@ export async function saunaCheckout(name: string): Promise<any> {
   return gasCall("checkout", { action: "checkout", name });
 }
 
-// Booking API
+// ─── Booking ──────────────────────────────────────────────────────
+
 export async function bookTrialClass(data: {
-  name: string;
-  email: string;
-  phone: string;
-  className: string;
-  classDay: string;
-  classTime: string;
-  classDate: string;
+  name: string; email: string; phone: string;
+  className: string; classDay: string; classTime: string; classDate: string;
 }): Promise<any> {
   const encodedPayload = encodeURIComponent(JSON.stringify(data));
   const url = `${GAS_ENDPOINT}?payload=${encodedPayload}`;
@@ -255,49 +302,39 @@ export async function bookTrialClass(data: {
   return response.json();
 }
 
-// CSV fetch helper
+// ─── CSV helpers ──────────────────────────────────────────────────
+
 export async function fetchCSV(url: string): Promise<string> {
   const response = await fetch(url);
   if (!response.ok) throw new Error(`CSV fetch failed: ${response.status}`);
   return response.text();
 }
 
-// Parse CSV helper with PapaParse
 export function parseCSV<T>(csvText: string): T[] {
   const lines = csvText.trim().split("\n");
   if (lines.length < 2) return [];
-
   const headers = parseCSVLine(lines[0]);
-  const results: T[] = [];
-
-  for (let i = 1; i < lines.length; i++) {
-    const values = parseCSVLine(lines[i]);
+  return lines.slice(1).map(line => {
+    const values = parseCSVLine(line);
     const obj: any = {};
     headers.forEach((h, idx) => {
       obj[h.trim().replace(/^"|"$/g, "")] = (values[idx] || "").trim().replace(/^"|"$/g, "");
     });
-    results.push(obj);
-  }
-  return results;
+    return obj;
+  });
 }
 
 function parseCSVLine(line: string): string[] {
   const result: string[] = [];
   let current = "";
   let inQuotes = false;
-
   for (let i = 0; i < line.length; i++) {
     const char = line[i];
     if (char === '"') {
-      if (inQuotes && line[i + 1] === '"') {
-        current += '"';
-        i++;
-      } else {
-        inQuotes = !inQuotes;
-      }
+      if (inQuotes && line[i + 1] === '"') { current += '"'; i++; }
+      else inQuotes = !inQuotes;
     } else if (char === ',' && !inQuotes) {
-      result.push(current);
-      current = "";
+      result.push(current); current = "";
     } else {
       current += char;
     }
@@ -306,7 +343,7 @@ function parseCSVLine(line: string): string[] {
   return result;
 }
 
-// ─── Chat API ───────────────────────────────────────────────────────
+// ─── Live Chat ────────────────────────────────────────────────────
 
 export interface ChatMessage {
   id: string;
@@ -321,9 +358,10 @@ export interface ChatChannel {
   id: string;
   name: string;
   type: string;
+  accessible: boolean;
+  canPost: boolean;
   lastMessage: string;
   lastTimestamp: string;
-  canPost: boolean;
 }
 
 export async function chatGetMessages(channel: string, limit = 50): Promise<ChatMessage[]> {
@@ -359,11 +397,12 @@ export async function chatGetChannels(): Promise<ChatChannel[]> {
   }
 }
 
-// ─── Belt Journey API ───────────────────────────────────────────────
+// ─── Belt Journey ─────────────────────────────────────────────────
 
 export interface BeltPromotion {
   id: string;
   memberEmail: string;
+  memberName: string;
   belt: string;
   stripes: number;
   date: string;
@@ -373,12 +412,7 @@ export interface BeltPromotion {
   approvedDate?: string;
 }
 
-export async function beltSavePromotion(data: {
-  belt: string;
-  stripes: number;
-  date: string;
-  note: string;
-}): Promise<{ success: boolean; promotionId?: string }> {
+export async function beltSavePromotion(data: { belt: string; stripes: number; date: string; note: string }): Promise<{ success: boolean; promotionId?: string }> {
   const token = getToken();
   if (!token) return { success: false };
   try {
@@ -409,5 +443,79 @@ export async function beltApprovePromotion(promotionId: string, approved: boolea
   } catch (err) {
     console.error("beltApprovePromotion failed:", err);
     return { success: false };
+  }
+}
+
+// ─── Admin endpoints ──────────────────────────────────────────────
+// These call the same GAS backend as admin.labyrinth.vision.
+// The token is the member session token; GAS validates role server-side.
+
+export async function adminGetDashboard(): Promise<AdminDashboard | null> {
+  const token = getToken();
+  if (!token) return null;
+  try {
+    const result = await gasCall("getDashboard", { token });
+    return result;
+  } catch (err) {
+    console.error("adminGetDashboard failed:", err);
+    return null;
+  }
+}
+
+export async function adminGetMembers(): Promise<AdminMember[]> {
+  const token = getToken();
+  if (!token) return [];
+  try {
+    const result = await gasCall("getMembers", { token });
+    return result.members || [];
+  } catch (err) {
+    console.error("adminGetMembers failed:", err);
+    return [];
+  }
+}
+
+export async function adminUpdateMember(data: Partial<AdminMember> & { ID: string }): Promise<{ success: boolean; error?: string }> {
+  const token = getToken();
+  if (!token) return { success: false };
+  try {
+    return await gasCall("updateMember", { ...data, token });
+  } catch (err) {
+    console.error("adminUpdateMember failed:", err);
+    return { success: false };
+  }
+}
+
+export async function adminGetMemberComms(memberName: string, memberEmail: string): Promise<MemberComm[]> {
+  const token = getToken();
+  if (!token) return [];
+  try {
+    const result = await gasCall("getMemberComms", { memberName, memberEmail, memberPhone: "", token });
+    return result.comms || [];
+  } catch (err) {
+    console.error("adminGetMemberComms failed:", err);
+    return [];
+  }
+}
+
+export async function adminSaveNote(memberName: string, memberEmail: string, note: string): Promise<{ success: boolean }> {
+  const token = getToken();
+  if (!token) return { success: false };
+  try {
+    return await gasCall("saveNote", { memberName, memberEmail, note, token });
+  } catch (err) {
+    console.error("adminSaveNote failed:", err);
+    return { success: false };
+  }
+}
+
+export async function adminGetBookings(): Promise<any[]> {
+  const token = getToken();
+  if (!token) return [];
+  try {
+    const result = await gasCall("getTrialBookings", { token });
+    return result.bookings || [];
+  } catch (err) {
+    console.error("adminGetBookings failed:", err);
+    return [];
   }
 }
