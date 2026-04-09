@@ -4,6 +4,7 @@ import { setToken, setMemberData, clearAuth, memberLogin as apiLogin, memberGetP
 
 interface AuthContextType {
   isAuthenticated: boolean;
+  isAdmin: boolean;
   member: MemberProfile | null;
   familyMembers: FamilyMember[];
   login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
@@ -19,6 +20,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [member, setMemberState] = useState<MemberProfile | null>(null);
   const [familyMembers, setFamilyMembers] = useState<FamilyMember[]>([]);
+
+  // Derived — true when role is owner / admin / coach / instructor
+  const isAdmin = !!(member?.isAdmin);
 
   const login = useCallback(async (email: string, password: string) => {
     try {
@@ -73,7 +77,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   return (
-    <AuthContext.Provider value={{ isAuthenticated, member, familyMembers, login, logout, refreshProfile, setMember, switchProfile }}>
+    <AuthContext.Provider value={{ isAuthenticated, isAdmin, member, familyMembers, login, logout, refreshProfile, setMember, switchProfile }}>
       {children}
     </AuthContext.Provider>
   );
