@@ -18,6 +18,19 @@ function getDuration(name: string): string {
   return CLASS_DURATIONS[name] || CLASS_DURATIONS.default;
 }
 
+const CLASS_DURATION_MINUTES: Record<string, number> = {
+  default: 60,
+  "Kids BJJ (3–6)": 45,
+  "Kids BJJ Comp": 60,
+  "Kids BJJ (7–12)": 60,
+  "Adult Comp": 90,
+  "Open Mat": 90,
+};
+
+function getDurationMinutes(name: string): number {
+  return CLASS_DURATION_MINUTES[name] || CLASS_DURATION_MINUTES.default;
+}
+
 function formatClassTime(timeStr: string): string {
   if (!timeStr) return '';
   if (timeStr.includes('T') && timeStr.includes('Z')) {
@@ -199,7 +212,9 @@ function ClassCard({ cls, isToday }: { cls: ClassScheduleItem; isToday: boolean 
     if (period?.toUpperCase() === "PM" && hours !== 12) hours += 12;
     if (period?.toUpperCase() === "AM" && hours === 12) hours = 0;
     const classEnd = new Date();
-    classEnd.setHours(hours + 1, minutes, 0, 0);
+    const durationMins = getDurationMinutes(cls.name);
+    const endTotalMins = hours * 60 + minutes + durationMins;
+    classEnd.setHours(Math.floor(endTotalMins / 60), endTotalMins % 60, 0, 0);
     return now > classEnd;
   })();
 
