@@ -224,7 +224,7 @@ export default function BeltJourneyPage() {
   const totalTime = getTotalTime(promotions);
 
   return (
-    <div className="app-content">
+    <div className="app-content" style={{ paddingBottom: 'max(100px, calc(env(safe-area-inset-bottom, 0px) + 80px))' }}>
       <ScreenHeader
         title="Belt Journey"
         subtitle="Track your progression"
