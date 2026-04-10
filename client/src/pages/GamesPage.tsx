@@ -26,78 +26,60 @@ const POSITION_IMAGES: Record<Position, string> = {
   'Half Guard': posHalfGuard,
 };
 
-// ===== APP STATE (no localStorage) =====
-interface AppState {
-  wins: number;
-  losses: number;
-  streak: number;
-  lossStreak: number;
-  recentMatches: GameResult[];
-  view: 'hub' | 'difficulty' | 'game';
-}
+
+// ===== APP STATE =====
+import { useGameRecords } from '@/lib/game-records';
+import { useAuth } from '@/lib/auth-context';
+import { saveGameScore, getLeaderboard, type LeaderboardEntry } from '@/lib/api';
 
 function GamesPage() {
-  const [appState, setAppState] = useState<AppState>({
-    wins: 0, losses: 0, streak: 0, lossStreak: 0, recentMatches: [], view: 'hub',
-  });
+  const { stats, addRecord } = useGameRecords();
+  const { member } = useAuth();
 
-  const rank = getRank(appState.wins);
-  const nextRank = getNextRank(appState.wins);
+  const rank     = getRank(stats.wins);
+  const nextRank = getNextRank(stats.wins);
 
-  const startGame = (difficulty: Difficulty) => {
-    setAppState(s => ({ ...s, view: 'game', currentDifficulty: difficulty } as any));
-    setGameDifficulty(difficulty);
-  };
-
+  const [view, setView]           = useState<'hub' | 'difficulty' | 'game'>('hub');
   const [gameDifficulty, setGameDifficulty] = useState<Difficulty>('Medium');
 
+  const startGame = (difficulty: Difficulty) => {
+    setGameDifficulty(difficulty);
+    setView('game');
+  };
+
   const handleGameEnd = useCallback((result: GameResult) => {
-    setAppState(prev => {
-      const isWin = result.result === 'win';
-      let newWins = prev.wins;
-      let newLosses = prev.losses;
-      let newStreak = prev.streak;
-      let newLossStreak = prev.lossStreak;
-
-      if (isWin) {
-        const streakBonus = prev.streak >= 2 ? 2 : 1; // 3-win streak (0-indexed next will be 3) = double
-        newWins = prev.wins + streakBonus;
-        newStreak = prev.streak + 1;
-        newLossStreak = 0;
-      } else {
-        newLosses = prev.losses + 1;
-        newStreak = 0;
-        newLossStreak = prev.lossStreak + 1;
-        // Loss penalty: after 3 consecutive losses, lose 1 win point
-        if (newLossStreak >= 3) {
-          newWins = Math.max(0, prev.wins - 1);
-          newLossStreak = 0; // Reset counter after penalty
-        }
-      }
-
-      return {
-        ...prev,
-        wins: newWins,
-        losses: newLosses,
-        streak: newStreak,
-        lossStreak: newLossStreak,
-        recentMatches: [result, ...prev.recentMatches].slice(0, 5),
-      };
+    addRecord({
+      game: 'bjj',
+      result: result.result === 'win' ? 'win' : 'loss',
+      opponent: `AI (${result.difficulty})`,
+      difficulty: result.difficulty,
+      rounds: result.rounds,
+      finisher: result.finisher,
     });
-  }, []);
 
-  const goToHub = () => setAppState(s => ({ ...s, view: 'hub' }));
+    // Push score to GAS leaderboard (fire-and-forget)
+    if (member) {
+      const currentRank = getRank(stats.wins + (result.result === 'win' ? 1 : 0));
+      saveGameScore({
+        wins:        stats.wins + (result.result === 'win' ? 1 : 0),
+        losses:      stats.losses + (result.result === 'loss' ? 1 : 0),
+        streak:      result.result === 'win' ? stats.streak + 1 : 0,
+        bestStreak:  Math.max(stats.bestStreak, result.result === 'win' ? stats.streak + 1 : 0),
+        topRankName: currentRank.name,
+      }).catch(() => {});
+    }
+  }, [stats, member, addRecord]);
 
-  if (appState.view === 'hub' || appState.view === 'difficulty') {
+  if (view === 'hub' || view === 'difficulty') {
     return (
       <GamesHub
-        appState={appState}
+        stats={stats}
         rank={rank}
         nextRank={nextRank}
-        onPlay={() => setAppState(s => ({ ...s, view: 'difficulty' }))}
+        onPlay={() => setView('difficulty')}
         onStartGame={startGame}
-        showDifficulty={appState.view === 'difficulty'}
-        onBack={goToHub}
+        showDifficulty={view === 'difficulty'}
+        onBack={() => setView('hub')}
       />
     );
   }
@@ -106,16 +88,16 @@ function GamesPage() {
     <BJJChessGame
       difficulty={gameDifficulty}
       rank={rank}
-      wins={appState.wins}
+      wins={stats.wins}
       onGameEnd={handleGameEnd}
-      onExit={goToHub}
+      onExit={() => setView('hub')}
     />
   );
 }
 
 // ===== GAMES HUB =====
 interface GamesHubProps {
-  appState: AppState;
+  stats: ReturnType<typeof useGameRecords>['stats'];
   rank: Rank;
   nextRank: Rank | null;
   onPlay: () => void;
@@ -124,8 +106,12 @@ interface GamesHubProps {
   onBack: () => void;
 }
 
-function GamesHub({ appState, rank, nextRank, onPlay, onStartGame, showDifficulty, onBack }: GamesHubProps) {
+function GamesHub({ stats, rank, nextRank, onPlay, onStartGame, showDifficulty, onBack }: GamesHubProps) {
   const [quoteIdx, setQuoteIdx] = useState(0);
+  const [hubTab, setHubTab]     = useState<'play' | 'leaderboard'>('play');
+  const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
+  const [lbLoading, setLbLoading]     = useState(false);
+  const [lbLoaded, setLbLoaded]       = useState(false);
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -134,235 +120,234 @@ function GamesHub({ appState, rank, nextRank, onPlay, onStartGame, showDifficult
     return () => clearInterval(interval);
   }, []);
 
-  const winsToNext = nextRank ? nextRank.minWins - appState.wins : 0;
+  useEffect(() => {
+    if (hubTab === 'leaderboard' && !lbLoaded) {
+      setLbLoading(true);
+      getLeaderboard().then(data => {
+        setLeaderboard(data);
+        setLbLoaded(true);
+        setLbLoading(false);
+      });
+    }
+  }, [hubTab, lbLoaded]);
+
+  const winsToNext    = nextRank ? nextRank.minWins - stats.wins : 0;
   const progressToNext = nextRank
-    ? ((appState.wins - rank.minWins) / (nextRank.minWins - rank.minWins)) * 100
+    ? ((stats.wins - rank.minWins) / (nextRank.minWins - rank.minWins)) * 100
     : 100;
+
+  const GOLD = '#C8A24C';
 
   return (
     <div style={{
-      minHeight: '100dvh',
-      maxWidth: 430,
-      margin: '0 auto',
-      display: 'flex',
-      flexDirection: 'column',
-      background: '#0A0A0A',
+      minHeight: '100dvh', maxWidth: 430, margin: '0 auto',
+      display: 'flex', flexDirection: 'column', background: '#0A0A0A',
       paddingTop: 'env(safe-area-inset-top, 0px)',
-      paddingBottom: 'calc(56px + env(safe-area-inset-bottom, 0px))',
+      paddingBottom: 'calc(64px + env(safe-area-inset-bottom, 0px))',
     }}>
       {/* Header */}
-      <div style={{
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-        padding: '16px 20px 12px', gap: 10,
-      }}>
-        <img src={logoImg} alt="Labyrinth" style={{ height: 28, opacity: 0.9 }} />
-        <span style={{ color: '#C8A24C', fontSize: 16, fontWeight: 700, letterSpacing: 1 }}>GAMES</span>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px 20px 8px', gap: 10 }}>
+        <img src={logoImg} alt="Labyrinth" style={{ height: 26, opacity: 0.9 }} />
+        <span style={{ color: GOLD, fontSize: 15, fontWeight: 700, letterSpacing: 1 }}>GAMES</span>
       </div>
 
-      {/* Rank Card */}
-      <div style={{
-        margin: '8px 16px 0',
-        background: '#1A1A1A',
-        borderRadius: 16,
-        padding: '20px',
-        border: `1.5px solid ${rank.color}33`,
-        position: 'relative',
-        overflow: 'hidden',
-      }}>
-        <div style={{
-          position: 'absolute', top: 0, left: 0, right: 0, height: 3,
-          background: `linear-gradient(90deg, ${rank.color}, ${rank.color}88, ${rank.color})`,
-          backgroundSize: '200% 100%',
-          animation: 'shimmer 3s ease-in-out infinite',
-        }} />
-        <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-          <div style={{
-            width: 56, height: 56, borderRadius: 14,
-            background: `linear-gradient(135deg, ${rank.color}22, ${rank.color}44)`,
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontSize: 28, animation: 'rankUpPulse 3s ease-in-out infinite',
-          }}>
-            {rank.emoji}
-          </div>
-          <div style={{ flex: 1 }}>
-            <div style={{ color: rank.color, fontSize: 18, fontWeight: 700 }}>{rank.name}</div>
-            <div style={{ color: '#999', fontSize: 13, marginTop: 2 }}>
-              {appState.wins} wins · {appState.losses} losses
-              {appState.streak >= 2 && <span style={{ color: '#C8A24C' }}> · 🔥 {appState.streak} streak</span>}
-            </div>
-            {nextRank && (
-              <div style={{ marginTop: 8 }}>
-                <div style={{
-                  height: 4, borderRadius: 2, background: '#222',
-                  overflow: 'hidden',
-                }}>
-                  <div style={{
-                    height: '100%', borderRadius: 2,
-                    background: `linear-gradient(90deg, ${rank.color}, ${nextRank.color})`,
-                    width: `${Math.min(100, progressToNext)}%`,
-                    transition: 'width 0.5s ease',
-                  }} />
-                </div>
-                <div style={{ color: '#666', fontSize: 11, marginTop: 3 }}>
-                  {winsToNext} wins to {nextRank.emoji} {nextRank.name}
-                </div>
-              </div>
-            )}
-            {!nextRank && (
-              <div style={{ color: '#C8A24C', fontSize: 12, marginTop: 4, fontWeight: 600 }}>
-                MAX RANK ACHIEVED ⭐
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* Quote */}
-      <div style={{
-        margin: '16px 16px 0', padding: '14px 18px',
-        background: '#111', borderRadius: 12,
-        borderLeft: '3px solid #C8A24C33',
-      }}>
-        <div key={quoteIdx} style={{
-          color: '#999', fontSize: 13, fontStyle: 'italic', lineHeight: 1.5,
-          animation: 'fadeIn 0.5s ease',
-        }}>
-          "{BJJ_QUOTES[quoteIdx]}"
-        </div>
-      </div>
-
-      {/* Game Card */}
-      <div style={{
-        margin: '20px 16px 0',
-        background: '#1A1A1A',
-        borderRadius: 16,
-        padding: '20px',
-        border: '1px solid #222',
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12 }}>
-          <div style={{
-            width: 44, height: 44, borderRadius: 12,
-            background: 'linear-gradient(135deg, #C8A24C22, #C8A24C44)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22,
-          }}>♟️</div>
-          <div>
-            <div style={{ color: '#F0F0F0', fontSize: 16, fontWeight: 700 }}>BJJ Position Chess</div>
-            <div style={{ color: '#999', fontSize: 12 }}>Outsmart the AI in 12 rounds</div>
-          </div>
-        </div>
-        <div style={{ color: '#666', fontSize: 13, lineHeight: 1.6, marginBottom: 16 }}>
-          Navigate positions, chain combos, and hunt for submissions. Every move costs stamina — manage it wisely or tap out from exhaustion.
-        </div>
-
-        {!showDifficulty ? (
-          <button
-            data-testid="button-play"
-            onClick={onPlay}
+      {/* Hub tabs */}
+      <div style={{ display: 'flex', margin: '0 16px 12px', gap: 4, padding: 4, backgroundColor: '#111', borderRadius: 12, border: '1px solid #1A1A1A' }}>
+        {(['play', 'leaderboard'] as const).map(t => (
+          <button key={t} onClick={() => setHubTab(t)}
             style={{
-              width: '100%', padding: '14px', borderRadius: 12,
-              background: 'linear-gradient(135deg, #C8A24C, #A08030)',
-              color: '#0A0A0A', fontWeight: 700, fontSize: 15,
-              border: 'none', cursor: 'pointer',
-              transition: 'transform 0.1s ease',
+              flex: 1, padding: '8px 0', borderRadius: 9, fontSize: 12, fontWeight: 600,
+              border: 'none', cursor: 'pointer', transition: 'all 0.15s',
+              backgroundColor: hubTab === t ? '#1A1A1A' : 'transparent',
+              color: hubTab === t ? GOLD : '#666',
             }}
-            onMouseDown={e => (e.currentTarget.style.transform = 'scale(0.98)')}
-            onMouseUp={e => (e.currentTarget.style.transform = 'scale(1)')}
           >
-            Play
+            {t === 'play' ? '♟️ Play' : '🏆 Leaderboard'}
           </button>
-        ) : (
-          <div style={{ animation: 'popupIn 0.25s ease' }}>
-            <div style={{ color: '#999', fontSize: 12, fontWeight: 600, marginBottom: 10, textTransform: 'uppercase', letterSpacing: 1 }}>
-              Select Difficulty
+        ))}
+      </div>
+
+      {/* ── Play tab ── */}
+      {hubTab === 'play' && (
+        <>
+          {/* Rank Card */}
+          <div style={{ margin: '0 16px 12px', background: '#1A1A1A', borderRadius: 16, padding: '16px 18px', border: `1.5px solid ${rank.color}33`, position: 'relative', overflow: 'hidden' }}>
+            <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 3, background: `linear-gradient(90deg, ${rank.color}, ${rank.color}88, ${rank.color})`, backgroundSize: '200% 100%', animation: 'shimmer 3s ease-in-out infinite' }} />
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              <div style={{ width: 52, height: 52, borderRadius: 13, background: `linear-gradient(135deg, ${rank.color}22, ${rank.color}44)`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 26, animation: 'rankUpPulse 3s ease-in-out infinite', flexShrink: 0 }}>
+                {rank.emoji}
+              </div>
+              <div style={{ flex: 1 }}>
+                <div style={{ color: rank.color, fontSize: 17, fontWeight: 700 }}>{rank.name}</div>
+                <div style={{ color: '#999', fontSize: 12, marginTop: 2 }}>
+                  {stats.wins}W · {stats.losses}L · {stats.wins + stats.losses > 0 ? Math.round(stats.wins / (stats.wins + stats.losses) * 100) : 0}% win rate
+                  {stats.streak >= 2 && <span style={{ color: GOLD }}> · 🔥 {stats.streak}</span>}
+                </div>
+                {nextRank && (
+                  <div style={{ marginTop: 6 }}>
+                    <div style={{ height: 4, borderRadius: 2, background: '#222', overflow: 'hidden' }}>
+                      <div style={{ height: '100%', borderRadius: 2, background: `linear-gradient(90deg, ${rank.color}, ${nextRank.color})`, width: `${Math.min(100, progressToNext)}%`, transition: 'width 0.5s ease' }} />
+                    </div>
+                    <div style={{ color: '#666', fontSize: 11, marginTop: 2 }}>{winsToNext} wins to {nextRank.emoji} {nextRank.name}</div>
+                  </div>
+                )}
+                {!nextRank && <div style={{ color: GOLD, fontSize: 11, marginTop: 4, fontWeight: 600 }}>MAX RANK ⭐</div>}
+              </div>
             </div>
-            <div style={{ display: 'flex', gap: 8 }}>
-              {(['Easy', 'Medium', 'Hard'] as Difficulty[]).map((d) => (
-                <button
-                  key={d}
-                  data-testid={`button-difficulty-${d.toLowerCase()}`}
-                  onClick={() => onStartGame(d)}
-                  style={{
-                    flex: 1, padding: '12px 8px', borderRadius: 10,
-                    background: d === 'Easy' ? '#1a2a1a' : d === 'Medium' ? '#2a2a1a' : '#2a1a1a',
-                    border: `1px solid ${d === 'Easy' ? '#2a4a2a' : d === 'Medium' ? '#4a4a2a' : '#4a2a2a'}`,
-                    color: d === 'Easy' ? '#4CAF50' : d === 'Medium' ? '#C8A24C' : '#E05555',
-                    fontWeight: 700, fontSize: 13, cursor: 'pointer',
-                    transition: 'transform 0.1s ease',
-                  }}
-                  onMouseDown={e => (e.currentTarget.style.transform = 'scale(0.96)')}
-                  onMouseUp={e => (e.currentTarget.style.transform = 'scale(1)')}
-                >
-                  {d}
+          </div>
+
+          {/* Stats row */}
+          <div style={{ margin: '0 16px 12px', background: '#111', borderRadius: 12, padding: '10px 16px', display: 'flex', justifyContent: 'space-around', border: '1px solid #1A1A1A' }}>
+            <StatItem label="Win Rate"    value={stats.wins + stats.losses > 0 ? `${Math.round(stats.wins / (stats.wins + stats.losses) * 100)}%` : '—'} />
+            <StatItem label="Best Streak" value={stats.bestStreak > 0 ? `🔥 ${stats.bestStreak}` : '0'} />
+            <StatItem label="Rank"        value={rank.emoji} />
+          </div>
+
+          {/* Quote */}
+          <div style={{ margin: '0 16px 12px', padding: '12px 16px', background: '#111', borderRadius: 12, borderLeft: '3px solid #C8A24C33', border: '1px solid #1A1A1A', borderLeftWidth: 3, borderLeftColor: '#C8A24C33' }}>
+            <div key={quoteIdx} style={{ color: '#999', fontSize: 12, fontStyle: 'italic', lineHeight: 1.5, animation: 'fadeIn 0.5s ease' }}>
+              "{BJJ_QUOTES[quoteIdx]}"
+            </div>
+          </div>
+
+          {/* Game Card */}
+          <div style={{ margin: '0 16px 12px', background: '#1A1A1A', borderRadius: 16, padding: '18px', border: '1px solid #222' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 10 }}>
+              <div style={{ width: 42, height: 42, borderRadius: 11, background: 'linear-gradient(135deg, #C8A24C22, #C8A24C44)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, flexShrink: 0 }}>♟️</div>
+              <div>
+                <div style={{ color: '#F0F0F0', fontSize: 15, fontWeight: 700 }}>BJJ Position Chess</div>
+                <div style={{ color: '#999', fontSize: 11 }}>Outsmart the AI in 12 rounds</div>
+              </div>
+            </div>
+            <div style={{ color: '#666', fontSize: 12, lineHeight: 1.6, marginBottom: 14 }}>
+              Navigate positions, chain combos, and hunt for submissions. Every move costs stamina — manage it wisely or tap out.
+            </div>
+
+            {!showDifficulty ? (
+              <button data-testid="button-play" onClick={onPlay}
+                style={{ width: '100%', padding: '13px', borderRadius: 12, background: 'linear-gradient(135deg, #C8A24C, #A08030)', color: '#0A0A0A', fontWeight: 700, fontSize: 14, border: 'none', cursor: 'pointer' }}
+                onMouseDown={e => (e.currentTarget.style.transform = 'scale(0.98)')}
+                onMouseUp={e => (e.currentTarget.style.transform = 'scale(1)')}>
+                Play
+              </button>
+            ) : (
+              <div style={{ animation: 'popupIn 0.25s ease' }}>
+                <div style={{ color: '#999', fontSize: 11, fontWeight: 600, marginBottom: 8, textTransform: 'uppercase', letterSpacing: 1 }}>Select Difficulty</div>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  {(['Easy', 'Medium', 'Hard'] as Difficulty[]).map(d => (
+                    <button key={d} data-testid={`button-difficulty-${d.toLowerCase()}`} onClick={() => onStartGame(d)}
+                      style={{ flex: 1, padding: '11px 6px', borderRadius: 10, background: d === 'Easy' ? '#1a2a1a' : d === 'Medium' ? '#2a2a1a' : '#2a1a1a', border: `1px solid ${d === 'Easy' ? '#2a4a2a' : d === 'Medium' ? '#4a4a2a' : '#4a2a2a'}`, color: d === 'Easy' ? '#4CAF50' : d === 'Medium' ? GOLD : '#E05555', fontWeight: 700, fontSize: 13, cursor: 'pointer' }}
+                      onMouseDown={e => (e.currentTarget.style.transform = 'scale(0.96)')}
+                      onMouseUp={e => (e.currentTarget.style.transform = 'scale(1)')}>
+                      {d}
+                    </button>
+                  ))}
+                </div>
+                <button onClick={onBack} style={{ width: '100%', marginTop: 8, padding: '9px', background: 'transparent', border: '1px solid #333', borderRadius: 10, color: '#999', fontSize: 12, cursor: 'pointer' }}>
+                  Cancel
                 </button>
+              </div>
+            )}
+          </div>
+
+          {/* Recent matches */}
+          <div style={{ margin: '0 16px' }}>
+            <div style={{ color: '#666', fontSize: 11, fontWeight: 600, marginBottom: 8, textTransform: 'uppercase', letterSpacing: 1 }}>Recent Matches</div>
+            {stats.records.length === 0 ? (
+              <div style={{ background: '#111', borderRadius: 12, padding: '24px 20px', textAlign: 'center', color: '#666', fontSize: 13, border: '1px solid #1A1A1A' }}>
+                No matches yet. Start your first game!
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                {stats.records.slice(0, 5).map((m, i) => (
+                  <div key={i} style={{ background: '#111', borderRadius: 10, padding: '10px 14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderLeft: `3px solid ${m.result === 'win' ? GOLD : '#E05555'}`, border: '1px solid #1A1A1A', borderLeftWidth: 3, borderLeftColor: m.result === 'win' ? GOLD : '#E05555' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                      <span style={{ fontSize: 16 }}>{m.result === 'win' ? '🏆' : '💀'}</span>
+                      <div>
+                        <div style={{ color: m.result === 'win' ? GOLD : '#E05555', fontSize: 12, fontWeight: 700 }}>{m.result === 'win' ? 'Victory' : 'Defeat'}</div>
+                        <div style={{ color: '#666', fontSize: 11 }}>{m.finisher || '—'} · R{m.rounds || '—'} · {m.difficulty || '—'}</div>
+                      </div>
+                    </div>
+                    <div style={{ color: '#555', fontSize: 10 }}>{m.date ? new Date(m.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : ''}</div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </>
+      )}
+
+      {/* ── Leaderboard tab ── */}
+      {hubTab === 'leaderboard' && (
+        <div style={{ margin: '0 16px' }}>
+          <div style={{ color: '#666', fontSize: 11, fontWeight: 600, marginBottom: 10, textTransform: 'uppercase', letterSpacing: 1 }}>
+            Gym Leaderboard
+          </div>
+
+          {lbLoading ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {[1,2,3,4,5].map(i => (
+                <div key={i} style={{ height: 56, borderRadius: 12, backgroundColor: '#111', border: '1px solid #1A1A1A', opacity: 1 - i * 0.12 }} />
               ))}
             </div>
-            <button
-              onClick={onBack}
-              style={{
-                width: '100%', marginTop: 8, padding: '10px',
-                background: 'transparent', border: '1px solid #333',
-                borderRadius: 10, color: '#999', fontSize: 13, cursor: 'pointer',
-              }}
-            >
-              Cancel
-            </button>
-          </div>
-        )}
-      </div>
-
-      {/* Recent Matches */}
-      <div style={{ margin: '20px 16px 0' }}>
-        <div style={{ color: '#999', fontSize: 12, fontWeight: 600, marginBottom: 10, textTransform: 'uppercase', letterSpacing: 1 }}>
-          Recent Matches
-        </div>
-        {appState.recentMatches.length === 0 ? (
-          <div style={{
-            background: '#111', borderRadius: 12, padding: '32px 20px',
-            textAlign: 'center', color: '#666', fontSize: 13,
-          }}>
-            No matches yet. Start your first game!
-          </div>
-        ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-            {appState.recentMatches.map((m, i) => (
-              <div key={i} style={{
-                background: '#111', borderRadius: 10, padding: '12px 14px',
-                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                borderLeft: `3px solid ${m.result === 'win' ? '#C8A24C' : '#E05555'}`,
-              }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                  <span style={{ fontSize: 18 }}>{m.result === 'win' ? '🏆' : '💀'}</span>
-                  <div>
-                    <div style={{
-                      color: m.result === 'win' ? '#C8A24C' : '#E05555',
-                      fontSize: 13, fontWeight: 700,
-                    }}>
-                      {m.result === 'win' ? 'Victory' : 'Defeat'}
+          ) : leaderboard.length === 0 ? (
+            <div style={{ background: '#111', borderRadius: 12, padding: '32px 20px', textAlign: 'center', border: '1px solid #1A1A1A' }}>
+              <div style={{ fontSize: 32, marginBottom: 10 }}>🏆</div>
+              <div style={{ color: '#888', fontSize: 13, marginBottom: 6 }}>No scores yet</div>
+              <div style={{ color: '#555', fontSize: 12 }}>Play a game to get on the board!</div>
+            </div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              {leaderboard.map((entry, i) => {
+                const medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : null;
+                const isTop3 = i < 3;
+                return (
+                  <div key={i} style={{
+                    background: isTop3 ? `${GOLD}0A` : '#111',
+                    borderRadius: 12, padding: '12px 14px',
+                    border: `1px solid ${isTop3 ? GOLD + '20' : '#1A1A1A'}`,
+                    display: 'flex', alignItems: 'center', gap: 12,
+                  }}>
+                    {/* Rank number or medal */}
+                    <div style={{ width: 28, textAlign: 'center', flexShrink: 0 }}>
+                      {medal
+                        ? <span style={{ fontSize: 18 }}>{medal}</span>
+                        : <span style={{ color: '#555', fontSize: 13, fontWeight: 700 }}>#{entry.rank}</span>}
                     </div>
-                    <div style={{ color: '#666', fontSize: 11 }}>
-                      {m.finisher} · R{m.rounds} · {m.difficulty}
+
+                    {/* Name + rank */}
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ color: isTop3 ? '#F0F0F0' : '#DDD', fontSize: 13, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {entry.name}
+                      </div>
+                      <div style={{ color: '#666', fontSize: 11, marginTop: 1 }}>
+                        {entry.topRank}
+                      </div>
+                    </div>
+
+                    {/* Stats */}
+                    <div style={{ display: 'flex', gap: 10, flexShrink: 0, textAlign: 'right' }}>
+                      <div>
+                        <div style={{ color: GOLD, fontSize: 13, fontWeight: 700 }}>{entry.wins}W</div>
+                        <div style={{ color: '#555', fontSize: 10 }}>{entry.winRate}%</div>
+                      </div>
+                      <div>
+                        <div style={{ color: '#888', fontSize: 12, fontWeight: 600 }}>🔥{entry.bestStreak}</div>
+                        <div style={{ color: '#555', fontSize: 10 }}>best</div>
+                      </div>
                     </div>
                   </div>
-                </div>
-                <div style={{ color: '#666', fontSize: 11 }}>
-                  {m.playerStaminaLeft}❤️
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
+                );
+              })}
+            </div>
+          )}
 
-      {/* Stats bar */}
-      <div style={{
-        margin: '20px 16px 0',
-        background: '#111', borderRadius: 12, padding: '14px 16px',
-        display: 'flex', justifyContent: 'space-around',
-      }}>
-        <StatItem label="Win Rate" value={appState.wins + appState.losses > 0 ? `${Math.round((appState.wins / (appState.wins + appState.losses)) * 100)}%` : '—'} />
-        <StatItem label="Streak" value={appState.streak > 0 ? `🔥 ${appState.streak}` : '0'} />
-        <StatItem label="Rank" value={rank.emoji} />
-      </div>
+          <button onClick={() => { setLbLoaded(false); setLbLoading(true); getLeaderboard().then(d => { setLeaderboard(d); setLbLoaded(true); setLbLoading(false); }); }}
+            style={{ width: '100%', marginTop: 12, padding: '10px', background: 'transparent', border: '1px solid #1A1A1A', borderRadius: 10, color: '#555', fontSize: 12, cursor: 'pointer' }}>
+            ↻ Refresh
+          </button>
+        </div>
+      )}
     </div>
   );
 }
@@ -370,12 +355,11 @@ function GamesHub({ appState, rank, nextRank, onPlay, onStartGame, showDifficult
 function StatItem({ label, value }: { label: string; value: string }) {
   return (
     <div style={{ textAlign: 'center' }}>
-      <div style={{ color: '#F0F0F0', fontSize: 16, fontWeight: 700 }}>{value}</div>
-      <div style={{ color: '#666', fontSize: 11, marginTop: 2 }}>{label}</div>
+      <div style={{ color: '#F0F0F0', fontSize: 15, fontWeight: 700 }}>{value}</div>
+      <div style={{ color: '#666', fontSize: 10, marginTop: 2 }}>{label}</div>
     </div>
   );
 }
-
 
 // ===== BJJ CHESS GAME =====
 interface BJJChessGameProps {

@@ -650,3 +650,40 @@ export async function adminSendSMS(
     return { success: false, error: "Connection error" };
   }
 }
+
+// ─── Game Leaderboard ─────────────────────────────────────────────
+
+export interface LeaderboardEntry {
+  rank: number;
+  name: string;
+  wins: number;
+  losses: number;
+  winRate: number;
+  bestStreak: number;
+  topRank: string;
+  isMe?: boolean;
+}
+
+export async function saveGameScore(data: {
+  wins: number; losses: number; streak: number;
+  bestStreak: number; topRankName: string;
+}): Promise<{ success: boolean }> {
+  const token = getToken();
+  if (!token) return { success: false };
+  try {
+    return await gasCall("saveGameScore", { ...data, token });
+  } catch (err) {
+    console.error("saveGameScore failed:", err);
+    return { success: false };
+  }
+}
+
+export async function getLeaderboard(): Promise<LeaderboardEntry[]> {
+  try {
+    const result = await gasCall("getLeaderboard", {});
+    return result.leaderboard || [];
+  } catch (err) {
+    console.error("getLeaderboard failed:", err);
+    return [];
+  }
+}

@@ -1,63 +1,91 @@
-import { createContext, useContext, useState, ReactNode } from "react";
+import { createContext, useContext, useState, useEffect, ReactNode } from "react";
 
 export interface GameRecord {
   date: string;
   game: "bjj" | "chess";
   result: "win" | "loss" | "draw";
   opponent: string;
+  difficulty?: string;
+  rounds?: number;
+  finisher?: string;
 }
 
 export interface GameStats {
-  bjj: { wins: number; losses: number; draws: number };
-  chess: { wins: number; losses: number; draws: number };
+  wins: number;
+  losses: number;
+  streak: number;
+  bestStreak: number;
+  lossStreak: number;
   records: GameRecord[];
 }
 
 interface GameRecordContextType {
   stats: GameStats;
-  records: GameRecord[];
-  addRecord: (game: "bjj" | "chess", result: "win" | "loss" | "draw", opponent: string) => void;
+  addRecord: (record: Omit<GameRecord, "date">) => void;
+  resetStats: () => void;
 }
 
+const STORAGE_KEY = "lbjj_game_stats_v2";
+
 const defaultStats: GameStats = {
-  bjj: { wins: 0, losses: 0, draws: 0 },
-  chess: { wins: 0, losses: 0, draws: 0 },
-  records: [],
+  wins: 0, losses: 0, streak: 0, bestStreak: 0, lossStreak: 0, records: [],
 };
+
+function loadStats(): GameStats {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) return { ...defaultStats, ...JSON.parse(raw) };
+  } catch { /* ignore */ }
+  return defaultStats;
+}
+
+function saveStats(stats: GameStats) {
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(stats)); }
+  catch { /* storage full */ }
+}
 
 const GameRecordContext = createContext<GameRecordContextType>({
   stats: defaultStats,
-  records: [],
   addRecord: () => {},
+  resetStats: () => {},
 });
 
 export function GameRecordProvider({ children }: { children: ReactNode }) {
-  const [stats, setStats] = useState<GameStats>(defaultStats);
+  const [stats, setStats] = useState<GameStats>(loadStats);
 
-  function addRecord(game: "bjj" | "chess", result: "win" | "loss" | "draw", opponent: string) {
-    const record: GameRecord = {
-      date: new Date().toISOString(),
-      game,
-      result,
-      opponent,
-    };
+  useEffect(() => { saveStats(stats); }, [stats]);
 
-    setStats((prev) => {
-      const gameStats = { ...prev[game] };
-      if (result === "win") gameStats.wins += 1;
-      else if (result === "loss") gameStats.losses += 1;
-      else gameStats.draws += 1;
+  function addRecord(record: Omit<GameRecord, "date">) {
+    setStats(prev => {
+      const isWin  = record.result === "win";
+      const isLoss = record.result === "loss";
+      const newStreak     = isWin  ? prev.streak + 1      : 0;
+      const newLossStreak = isLoss ? prev.lossStreak + 1   : 0;
+      // Streak bonus: 3+ win streak = +2 per win
+      const winDelta = isWin ? (prev.streak >= 2 ? 2 : 1) : 0;
+      // Loss penalty: every 3 consecutive losses = -1 win point
+      const lossPenalty = (isLoss && newLossStreak >= 3) ? 1 : 0;
 
-      return {
-        ...prev,
-        [game]: gameStats,
-        records: [record, ...prev.records],
+      const updated: GameStats = {
+        wins:       Math.max(0, prev.wins + winDelta - lossPenalty),
+        losses:     prev.losses + (isLoss ? 1 : 0),
+        streak:     newStreak,
+        bestStreak: Math.max(prev.bestStreak, newStreak),
+        lossStreak: lossPenalty > 0 ? 0 : newLossStreak,
+        records:    [{ ...record, date: new Date().toISOString() }, ...prev.records].slice(0, 50),
       };
+      return updated;
     });
   }
 
+  function resetStats() {
+    const fresh = { ...defaultStats };
+    setStats(fresh);
+    saveStats(fresh);
+  }
+
   return (
-    <GameRecordContext.Provider value={{ stats, records: stats.records, addRecord }}>
+    <GameRecordContext.Provider value={{ stats, addRecord, resetStats }}>
       {children}
     </GameRecordContext.Provider>
   );
