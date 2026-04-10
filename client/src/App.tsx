@@ -119,7 +119,7 @@ function TabBar() {
               ? <Icon size={22} strokeWidth={isActive ? 2.2 : 1.5} />
               : <span style={{ fontSize: 20, lineHeight: 1 }}>{tab.emoji}</span>
             }
-            <span>{tab.label}</span>
+            <span style={{ fontSize: 12, lineHeight: '1.2' }}>{tab.label}</span>
           </a>
         );
       })}

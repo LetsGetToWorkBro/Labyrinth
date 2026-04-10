@@ -15,8 +15,27 @@ import {
 } from "@/lib/api";
 import { useState, useEffect, useCallback } from "react";
 
+const haptic = (pattern: number | number[] = 10) => {
+  if (typeof navigator !== 'undefined' && navigator.vibrate) {
+    navigator.vibrate(pattern);
+  }
+};
+
+const getInitials = (name: string) => {
+  return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
+};
+
+const beltColorMap: Record<string, string> = {
+  white: '#E0E0E0', blue: '#3B82F6', purple: '#8B5CF6',
+  brown: '#92400E', black: '#1A1A1A', grey: '#9CA3AF',
+  yellow: '#EAB308', orange: '#F97316', green: '#22C55E',
+};
+
 export default function HomePage() {
   const { member, familyMembers, isAuthenticated, logout, switchProfile } = useAuth();
+
+  const avatarBg = beltColorMap[(member?.belt || 'white').toLowerCase()] || '#C8A24C';
+  const avatarFg = ['white', 'yellow', 'grey'].includes((member?.belt || '').toLowerCase()) ? '#0A0A0A' : '#FFFFFF';
   const [switchingRow, setSwitchingRow] = useState<number | null>(null);
   const [showFamilySwitcher, setShowFamilySwitcher] = useState(false);
   const [switchError, setSwitchError] = useState("");
@@ -109,9 +128,13 @@ export default function HomePage() {
   // ─── Logged-in home ───────────────────────────────────────────────
   const hasWarnings = !member.waiverSigned || !member.agreementSigned;
   const hasFamily = familyMembers.length > 1;
-  const joinDate = member.joinDate
-    ? new Date(member.joinDate).toLocaleDateString("en-US", { month: "long", year: "numeric" })
-    : "—";
+  const joinDate = (() => {
+    const d = (member as any)?.startDate || member.joinDate || (member as any)?.memberSince;
+    if (!d) return '—';
+    try {
+      return new Date(d).toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+    } catch { return d; }
+  })();
 
   const defaultCard = cards.find(c => c.isDefault) || cards[0];
 
@@ -130,6 +153,17 @@ export default function HomePage() {
       <div className="mx-5 rounded-xl p-5 mb-4" style={{ backgroundColor: "#111", border: "1px solid #1A1A1A" }}>
         <div className="flex items-start justify-between mb-4">
           <div className="flex-1 min-w-0 mr-3">
+            <div style={{
+              width: 52, height: 52, borderRadius: '50%',
+              background: avatarBg, color: avatarFg,
+              fontSize: 18, fontWeight: 700,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              textTransform: 'uppercase', letterSpacing: '-0.5px',
+              flexShrink: 0, marginBottom: 12,
+              boxShadow: `0 0 0 3px ${avatarBg}30, 0 0 20px ${avatarBg}20`
+            }}>
+              {getInitials(member?.name || 'M')}
+            </div>
             <h2 className="text-lg font-bold" style={{ color: "#F0F0F0" }} data-testid="text-member-name">
               {member.name}
             </h2>
@@ -153,7 +187,7 @@ export default function HomePage() {
             )}
             {/* Belt SVG — tappable to request rank update */}
             <button
-              onClick={() => { setShowRankRequest(true); setRankBelt(member.belt || "white"); setRankStripes(0); setRankNote(""); setRankSent(false); }}
+              onClick={() => { haptic(); setShowRankRequest(true); setRankBelt(member.belt || "white"); setRankStripes(0); setRankNote(""); setRankSent(false); }}
               style={{ background: "none", border: "none", padding: 0, cursor: "pointer", position: "relative" }}
               title="Request rank update"
             >
@@ -249,7 +283,7 @@ export default function HomePage() {
             <span className="text-sm font-semibold" style={{ color: "#F0F0F0" }}>Payment Methods</span>
           </div>
           <button
-            onClick={handleAddCard}
+            onClick={() => { haptic(); handleAddCard(); }}
             disabled={addingCard}
             className="flex items-center gap-1 text-xs font-medium px-2.5 py-1.5 rounded-lg transition-all active:scale-[0.97]"
             style={{ backgroundColor: "rgba(200,162,76,0.1)", color: "#C8A24C", border: "1px solid rgba(200,162,76,0.15)" }}
@@ -421,6 +455,7 @@ export default function HomePage() {
 
                 <button
                   onClick={async () => {
+                    haptic();
                     if (!rankBelt) return;
                     setRankSubmitting(true);
                     const today = new Date().toISOString().split("T")[0];

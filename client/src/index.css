@@ -42,7 +42,7 @@
   --chart-3: 217 70% 55%;
   --chart-4: 30 80% 55%;
   --chart-5: 270 50% 55%;
-  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   --font-serif: Georgia, serif;
   --font-mono: "SF Mono", Menlo, monospace;
   --radius: .625rem;
@@ -157,6 +157,7 @@
   }
   body {
     @apply font-sans antialiased bg-background text-foreground;
+    font-family: var(--font-sans);
     -webkit-tap-highlight-color: transparent;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
@@ -215,7 +216,7 @@
   cursor: pointer;
   transition: all 0.2s ease;
   color: #666;
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 500;
   letter-spacing: 0.02em;
   text-decoration: none;
@@ -519,4 +520,51 @@
 /* Hide bottom nav during active game */
 body[data-game-active="true"] .tab-bar {
   display: none;
+}
+
+/* ═══════════════════════════════════════════════════
+   DESIGN AUDIT — Accessibility & Mobile Fixes
+   ═══════════════════════════════════════════════════ */
+
+/* DD-03: Minimum 12px font size — especially nav labels */
+.tab-item span {
+  font-size: 12px !important;
+  line-height: 1.2;
+}
+
+/* DD-06: Prevent iOS auto-zoom on input focus (must be ≥16px) */
+input,
+textarea,
+select {
+  font-size: 16px !important;
+}
+
+/* Override for cases where visual 14px is needed — use transform instead */
+/* (Leave the font-size at 16px, the content won't look different on mobile) */
+
+/* DD-08: Enforce minimum tap targets (Apple HIG: 44px, Material: 48px) */
+.tab-item {
+  min-height: 44px;
+}
+
+button,
+[role="button"],
+a.btn {
+  min-height: 44px;
+}
+
+/* P-07: Haptic feedback is done in JS, no CSS needed */
+
+/* Shadow system — matching Admin CRM depth scale */
+:root {
+  --shadow-sm:    0 1px 3px rgba(0,0,0,0.4), 0 1px 2px rgba(0,0,0,0.3);
+  --shadow-card:  0 4px 16px rgba(0,0,0,0.4), 0 2px 6px rgba(0,0,0,0.3);
+  --shadow-modal: 0 20px 60px rgba(0,0,0,0.7), 0 8px 24px rgba(0,0,0,0.5);
+  --shadow-gold:  0 0 20px rgba(200,162,76,0.15);
+}
+
+/* Apply to key cards */
+.rounded-xl,
+[class*="rounded-xl"] {
+  box-shadow: var(--shadow-sm);
 }
