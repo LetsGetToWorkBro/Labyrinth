@@ -38,6 +38,7 @@ export default function OnboardingPage() {
   const { member } = useAuth();
   const [, navigate] = useHashLocation();
   const [goals, setGoals] = useState<string[]>([]);
+  const [done, setDone] = useState(false);
 
   const firstName = getFirstName(member);
 
@@ -54,10 +55,13 @@ export default function OnboardingPage() {
       localStorage.setItem("lbjj_onboarding_complete", "true");
     } catch (_) {}
 
-    // 2. Navigate immediately — don't wait for anything
+    // 2. Unmount the overlay immediately
+    setDone(true);
+
+    // 3. Navigate to home
     navigate("/");
 
-    // 3. Fire GAS in background — no await, no blocking
+    // 4. Fire GAS in background — no await, no blocking
     const profile = (() => { try { return JSON.parse(localStorage.getItem("lbjj_member_profile") || "{}"); } catch { return {}; } })();
     if (profile.Email) {
       gasCall("saveOnboardingData", {
@@ -67,6 +71,8 @@ export default function OnboardingPage() {
       }).catch(() => {});
     }
   };
+
+  if (done) return null;
 
   return (
     <div style={{
