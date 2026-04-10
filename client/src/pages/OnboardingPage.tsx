@@ -34,11 +34,14 @@ function getFirstName(member: { name?: string; email?: string } | null): string 
   return "there";
 }
 
-export default function OnboardingPage() {
+interface OnboardingPageProps {
+  onComplete?: () => void;
+}
+
+export default function OnboardingPage({ onComplete }: OnboardingPageProps) {
   const { member } = useAuth();
   const [, navigate] = useHashLocation();
   const [goals, setGoals] = useState<string[]>([]);
-  const [done, setDone] = useState(false);
 
   const firstName = getFirstName(member);
 
@@ -55,8 +58,8 @@ export default function OnboardingPage() {
       localStorage.setItem("lbjj_onboarding_complete", "true");
     } catch (_) {}
 
-    // 2. Unmount the overlay immediately
-    setDone(true);
+    // 2. Tell App.tsx onboarding is done — triggers unmount
+    onComplete?.();
 
     // 3. Navigate to home
     navigate("/");
@@ -71,8 +74,6 @@ export default function OnboardingPage() {
       }).catch(() => {});
     }
   };
-
-  if (done) return null;
 
   return (
     <div style={{

@@ -594,6 +594,7 @@ function AdminShortcut() {
 
 function AppShell() {
   const { isAuthenticated } = useAuth();
+  const [onboardingDone, setOnboardingDone] = useState(() => !!localStorage.getItem("lbjj_onboarding_complete"));
 
   const [location] = useHashLoc();
 
@@ -615,11 +616,11 @@ function AppShell() {
   }
 
   // Redirect to onboarding if first login (no onboarding completed)
-  const needsOnboarding = !localStorage.getItem("lbjj_onboarding_complete") && !location.startsWith("/onboarding");
+  const needsOnboarding = !onboardingDone;
   if (needsOnboarding) {
     return (
       <div className="app-shell">
-        <OnboardingPage />
+        <OnboardingPage onComplete={() => setOnboardingDone(true)} />
       </div>
     );
   }
