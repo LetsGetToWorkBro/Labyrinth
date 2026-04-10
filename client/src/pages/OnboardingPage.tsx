@@ -47,20 +47,25 @@ export default function OnboardingPage() {
     );
   };
 
-  const complete = async () => {
-    const data = { goals };
-    localStorage.setItem("lbjj_onboarding_data", JSON.stringify(data));
-    localStorage.setItem("lbjj_onboarding_complete", "true");
+  const complete = () => {
+    // 1. Save locally — synchronous, instant
     try {
-      await gasCall("saveOnboardingData", {
-        email: member?.email,
-        name: member?.name,
-        goals,
-      });
-    } catch {
-      // GAS action may not exist yet — graceful fail
-    }
+      localStorage.setItem("lbjj_onboarding_data", JSON.stringify({ goals }));
+      localStorage.setItem("lbjj_onboarding_complete", "true");
+    } catch (_) {}
+
+    // 2. Navigate immediately — don't wait for anything
     navigate("/");
+
+    // 3. Fire GAS in background — no await, no blocking
+    const profile = (() => { try { return JSON.parse(localStorage.getItem("lbjj_member_profile") || "{}"); } catch { return {}; } })();
+    if (profile.Email) {
+      gasCall("saveOnboardingData", {
+        email: profile.Email,
+        name: profile.Name || "",
+        goals,
+      }).catch(() => {});
+    }
   };
 
   return (
