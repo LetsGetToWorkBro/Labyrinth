@@ -55,6 +55,25 @@ const HOUSE_RULES = [
   { emoji: "🔥", text: "Recommended session: 15–20 minutes" },
 ];
 
+// ── Session Timer Helpers ─────────────────────────────────────────────────────
+
+function formatElapsed(checkIn: string): string {
+  const elapsed = Math.max(0, Math.floor((Date.now() - new Date(checkIn).getTime()) / 1000));
+  const h = Math.floor(elapsed / 3600);
+  const m = Math.floor((elapsed % 3600) / 60);
+  const s = elapsed % 60;
+  const mm = String(m).padStart(2, "0");
+  const ss = String(s).padStart(2, "0");
+  return h > 0 ? `${h}:${mm}:${ss}` : `${mm}:${ss}`;
+}
+
+function timerColor(checkIn: string): string {
+  const mins = (Date.now() - new Date(checkIn).getTime()) / 60000;
+  if (mins > 30) return "#E05555";
+  if (mins >= 20) return "#E08228";
+  return "#C8A24C";
+}
+
 // ── Main Component ────────────────────────────────────────────────────────────
 
 export default function SaunaPage() {
@@ -67,6 +86,13 @@ export default function SaunaPage() {
   const [actionLoading, setActionLoading] = useState(false);
   const [showRules, setShowRules] = useState(true);
   const [showDropdown, setShowDropdown] = useState(false);
+  const [, setTick] = useState(0);
+
+  // Tick every second to update live session timers
+  useEffect(() => {
+    const interval = setInterval(() => setTick(t => t + 1), 1000);
+    return () => clearInterval(interval);
+  }, []);
 
   const loadData = useCallback(async () => {
     try {
@@ -141,11 +167,11 @@ export default function SaunaPage() {
             background: "rgba(76,175,128,0.1)", border: "1px solid rgba(76,175,128,0.15)",
           }}>
             <span style={{ fontSize: 12 }}>🧖</span>
-            <span style={{ fontSize: 11, fontWeight: 600, color: "#4CAF80" }}>Ready</span>
+            <span style={{ fontSize: 12, fontWeight: 600, color: "#4CAF80" }}>Ready</span>
           </div>
         </div>
         {error && (
-          <div style={{ fontSize: 11, color: "#E08228", marginTop: 4, marginBottom: 4 }}>
+          <div style={{ fontSize: 12, color: "#E08228", marginTop: 4, marginBottom: 4 }}>
             ⚠️ Unable to connect — showing cached data
           </div>
         )}
@@ -159,7 +185,7 @@ export default function SaunaPage() {
         }}>
           <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6 }}>
             <span style={{ fontSize: 14 }}>🔥</span>
-            <span style={{ fontSize: 10, color: "#666", fontWeight: 600, letterSpacing: 0.5 }}>CURRENTLY IN</span>
+            <span style={{ fontSize: 12, color: "#666", fontWeight: 600, letterSpacing: 0.5 }}>CURRENTLY IN</span>
           </div>
           <div style={{ fontSize: 28, fontWeight: 800, color: activeSessions.length > 0 ? "#C8A24C" : "#F0F0F0" }}>
             {loading ? "—" : activeSessions.length}
@@ -171,7 +197,7 @@ export default function SaunaPage() {
         }}>
           <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6 }}>
             <span style={{ fontSize: 14 }}>✅</span>
-            <span style={{ fontSize: 10, color: "#666", fontWeight: 600, letterSpacing: 0.5 }}>SESSIONS TODAY</span>
+            <span style={{ fontSize: 12, color: "#666", fontWeight: 600, letterSpacing: 0.5 }}>SESSIONS TODAY</span>
           </div>
           <div style={{ fontSize: 28, fontWeight: 800, color: "#F0F0F0" }}>
             {loading ? "—" : todayCount}
@@ -181,7 +207,7 @@ export default function SaunaPage() {
 
       {/* Check In / Out Section */}
       <div style={{ padding: "0 20px 14px" }}>
-        <div style={{ fontSize: 10, color: "#666", fontWeight: 600, letterSpacing: 1.5, marginBottom: 8 }}>
+        <div style={{ fontSize: 12, color: "#666", fontWeight: 600, letterSpacing: 1.5, marginBottom: 8 }}>
           CHECK IN / OUT
         </div>
 
@@ -240,7 +266,7 @@ export default function SaunaPage() {
                 >
                   <span>{m.name}</span>
                   {isCheckedIn && (
-                    <span style={{ fontSize: 9, color: "#4CAF80", fontWeight: 700 }}>IN SAUNA</span>
+                    <span style={{ fontSize: 12, color: "#4CAF80", fontWeight: 700 }}>IN SAUNA</span>
                   )}
                 </button>
               );
@@ -266,7 +292,7 @@ export default function SaunaPage() {
               {selectedMember}
             </span>
             {isSelectedCheckedIn && (
-              <span style={{ fontSize: 9, color: "#4CAF80", fontWeight: 700, marginRight: 4 }}>IN SAUNA</span>
+              <span style={{ fontSize: 12, color: "#4CAF80", fontWeight: 700, marginRight: 4 }}>IN SAUNA</span>
             )}
             <button
               onClick={() => setSelectedMember("")}
@@ -321,13 +347,13 @@ export default function SaunaPage() {
         }}>
           <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
             <span style={{ fontSize: 14 }}>🔥</span>
-            <span style={{ fontSize: 10, color: "#666", fontWeight: 600, letterSpacing: 1.5 }}>
+            <span style={{ fontSize: 12, color: "#666", fontWeight: 600, letterSpacing: 1.5 }}>
               IN THE SAUNA
             </span>
           </div>
           {activeSessions.length > 0 && (
             <span style={{
-              fontSize: 10, fontWeight: 700, padding: "2px 8px", borderRadius: 6,
+              fontSize: 12, fontWeight: 700, padding: "2px 8px", borderRadius: 6,
               background: "rgba(200,162,76,0.1)", color: "#C8A24C",
             }}>
               {activeSessions.length} active
@@ -342,7 +368,7 @@ export default function SaunaPage() {
           }}>
             <div style={{ fontSize: 28, marginBottom: 6 }}>🧖</div>
             <div style={{ fontSize: 13, color: "#666" }}>Sauna is empty</div>
-            <div style={{ fontSize: 11, color: "#444", marginTop: 2 }}>
+            <div style={{ fontSize: 12, color: "#444", marginTop: 2 }}>
               {loading ? "Loading..." : "Check someone in above"}
             </div>
           </div>
@@ -364,13 +390,16 @@ export default function SaunaPage() {
                     }}>
                       {session.name}
                     </div>
-                    <div style={{ fontSize: 11, color: "#999", marginTop: 2 }}>
+                    <div style={{ fontSize: 12, color: "#999", marginTop: 2 }}>
                       Since {new Date(session.checkIn).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}
+                    </div>
+                    <div style={{ fontSize: 16, fontWeight: 700, color: timerColor(session.checkIn), marginTop: 4, fontVariantNumeric: "tabular-nums" }}>
+                      {formatElapsed(session.checkIn)}
                     </div>
                     {mins >= 20 && (
                       <div style={{ display: "flex", alignItems: "center", gap: 4, marginTop: 3 }}>
-                        <span style={{ fontSize: 10 }}>⚠️</span>
-                        <span style={{ fontSize: 10, color: "#E05555", fontWeight: 600 }}>Over recommended time</span>
+                        <span style={{ fontSize: 12 }}>⚠️</span>
+                        <span style={{ fontSize: 12, color: "#E05555", fontWeight: 600 }}>Over recommended time</span>
                       </div>
                     )}
                   </div>
@@ -380,7 +409,7 @@ export default function SaunaPage() {
                     style={{
                       padding: "8px 12px", borderRadius: 8, border: "none",
                       background: "rgba(224,85,85,0.1)", color: "#E05555",
-                      fontSize: 11, fontWeight: 600, cursor: "pointer",
+                      fontSize: 12, fontWeight: 600, cursor: "pointer",
                       flexShrink: 0,
                     }}
                   >

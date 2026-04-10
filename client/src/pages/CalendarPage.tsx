@@ -284,7 +284,7 @@ export default function CalendarPage() {
                 {dayEvents.length > 0 && (
                   <div className="flex gap-0.5 mt-0.5">
                     {dayEvents.slice(0, 3).map((e, j) => (
-                      <span key={j} className="event-dot" style={{ backgroundColor: getOrgColor(e.org), width: 4, height: 4 }} />
+                      <span key={j} className="event-dot" style={{ backgroundColor: getOrgColor(e.org), width: 6, height: 6, borderRadius: 3 }} />
                     ))}
                   </div>
                 )}
@@ -481,13 +481,13 @@ export default function CalendarPage() {
             <p style={{ fontSize: 13, color: "#999", margin: "0 0 20px" }}>{logResultEvent.name}</p>
 
             {/* Competitor name (pre-filled) */}
-            <label style={{ display: "block", fontSize: 11, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.06em", color: "#666", marginBottom: 6 }}>Competitor</label>
+            <label style={{ display: "block", fontSize: 12, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.06em", color: "#666", marginBottom: 6 }}>Competitor</label>
             <div style={{ padding: "10px 12px", backgroundColor: "#0D0D0D", border: "1px solid #222", borderRadius: 10, fontSize: 13, color: "#F0F0F0", marginBottom: 16 }}>
               {member?.name || "—"}
             </div>
 
             {/* Division */}
-            <label style={{ display: "block", fontSize: 11, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.06em", color: "#666", marginBottom: 6 }}>Division</label>
+            <label style={{ display: "block", fontSize: 12, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.06em", color: "#666", marginBottom: 6 }}>Division</label>
             <input
               type="text"
               value={resultDivision}
@@ -497,7 +497,7 @@ export default function CalendarPage() {
             />
 
             {/* Result */}
-            <label style={{ display: "block", fontSize: 11, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.06em", color: "#666", marginBottom: 8 }}>Result</label>
+            <label style={{ display: "block", fontSize: 12, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.06em", color: "#666", marginBottom: 8 }}>Result</label>
             <div style={{ display: "flex", gap: 8, marginBottom: 16, flexWrap: "wrap" }}>
               {([
                 { value: "Gold", emoji: "🥇" },
@@ -524,7 +524,7 @@ export default function CalendarPage() {
             </div>
 
             {/* Notes */}
-            <label style={{ display: "block", fontSize: 11, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.06em", color: "#666", marginBottom: 6 }}>Notes <span style={{ color: "#555", fontWeight: 400 }}>(optional)</span></label>
+            <label style={{ display: "block", fontSize: 12, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.06em", color: "#666", marginBottom: 6 }}>Notes <span style={{ color: "#555", fontWeight: 400 }}>(optional)</span></label>
             <textarea
               value={resultNotes}
               onChange={e => setResultNotes(e.target.value)}
@@ -533,7 +533,7 @@ export default function CalendarPage() {
               style={{ width: "100%", backgroundColor: "#0D0D0D", border: "1px solid #222", borderRadius: 10, padding: "10px 12px", fontSize: 13, color: "#F0F0F0", outline: "none", resize: "none", boxSizing: "border-box", fontFamily: "inherit", marginBottom: 12 }}
             />
 
-            <p style={{ fontSize: 11, color: "#555", margin: "0 0 20px", lineHeight: 1.5 }}>
+            <p style={{ fontSize: 12, color: "#555", margin: "0 0 20px", lineHeight: 1.5 }}>
               Stats on jits.gg update automatically — this logs your result for the gym's records.
             </p>
 

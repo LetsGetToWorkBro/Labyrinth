@@ -144,7 +144,7 @@ export default function ChatPage() {
           {typeof Notification !== 'undefined' && Notification.permission === 'default' && (
             <button
               onClick={() => Notification.requestPermission().then(p => { notifPermRef.current = p; })}
-              style={{ fontSize: 11, padding: '4px 8px', borderRadius: 6, background: 'rgba(200,162,76,0.1)', border: '1px solid rgba(200,162,76,0.2)', color: '#C8A24C', cursor: 'pointer', flexShrink: 0 }}
+              style={{ fontSize: 12, padding: '4px 8px', borderRadius: 6, background: 'rgba(200,162,76,0.1)', border: '1px solid rgba(200,162,76,0.2)', color: '#C8A24C', cursor: 'pointer', flexShrink: 0 }}
             >
               🔔 Notify
             </button>
@@ -192,7 +192,7 @@ export default function ChatPage() {
         {/* Input */}
         {canPost ? (
           <div style={{ padding: "8px 12px", borderTop: "1px solid #1A1A1A", backgroundColor: "#0A0A0A", flexShrink: 0, paddingBottom: "max(8px, env(safe-area-inset-bottom, 8px))" }}>
-            {sendError && <p style={{ fontSize: 11, color: "#E05555", margin: "0 0 6px 4px" }}>{sendError}</p>}
+            {sendError && <p style={{ fontSize: 12, color: "#E05555", margin: "0 0 6px 4px" }}>{sendError}</p>}
             <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
               <input
                 ref={inputRef}
@@ -241,12 +241,11 @@ export default function ChatPage() {
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <div>
             <h1 style={{ fontSize: 20, fontWeight: 800, color: "#F0F0F0", margin: 0 }}>Chat</h1>
-            <p style={{ fontSize: 11, color: "#666", margin: "2px 0 0" }}>Gym channels</p>
+            <p style={{ fontSize: 12, color: "#666", margin: "2px 0 0" }}>Gym channels</p>
           </div>
           {member && (
-            <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "5px 12px 5px 8px", borderRadius: 20, backgroundColor: `${userRank.color}10`, border: `1px solid ${userRank.color}25` }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "5px 12px 5px 8px", borderRadius: 20, backgroundColor: `${getBeltColor(myBelt)}10`, border: `1px solid ${getBeltColor(myBelt)}25` }}>
               <BeltIcon belt={myBelt} width={28} style={{ filter: `drop-shadow(0 1px 4px ${getBeltColor(myBelt)}60)` }} />
-              <span style={{ fontSize: 11, fontWeight: 700, color: userRank.color }}>{userRank.badge} {userRank.title}</span>
             </div>
           )}
         </div>
@@ -310,7 +309,7 @@ function MessageBubble({ msg, myName }: { msg: ChatMessage; myName: string }) {
         <div style={{ flex: 1 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
             <span style={{ fontSize: 12, fontWeight: 700, color: GOLD }}>Labyrinth BJJ</span>
-            <span style={{ fontSize: 9, color: "#666" }}>{fmt(msg.timestamp)}</span>
+            <span style={{ fontSize: 12, color: "#666" }}>{fmt(msg.timestamp)}</span>
           </div>
           <p style={{ fontSize: 13, color: "#CCC", margin: "3px 0 0", lineHeight: 1.4 }}>{msg.text}</p>
         </div>
@@ -323,7 +322,7 @@ function MessageBubble({ msg, myName }: { msg: ChatMessage; myName: string }) {
       <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 2, marginTop: 8 }}>
         <div style={{ maxWidth: "80%" }}>
           <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 4, marginBottom: 2 }}>
-            <span style={{ fontSize: 10, color: "#666" }}>{fmt(msg.timestamp)}</span>
+            <span style={{ fontSize: 12, color: "#666" }}>{fmt(msg.timestamp)}</span>
           </div>
           <div style={{ backgroundColor: GOLD, color: "#0A0A0A", padding: "8px 14px", borderRadius: "16px 16px 4px 16px", fontSize: 13, fontWeight: 500, lineHeight: 1.4 }}>
             {msg.text}
@@ -340,7 +339,7 @@ function MessageBubble({ msg, myName }: { msg: ChatMessage; myName: string }) {
         <span style={{ fontSize: 12, fontWeight: isHighRank ? 800 : 600, color: isHighRank ? rank.color : "#BBB", letterSpacing: isHighRank ? "0.02em" : "0", textShadow: isHighRank ? rank.glow : "none" }}>
           {msg.sender}
         </span>
-        {rank.badge && <span style={{ fontSize: 10 }}>{rank.badge}</span>}
+        {rank.badge && <span style={{ fontSize: 12 }}>{rank.badge}</span>}
         {rank.tier >= 2 && (
           <span style={{ fontSize: 8, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", padding: "1px 5px", borderRadius: 4, backgroundColor: `${rank.color}18`, color: rank.color, border: `1px solid ${rank.color}30` }}>
             {rank.title}
@@ -351,7 +350,7 @@ function MessageBubble({ msg, myName }: { msg: ChatMessage; myName: string }) {
             <Crown size={8} /> Coach
           </span>
         )}
-        <span style={{ fontSize: 10, color: "#555" }}>{fmt(msg.timestamp)}</span>
+        <span style={{ fontSize: 12, color: "#555" }}>{fmt(msg.timestamp)}</span>
       </div>
       <div style={{ maxWidth: "85%", backgroundColor: "#1A1A1A", padding: "8px 14px", borderRadius: "4px 16px 16px 16px", fontSize: 13, color: "#E0E0E0", lineHeight: 1.4, borderLeft: isHighRank ? `2px solid ${rank.color}40` : "none" }}>
         {msg.text}
@@ -423,7 +422,7 @@ function ChannelRow({ channel, isRank, onOpen }: { channel: ChatChannel; isRank?
       </div>
       {channel.accessible && channel.lastTimestamp && (
         <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 4, flexShrink: 0 }}>
-          <span style={{ fontSize: 10, color: "#555" }}>{relTime(channel.lastTimestamp)}</span>
+          <span style={{ fontSize: 12, color: "#555" }}>{relTime(channel.lastTimestamp)}</span>
           <div style={{ width: 8, height: 8, borderRadius: "50%", backgroundColor: GOLD }} />
         </div>
       )}
@@ -433,5 +432,5 @@ function ChannelRow({ channel, isRank, onOpen }: { channel: ChatChannel; isRank?
 }
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
-  return <p style={{ fontSize: 10, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.1em", color: "#555", margin: "16px 0 10px" }}>{children}</p>;
+  return <p style={{ fontSize: 12, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.1em", color: "#555", margin: "16px 0 10px" }}>{children}</p>;
 }

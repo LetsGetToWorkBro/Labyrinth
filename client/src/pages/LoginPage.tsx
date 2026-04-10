@@ -147,9 +147,14 @@ export default function LoginPage() {
         <h1 style={{ fontSize: 21, fontWeight: 800, letterSpacing: "0.08em", color: "#F0F0F0", margin: 0, textTransform: "uppercase" }}>
           Labyrinth BJJ
         </h1>
-        <p style={{ fontSize: 11, color: "#555", margin: "4px 0 0", letterSpacing: "0.12em", textTransform: "uppercase" }}>
+        <p style={{ fontSize: 12, color: "#555", margin: "4px 0 0", letterSpacing: "0.12em", textTransform: "uppercase" }}>
           Member Portal
         </p>
+        {screen === "location" && (
+          <p style={{ fontSize: 13, color: '#888', textAlign: 'center', maxWidth: 260, margin: '0 auto 24px', lineHeight: 1.5, marginTop: 10 }}>
+            Track your journey, book classes, connect with your team.
+          </p>
+        )}
       </div>
 
       {/* Card */}
@@ -187,7 +192,7 @@ export default function LoginPage() {
                       <p style={{ fontSize: 14, fontWeight: 600, color: "#F0F0F0", margin: 0 }}>
                         {loc.short}
                       </p>
-                      <p style={{ fontSize: 11, color: "#666", margin: "2px 0 0" }}>
+                      <p style={{ fontSize: 12, color: "#666", margin: "2px 0 0" }}>
                         {loc.city}, {loc.state}
                         {!isActive && <span style={{ color: "#444" }}> · Coming soon</span>}
                       </p>
@@ -211,7 +216,7 @@ export default function LoginPage() {
               >
                 <div style={{ width: 8, height: 8, borderRadius: "50%", backgroundColor: selectedLocation.color, flexShrink: 0 }} />
                 <span style={{ fontSize: 12, color: "#888", flex: 1 }}>{selectedLocation.name}</span>
-                <span style={{ fontSize: 11, color: "#555" }}>Change</span>
+                <span style={{ fontSize: 12, color: "#555" }}>Change</span>
               </button>
             )}
 
@@ -245,14 +250,14 @@ export default function LoginPage() {
                   }}>
                     Track your belt journey. Stay connected with your gym.
                   </p>
-                  <Field label="Email">
-                    <input type="email" value={email} onChange={e => setEmail(e.target.value)}
+                  <Field label="Email" htmlFor="login-email">
+                    <input id="login-email" type="email" value={email} onChange={e => setEmail(e.target.value)}
                       placeholder="your@email.com" autoComplete="email" autoFocus
                       style={inputStyle} data-testid="input-email" />
                   </Field>
-                  <Field label="Password">
+                  <Field label="Password" htmlFor="login-password">
                     <div style={{ position: "relative" }}>
-                      <input type={showPw ? "text" : "password"} value={password}
+                      <input id="login-password" type={showPw ? "text" : "password"} value={password}
                         onChange={e => setPassword(e.target.value)}
                         placeholder="Enter password" autoComplete="current-password"
                         style={{ ...inputStyle, paddingRight: 44 }} data-testid="input-password" />
@@ -298,8 +303,8 @@ export default function LoginPage() {
                       <p style={{ fontSize: 13, color: "#888", margin: "0 0 4px", lineHeight: 1.5 }}>
                         Enter your email and we'll send a password reset link.
                       </p>
-                      <Field label="Email">
-                        <input type="email" value={forgotEmail} onChange={e => setForgotEmail(e.target.value)}
+                      <Field label="Email" htmlFor="forgot-email">
+                        <input id="forgot-email" type="email" value={forgotEmail} onChange={e => setForgotEmail(e.target.value)}
                           placeholder="your@email.com" autoFocus style={inputStyle} />
                       </Field>
                       <button onClick={handleForgotPassword} disabled={forgotLoading}
@@ -335,16 +340,16 @@ export default function LoginPage() {
                   <p style={{ fontSize: 13, color: "#888", margin: "0 0 4px", lineHeight: 1.5 }}>
                     Already a member at {selectedLocation.short}? Submit your info and we'll connect your account.
                   </p>
-                  <Field label="Full Name">
-                    <input type="text" value={reqName} onChange={e => setReqName(e.target.value)}
+                  <Field label="Full Name" htmlFor="req-name">
+                    <input id="req-name" type="text" value={reqName} onChange={e => setReqName(e.target.value)}
                       placeholder="John Smith" autoFocus style={inputStyle} />
                   </Field>
-                  <Field label="Email">
-                    <input type="email" value={reqEmail} onChange={e => setReqEmail(e.target.value)}
+                  <Field label="Email" htmlFor="req-email">
+                    <input id="req-email" type="email" value={reqEmail} onChange={e => setReqEmail(e.target.value)}
                       placeholder="your@email.com" style={inputStyle} />
                   </Field>
-                  <Field label={<>Note <span style={{ color: "#555", fontWeight: 400 }}>(optional)</span></>}>
-                    <textarea value={reqNote} onChange={e => setReqNote(e.target.value)}
+                  <Field label={<>Note <span style={{ color: "#555", fontWeight: 400 }}>(optional)</span></>} htmlFor="req-note">
+                    <textarea id="req-note" value={reqNote} onChange={e => setReqNote(e.target.value)}
                       placeholder="e.g. I train Tuesday evenings…" rows={2}
                       style={{ ...inputStyle, resize: "none", lineHeight: 1.5 }} />
                   </Field>
@@ -379,7 +384,7 @@ export default function LoginPage() {
       </div>
 
       {/* Location footer */}
-      <p style={{ marginTop: 20, fontSize: 11, color: "#444", letterSpacing: "0.06em", display: "flex", alignItems: "center", gap: 4 }}>
+      <p style={{ marginTop: 20, fontSize: 12, color: "#444", letterSpacing: "0.06em", display: "flex", alignItems: "center", gap: 4 }}>
         <MapPin size={10} style={{ color: "#555" }} />
         {screen !== "location" ? `${selectedLocation.city}, TX` : "LABYRINTH BJJ"}
       </p>
@@ -387,10 +392,10 @@ export default function LoginPage() {
   );
 }
 
-function Field({ label, children }: { label: React.ReactNode; children: React.ReactNode }) {
+function Field({ label, htmlFor, children }: { label: React.ReactNode; htmlFor?: string; children: React.ReactNode }) {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-      <label style={{ fontSize: 11, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.06em", color: "#666" }}>{label}</label>
+      <label htmlFor={htmlFor} style={{ fontSize: 12, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.06em", color: "#666" }}>{label}</label>
       {children}
     </div>
   );
