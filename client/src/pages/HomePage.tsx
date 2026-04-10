@@ -374,18 +374,18 @@ export default function HomePage() {
 
                 {/* Belt selector */}
                 <label style={{ display: "block", fontSize: 11, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.06em", color: "#666", marginBottom: 8 }}>Belt</label>
-                <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 16 }}>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 20 }}>
                   {ADULT_BELT_OPTIONS.map(b => (
                     <button key={b} onClick={() => setRankBelt(b)}
                       style={{
-                        padding: "6px 14px", borderRadius: 20, fontSize: 12, fontWeight: 600,
+                        padding: "8px 10px", borderRadius: 10, fontSize: 11, fontWeight: 600,
                         border: rankBelt === b ? `2px solid ${getBeltColor(b)}` : "2px solid #222",
                         backgroundColor: rankBelt === b ? `${getBeltColor(b)}18` : "#0D0D0D",
-                        color: rankBelt === b ? getBeltColor(b) : "#888",
-                        cursor: "pointer", display: "flex", alignItems: "center", gap: 6,
+                        color: rankBelt === b ? getBeltColor(b) : "#666",
+                        cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", gap: 4,
                       }}
                     >
-                      <span style={{ width: 8, height: 8, borderRadius: "50%", backgroundColor: getBeltColor(b), flexShrink: 0 }} />
+                      <BeltIcon belt={b} stripes={rankBelt === b ? rankStripes : 0} width={52} />
                       {b.charAt(0).toUpperCase() + b.slice(1)}
                     </button>
                   ))}

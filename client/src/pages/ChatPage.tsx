@@ -39,6 +39,10 @@ export default function ChatPage() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const prevMsgCountRef = useRef(0);
+  const notifPermRef = useRef<NotificationPermission>(
+    typeof Notification !== 'undefined' ? Notification.permission : 'denied'
+  );
 
   // ── Load channel list ─────────────────────────────────────────
   const loadChannels = useCallback(async () => {
@@ -56,6 +60,20 @@ export default function ChatPage() {
     const msgs = await chatGetMessages(channelId, 60);
     setMessages(msgs);
     setLoadingMsgs(false);
+    // Check for new messages and notify if app is in background
+    if (msgs.length > prevMsgCountRef.current && prevMsgCountRef.current > 0) {
+      if (document.hidden && notifPermRef.current === 'granted') {
+        const latest = msgs[msgs.length - 1];
+        try {
+          new Notification('💬 ' + latest.sender, {
+            body: latest.text.substring(0, 80),
+            icon: '/maze-gold-md.png',
+            tag: 'lbjj-chat',
+          });
+        } catch {}
+      }
+    }
+    prevMsgCountRef.current = msgs.length;
   }, []);
 
   useEffect(() => {
@@ -121,6 +139,14 @@ export default function ChatPage() {
           <button onClick={() => loadMessages(activeChannel.id)} style={{ color: "#555", background: "none", border: "none", cursor: "pointer", padding: 4 }}>
             <RefreshCw size={15} />
           </button>
+          {typeof Notification !== 'undefined' && Notification.permission === 'default' && (
+            <button
+              onClick={() => Notification.requestPermission().then(p => { notifPermRef.current = p; })}
+              style={{ fontSize: 11, padding: '4px 8px', borderRadius: 6, background: 'rgba(200,162,76,0.1)', border: '1px solid rgba(200,162,76,0.2)', color: '#C8A24C', cursor: 'pointer', flexShrink: 0 }}
+            >
+              🔔 Notify
+            </button>
+          )}
         </div>
 
         {/* Messages */}
@@ -195,7 +221,7 @@ export default function ChatPage() {
           </div>
           {member && (
             <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "5px 12px 5px 8px", borderRadius: 20, backgroundColor: `${userRank.color}10`, border: `1px solid ${userRank.color}25` }}>
-              <div style={{ width: 10, height: 10, borderRadius: "50%", backgroundColor: getBeltColor(myBelt), boxShadow: userRank.glow }} />
+              <BeltIcon belt={myBelt} width={28} style={{ filter: `drop-shadow(0 1px 4px ${getBeltColor(myBelt)}60)` }} />
               <span style={{ fontSize: 11, fontWeight: 700, color: userRank.color }}>{userRank.badge} {userRank.title}</span>
             </div>
           )}

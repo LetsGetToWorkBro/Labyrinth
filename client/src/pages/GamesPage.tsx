@@ -85,13 +85,15 @@ function GamesPage() {
   }
 
   return (
-    <BJJChessGame
-      difficulty={gameDifficulty}
-      rank={rank}
-      wins={stats.wins}
-      onGameEnd={handleGameEnd}
-      onExit={() => setView('hub')}
-    />
+    <div style={{ position: 'fixed', inset: 0, zIndex: 100, background: '#0A0A0A', overflow: 'hidden' }}>
+      <BJJChessGame
+        difficulty={gameDifficulty}
+        rank={rank}
+        wins={stats.wins}
+        onGameEnd={handleGameEnd}
+        onExit={() => setView('hub')}
+      />
+    </div>
   );
 }
 
@@ -144,6 +146,7 @@ function GamesHub({ stats, rank, nextRank, onPlay, onStartGame, showDifficulty, 
       display: 'flex', flexDirection: 'column', background: '#0A0A0A',
       paddingTop: 'env(safe-area-inset-top, 0px)',
       paddingBottom: 'calc(64px + env(safe-area-inset-bottom, 0px))',
+      overflowX: 'hidden', width: '100%',
     }}
     className="app-page-fill">
       {/* Header */}
@@ -280,7 +283,7 @@ function GamesHub({ stats, rank, nextRank, onPlay, onStartGame, showDifficulty, 
 
       {/* ── Leaderboard tab ── */}
       {hubTab === 'leaderboard' && (
-        <div style={{ margin: '0 16px', flex: 1, display: 'flex', flexDirection: 'column' }}>
+        <div style={{ margin: '0 16px', flex: 1, display: 'flex', flexDirection: 'column', overflowX: 'hidden', minWidth: 0 }}>
           <div style={{ color: '#666', fontSize: 11, fontWeight: 600, marginBottom: 10, textTransform: 'uppercase', letterSpacing: 1 }}>
             Gym Leaderboard
           </div>
@@ -327,7 +330,7 @@ function GamesHub({ stats, rank, nextRank, onPlay, onStartGame, showDifficulty, 
                     </div>
 
                     {/* Stats */}
-                    <div style={{ display: 'flex', gap: 10, flexShrink: 0, textAlign: 'right' }}>
+                    <div style={{ display: 'flex', gap: 8, flexShrink: 0, textAlign: 'right' }}>
                       <div>
                         <div style={{ color: GOLD, fontSize: 13, fontWeight: 700 }}>{entry.wins}W</div>
                         <div style={{ color: '#555', fontSize: 10 }}>{entry.winRate}%</div>

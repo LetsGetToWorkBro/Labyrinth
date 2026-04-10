@@ -21,51 +21,145 @@ import GamesPage from "@/pages/GamesPage";
 import AdminPage from "@/pages/AdminPage";
 import MessagesPage from "@/pages/MessagesPage";
 import NotFound from "@/pages/not-found";
-import { Home, MessageCircle, Clock, MoreHorizontal, Award, ShieldCheck, Send } from "lucide-react";
-import { useEffect, useCallback } from "react";
+import { useEffect, useCallback, useState } from "react";
 import { useHashLocation as useHashLoc } from "wouter/use-hash-location";
+
+// ─── Nav config ───────────────────────────────────────────────────
+
+const NAV_STORAGE_KEY = 'lbjj_nav_config_v1';
+
+type NavOption = { path: string; label: string; emoji: string };
+
+const ALL_NAV_OPTIONS: NavOption[] = [
+  { path: '/',         label: 'Home',     emoji: '🏠' },
+  { path: '/chat',     label: 'Chat',     emoji: '💬' },
+  { path: '/belt',     label: 'Belts',    emoji: '🥋' },
+  { path: '/schedule', label: 'Schedule', emoji: '⏰' },
+  { path: '/more',     label: 'More',     emoji: '⋯'  },
+  { path: '/games',    label: 'Games',    emoji: '🎮' },
+  { path: '/stats',    label: 'Stats',    emoji: '📊' },
+  { path: '/calendar', label: 'Events',   emoji: '🏆' },
+  { path: '/sauna',    label: 'Sauna',    emoji: '🧖' },
+];
+
+const DEFAULT_NAV_PATHS = ['/', '/chat', '/belt', '/schedule', '/more'];
+
+function getNavConfig(): string[] {
+  try {
+    const s = localStorage.getItem(NAV_STORAGE_KEY);
+    if (s) {
+      const p = JSON.parse(s);
+      if (Array.isArray(p) && p.length === 5) return p;
+    }
+  } catch {}
+  return [...DEFAULT_NAV_PATHS];
+}
+
+function saveNavConfig(paths: string[]) {
+  try { localStorage.setItem(NAV_STORAGE_KEY, JSON.stringify(paths)); } catch {}
+  window.dispatchEvent(new CustomEvent('navConfigChanged'));
+}
 
 // ─── Tab bar ──────────────────────────────────────────────────────
 
 function TabBar() {
   const [location] = useLocation();
   const { isAdmin } = useAuth();
+  const [navPaths, setNavPaths] = useState<string[]>(getNavConfig);
 
-  const tabs = [
-    { path: "/",         icon: Home,          label: "Home"     },
-    { path: "/chat",     icon: MessageCircle, label: "Chat"     },
-    { path: "/belt",     icon: Award,         label: "Belts"    },
-    { path: "/schedule", icon: Clock,         label: "Schedule" },
-    { path: "/more",     icon: MoreHorizontal,label: "More"     },
-    ...(isAdmin ? [
-      { path: "/messages", icon: Send,       label: "Blast" },
-      { path: "/admin",    icon: ShieldCheck, label: "Admin" },
-    ] : []),
-  ];
+  useEffect(() => {
+    const handler = () => setNavPaths(getNavConfig());
+    window.addEventListener('navConfigChanged', handler);
+    return () => window.removeEventListener('navConfigChanged', handler);
+  }, []);
 
   const hiddenPaths = ["/waiver", "/book"];
   if (hiddenPaths.some(p => location.startsWith(p))) return null;
 
+  // Build tab list from config
+  const tabs = navPaths.map(path => {
+    const opt = ALL_NAV_OPTIONS.find(o => o.path === path) || ALL_NAV_OPTIONS[0];
+    return opt;
+  });
+
+  // Always include admin tabs at end if admin
+  const adminTabs = isAdmin ? [
+    { path: '/messages', label: 'Blast', emoji: '📨' },
+    { path: '/admin',    label: 'Admin', emoji: '🛡️' },
+  ] : [];
+
+  const allTabs = [...tabs, ...adminTabs];
+
   return (
     <nav className="tab-bar" data-testid="tab-bar">
-      {tabs.map(tab => {
-        const isActive = tab.path === "/" ? location === "/" : location.startsWith(tab.path);
-        const Icon = tab.icon;
-        const isAdminTab = tab.path === "/admin" || tab.path === "/messages";
+      {allTabs.map(tab => {
+        const isActive = tab.path === '/' ? location === '/' : location.startsWith(tab.path);
+        const isAdminTab = tab.path === '/admin' || tab.path === '/messages';
         return (
           <a
-            key={tab.path}
+            key={tab.path + tab.label}
             href={`/#${tab.path}`}
-            className={`tab-item ${isActive ? "active" : ""}`}
+            className={`tab-item ${isActive ? 'active' : ''}`}
             data-testid={`tab-${tab.label.toLowerCase()}`}
-            style={isAdminTab ? { color: isActive ? "#C8A24C" : "#888" } : undefined}
+            style={isAdminTab ? { color: isActive ? '#C8A24C' : '#888' } : undefined}
           >
-            <Icon size={22} strokeWidth={isActive ? 2.2 : 1.5} />
+            <span style={{ fontSize: 20 }}>{tab.emoji}</span>
             <span>{tab.label}</span>
           </a>
         );
       })}
     </nav>
+  );
+}
+
+// ─── Nav customizer ───────────────────────────────────────────────
+
+function NavCustomizer() {
+  const [open, setOpen] = useState(false);
+  const [slots, setSlots] = useState<string[]>(getNavConfig);
+
+  const apply = () => {
+    saveNavConfig(slots);
+    setOpen(false);
+  };
+
+  return (
+    <div style={{ marginTop: 8 }}>
+      <button
+        onClick={() => { setSlots(getNavConfig()); setOpen(!open); }}
+        className="w-full flex items-center gap-3 p-4 rounded-xl transition-all active:scale-[0.98]"
+        style={{ backgroundColor: '#111', border: '1px solid #1A1A1A', cursor: 'pointer' }}
+      >
+        <span className="text-xl">🔧</span>
+        <div className="flex-1 text-left">
+          <p className="text-sm font-medium" style={{ color: '#F0F0F0' }}>Customize Nav</p>
+          <p className="text-xs" style={{ color: '#666' }}>Choose what appears in the bottom bar</p>
+        </div>
+      </button>
+
+      {open && (
+        <div style={{ backgroundColor: '#111', border: '1px solid #1A1A1A', borderTop: 'none', borderRadius: '0 0 12px 12px', padding: '12px 16px' }}>
+          {slots.map((path, i) => (
+            <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+              <span style={{ color: '#555', fontSize: 12, width: 16, flexShrink: 0 }}>#{i + 1}</span>
+              <select
+                value={path}
+                onChange={e => { const n = [...slots]; n[i] = e.target.value; setSlots(n); }}
+                style={{ flex: 1, backgroundColor: '#0D0D0D', border: '1px solid #222', borderRadius: 8, padding: '8px 10px', fontSize: 13, color: '#F0F0F0', outline: 'none' }}
+              >
+                {ALL_NAV_OPTIONS.map(o => (
+                  <option key={o.path + o.label} value={o.path}>{o.emoji} {o.label}</option>
+                ))}
+              </select>
+            </div>
+          ))}
+          <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
+            <button onClick={() => { setSlots([...DEFAULT_NAV_PATHS]); }} style={{ flex: 1, padding: '8px', background: 'transparent', border: '1px solid #333', borderRadius: 8, color: '#666', fontSize: 12, cursor: 'pointer' }}>Reset</button>
+            <button onClick={apply} style={{ flex: 2, padding: '8px', background: '#C8A24C', border: 'none', borderRadius: 8, color: '#0A0A0A', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>Apply</button>
+          </div>
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -108,6 +202,7 @@ function MorePage() {
             </svg>
           </a>
         ))}
+        <NavCustomizer />
         <div className="mt-6 p-4 rounded-xl" style={{ backgroundColor: "#111", border: "1px solid #1A1A1A" }}>
           <h3 className="text-sm font-semibold mb-2" style={{ color: "#F0F0F0" }}>Labyrinth BJJ</h3>
           <div className="space-y-1.5 text-xs" style={{ color: "#999" }}>

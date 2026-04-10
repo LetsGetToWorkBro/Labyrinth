@@ -65,7 +65,7 @@ export default function SaunaPage() {
   const [search, setSearch] = useState("");
   const [selectedMember, setSelectedMember] = useState<string>("");
   const [actionLoading, setActionLoading] = useState(false);
-  const [showRules, setShowRules] = useState(false);
+  const [showRules, setShowRules] = useState(true);
   const [showDropdown, setShowDropdown] = useState(false);
 
   const loadData = useCallback(async () => {
