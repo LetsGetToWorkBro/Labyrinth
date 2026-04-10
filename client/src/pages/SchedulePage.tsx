@@ -183,12 +183,38 @@ function ClassCard({ cls, isToday }: { cls: ClassScheduleItem; isToday: boolean 
             <div className="w-px h-8" style={{ backgroundColor: "#222" }} />
             <div>
               <p className="text-sm font-medium" style={{ color: "#F0F0F0" }}>{cls.name}</p>
-              <span
-                className="inline-block text-[10px] font-medium px-2 py-0.5 rounded mt-1"
-                style={{ backgroundColor: typeStyle.bg, color: typeStyle.text }}
-              >
-                {typeStyle.label}
-              </span>
+              <div className="flex items-center gap-2 flex-wrap mt-1">
+                <span
+                  className="inline-block text-[10px] font-medium px-2 py-0.5 rounded"
+                  style={{ backgroundColor: typeStyle.bg, color: typeStyle.text }}
+                >
+                  {typeStyle.label}
+                </span>
+                {/* Coach name */}
+                {cls.instructor && (
+                  <span className="text-[10px]" style={{ color: "#888" }}>
+                    w/ Coach {cls.instructor}
+                  </span>
+                )}
+              </div>
+              {/* Capacity indicator */}
+              <div className="mt-1">
+                {cls.capacity != null && cls.enrolled != null ? (
+                  <span className="text-[10px] font-medium" style={{
+                    color: cls.enrolled >= cls.capacity
+                      ? "#E05555"
+                      : cls.enrolled >= cls.capacity * 0.8
+                        ? "#E08228"
+                        : "#666",
+                  }}>
+                    {cls.enrolled >= cls.capacity
+                      ? "Full"
+                      : `${cls.enrolled}/${cls.capacity} spots`}
+                  </span>
+                ) : (
+                  <span className="text-[10px]" style={{ color: "#444" }}>—</span>
+                )}
+              </div>
             </div>
           </div>
           {isPast ? (
@@ -240,9 +266,25 @@ function ClassCard({ cls, isToday }: { cls: ClassScheduleItem; isToday: boolean 
               </div>
               <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
                 <User size={16} style={{ color: "#666", flexShrink: 0 }} />
-                <p style={{ fontSize: 13, color: "#999", margin: 0 }}>
-                  {cls.category === "kids" ? "Kids & Teens" : "Adults"} · {typeStyle.label}
-                </p>
+                <div>
+                  <p style={{ fontSize: 13, color: "#999", margin: 0 }}>
+                    {cls.category === "kids" ? "Kids & Teens" : "Adults"} · {typeStyle.label}
+                    {cls.instructor && <span style={{ color: "#C8A24C" }}> · w/ Coach {cls.instructor}</span>}
+                  </p>
+                  {cls.capacity != null && cls.enrolled != null ? (
+                    <p style={{
+                      fontSize: 12, margin: "4px 0 0",
+                      color: cls.enrolled >= cls.capacity ? "#E05555"
+                        : cls.enrolled >= cls.capacity * 0.8 ? "#E08228"
+                        : "#666",
+                      fontWeight: 600,
+                    }}>
+                      {cls.enrolled >= cls.capacity ? "Class Full" : `${cls.enrolled}/${cls.capacity} spots`}
+                    </p>
+                  ) : (
+                    <p style={{ fontSize: 12, margin: "4px 0 0", color: "#444" }}>Capacity: —</p>
+                  )}
+                </div>
               </div>
             </div>
 

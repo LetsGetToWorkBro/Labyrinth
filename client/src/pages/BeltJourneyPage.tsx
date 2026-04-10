@@ -30,6 +30,19 @@ const BELT_LABELS: Record<string, string> = {
   green: "Green Belt",
 };
 
+// Spec belt accent colors for card borders
+const BELT_ACCENT_COLORS: Record<string, string> = {
+  white: "#E5E5E5",
+  blue: "#1A56DB",
+  purple: "#7E3AF2",
+  brown: "#92400E",
+  black: "#C8A24C", // gold fallback for black belt
+  grey: "#9CA3AF",
+  yellow: "#EAB308",
+  orange: "#F97316",
+  green: "#22C55E",
+};
+
 const MOTIVATIONAL_QUOTES = [
   "A black belt is a white belt who never quit.",
   "The ground is my ocean, I'm the shark.",
@@ -342,7 +355,8 @@ export default function BeltJourneyPage() {
                           style={{
                             backgroundColor: "#111",
                             border: "1px solid #1A1A1A",
-                            borderLeft: `4px solid ${getBeltColor(promo.belt || 'white')}`,
+                            borderLeft: `4px solid ${BELT_ACCENT_COLORS[promo.belt] || getBeltColor(promo.belt || 'white')}`,
+                            borderTop: `2px solid ${BELT_ACCENT_COLORS[promo.belt] || getBeltColor(promo.belt || 'white')}`,
                             background: `linear-gradient(135deg, ${getBeltColor(promo.belt || 'white')}0F 0%, #111 60%)`,
                           }}
                           data-testid={`promo-card-${i}`}
@@ -380,19 +394,24 @@ export default function BeltJourneyPage() {
                             </div>
                           )}
                           {promo.note && (
-                            <p className="text-xs mt-1" style={{ color: "#666" }}>"{promo.note}"</p>
+                            <div className="mt-2 pl-3" style={{ borderLeft: '2px solid #C8A24C40' }}>
+                              <p className="text-xs italic" style={{ color: '#999', lineHeight: 1.5 }}>
+                                "{promo.note}"
+                              </p>
+                              <p className="text-[10px] mt-0.5" style={{ color: '#555' }}>Coach's Note</p>
+                            </div>
                           )}
                         </button>
                       )}
                     </div>
 
-                    {/* Time between promotions */}
+                    {/* Time between promotions — shows duration at previous belt */}
                     {timeTo && (
                       <div className="flex items-center gap-3 py-1 pl-10">
                         <div className="flex items-center gap-1">
                           <div className="w-4 h-px" style={{ backgroundColor: "#333" }} />
                           <span className="text-[10px] font-medium px-2 py-0.5 rounded-full" style={{ backgroundColor: "#1A1A1A", color: "#666" }}>
-                            {timeTo}
+                            {timeTo} at {BELT_LABELS[promo.belt]?.toLowerCase() || promo.belt}
                           </span>
                           <div className="w-4 h-px" style={{ backgroundColor: "#333" }} />
                         </div>
@@ -556,16 +575,16 @@ function EditForm({
         />
       </div>
 
-      {/* Note */}
+      {/* Coach's Note */}
       <div>
-        <label className="block text-[10px] uppercase tracking-wider mb-1.5" style={{ color: "#666" }}>Note (optional)</label>
-        <input
-          type="text"
+        <label className="block text-[10px] uppercase tracking-wider mb-1.5" style={{ color: "#666" }}>Coach's Note (optional)</label>
+        <textarea
           value={note}
           onChange={e => setNote(e.target.value)}
-          placeholder="e.g. Promoted by Coach Anthony"
-          className="w-full px-4 py-2.5 rounded-lg text-sm outline-none"
-          style={{ backgroundColor: "#1A1A1A", border: "1px solid #222", color: "#F0F0F0" }}
+          placeholder="e.g. Promoted by Coach Anthony — great performance at Houston Open"
+          rows={3}
+          className="w-full px-4 py-2.5 rounded-lg text-sm outline-none resize-none"
+          style={{ backgroundColor: "#1A1A1A", border: "1px solid #222", color: "#F0F0F0", fontFamily: "inherit", lineHeight: 1.5 }}
           data-testid="input-promo-note"
         />
       </div>

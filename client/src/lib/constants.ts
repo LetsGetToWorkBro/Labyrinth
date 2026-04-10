@@ -68,6 +68,9 @@ export interface ClassScheduleItem {
   name: string;
   type: "gi" | "nogi" | "comp" | "open" | "wrestling";
   category: "adult" | "kids";
+  instructor?: string;   // GAS field: "instructor" — coach name displayed as "w/ Coach [Name]"
+  capacity?: number;     // GAS field: "capacity" — max spots for this class
+  enrolled?: number;     // GAS field: "enrolled" — current enrolled count
 }
 
 export const CLASS_SCHEDULE: ClassScheduleItem[] = [

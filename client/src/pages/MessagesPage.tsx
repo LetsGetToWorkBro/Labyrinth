@@ -44,6 +44,12 @@ export default function MessagesPage() {
   const [emailState, setEmailState] = useState<SendState>("idle");
   const [emailResult, setEmailResult] = useState<{ count?: number; error?: string }>({});
 
+  // Scheduling state (shared by email and SMS)
+  const [emailScheduleMode, setEmailScheduleMode] = useState<"now" | "later">("now");
+  const [emailScheduleTime, setEmailScheduleTime] = useState("");
+  const [smsScheduleMode, setSmsScheduleMode] = useState<"now" | "later">("now");
+  const [smsScheduleTime, setSmsScheduleTime] = useState("");
+
   // SMS state
   const [smsBody, setSmsBody]         = useState("");
   const [smsTarget, setSmsTarget]     = useState<MessageTarget>("active");
@@ -69,18 +75,26 @@ export default function MessagesPage() {
 
   const handleSendEmail = async () => {
     if (!subject.trim() || !body.trim()) return;
+    if (emailScheduleMode === "later" && !emailScheduleTime) return;
     setEmailState("sending");
     setEmailResult({});
     // Wrap plain text body in minimal HTML paragraphs
     const htmlBody = body.trim().split("\n\n").map(p =>
       `<p style="margin:0 0 14px;">${p.replace(/\n/g, "<br>")}</p>`
     ).join("");
-    const result = await adminSendEmail(subject.trim(), htmlBody, emailTarget);
+    // Pass scheduledFor ISO string if scheduling for later
+    // Note: GAS needs a scheduleBlast action to handle deferred sending
+    const scheduledFor = emailScheduleMode === "later" && emailScheduleTime
+      ? new Date(emailScheduleTime).toISOString()
+      : undefined;
+    const result = await adminSendEmail(subject.trim(), htmlBody, emailTarget, scheduledFor);
     if (result.success) {
       setEmailState("success");
       setEmailResult({ count: result.sentCount });
       setSubject("");
       setBody("");
+      setEmailScheduleMode("now");
+      setEmailScheduleTime("");
     } else {
       setEmailState("error");
       setEmailResult({ error: result.error || "Failed to send" });
@@ -89,13 +103,21 @@ export default function MessagesPage() {
 
   const handleSendSMS = async () => {
     if (!smsBody.trim()) return;
+    if (smsScheduleMode === "later" && !smsScheduleTime) return;
     setSmsState("sending");
     setSmsResult({});
-    const result = await adminSendSMS(smsBody.trim(), smsTarget);
+    // Pass scheduledFor ISO string if scheduling for later
+    // Note: GAS needs a scheduleBlast action to handle deferred sending
+    const scheduledFor = smsScheduleMode === "later" && smsScheduleTime
+      ? new Date(smsScheduleTime).toISOString()
+      : undefined;
+    const result = await adminSendSMS(smsBody.trim(), smsTarget, scheduledFor);
     if (result.success) {
       setSmsState("success");
       setSmsResult({ count: result.sentCount });
       setSmsBody("");
+      setSmsScheduleMode("now");
+      setSmsScheduleTime("");
     } else {
       setSmsState("error");
       setSmsResult({ error: result.error || "Failed to send" });
@@ -203,12 +225,55 @@ export default function MessagesPage() {
             </p>
           </div>
 
+          {/* Send Now / Schedule Toggle */}
+          <div>
+            <label className="block text-xs font-semibold uppercase tracking-wider mb-1.5" style={{ color: "#666" }}>
+              Delivery
+            </label>
+            <div className="flex rounded-xl overflow-hidden" style={{ border: "1px solid #222", backgroundColor: "#0D0D0D" }}>
+              <button
+                onClick={() => setEmailScheduleMode("now")}
+                className="flex-1 py-2.5 text-xs font-semibold transition-all"
+                style={{
+                  backgroundColor: emailScheduleMode === "now" ? GOLD : "transparent",
+                  color: emailScheduleMode === "now" ? "#0A0A0A" : "#666",
+                  borderRadius: 10, margin: 2,
+                }}
+              >
+                Send Now
+              </button>
+              <button
+                onClick={() => setEmailScheduleMode("later")}
+                className="flex-1 py-2.5 text-xs font-semibold transition-all"
+                style={{
+                  backgroundColor: emailScheduleMode === "later" ? GOLD : "transparent",
+                  color: emailScheduleMode === "later" ? "#0A0A0A" : "#666",
+                  borderRadius: 10, margin: 2,
+                }}
+              >
+                Schedule for Later
+              </button>
+            </div>
+            {emailScheduleMode === "later" && (
+              <input
+                type="datetime-local"
+                value={emailScheduleTime}
+                onChange={e => setEmailScheduleTime(e.target.value)}
+                className="w-full mt-2 px-4 py-3 rounded-xl text-sm outline-none"
+                style={{ backgroundColor: "#111", border: "1px solid #222", color: "#F0F0F0", colorScheme: "dark" }}
+              />
+            )}
+            {/* Note: GAS needs a scheduleBlast action for scheduled delivery */}
+          </div>
+
           {/* Result banner */}
           {emailState === "success" && (
             <div className="flex items-center gap-3 px-4 py-3 rounded-xl" style={{ backgroundColor: "rgba(76,175,128,0.1)", border: "1px solid rgba(76,175,128,0.2)" }}>
               <CheckCircle size={16} style={{ color: "#4CAF80", flexShrink: 0 }} />
               <p className="text-sm" style={{ color: "#4CAF80" }}>
-                Sent to <strong>{emailResult.count}</strong> member{emailResult.count !== 1 ? "s" : ""}
+                {emailScheduleMode === "later" && emailScheduleTime
+                  ? <>Scheduled for <strong>{new Date(emailScheduleTime).toLocaleString()}</strong></>
+                  : <>Sent to <strong>{emailResult.count}</strong> member{emailResult.count !== 1 ? "s" : ""}</>}
               </p>
             </div>
           )}
@@ -222,7 +287,7 @@ export default function MessagesPage() {
           {/* Send button */}
           <button
             onClick={() => { setEmailState("idle"); handleSendEmail(); }}
-            disabled={!subject.trim() || !body.trim() || emailState === "sending"}
+            disabled={!subject.trim() || !body.trim() || emailState === "sending" || (emailScheduleMode === "later" && !emailScheduleTime)}
             className="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl text-sm font-semibold transition-all active:scale-[0.98]"
             style={{
               backgroundColor: subject.trim() && body.trim() ? GOLD : "#1A1A1A",
@@ -231,8 +296,8 @@ export default function MessagesPage() {
             }}
           >
             {emailState === "sending"
-              ? <><Loader2 size={16} className="animate-spin" /> Sending…</>
-              : <><Send size={16} /> Send Email to {emailTargetLabel}</>
+              ? <><Loader2 size={16} className="animate-spin" /> {emailScheduleMode === "later" ? "Scheduling…" : "Sending…"}</>
+              : <><Send size={16} /> {emailScheduleMode === "later" ? "Schedule Email" : `Send Email to ${emailTargetLabel}`}</>
             }
           </button>
           <div style={{ height: 8 }} />
@@ -309,12 +374,55 @@ export default function MessagesPage() {
             </div>
           </div>
 
+          {/* Send Now / Schedule Toggle */}
+          <div>
+            <label className="block text-xs font-semibold uppercase tracking-wider mb-1.5" style={{ color: "#666" }}>
+              Delivery
+            </label>
+            <div className="flex rounded-xl overflow-hidden" style={{ border: "1px solid #222", backgroundColor: "#0D0D0D" }}>
+              <button
+                onClick={() => setSmsScheduleMode("now")}
+                className="flex-1 py-2.5 text-xs font-semibold transition-all"
+                style={{
+                  backgroundColor: smsScheduleMode === "now" ? GOLD : "transparent",
+                  color: smsScheduleMode === "now" ? "#0A0A0A" : "#666",
+                  borderRadius: 10, margin: 2,
+                }}
+              >
+                Send Now
+              </button>
+              <button
+                onClick={() => setSmsScheduleMode("later")}
+                className="flex-1 py-2.5 text-xs font-semibold transition-all"
+                style={{
+                  backgroundColor: smsScheduleMode === "later" ? GOLD : "transparent",
+                  color: smsScheduleMode === "later" ? "#0A0A0A" : "#666",
+                  borderRadius: 10, margin: 2,
+                }}
+              >
+                Schedule for Later
+              </button>
+            </div>
+            {smsScheduleMode === "later" && (
+              <input
+                type="datetime-local"
+                value={smsScheduleTime}
+                onChange={e => setSmsScheduleTime(e.target.value)}
+                className="w-full mt-2 px-4 py-3 rounded-xl text-sm outline-none"
+                style={{ backgroundColor: "#111", border: "1px solid #222", color: "#F0F0F0", colorScheme: "dark" }}
+              />
+            )}
+            {/* Note: GAS needs a scheduleBlast action for scheduled delivery */}
+          </div>
+
           {/* Result banner */}
           {smsState === "success" && (
             <div className="flex items-center gap-3 px-4 py-3 rounded-xl" style={{ backgroundColor: "rgba(76,175,128,0.1)", border: "1px solid rgba(76,175,128,0.2)" }}>
               <CheckCircle size={16} style={{ color: "#4CAF80", flexShrink: 0 }} />
               <p className="text-sm" style={{ color: "#4CAF80" }}>
-                Sent to <strong>{smsResult.count}</strong> member{smsResult.count !== 1 ? "s" : ""}
+                {smsScheduleMode === "later" && smsScheduleTime
+                  ? <>Scheduled for <strong>{new Date(smsScheduleTime).toLocaleString()}</strong></>
+                  : <>Sent to <strong>{smsResult.count}</strong> member{smsResult.count !== 1 ? "s" : ""}</>}
               </p>
             </div>
           )}
@@ -328,7 +436,7 @@ export default function MessagesPage() {
           {/* Send button */}
           <button
             onClick={() => { setSmsState("idle"); handleSendSMS(); }}
-            disabled={!smsBody.trim() || smsState === "sending"}
+            disabled={!smsBody.trim() || smsState === "sending" || (smsScheduleMode === "later" && !smsScheduleTime)}
             className="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl text-sm font-semibold transition-all active:scale-[0.98]"
             style={{
               backgroundColor: smsBody.trim() ? GOLD : "#1A1A1A",
@@ -337,8 +445,8 @@ export default function MessagesPage() {
             }}
           >
             {smsState === "sending"
-              ? <><Loader2 size={16} className="animate-spin" /> Sending…</>
-              : <><Send size={16} /> Send SMS to {smsTargetLabel}</>
+              ? <><Loader2 size={16} className="animate-spin" /> {smsScheduleMode === "later" ? "Scheduling…" : "Sending…"}</>
+              : <><Send size={16} /> {smsScheduleMode === "later" ? "Schedule SMS" : `Send SMS to ${smsTargetLabel}`}</>
             }
           </button>
           <div style={{ height: 8 }} />

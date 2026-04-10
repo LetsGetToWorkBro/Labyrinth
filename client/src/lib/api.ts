@@ -625,12 +625,13 @@ export type MessageTarget = "all" | "active" | "trials" | "failed";
 export async function adminSendEmail(
   subject: string,
   htmlBody: string,
-  target: MessageTarget
+  target: MessageTarget,
+  scheduledFor?: string // ISO string — GAS needs a scheduleBlast action for deferred sending
 ): Promise<{ success: boolean; sentCount?: number; errors?: string[]; error?: string }> {
   const token = getToken();
   if (!token) return { success: false, error: "Not authenticated" };
   try {
-    return await gasCall("sendMassEmail", { subject, htmlBody, target, token });
+    return await gasCall("sendMassEmail", { subject, htmlBody, target, token, ...(scheduledFor ? { scheduledFor } : {}) });
   } catch (err) {
     console.error("adminSendEmail failed:", err);
     return { success: false, error: "Connection error" };
@@ -639,12 +640,13 @@ export async function adminSendEmail(
 
 export async function adminSendSMS(
   message: string,
-  target: MessageTarget
+  target: MessageTarget,
+  scheduledFor?: string // ISO string — GAS needs a scheduleBlast action for deferred sending
 ): Promise<{ success: boolean; sentCount?: number; errors?: string[]; error?: string }> {
   const token = getToken();
   if (!token) return { success: false, error: "Not authenticated" };
   try {
-    return await gasCall("sendMassSMS", { message, target, token });
+    return await gasCall("sendMassSMS", { message, target, token, ...(scheduledFor ? { scheduledFor } : {}) });
   } catch (err) {
     console.error("adminSendSMS failed:", err);
     return { success: false, error: "Connection error" };

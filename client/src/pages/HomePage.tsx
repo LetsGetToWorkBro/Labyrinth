@@ -125,6 +125,20 @@ export default function HomePage() {
     else setSwitchError(result.error || "Failed to switch profile");
   };
 
+  // ─── Personalized greeting ─────────────────────────────────────────
+  const getGreeting = () => {
+    const hour = new Date().getHours();
+    let timeOfDay: string;
+    if (hour >= 5 && hour < 12) timeOfDay = "Good morning";
+    else if (hour >= 12 && hour < 18) timeOfDay = "Good afternoon";
+    else if (hour >= 18 && hour < 24) timeOfDay = "Good evening";
+    else timeOfDay = "Good night";
+    const firstName = member?.name?.split(" ")[0] || "Warrior";
+    return `${timeOfDay}, ${firstName} 👋`;
+  };
+
+  const streakCount = (member as any)?.currentStreak || 0;
+
   // ─── Logged-in home ───────────────────────────────────────────────
   const hasWarnings = !member.waiverSigned || !member.agreementSigned;
   const hasFamily = familyMembers.length > 1;
@@ -148,6 +162,13 @@ export default function HomePage() {
           </button>
         }
       />
+
+      {/* Personalized greeting */}
+      <div className="mx-5 mb-4">
+        <h1 className="text-xl font-bold" style={{ color: "#F0F0F0" }} data-testid="text-greeting">
+          {getGreeting()}
+        </h1>
+      </div>
 
       {/* Profile card */}
       <div className="mx-5 rounded-xl p-5 mb-4" style={{ backgroundColor: "#111", border: "1px solid #1A1A1A" }}>
@@ -269,6 +290,14 @@ export default function HomePage() {
         </div>
       </div>
 
+      {/* Animated flame pulse keyframes */}
+      <style>{`
+        @keyframes flamePulse {
+          0%, 100% { transform: scale(1); filter: drop-shadow(0 0 4px #C8A24C88); }
+          50% { transform: scale(1.15); filter: drop-shadow(0 0 10px #C8A24Ccc); }
+        }
+      `}</style>
+
       {/* Attendance streak widget */}
       <div style={{
         display: 'flex',
@@ -285,7 +314,11 @@ export default function HomePage() {
           alignItems: 'center',
           gap: 10,
         }}>
-          <span style={{ fontSize: 24 }}>🔥</span>
+          <span style={{
+            fontSize: 24,
+            display: 'inline-block',
+            ...(streakCount > 0 ? { animation: 'flamePulse 2s ease-in-out infinite' } : {}),
+          }}>🔥</span>
           <div>
             <div style={{ fontSize: 20, fontWeight: 700, color: '#C8A24C', lineHeight: 1 }}>
               {(member as any)?.currentStreak || 0}

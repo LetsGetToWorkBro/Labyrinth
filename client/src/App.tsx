@@ -20,13 +20,14 @@ import ChatPage from "@/pages/ChatPage";
 import GamesPage from "@/pages/GamesPage";
 import AdminPage from "@/pages/AdminPage";
 import MessagesPage from "@/pages/MessagesPage";
+import OnboardingPage from "@/pages/OnboardingPage";
 import NotFound from "@/pages/not-found";
 import {
   Home, MessageCircle, CalendarDays, MoreHorizontal, Award,
   Gamepad2, BarChart2, Trophy, Thermometer,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
-import { useEffect, useCallback, useState } from "react";
+import { useEffect, useCallback, useState, useRef } from "react";
 import { useHashLocation as useHashLoc } from "wouter/use-hash-location";
 import { Redirect } from "wouter";
 
@@ -174,19 +175,61 @@ function NavCustomizer() {
 
 function AccountPage() {
   const { member, logout, refreshProfile } = useAuth();
+  const [editing, setEditing] = useState(false);
+  const [editName, setEditName] = useState(member?.name || "");
   const [phone, setPhone] = useState(member?.phone || "");
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState("");
   const [, navigate] = useHashLoc();
 
+  // Profile picture state
+  const [profilePic, setProfilePic] = useState<string | null>(() => {
+    try { return localStorage.getItem("lbjj_profile_picture"); } catch { return null; }
+  });
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handlePhotoSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const canvas = document.createElement("canvas");
+    canvas.width = 200;
+    canvas.height = 200;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+    const img = new Image();
+    img.onload = () => {
+      // Center crop to square
+      const size = Math.min(img.width, img.height);
+      const sx = (img.width - size) / 2;
+      const sy = (img.height - size) / 2;
+      ctx.drawImage(img, sx, sy, size, size, 0, 0, 200, 200);
+      const base64 = canvas.toDataURL("image/jpeg", 0.8);
+      setProfilePic(base64);
+      try { localStorage.setItem("lbjj_profile_picture", base64); } catch { /* storage full */ }
+    };
+    img.src = URL.createObjectURL(file);
+  };
+
   const save = async () => {
     setSaving(true); setSaved(false); setError("");
     try {
-      const { memberUpdateProfile } = await import("@/lib/api");
-      await memberUpdateProfile(phone);
+      const { gasCall } = await import("@/lib/api");
+      // GAS stub: updateMemberProfile action — backend needs this action
+      await gasCall("updateMemberProfile", { memberEmail: member?.email, name: editName, phone });
+      // Update localStorage profile
+      const stored = localStorage.getItem("lbjj_member_profile");
+      if (stored) {
+        try {
+          const profile = JSON.parse(stored);
+          profile.Name = editName;
+          profile.Phone = phone;
+          localStorage.setItem("lbjj_member_profile", JSON.stringify(profile));
+        } catch { /* ignore parse error */ }
+      }
       await refreshProfile();
       setSaved(true);
+      setEditing(false);
       setTimeout(() => setSaved(false), 2000);
     } catch (e: any) {
       setError(e.message || "Failed to save");
@@ -206,67 +249,141 @@ function AccountPage() {
     <div className="app-content">
       <div className="px-5 pt-4 pb-3" style={{ paddingTop: "max(16px, env(safe-area-inset-top, 16px))", display: "flex", alignItems: "center", gap: 12 }}>
         <button onClick={() => navigate("/more")} style={{ background: "none", border: "none", padding: "4px 0", cursor: "pointer", color: "#C8A24C", fontWeight: 600, fontSize: 14 }}>
-          ← Back
+          &larr; Back
         </button>
         <h1 className="text-xl font-bold tracking-tight" style={{ color: "#F0F0F0", flex: 1 }}>My Account</h1>
       </div>
 
       <div className="px-5 pb-6 space-y-4">
-        {/* Avatar */}
-        <div style={{ display: "flex", justifyContent: "center", paddingTop: 8, paddingBottom: 4 }}>
-          <div style={{
-            width: 80, height: 80, borderRadius: "50%",
-            background: beltColor, color: ["white","yellow","grey"].includes((member?.belt||"").toLowerCase()) ? "#0A0A0A" : "#fff",
-            fontSize: 28, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center",
-            boxShadow: `0 0 0 4px ${beltColor}30, 0 0 30px ${beltColor}20`,
-          }}>
-            {initials}
+        {/* Avatar with photo support */}
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", paddingTop: 8, paddingBottom: 4 }}>
+          <div
+            style={{
+              width: 88, height: 88, borderRadius: "50%", overflow: "hidden",
+              background: profilePic ? "none" : beltColor,
+              color: ["white","yellow","grey"].includes((member?.belt||"").toLowerCase()) ? "#0A0A0A" : "#fff",
+              fontSize: 30, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center",
+              boxShadow: `0 0 0 4px ${beltColor}30, 0 0 30px ${beltColor}20`,
+              position: "relative",
+            }}
+          >
+            {profilePic ? (
+              <img src={profilePic} alt="Profile" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+            ) : (
+              initials
+            )}
           </div>
-        </div>
-
-        {/* Read-only fields */}
-        {[
-          { label: "Name",       value: member?.name  || "—" },
-          { label: "Email",      value: member?.email || "—" },
-          { label: "Belt",       value: (member?.belt  || "white").charAt(0).toUpperCase() + (member?.belt || "white").slice(1) + " Belt" },
-          { label: "Plan",       value: member?.plan  || member?.membership || "—" },
-          { label: "Member Since", value: member?.joinDate || (member as any)?.startDate || "—" },
-        ].map(f => (
-          <div key={f.label} style={{ backgroundColor: "#111", border: "1px solid #1A1A1A", borderRadius: 12, padding: "12px 16px" }}>
-            <p style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: "#555", margin: "0 0 4px" }}>{f.label}</p>
-            <p style={{ fontSize: 15, color: "#E0E0E0", margin: 0 }}>{f.value}</p>
-          </div>
-        ))}
-
-        {/* Editable phone */}
-        <div style={{ backgroundColor: "#111", border: "1px solid #1A1A1A", borderRadius: 12, padding: "12px 16px" }}>
-          <label style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: "#555", display: "block", marginBottom: 6 }}>
-            Phone
-          </label>
+          {/* Change Photo button */}
+          <button
+            onClick={() => fileInputRef.current?.click()}
+            style={{ marginTop: 10, fontSize: 12, fontWeight: 600, color: "#C8A24C", background: "none", border: "none", cursor: "pointer" }}
+          >
+            Change Photo
+          </button>
+          {/* Future enhancement: upload to GAS/Drive */}
           <input
-            type="tel"
-            value={phone}
-            onChange={e => setPhone(e.target.value)}
-            placeholder="+1 (555) 000-0000"
-            style={{ width: "100%", background: "none", border: "none", fontSize: 15, color: "#F0F0F0", outline: "none", padding: 0 }}
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            onChange={handlePhotoSelect}
+            style={{ display: "none" }}
           />
         </div>
 
-        {error && <p style={{ fontSize: 13, color: "#E05555", textAlign: "center" }}>{error}</p>}
+        {editing ? (
+          <>
+            {/* Editable name */}
+            <div style={{ backgroundColor: "#111", border: "1px solid #1A1A1A", borderRadius: 12, padding: "12px 16px" }}>
+              <label style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: "#555", display: "block", marginBottom: 6 }}>
+                Display Name
+              </label>
+              <input
+                type="text"
+                value={editName}
+                onChange={e => setEditName(e.target.value)}
+                style={{ width: "100%", background: "none", border: "none", fontSize: 15, color: "#F0F0F0", outline: "none", padding: 0 }}
+              />
+            </div>
 
-        <button
-          onClick={save}
-          disabled={saving}
-          style={{
-            width: "100%", padding: 14, borderRadius: 12,
-            background: saved ? "#4CAF80" : "#C8A24C",
-            color: "#0A0A0A", fontWeight: 700, fontSize: 15,
-            border: "none", cursor: "pointer", transition: "background 0.2s",
-            opacity: saving ? 0.7 : 1,
-          }}
-        >
-          {saving ? "Saving…" : saved ? "✓ Saved" : "Save Changes"}
-        </button>
+            {/* Editable phone */}
+            <div style={{ backgroundColor: "#111", border: "1px solid #1A1A1A", borderRadius: 12, padding: "12px 16px" }}>
+              <label style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: "#555", display: "block", marginBottom: 6 }}>
+                Phone
+              </label>
+              <input
+                type="tel"
+                value={phone}
+                onChange={e => setPhone(e.target.value)}
+                placeholder="+1 (555) 000-0000"
+                style={{ width: "100%", background: "none", border: "none", fontSize: 15, color: "#F0F0F0", outline: "none", padding: 0 }}
+              />
+            </div>
+
+            {/* Email (read-only) */}
+            <div style={{ backgroundColor: "#111", border: "1px solid #1A1A1A", borderRadius: 12, padding: "12px 16px" }}>
+              <p style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: "#555", margin: "0 0 4px" }}>Email <span style={{ color: "#444", fontSize: 9, fontWeight: 400 }}>(cannot be changed)</span></p>
+              <p style={{ fontSize: 15, color: "#999", margin: 0 }}>{member?.email || "\u2014"}</p>
+            </div>
+
+            {error && <p style={{ fontSize: 13, color: "#E05555", textAlign: "center" }}>{error}</p>}
+
+            <div style={{ display: "flex", gap: 10 }}>
+              <button
+                onClick={() => { setEditing(false); setEditName(member?.name || ""); setPhone(member?.phone || ""); setError(""); }}
+                style={{ flex: 1, padding: 14, borderRadius: 12, background: "#1A1A1A", color: "#999", fontWeight: 600, fontSize: 14, border: "none", cursor: "pointer" }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={save}
+                disabled={saving}
+                style={{
+                  flex: 2, padding: 14, borderRadius: 12,
+                  background: saved ? "#4CAF80" : "#C8A24C",
+                  color: "#0A0A0A", fontWeight: 700, fontSize: 15,
+                  border: "none", cursor: "pointer", transition: "background 0.2s",
+                  opacity: saving ? 0.7 : 1,
+                }}
+              >
+                {saving ? "Saving\u2026" : saved ? "\u2713 Saved" : "Save Changes"}
+              </button>
+            </div>
+          </>
+        ) : (
+          <>
+            {/* Read-only fields */}
+            {[
+              { label: "Name",       value: member?.name  || "\u2014" },
+              { label: "Email",      value: member?.email || "\u2014" },
+              { label: "Belt",       value: (member?.belt  || "white").charAt(0).toUpperCase() + (member?.belt || "white").slice(1) + " Belt" },
+              { label: "Plan",       value: member?.plan  || member?.membership || "\u2014" },
+              { label: "Phone",      value: member?.phone || "Not set" },
+              { label: "Member Since", value: member?.joinDate || (member as any)?.startDate || "\u2014" },
+            ].map(f => (
+              <div key={f.label} style={{ backgroundColor: "#111", border: "1px solid #1A1A1A", borderRadius: 12, padding: "12px 16px" }}>
+                <p style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: "#555", margin: "0 0 4px" }}>{f.label}</p>
+                <p style={{ fontSize: 15, color: "#E0E0E0", margin: 0 }}>{f.value}</p>
+              </div>
+            ))}
+
+            {saved && (
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, padding: "10px", borderRadius: 10, backgroundColor: "rgba(76,175,128,0.1)" }}>
+                <span style={{ color: "#4CAF80", fontSize: 13, fontWeight: 600 }}>\u2713 Profile updated successfully</span>
+              </div>
+            )}
+
+            <button
+              onClick={() => { setEditing(true); setEditName(member?.name || ""); setPhone(member?.phone || ""); }}
+              style={{
+                width: "100%", padding: 14, borderRadius: 12,
+                background: "#C8A24C", color: "#0A0A0A", fontWeight: 700, fontSize: 15,
+                border: "none", cursor: "pointer",
+              }}
+            >
+              Edit Profile
+            </button>
+          </>
+        )}
 
         <div style={{ borderTop: "1px solid #1A1A1A", paddingTop: 16, marginTop: 8 }}>
           <button
@@ -493,11 +610,22 @@ function AppShell() {
     );
   }
 
+  // Redirect to onboarding if first login (no onboarding completed)
+  const needsOnboarding = !localStorage.getItem("lbjj_onboarding_complete") && !location.startsWith("/onboarding");
+  if (needsOnboarding) {
+    return (
+      <div className="app-shell">
+        <OnboardingPage />
+      </div>
+    );
+  }
+
   return (
     <div className="app-shell">
       <AdminShortcut />
       <Switch>
         <Route path="/"          component={HomePage} />
+        <Route path="/onboarding" component={OnboardingPage} />
         <Route path="/calendar"  component={CalendarPage} />
         <Route path="/stats"     component={StatsPage} />
         <Route path="/belt"      component={BeltJourneyPage} />
