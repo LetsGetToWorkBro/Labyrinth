@@ -7,7 +7,7 @@ import { Clock, ChevronRight, X, User, CheckCircle } from "lucide-react";
 
 const CLASS_DURATIONS: Record<string, string> = {
   default: "1 hour",
-  "Kids BJJ (3–6)": "45 min",
+  "Kids BJJ (3–6)": "30 min",
   "Kids BJJ Comp": "1 hour",
   "Kids BJJ (7–12)": "1 hour",
   "Adult Comp": "1.5 hours",
@@ -20,7 +20,7 @@ function getDuration(name: string): string {
 
 const CLASS_DURATION_MINUTES: Record<string, number> = {
   default: 60,
-  "Kids BJJ (3–6)": 45,
+  "Kids BJJ (3–6)": 30,
   "Kids BJJ Comp": 60,
   "Kids BJJ (7–12)": 60,
   "Adult Comp": 90,
