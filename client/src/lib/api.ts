@@ -1,11 +1,25 @@
 // Labyrinth BJJ API Service Layer
 // All API calls go through a single Google Apps Script endpoint
+// The endpoint is dynamic — set per selected location at login
 
-const GAS_ENDPOINT = "https://script.google.com/macros/s/AKfycbwkxkV6XlqKy3DDot_MTfb40WeAfd6KMgBwgcrCNStEFM5vcAQNYG9eR2OOFpCwJ3AJ/exec";
+import { getActiveGasUrl, getSavedLocationId, saveLocationId } from "./locations";
 
 // GAS cold-starts take ~22s — timeout must clear that
 const GAS_TIMEOUT_MS = 35000;
 const GAS_MAX_RETRIES = 2;
+
+// Active GAS endpoint — updates when user selects a location
+let _gasEndpoint: string = getActiveGasUrl(getSavedLocationId());
+
+/** Called when user picks a location on the login screen */
+export function setActiveLocation(locationId: string): void {
+  saveLocationId(locationId);
+  _gasEndpoint = getActiveGasUrl(locationId);
+}
+
+export function getActiveLocationId(): string {
+  return getSavedLocationId();
+}
 
 // CSV endpoints for public data
 const SHEET_BASE = "https://docs.google.com/spreadsheets/d/1rUtzsV6l1fHcgYuCjaqCh-oG2XosggrW1el3aqaDOME/gviz/tq?tqx=out:csv";
@@ -187,7 +201,7 @@ export async function gasCall(action: string, payload: Record<string, any> = {},
     let response: Response;
     if (isLarge) {
       // POST as text/plain — GAS reads via e.postData.contents
-      response = await fetch(GAS_ENDPOINT, {
+      response = await fetch(_gasEndpoint, {
         method: "POST",
         headers: { "Content-Type": "text/plain" },
         body: jsonPayload,
@@ -195,7 +209,7 @@ export async function gasCall(action: string, payload: Record<string, any> = {},
         signal: controller.signal,
       });
     } else {
-      const url = `${GAS_ENDPOINT}?action=${encodeURIComponent(action)}&payload=${encodeURIComponent(jsonPayload)}`;
+      const url = `${_gasEndpoint}?action=${encodeURIComponent(action)}&payload=${encodeURIComponent(jsonPayload)}`;
       response = await fetch(url, { method: "GET", redirect: "follow", signal: controller.signal });
     }
 
@@ -320,7 +334,7 @@ export async function bookTrialClass(data: {
   className: string; classDay: string; classTime: string; classDate: string;
 }): Promise<any> {
   const encodedPayload = encodeURIComponent(JSON.stringify(data));
-  const url = `${GAS_ENDPOINT}?payload=${encodedPayload}`;
+  const url = `${_gasEndpoint}?payload=${encodedPayload}`;
   const response = await fetch(url, { method: "GET", redirect: "follow" });
   return response.json();
 }

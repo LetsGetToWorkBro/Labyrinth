@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, useCallback } from "react";
 import type { MemberProfile, FamilyMember } from "./api";
-import { setToken, setMemberData, clearAuth, memberLogin as apiLogin, memberGetProfile, memberSwitchProfile as apiSwitchProfile } from "./api";
+import { setToken, setMemberData, clearAuth, memberLogin as apiLogin, memberGetProfile, memberSwitchProfile as apiSwitchProfile, setActiveLocation } from "./api";
+import { getSavedLocationId } from "./locations";
 
 interface AuthContextType {
   isAuthenticated: boolean;
@@ -26,6 +27,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const login = useCallback(async (email: string, password: string) => {
     try {
+      // Ensure the correct location endpoint is set before logging in
+      setActiveLocation(getSavedLocationId());
       const result = await apiLogin(email, password);
       if (result.success && result.token && result.member) {
         setToken(result.token);
