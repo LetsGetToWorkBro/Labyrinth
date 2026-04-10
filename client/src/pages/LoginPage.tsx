@@ -9,6 +9,12 @@ type Screen = "location" | "login" | "request";
 
 const GOLD = "#C8A24C";
 
+// Rate-limit tracking for Request Access submissions (module-level, persists across re-renders)
+const requestAccessAttempts: number[] = [];
+
+const SUSPICIOUS_NAMES = ['test', 'audit', 'demo', 'fake', 'sample', 'trial user', 'test user'];
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
 export default function LoginPage() {
   const { login } = useAuth();
 
@@ -45,6 +51,7 @@ export default function LoginPage() {
   const [reqLoading, setReqLoading] = useState(false);
   const [reqError, setReqError]     = useState("");
   const [reqSent, setReqSent]       = useState(false);
+  const [honeypot, setHoneypot]     = useState("");
 
   const selectLocation = (loc: Location) => {
     setSelectedLocationId(loc.id);
@@ -77,7 +84,34 @@ export default function LoginPage() {
 
   const handleRequest = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!reqName || !reqEmail) { setReqError("Name and email are required"); return; }
+
+    // Honeypot check — bots fill hidden fields, silently "succeed"
+    if (honeypot) {
+      setReqName(''); setReqEmail(''); setReqNote('');
+      setReqSent(true);
+      return;
+    }
+
+    // Input validation
+    if (!reqName || reqName.trim().length < 2) { setReqError("Name must be at least 2 characters"); return; }
+    if (!reqEmail || !EMAIL_REGEX.test(reqEmail.trim())) { setReqError("Please enter a valid email address"); return; }
+
+    // Suspicious name filter — silently "succeed"
+    if (SUSPICIOUS_NAMES.some(s => reqName.toLowerCase().includes(s))) {
+      setReqName(''); setReqEmail(''); setReqNote('');
+      setReqSent(true);
+      return;
+    }
+
+    // Client-side rate limit — max 2 submissions per 5 minutes
+    const now = Date.now();
+    const recentAttempts = requestAccessAttempts.filter(t => now - t < 5 * 60 * 1000);
+    if (recentAttempts.length >= 2) {
+      setReqError("Too many requests. Please wait a few minutes before trying again.");
+      return;
+    }
+    requestAccessAttempts.push(now);
+
     setReqLoading(true);
     setReqError("");
     try {
@@ -288,6 +322,16 @@ export default function LoginPage() {
               {/* ── Request Access ── */}
               {screen === "request" && !reqSent && (
                 <form onSubmit={handleRequest} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+                  {/* Honeypot — hidden from humans, bots fill it */}
+                  <input
+                    type="text"
+                    name="website"
+                    value={honeypot}
+                    onChange={e => setHoneypot(e.target.value)}
+                    style={{ opacity: 0, position: 'absolute', top: 0, left: 0, height: 0, width: 0, zIndex: -1 }}
+                    tabIndex={-1}
+                    autoComplete="off"
+                  />
                   <p style={{ fontSize: 13, color: "#888", margin: "0 0 4px", lineHeight: 1.5 }}>
                     Already a member at {selectedLocation.short}? Submit your info and we'll connect your account.
                   </p>
