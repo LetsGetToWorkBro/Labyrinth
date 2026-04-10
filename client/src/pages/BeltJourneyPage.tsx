@@ -473,6 +473,7 @@ export default function BeltJourneyPage() {
             onSave={addPromotion}
             onCancel={resetForm}
           />
+          <div style={{ height: 'max(80px, calc(env(safe-area-inset-bottom, 0px) + 80px))' }} />
         </div>
       ) : (
         <div className="mx-5 mb-6">

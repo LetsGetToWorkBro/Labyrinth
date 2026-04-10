@@ -273,7 +273,10 @@ function ClassCard({ cls, isToday }: { cls: ClassScheduleItem; isToday: boolean 
             style={{
               position: "relative", width: "100%",
               background: "#111", borderRadius: "20px 20px 0 0",
-              padding: "24px 20px 44px", borderTop: "1px solid #1A1A1A",
+              padding: "24px 20px 0", borderTop: "1px solid #1A1A1A",
+              maxHeight: "80vh",
+              overflowY: "auto",
+              paddingBottom: "max(80px, calc(env(safe-area-inset-bottom, 0px) + 80px))",
             }}
           >
             {/* Handle bar */}
