@@ -21,6 +21,11 @@ import GamesPage from "@/pages/GamesPage";
 import AdminPage from "@/pages/AdminPage";
 import MessagesPage from "@/pages/MessagesPage";
 import NotFound from "@/pages/not-found";
+import {
+  Home, MessageCircle, CalendarDays, MoreHorizontal, Award,
+  ShieldCheck, Send, Gamepad2, BarChart2, Trophy, Thermometer,
+} from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import { useEffect, useCallback, useState } from "react";
 import { useHashLocation as useHashLoc } from "wouter/use-hash-location";
 
@@ -28,18 +33,24 @@ import { useHashLocation as useHashLoc } from "wouter/use-hash-location";
 
 const NAV_STORAGE_KEY = 'lbjj_nav_config_v1';
 
-type NavOption = { path: string; label: string; emoji: string };
+// Each option maps to a Lucide icon (or null = use emoji fallback)
+type NavOption = {
+  path: string;
+  label: string;
+  Icon: LucideIcon | null;
+  emoji: string; // fallback when no Lucide icon
+};
 
 const ALL_NAV_OPTIONS: NavOption[] = [
-  { path: '/',         label: 'Home',     emoji: '🏠' },
-  { path: '/chat',     label: 'Chat',     emoji: '💬' },
-  { path: '/belt',     label: 'Belts',    emoji: '🥋' },
-  { path: '/schedule', label: 'Schedule', emoji: '⏰' },
-  { path: '/more',     label: 'More',     emoji: '⋯'  },
-  { path: '/games',    label: 'Games',    emoji: '🎮' },
-  { path: '/stats',    label: 'Stats',    emoji: '📊' },
-  { path: '/calendar', label: 'Events',   emoji: '🏆' },
-  { path: '/sauna',    label: 'Sauna',    emoji: '🧖' },
+  { path: '/',         label: 'Home',     Icon: Home,           emoji: '🏠' },
+  { path: '/chat',     label: 'Chat',     Icon: MessageCircle,  emoji: '💬' },
+  { path: '/belt',     label: 'Belts',    Icon: Award,          emoji: '🥋' },
+  { path: '/schedule', label: 'Schedule', Icon: CalendarDays,   emoji: '📅' },
+  { path: '/more',     label: 'More',     Icon: MoreHorizontal, emoji: '⋯'  },
+  { path: '/games',    label: 'Games',    Icon: Gamepad2,       emoji: '🎮' },
+  { path: '/stats',    label: 'Stats',    Icon: BarChart2,      emoji: '📊' },
+  { path: '/calendar', label: 'Events',   Icon: Trophy,         emoji: '🏆' },
+  { path: '/sauna',    label: 'Sauna',    Icon: Thermometer,    emoji: '🧖' },
 ];
 
 const DEFAULT_NAV_PATHS = ['/', '/chat', '/belt', '/schedule', '/more'];
@@ -76,25 +87,26 @@ function TabBar() {
   const hiddenPaths = ["/waiver", "/book"];
   if (hiddenPaths.some(p => location.startsWith(p))) return null;
 
-  // Build tab list from config
+  // Build tab list from saved paths
   const tabs = navPaths.map(path => {
     const opt = ALL_NAV_OPTIONS.find(o => o.path === path) || ALL_NAV_OPTIONS[0];
     return opt;
   });
 
-  // Always include admin tabs at end if admin
-  const adminTabs = isAdmin ? [
-    { path: '/messages', label: 'Blast', emoji: '📨' },
-    { path: '/admin',    label: 'Admin', emoji: '🛡️' },
+  // Admin tabs always appended at end
+  const adminExtras: NavOption[] = isAdmin ? [
+    { path: '/messages', label: 'Blast', Icon: Send,        emoji: '📨' },
+    { path: '/admin',    label: 'Admin', Icon: ShieldCheck, emoji: '🛡️' },
   ] : [];
 
-  const allTabs = [...tabs, ...adminTabs];
+  const allTabs = [...tabs, ...adminExtras];
 
   return (
     <nav className="tab-bar" data-testid="tab-bar">
       {allTabs.map(tab => {
         const isActive = tab.path === '/' ? location === '/' : location.startsWith(tab.path);
         const isAdminTab = tab.path === '/admin' || tab.path === '/messages';
+        const Icon = tab.Icon;
         return (
           <a
             key={tab.path + tab.label}
@@ -103,7 +115,10 @@ function TabBar() {
             data-testid={`tab-${tab.label.toLowerCase()}`}
             style={isAdminTab ? { color: isActive ? '#C8A24C' : '#888' } : undefined}
           >
-            <span style={{ fontSize: 20 }}>{tab.emoji}</span>
+            {Icon
+              ? <Icon size={22} strokeWidth={isActive ? 2.2 : 1.5} />
+              : <span style={{ fontSize: 20, lineHeight: 1 }}>{tab.emoji}</span>
+            }
             <span>{tab.label}</span>
           </a>
         );
@@ -154,7 +169,7 @@ function NavCustomizer() {
             </div>
           ))}
           <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
-            <button onClick={() => { setSlots([...DEFAULT_NAV_PATHS]); }} style={{ flex: 1, padding: '8px', background: 'transparent', border: '1px solid #333', borderRadius: 8, color: '#666', fontSize: 12, cursor: 'pointer' }}>Reset</button>
+            <button onClick={() => setSlots([...DEFAULT_NAV_PATHS])} style={{ flex: 1, padding: '8px', background: 'transparent', border: '1px solid #333', borderRadius: 8, color: '#666', fontSize: 12, cursor: 'pointer' }}>Reset</button>
             <button onClick={apply} style={{ flex: 2, padding: '8px', background: '#C8A24C', border: 'none', borderRadius: 8, color: '#0A0A0A', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>Apply</button>
           </div>
         </div>
@@ -250,7 +265,6 @@ function AdminShortcut() {
 function AppShell() {
   const { isAuthenticated } = useAuth();
 
-  // Not logged in → always show the full-screen login
   if (!isAuthenticated) {
     return (
       <div className="app-shell">
@@ -259,7 +273,6 @@ function AppShell() {
     );
   }
 
-  // Logged in → full app
   return (
     <div className="app-shell">
       <AdminShortcut />

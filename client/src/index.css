@@ -515,3 +515,8 @@
     background-color: var(--elevate-2);
   }
 }
+
+/* Hide bottom nav during active game */
+body[data-game-active="true"] .tab-bar {
+  display: none;
+}

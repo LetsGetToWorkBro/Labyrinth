@@ -47,6 +47,16 @@ function GamesPage() {
     setView('game');
   };
 
+  // Hide tab bar during active game by setting a body attribute
+  useEffect(() => {
+    if (view === 'game') {
+      document.body.setAttribute('data-game-active', 'true');
+    } else {
+      document.body.removeAttribute('data-game-active');
+    }
+    return () => document.body.removeAttribute('data-game-active');
+  }, [view]);
+
   const handleGameEnd = useCallback((result: GameResult) => {
     addRecord({
       game: 'bjj',
@@ -85,15 +95,13 @@ function GamesPage() {
   }
 
   return (
-    <div style={{ position: 'fixed', inset: 0, zIndex: 100, background: '#0A0A0A', overflow: 'hidden' }}>
-      <BJJChessGame
-        difficulty={gameDifficulty}
-        rank={rank}
-        wins={stats.wins}
-        onGameEnd={handleGameEnd}
-        onExit={() => setView('hub')}
-      />
-    </div>
+    <BJJChessGame
+      difficulty={gameDifficulty}
+      rank={rank}
+      wins={stats.wins}
+      onGameEnd={handleGameEnd}
+      onExit={() => setView('hub')}
+    />
   );
 }
 
