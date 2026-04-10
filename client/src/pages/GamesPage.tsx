@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
-import logoImg from '@assets/logo-maze.webp';
+import logoImg from '@assets/maze-gold-md.png';
 import posStanding from '@assets/pos-standing.png';
 import posGuardTop from '@assets/pos-guard-top.png';
 import posGuardBottom from '@assets/pos-guard-bottom.png';
@@ -144,7 +144,8 @@ function GamesHub({ stats, rank, nextRank, onPlay, onStartGame, showDifficulty, 
       display: 'flex', flexDirection: 'column', background: '#0A0A0A',
       paddingTop: 'env(safe-area-inset-top, 0px)',
       paddingBottom: 'calc(64px + env(safe-area-inset-bottom, 0px))',
-    }}>
+    }}
+    className="app-page-fill">
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px 20px 8px', gap: 10 }}>
         <img src={logoImg} alt="Labyrinth" style={{ height: 26, opacity: 0.9 }} />
@@ -279,7 +280,7 @@ function GamesHub({ stats, rank, nextRank, onPlay, onStartGame, showDifficulty, 
 
       {/* ── Leaderboard tab ── */}
       {hubTab === 'leaderboard' && (
-        <div style={{ margin: '0 16px' }}>
+        <div style={{ margin: '0 16px', flex: 1, display: 'flex', flexDirection: 'column' }}>
           <div style={{ color: '#666', fontSize: 11, fontWeight: 600, marginBottom: 10, textTransform: 'uppercase', letterSpacing: 1 }}>
             Gym Leaderboard
           </div>

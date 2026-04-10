@@ -14,7 +14,7 @@ import { BeltIcon } from "@/components/BeltIcon";
 import { useAuth } from "@/lib/auth-context";
 import { chatGetMessages, chatSendMessage, chatGetChannels, type ChatMessage, type ChatChannel } from "@/lib/api";
 import { getRankProfile } from "@/lib/chat-data";
-import logoMaze from "@assets/logo-maze.webp";
+import logoMaze from "@assets/maze-gold-md.png";
 import {
   Send, ArrowLeft, Lock, Users, Hash, ChevronRight,
   Shield, Crown, MessageCircle, Megaphone, Loader2, RefreshCw,
