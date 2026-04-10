@@ -143,11 +143,11 @@ export default function HomePage() {
   const hasWarnings = !member.waiverSigned || !member.agreementSigned;
   const hasFamily = familyMembers.length > 1;
   const joinDate = (() => {
-    const d = member.joinDate || (member as any)?.startDate || (member as any)?.memberSince || (member as any)?.StartDate || (member as any)?.start_date || (member as any)?.['Start Date'];
-    if (!d) return '—';
+    const d = member.joinDate || (member as any)?.startDate || (member as any)?.StartDate || (member as any)?.memberSince || (member as any)?.['Start Date'] || (member as any)?.CreatedAt;
+    if (!d) return 'Charter Member';
     try {
-      return new Date(d).toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
-    } catch { return d; }
+      return new Date(d).toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+    } catch { return 'Charter Member'; }
   })();
 
   const defaultCard = cards.find(c => c.isDefault) || cards[0];

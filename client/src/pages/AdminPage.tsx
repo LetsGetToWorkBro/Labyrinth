@@ -226,8 +226,9 @@ function MembersTab() {
   // Belt distribution derived from filtered list
   const beltDist: Record<string, number> = {};
   members.forEach(m => {
-    const b = m.Belt || "White";
-    beltDist[b] = (beltDist[b] || 0) + 1;
+    const b = (m.Belt || "White").trim();
+    const normalized = b.charAt(0).toUpperCase() + b.slice(1).toLowerCase();
+    beltDist[normalized] = (beltDist[normalized] || 0) + 1;
   });
 
   const startEdit = (m: AdminMember) => {
@@ -377,6 +378,21 @@ function MembersTab() {
   );
 }
 
+// ─── Trial status auto-age ────────────────────────────────────────
+
+function getTrialStatus(booking: any): string {
+  const raw = booking.status || booking.Status || 'New';
+  if (raw.toLowerCase() !== 'new') return raw;
+
+  const dateStr = booking.date || booking.Date || booking.createdAt || booking.timestamp;
+  if (!dateStr) return raw;
+
+  const daysOld = (Date.now() - new Date(dateStr).getTime()) / (1000 * 60 * 60 * 24);
+  if (daysOld > 14) return 'Stale';
+  if (daysOld > 7) return 'Follow Up';
+  return 'New';
+}
+
 // ─── Trials Tab ────────────────────────────────────────────────────
 
 function TrialsTab() {
@@ -418,7 +434,7 @@ function TrialsTab() {
                   {b.phone && <p style={{ fontSize: 11, color: "#555", margin: "1px 0 0" }}>{b.phone}</p>}
                 </div>
                 <div style={{ textAlign: "right", flexShrink: 0, marginLeft: 10 }}>
-                  <StatusBadge status={b.status || "New"} />
+                  <StatusBadge status={getTrialStatus(b)} />
                   <p style={{ fontSize: 11, color: "#555", margin: "4px 0 0" }}>{b.date ? new Date(b.date).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" }) : ""}</p>
                 </div>
               </div>
@@ -590,6 +606,7 @@ function StatusBadge({ status }: { status: string }) {
   const colors: Record<string, string> = {
     Active: "#4CAF80", Trial: "#E08228", Paused: "#3B9EFF",
     Failed: "#E05555", Cancelled: "#666", New: "#E08228", Confirmed: "#4CAF80",
+    'Follow Up': "#E08228", Stale: "#555",
   };
   const c = colors[status] || "#888";
   return (

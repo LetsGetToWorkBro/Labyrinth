@@ -358,7 +358,11 @@ function AccountPage() {
               { label: "Belt",       value: (member?.belt  || "white").charAt(0).toUpperCase() + (member?.belt || "white").slice(1) + " Belt" },
               { label: "Plan",       value: member?.plan  || member?.membership || "\u2014" },
               { label: "Phone",      value: member?.phone || "Not set" },
-              { label: "Member Since", value: member?.joinDate || (member as any)?.startDate || "\u2014" },
+              { label: "Member Since", value: (() => {
+                const d = member?.joinDate || (member as any)?.startDate || (member as any)?.StartDate || (member as any)?.memberSince || (member as any)?.['Start Date'] || (member as any)?.CreatedAt;
+                if (!d) return 'Charter Member';
+                try { return new Date(d).toLocaleDateString('en-US', { month: 'long', year: 'numeric' }); } catch { return 'Charter Member'; }
+              })() },
             ].map(f => (
               <div key={f.label} style={{ backgroundColor: "#111", border: "1px solid #1A1A1A", borderRadius: 12, padding: "12px 16px" }}>
                 <p style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: "#555", margin: "0 0 4px" }}>{f.label}</p>
