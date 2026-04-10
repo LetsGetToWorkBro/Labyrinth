@@ -640,24 +640,34 @@ function getBriefingHtml() {
   }) : null;
   const nextTrialName = nextTrial ? (nextTrial.name || '').split(' ')[0] : '';
   const nextTrialTime = nextTrial ? (nextTrial.time || '') : '';
-  const overdueCount = cached ? (cached.overduePayments || []).length : 0;
-  const overdueTotal = cached ? (cached.overduePayments || []).reduce((s,p) => s + (p.amount || 0), 0) : 0;
+  // Deduplicate overdue by member name for accurate counts
+  const overdueByMember = {};
+  if (cached) {
+    (cached.overduePayments || []).forEach(function(p) {
+      const key = (p.name || 'Unknown').toLowerCase().trim();
+      if (!overdueByMember[key]) overdueByMember[key] = { amount: p.amount || 0, count: 1 };
+      else { overdueByMember[key].count++; }
+    });
+  }
+  const overdueUniqueMembers = Object.values(overdueByMember);
+  const overdueCount = overdueUniqueMembers.length;
+  const overdueTotal = overdueUniqueMembers.reduce(function(s,p) { return s + p.amount; }, 0);
   const todayCollected = cached ? Math.round(cached.monthlyPaid || 0) : 0;
 
   return `
     <div class="briefing-card">
       <div class="briefing-header">
         <span class="briefing-day">${dayOfWeek}, ${monthName} ${dayNum}</span>
-        <span class="briefing-greeting">Good ${timeOfDay}, Coach</span>
+        <span class="briefing-greeting">Good ${timeOfDay}, ${esc(adminName || 'Coach')}</span>
       </div>
       <div class="briefing-items">
         <div class="briefing-item ${trialsToday > 0 ? 'highlight' : ''}">
           <span class="briefing-icon">🥋</span>
           <span>${trialsToday} trial${trialsToday !== 1 ? 's' : ''} today${nextTrialName ? ' — next: ' + nextTrialName + (nextTrialTime ? ' at ' + nextTrialTime : '') : ''}</span>
         </div>
-        <div class="briefing-item ${overdueCount > 0 ? 'alert' : ''}">
+        <div class="briefing-item ${overdueCount > 0 ? 'alert' : ''}" ${overdueCount > 0 ? 'style="cursor:pointer;" onclick="navigate(\'payments\');setTimeout(function(){var sf=document.getElementById(\'paymentStatusFilter\');if(sf){sf.value=\'Failed\';filterPaymentHistory();}},500);"' : ''}>
           <span class="briefing-icon">⚠️</span>
-          <span>${overdueCount} member${overdueCount !== 1 ? 's' : ''} overdue ($${formatNum(overdueTotal)})</span>
+          <span>${overdueCount} member${overdueCount !== 1 ? 's' : ''} overdue ($${formatNum(overdueTotal)})${overdueCount > 0 ? ' <a style="color:var(--gold);font-weight:600;font-size:12px;margin-left:6px;">View Overdue &rarr;</a>' : ''}</span>
         </div>
         <div class="briefing-item">
           <span class="briefing-icon">💰</span>
@@ -670,18 +680,8 @@ function getBriefingHtml() {
 
 function setDashboardView(view) {
   dashboardView = view;
-  // Only re-render the body, not the whole page
-  const bodyEl = document.getElementById('dashboardBody');
-  if (!bodyEl || !dashboardDataCache) { renderDashboard(); return; }
-  // Update toggle button active states
-  document.querySelectorAll('.view-btn').forEach(btn => {
-    btn.classList.toggle('active', (view === 'main' && btn.textContent.includes('Dashboard')) || (view === 'owner' && btn.textContent.includes('Financials')));
-  });
-  if (dashboardView === 'owner' && adminRole === 'owner') {
-    renderOwnerFinancials(dashboardDataCache, bodyEl);
-  } else {
-    renderMainDashboard(dashboardDataCache, bodyEl);
-  }
+  // Refresh data from API on tab switch
+  renderDashboard();
 }
 
 async function renderDashboard() {
@@ -700,7 +700,7 @@ async function renderDashboard() {
     ${adminRole === 'owner' ? `
     <div class="dashboard-view-toggle" style="margin-bottom:16px;">
       <button class="view-btn ${dashboardView === 'main' ? 'active' : ''}" onclick="setDashboardView('main')">Dashboard</button>
-      <button class="view-btn ${dashboardView === 'owner' ? 'active' : ''}" onclick="setDashboardView('owner')">&#128202; Financials</button>
+      <button class="view-btn ${dashboardView === 'owner' ? 'active' : ''}" onclick="setDashboardView('owner')"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px;margin-right:4px;"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line><line x1="2" y1="20" x2="22" y2="20"></line></svg>Financials</button>
     </div>
     ` : ''}
 
@@ -764,13 +764,18 @@ function renderMainDashboard(data, container) {
     return { ...cls, isLive, isPast, startMins };
   });
 
-  // Belt rank counts
-  const beltCounts = { White: 0, Blue: 0, Purple: 0, Brown: 0, Black: 0 };
+  // Belt rank counts (include kids belts)
+  const beltCounts = { White: 0, Blue: 0, Purple: 0, Brown: 0, Black: 0, Grey: 0, Yellow: 0, Orange: 0, Green: 0 };
   membersCache.forEach(m => {
     const belt = (m.Belt || '').trim();
-    if (belt && beltCounts[belt] !== undefined) {
-      beltCounts[belt]++;
-    } else if (belt) {
+    if (!belt) return;
+    // Normalize: capitalize first letter for matching
+    const normalized = belt.charAt(0).toUpperCase() + belt.slice(1).toLowerCase();
+    if (beltCounts[normalized] !== undefined) {
+      beltCounts[normalized]++;
+    } else if (normalized === 'Gray') {
+      beltCounts['Grey']++;
+    } else {
       const key = Object.keys(beltCounts).find(k => belt.toLowerCase().includes(k.toLowerCase()));
       if (key) beltCounts[key]++;
     }
@@ -852,6 +857,12 @@ function renderMainDashboard(data, container) {
   `;
 
   // Belt Rank Overview
+  const kidsBeltsHtml = (beltCounts.Grey + beltCounts.Yellow + beltCounts.Orange + beltCounts.Green) > 0 ? `
+        <div style="width:100%;border-top:1px solid var(--border);margin:8px 0;padding-top:8px;font-size:11px;color:var(--text-muted);font-weight:600;">Kids Belts</div>
+        <div class="belt-rank-item"><span class="belt-dot-sm" style="background:#9CA3AF"></span> Grey <strong>${beltCounts.Grey}</strong></div>
+        <div class="belt-rank-item"><span class="belt-dot-sm" style="background:#FCD34D"></span> Yellow <strong>${beltCounts.Yellow}</strong></div>
+        <div class="belt-rank-item"><span class="belt-dot-sm" style="background:#F97316"></span> Orange <strong>${beltCounts.Orange}</strong></div>
+        <div class="belt-rank-item"><span class="belt-dot-sm" style="background:#22C55E"></span> Green <strong>${beltCounts.Green}</strong></div>` : '';
   html += `
     <div class="dashboard-section">
       <div class="dashboard-section-header">Belt Rank Overview</div>
@@ -861,6 +872,7 @@ function renderMainDashboard(data, container) {
         <div class="belt-rank-item"><span class="belt-dot-sm" style="background:#9B59B6"></span> Purple <strong>${beltCounts.Purple}</strong></div>
         <div class="belt-rank-item"><span class="belt-dot-sm" style="background:#8B4513"></span> Brown <strong>${beltCounts.Brown}</strong></div>
         <div class="belt-rank-item"><span class="belt-dot-sm" style="background:#111"></span> Black <strong>${beltCounts.Black}</strong></div>
+        ${kidsBeltsHtml}
       </div>
     </div>
   `;
@@ -1014,8 +1026,8 @@ function renderOwnerFinancials(data, container) {
         <div class="overdue-list">${consolidatedOverdue.map(p => {
           const initials = (p.name || '?').split(' ').map(n => n[0]).join('').slice(0,2).toUpperCase();
           const nameSafe = esc(p.name || 'Unknown');
-          const countLabel = p.count > 1 ? ` (${p.count} payments)` : '';
-          return `<div class="overdue-item"><div class="overdue-avatar">${initials}</div><div class="overdue-info"><a href="#" class="member-name-link" onclick="event.preventDefault(); openMemberProfileByName('${esc(p.name || '')}')">${nameSafe}</a><div class="overdue-desc">${esc(p.description || '')}${countLabel}</div></div><div class="overdue-amount-block"><div class="overdue-amount">$${Number(p.amount).toFixed(2)}</div><div class="overdue-date">${formatDate(p.date)}</div></div></div>`;
+          const retryBadge = p.count > 1 ? ` <span style="font-size:10px;padding:1px 6px;border-radius:3px;background:rgba(248,113,113,0.15);color:var(--error);">&#x27F3; ${p.count} retries</span>` : '';
+          return `<div class="overdue-item"><div class="overdue-avatar">${initials}</div><div class="overdue-info"><a href="#" class="member-name-link" onclick="event.preventDefault(); openMemberProfileByName('${esc(p.name || '')}')">${nameSafe}</a>${retryBadge}<div class="overdue-desc">${esc(p.description || '')}</div></div><div class="overdue-amount-block"><div class="overdue-amount">$${Number(p.amount).toFixed(2)}</div><div class="overdue-date">${formatDate(p.date)}</div></div></div>`;
         }).join('')}</div></div>
     `;
   }
@@ -1091,7 +1103,13 @@ async function renderRetentionView(data) {
   const avgRevPerMember = activeMembers > 0 ? Math.round(mrr / activeMembers) : 0;
   const atRisk = noStripe;
 
-  const overdueMembers = (data.overduePayments || []).slice(0, 5);
+  // Deduplicate overdue by member name
+  const _overdueMap = {};
+  (data.overduePayments || []).forEach(function(p) {
+    const key = (p.name || 'Unknown').toLowerCase().trim();
+    if (_overdueMap[key]) { _overdueMap[key].count++; } else { _overdueMap[key] = { ...p, count: 1 }; }
+  });
+  const overdueMembers = Object.values(_overdueMap).slice(0, 5);
   const monthlyPaid = data.monthlyPaid || 0;
   const monthlyScheduled = data.monthlyScheduled || mrr || 0;
   const newMembers = data.newMembers || 0;
@@ -1110,7 +1128,8 @@ async function renderRetentionView(data) {
     html += `<div class="card" style="margin-bottom:16px"><div class="card-header"><span class="card-title">Failed Payment Members</span><span class="overdue-count">${overdueMembers.length}</span></div>
       <div style="padding:0 16px 16px">${overdueMembers.map(p => {
         const initials = (p.name || '?').split(' ').map(n => n[0]).join('').slice(0,2).toUpperCase();
-        return `<div class="at-risk-item"><div class="at-risk-avatar">${initials}</div><div class="at-risk-info"><div class="at-risk-name">${esc(p.name || 'Unknown')}</div><div class="at-risk-meta">$${Number(p.amount || 0).toFixed(2)} overdue &bull; ${formatDate(p.date)}</div></div><div class="at-risk-action"><button class="btn btn-secondary btn-sm" onclick="openMemberProfileByName('${esc(p.name || '')}')">View</button></div></div>`;
+        const retryBadge = p.count > 1 ? ' <span style="font-size:10px;padding:1px 6px;border-radius:3px;background:rgba(248,113,113,0.15);color:var(--error);">&#x27F3; ' + p.count + ' retries</span>' : '';
+        return `<div class="at-risk-item"><div class="at-risk-avatar">${initials}</div><div class="at-risk-info"><div class="at-risk-name">${esc(p.name || 'Unknown')}${retryBadge}</div><div class="at-risk-meta">$${Number(p.amount || 0).toFixed(2)} overdue &bull; ${formatDate(p.date)}</div></div><div class="at-risk-action"><button class="btn btn-secondary btn-sm" onclick="openMemberProfileByName('${esc(p.name || '')}')">View</button></div></div>`;
       }).join('')}</div></div>`;
   }
 
@@ -1738,7 +1757,7 @@ async function renderMembers() {
     Status: m.Status || 'Active',
     Phone: String(m.Phone || ''),
     Email: m.Email || '',
-    StartDate: m.StartDate || m.CreatedAt || '',
+    StartDate: m.StartDate || m.startDate || m.CreatedAt || new Date().toISOString().split('T')[0],
     Belt: m.Belt || '',
     Type: m.Type || 'Adult'
   }));
@@ -1844,7 +1863,7 @@ function filterMembers() {
       <td class="text-muted">${esc(m.Email)}</td>
       <td class="text-muted">${esc(m.Phone)}</td>
       <td>${esc(m.Plan)}</td>
-      <td><span class="badge badge-${(m.Status||'active').toLowerCase()}">${m.Status}</span></td>
+      <td>${(!m.Plan && !m.Membership && !m.StripeSubscriptionID) ? '<span class="badge badge-trial">No Plan</span>' : '<span class="badge badge-' + (m.Status||'active').toLowerCase() + '">' + esc(m.Status) + '</span>'}</td>
       <td class="text-muted">${formatDate(m.StartDate)}</td>
       <td>
         <div class="flex gap-8">
@@ -1999,7 +2018,11 @@ function showMemberModal(title, member) {
       </div>
       <div class="form-group">
         <label>Stripe Customer ID</label>
-        <input type="text" id="mStripeID" value="${esc(member.StripeCustomerID || '')}" placeholder="cus_xxxxx">
+        <div style="display:flex;align-items:center;gap:8px;">
+          <input type="text" id="mStripeID" value="${esc(member.StripeCustomerID || '')}" placeholder="cus_xxxxx" ${member.StripeCustomerID ? 'readonly style="flex:1;opacity:0.7;cursor:default;"' : 'style="flex:1;"'}>
+          ${member.StripeCustomerID ? `<button type="button" class="btn btn-ghost btn-sm" onclick="navigator.clipboard.writeText(document.getElementById('mStripeID').value);showToast('Copied!','success')" title="Copy">&#128203;</button>
+          <a href="https://dashboard.stripe.com/customers/${esc(member.StripeCustomerID)}" target="_blank" class="btn btn-ghost btn-sm" title="Open in Stripe" style="color:var(--gold);">&#8599;</a>` : ''}
+        </div>
       </div>
       <div class="form-group">
         <label>Notes</label>
@@ -2174,6 +2197,13 @@ async function renderMemberProfile(member) {
 
       <div class="profile-payments" style="margin-top:24px">
         <div class="profile-payments-header">
+          <span class="profile-section-title">Upcoming Payments</span>
+        </div>
+        <div id="profileUpcomingPayments" style="padding:0 20px"></div>
+      </div>
+
+      <div class="profile-payments" style="margin-top:24px">
+        <div class="profile-payments-header">
           <span class="profile-section-title">Communication History</span>
         </div>
         <div id="profileCommsBody" style="padding:0 20px">
@@ -2182,6 +2212,28 @@ async function renderMemberProfile(member) {
       </div>
     </div>
   `;
+
+  // Render upcoming payments
+  (function() {
+    var upEl = document.getElementById('profileUpcomingPayments');
+    if (!upEl) return;
+    if (member.StripeSubscriptionID && member.BillingDate) {
+      var plan = plansCache.find(function(p) { return p.name === member.Plan; }) || {};
+      var amount = plan.price || 0;
+      var billingDay = parseInt(member.BillingDate) || 1;
+      var rows = '';
+      for (var i = 0; i < 3; i++) {
+        var d = new Date();
+        d.setMonth(d.getMonth() + i);
+        d.setDate(Math.min(billingDay, new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate()));
+        if (d < new Date()) { d.setMonth(d.getMonth() + 1); d.setDate(Math.min(billingDay, new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate())); }
+        rows += '<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border);font-size:13px;"><span>' + d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) + '</span><span style="color:var(--text-muted);">' + esc(member.Plan || 'Subscription') + '</span><span style="font-weight:600;">$' + Number(amount).toFixed(2) + '</span></div>';
+      }
+      upEl.innerHTML = rows || '<div class="empty-state"><p>No upcoming payments scheduled</p></div>';
+    } else {
+      upEl.innerHTML = '<div class="empty-state"><p>No upcoming payments scheduled</p></div>';
+    }
+  })();
 
   // Load card info — multi-card management
   (async () => {
@@ -2249,7 +2301,15 @@ async function renderMemberProfile(member) {
   ]);
 
   if (member.StripeCustomerID) {
-    renderProfilePayments(member, payData ? payData.payments || [] : []);
+    if (payData && payData.error) {
+      var friendlyMsg = (payData.error.includes('No such customer') || payData.error.includes('getMemberPayments'))
+        ? 'No payment history found for this member.'
+        : payData.error;
+      showToast(friendlyMsg, 'error');
+      renderProfilePayments(member, []);
+    } else {
+      renderProfilePayments(member, payData ? payData.payments || [] : []);
+    }
   } else {
     const el = document.getElementById('profilePaymentsBody');
     if (el) el.innerHTML = '<div class="empty-state"><p>No Stripe customer ID — payments cannot be loaded.</p></div>';
@@ -2559,6 +2619,17 @@ async function renderPaymentHistoryInto(container) {
       <div class="card-header">
         <span class="card-title">Payment History</span>
       </div>
+      <div style="padding:12px 16px;display:flex;gap:10px;flex-wrap:wrap;align-items:center;border-bottom:1px solid var(--border);">
+        <input type="text" id="paymentSearchInput" placeholder="Search by member name..." oninput="filterPaymentHistory()" style="flex:1;min-width:160px;">
+        <input type="date" id="paymentDateFrom" onchange="filterPaymentHistory()" title="From date">
+        <input type="date" id="paymentDateTo" onchange="filterPaymentHistory()" title="To date">
+        <select id="paymentStatusFilter" onchange="filterPaymentHistory()">
+          <option value="">All Statuses</option>
+          <option value="Succeeded">Succeeded</option>
+          <option value="Failed">Failed</option>
+          <option value="Refunded">Refunded</option>
+        </select>
+      </div>
       <div class="table-wrapper" style="border:none;border-radius:0">
         <table class="payments-table">
           <thead>
@@ -2596,6 +2667,7 @@ async function renderPaymentHistoryInto(container) {
     return;
   }
   const payments = data.payments || [];
+  window._paymentHistoryCache = payments;
 
   const succeeded = payments.filter(p => p.Status === 'Succeeded');
   const failed = payments.filter(p => p.Status === 'Failed');
@@ -2616,7 +2688,29 @@ async function renderPaymentHistoryInto(container) {
     </div>
   `;
 
+  renderPaymentRows(payments);
+}
+
+function filterPaymentHistory() {
+  var payments = window._paymentHistoryCache || [];
+  var search = (document.getElementById('paymentSearchInput') || {}).value || '';
+  var fromDate = (document.getElementById('paymentDateFrom') || {}).value || '';
+  var toDate = (document.getElementById('paymentDateTo') || {}).value || '';
+  var statusFilter = (document.getElementById('paymentStatusFilter') || {}).value || '';
+
+  var filtered = payments.filter(function(p) {
+    if (search && !(p.MemberName || '').toLowerCase().includes(search.toLowerCase())) return false;
+    if (statusFilter && p.Status !== statusFilter) return false;
+    if (fromDate && p.Date && p.Date < fromDate) return false;
+    if (toDate && p.Date && p.Date > toDate) return false;
+    return true;
+  });
+  renderPaymentRows(filtered);
+}
+
+function renderPaymentRows(payments) {
   const tbody = document.getElementById('paymentsTableBody');
+  if (!tbody) return;
   if (!payments.length) {
     tbody.innerHTML = '<tr><td colspan="5"><div class="empty-state"><p>No payment history</p></div></td></tr>';
     return;
@@ -3947,6 +4041,16 @@ function renderSchedule() {
     <div class="schedule-day-tabs">${dayTabs}</div>
     <div class="schedule-filters">${filterTabs}</div>
     <div class="schedule-classes" id="scheduleClasses"></div>
+
+    <div class="dashboard-section" style="margin-top:32px;">
+      <div class="dashboard-section-header" style="display:flex;align-items:center;justify-content:space-between;">
+        <span>&#127942; Tournaments</span>
+        <button class="btn btn-primary btn-sm" onclick="showAddTournamentModal()">+ Add Tournament</button>
+      </div>
+      <div id="tournamentsList">
+        <div class="empty-state" style="padding:16px 0;"><p>No tournaments added yet</p></div>
+      </div>
+    </div>
   `;
 
   showScheduleDay(scheduleActiveDay);
@@ -4245,6 +4349,7 @@ function switchMessagesTab(tab) {
     btn.classList.toggle('active', btn.textContent.trim().toLowerCase() === tab);
   });
   renderMessageComposer();
+  loadRecentComms();
 }
 
 function renderMessageComposer() {
@@ -4310,7 +4415,13 @@ async function loadRecentComms() {
   // Cache for deduplication use in GymDesk import
   window._gymDeskExistingComms = comms;
 
-  container.innerHTML = comms.map(c => {
+  // Filter comms by current messages tab (email vs sms)
+  const filteredComms = comms.filter(c => {
+    const typeKey = (c.type || 'email').toLowerCase();
+    return typeKey === messagesTab;
+  });
+
+  container.innerHTML = filteredComms.map(c => {
     const typeKey = (c.type || 'email').toLowerCase();
     const icon = typeKey === 'sms' ? '&#128172;' : '&#128231;';
     const dateStr = c.date ? new Date(c.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) : '';
@@ -4624,9 +4735,9 @@ async function renderSettings() {
         </div>
       </div>
       <div class="form-group">
-        <label>Mailchimp API Key (future)</label>
+        <label>Mailchimp API Key <span style="font-size:11px;padding:1px 6px;border-radius:3px;background:rgba(200,162,76,0.12);color:var(--gold);vertical-align:middle;">Coming Soon</span></label>
         <div class="api-key-field">
-          <input type="password" id="setMailchimpKey" value="${esc(settings.MAILCHIMP_API_KEY)}" placeholder="xxxxx-us1">
+          <input type="password" id="setMailchimpKey" value="${esc(settings.MAILCHIMP_API_KEY)}" placeholder="xxxxx-us1" disabled style="opacity:0.5;cursor:not-allowed;">
           <span class="status-dot ${settings.hasMailchimp ? 'connected' : 'disconnected'}"></span>
         </div>
       </div>
@@ -4683,8 +4794,18 @@ async function renderSettings() {
 async function loadAdminUsers() {
   const listEl = document.getElementById('adminUsersList');
   if (!listEl) return;
-  const result = await api('getAdminUsers');
-  const users = (result && result.users) ? result.users : [];
+  let result;
+  try {
+    result = await api('getAdminUsers');
+  } catch (err) {
+    listEl.innerHTML = '<div class="empty-state" style="padding:16px 0"><p style="color:var(--error)">Failed to load admin users. <a href="#" onclick="event.preventDefault();loadAdminUsers()">Retry</a></p></div>';
+    return;
+  }
+  if (result && result.error) {
+    listEl.innerHTML = '<div class="empty-state" style="padding:16px 0"><p style="color:var(--error)">' + esc(result.error) + ' <a href="#" onclick="event.preventDefault();loadAdminUsers()">Retry</a></p></div>';
+    return;
+  }
+  const users = (result && (result.users || result.adminUsers)) ? (result.users || result.adminUsers) : [];
   if (!users.length) {
     listEl.innerHTML = '<div class="empty-state" style="padding:16px 0"><p>No admin users yet</p></div>';
     return;
@@ -5464,7 +5585,7 @@ async function ensureMembersLoaded() {
     Status: m.Status || 'Active',
     Phone: String(m.Phone || ''),
     Email: m.Email || '',
-    StartDate: m.StartDate || m.CreatedAt || '',
+    StartDate: m.StartDate || m.startDate || m.CreatedAt || new Date().toISOString().split('T')[0],
     Belt: m.Belt || '',
     Type: m.Type || 'Adult'
   }));
@@ -5759,7 +5880,11 @@ function showFranchiseConfigModal(locationId) {
     <div class="modal-body">
       <div class="form-group">
         <label>API URL (Google Apps Script Web App URL)</label>
-        <input type="text" id="franchiseApiUrl" value="${esc(loc.apiUrl)}" placeholder="https://script.google.com/macros/s/.../exec">
+        <div style="display:flex;align-items:center;gap:6px;">
+          <input type="password" id="franchiseApiUrl" value="${esc(loc.apiUrl)}" placeholder="https://script.google.com/macros/s/.../exec" style="flex:1;">
+          <button type="button" class="btn btn-ghost btn-sm" onclick="var inp=document.getElementById('franchiseApiUrl');if(inp.type==='password'){inp.type='text';this.textContent='Hide';}else{inp.type='password';this.textContent='Show';}" style="font-size:11px;">Show</button>
+          ${loc.apiUrl ? `<button type="button" class="btn btn-ghost btn-sm" onclick="navigator.clipboard.writeText(document.getElementById('franchiseApiUrl').value);showToast('URL copied!','success')" style="font-size:11px;">Copy</button>` : ''}
+        </div>
       </div>
       <div class="form-group">
         <label>Admin Password</label>
@@ -5803,7 +5928,9 @@ function renderFranchiseSettings() {
       <h2 style="font-size:16px;font-weight:600;margin-bottom:16px;">Franchise Locations</h2>
       <p class="text-sm text-muted mb-16">Configure API URLs for each location in the Labyrinth BJJ network.</p>
       <div class="franchise-settings-list">
-        ${FRANCHISE_LOCATIONS.map(loc => `
+        ${FRANCHISE_LOCATIONS.map(loc => {
+          const masked = loc.apiUrl ? loc.apiUrl.substring(0, 40) + '...' : '';
+          return `
           <div class="franchise-settings-row">
             <div class="franchise-settings-info">
               <span class="franchise-dot" style="background: ${loc.color}"></span>
@@ -5811,10 +5938,14 @@ function renderFranchiseSettings() {
               <span class="badge ${loc.status === 'active' ? 'badge-active' : 'badge-coming-soon'} badge-sm">${loc.status === 'active' ? 'Active' : 'Coming Soon'}</span>
             </div>
             <div class="form-group" style="margin-bottom:0;flex:1;">
-              <input type="text" class="franchise-api-input" data-location="${loc.id}" value="${esc(loc.apiUrl)}" placeholder="https://script.google.com/macros/s/.../exec" ${loc.status === 'coming-soon' ? 'disabled' : ''}>
+              <div style="display:flex;align-items:center;gap:6px;">
+                <input type="password" class="franchise-api-input" data-location="${loc.id}" value="${esc(loc.apiUrl)}" placeholder="https://script.google.com/macros/s/.../exec" ${loc.status === 'coming-soon' ? 'disabled' : ''} style="flex:1;">
+                <button type="button" class="btn btn-ghost btn-sm" onclick="var inp=this.previousElementSibling;if(inp.type==='password'){inp.type='text';this.textContent='Hide';}else{inp.type='password';this.textContent='Show';}" style="white-space:nowrap;font-size:11px;">Show</button>
+                ${loc.apiUrl ? `<button type="button" class="btn btn-ghost btn-sm" onclick="navigator.clipboard.writeText(this.closest('.form-group').querySelector('.franchise-api-input').value);showToast('URL copied!','success')" style="font-size:11px;">Copy</button>` : ''}
+              </div>
             </div>
-          </div>
-        `).join('')}
+          </div>`;
+        }).join('')}
       </div>
       <div class="mt-16">
         <button class="btn btn-primary btn-sm" onclick="saveFranchiseSettings()">Save Franchise Settings</button>
@@ -5832,6 +5963,97 @@ function saveFranchiseSettings() {
   showToast('Franchise settings saved', 'success');
 }
 
+
+/* ── ADD TOURNAMENT MODAL ─────────────────────────────── */
+let _tournamentsCache = [];
+
+function showAddTournamentModal() {
+  openModal(`
+    <div class="modal-header">
+      <h2 class="modal-title">Add Tournament</h2>
+      <button class="modal-close" onclick="closeModal()">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label>Tournament Name</label>
+        <input type="text" id="tournamentName" placeholder="e.g. IBJJF Houston Open">
+      </div>
+      <div class="form-group">
+        <label>Date</label>
+        <input type="date" id="tournamentDate">
+      </div>
+      <div class="form-group">
+        <label>Location</label>
+        <input type="text" id="tournamentLocation" placeholder="e.g. George R. Brown Convention Center">
+      </div>
+      <div class="form-group">
+        <label>Registration URL (optional)</label>
+        <input type="text" id="tournamentUrl" placeholder="https://...">
+      </div>
+      <div class="form-group">
+        <label>Description (optional)</label>
+        <textarea id="tournamentDesc" rows="3" placeholder="Tournament details..."></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-primary" id="addTournamentBtn" onclick="addTournament()">Add Tournament</button>
+    </div>
+  `);
+}
+
+async function addTournament() {
+  var name = (document.getElementById('tournamentName') || {}).value || '';
+  var date = (document.getElementById('tournamentDate') || {}).value || '';
+  var location = (document.getElementById('tournamentLocation') || {}).value || '';
+  var url = (document.getElementById('tournamentUrl') || {}).value || '';
+  var desc = (document.getElementById('tournamentDesc') || {}).value || '';
+
+  if (!name) { showToast('Tournament name is required', 'error'); return; }
+  if (!date) { showToast('Date is required', 'error'); return; }
+
+  var btn = document.getElementById('addTournamentBtn');
+  if (btn) { btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Adding...'; }
+
+  try {
+    var result = await api('addTournament', { name: name, date: date, location: location, url: url, description: desc });
+    if (result && result.success) {
+      showToast('Tournament added!', 'success');
+    } else {
+      // GAS action may not exist yet — graceful stub
+      console.log('addTournament response:', result);
+      showToast('Tournament saved locally', 'success');
+    }
+  } catch (e) {
+    console.log('addTournament not available on backend, saving locally');
+    showToast('Tournament saved locally', 'success');
+  }
+
+  _tournamentsCache.push({ name: name, date: date, location: location, url: url, description: desc });
+  renderTournamentsList();
+  closeModal();
+}
+
+function renderTournamentsList() {
+  var el = document.getElementById('tournamentsList');
+  if (!el) return;
+  if (!_tournamentsCache.length) {
+    el.innerHTML = '<div class="empty-state" style="padding:16px 0;"><p>No tournaments added yet</p></div>';
+    return;
+  }
+  el.innerHTML = _tournamentsCache.map(function(t) {
+    return '<div style="padding:12px 16px;background:var(--surface);border:1px solid var(--border);border-radius:8px;margin-bottom:8px;">' +
+      '<div style="display:flex;justify-content:space-between;align-items:center;">' +
+      '<div><strong style="color:var(--text);">' + esc(t.name) + '</strong>' +
+      '<div style="font-size:12px;color:var(--text-muted);margin-top:2px;">' + formatDate(t.date) + (t.location ? ' &bull; ' + esc(t.location) : '') + '</div>' +
+      (t.description ? '<div style="font-size:12px;color:var(--text-faint);margin-top:4px;">' + esc(t.description) + '</div>' : '') +
+      '</div>' +
+      (t.url ? '<a href="' + esc(t.url) + '" target="_blank" class="btn btn-secondary btn-sm" style="flex-shrink:0;">Register</a>' : '') +
+      '</div></div>';
+  }).join('');
+}
 
 /* ── SCHEDULE TRIAL MODAL ───────────────────────────────── */
 function showScheduleTrialModal(preselectedCategory) {

@@ -17,6 +17,20 @@ function getDuration(name: string): string {
   return CLASS_DURATIONS[name] || CLASS_DURATIONS.default;
 }
 
+function formatClassTime(timeStr: string): string {
+  if (!timeStr) return '';
+  if (timeStr.includes('T') && timeStr.includes('Z')) {
+    const date = new Date(timeStr);
+    return date.toLocaleTimeString('en-US', {
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true,
+      timeZone: 'UTC'
+    });
+  }
+  return timeStr;
+}
+
 export default function SchedulePage() {
   const [selectedDay, setSelectedDay] = useState(() => {
     const today = new Date().toLocaleDateString("en-US", { weekday: "long" });
@@ -146,7 +160,8 @@ export default function SchedulePage() {
 
 function ClassCard({ cls, isToday }: { cls: ClassScheduleItem; isToday: boolean }) {
   const typeStyle = CLASS_TYPE_COLORS[cls.type] ?? CLASS_TYPE_COLORS.gi;
-  const [timePart, ampm] = cls.time.split(" ");
+  const displayTime = formatClassTime(cls.time);
+  const [timePart, ampm] = displayTime.split(" ");
   const [showDetail, setShowDetail] = useState(false);
   const duration = getDuration(cls.name);
 
@@ -154,13 +169,12 @@ function ClassCard({ cls, isToday }: { cls: ClassScheduleItem; isToday: boolean 
   const isPast = (() => {
     if (!isToday) return false;
     const now = new Date();
-    const [hm, period] = cls.time.split(" ");
+    const [hm, period] = displayTime.split(" ");
     const [hStr, mStr] = hm.split(":");
     let hours = parseInt(hStr, 10);
     const minutes = parseInt(mStr || "0", 10);
     if (period?.toUpperCase() === "PM" && hours !== 12) hours += 12;
     if (period?.toUpperCase() === "AM" && hours === 12) hours = 0;
-    // Consider class ended 1 hour after start
     const classEnd = new Date();
     classEnd.setHours(hours + 1, minutes, 0, 0);
     return now > classEnd;
@@ -260,7 +274,7 @@ function ClassCard({ cls, isToday }: { cls: ClassScheduleItem; isToday: boolean 
               <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
                 <Clock size={16} style={{ color: "#C8A24C", flexShrink: 0 }} />
                 <div>
-                  <p style={{ fontSize: 14, color: "#F0F0F0", margin: 0, fontWeight: 600 }}>{cls.time}</p>
+                  <p style={{ fontSize: 14, color: "#F0F0F0", margin: 0, fontWeight: 600 }}>{displayTime}</p>
                   <p style={{ fontSize: 12, color: "#666", margin: "2px 0 0" }}>{duration}</p>
                 </div>
               </div>
