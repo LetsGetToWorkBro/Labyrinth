@@ -121,15 +121,15 @@ export default function OnboardingPage() {
 
       {/* Slides container */}
       <div ref={containerRef} style={{
-        flex: 1, display: "flex", overflow: "hidden",
+        flex: 1, overflow: "hidden", width: "100%", position: "relative",
       }}>
         <div style={{
-          display: "flex", width: "300%",
-          transform: `translateX(-${screen * 33.333}%)`,
-          transition: "transform 0.4s cubic-bezier(0.4, 0, 0.2, 1)",
+          display: "flex", flexDirection: "row", width: "300%", height: "100%",
+          transform: `translateX(-${screen * (100 / 3)}%)`,
+          transition: "transform 0.35s cubic-bezier(0.4, 0, 0.2, 1)",
         }}>
           {/* ── Screen 1: BJJ Background ── */}
-          <div style={{ width: "33.333%", padding: "0 24px", overflowY: "auto", display: "flex", flexDirection: "column" }}>
+          <div style={{ width: "33.333%", flexShrink: 0, padding: "0 24px", overflowY: "auto", display: "flex", flexDirection: "column" }}>
             <div style={{ flex: 1 }}>
               <h1 style={{ fontSize: 22, fontWeight: 800, color: "#F0F0F0", margin: "16px 0 4px" }}>
                 Welcome to Labyrinth BJJ, {firstName}!
@@ -218,7 +218,7 @@ export default function OnboardingPage() {
           </div>
 
           {/* ── Screen 2: Training Habits ── */}
-          <div style={{ width: "33.333%", padding: "0 24px", overflowY: "auto", display: "flex", flexDirection: "column" }}>
+          <div style={{ width: "33.333%", flexShrink: 0, padding: "0 24px", overflowY: "auto", display: "flex", flexDirection: "column" }}>
             <div style={{ flex: 1 }}>
               <h1 style={{ fontSize: 22, fontWeight: 800, color: "#F0F0F0", margin: "16px 0 4px" }}>
                 How do you like to train?
@@ -290,7 +290,7 @@ export default function OnboardingPage() {
           </div>
 
           {/* ── Screen 3: Goals ── */}
-          <div style={{ width: "33.333%", padding: "0 24px", overflowY: "auto", display: "flex", flexDirection: "column" }}>
+          <div style={{ width: "33.333%", flexShrink: 0, padding: "0 24px", overflowY: "auto", display: "flex", flexDirection: "column" }}>
             <div style={{ flex: 1 }}>
               <h1 style={{ fontSize: 22, fontWeight: 800, color: "#F0F0F0", margin: "16px 0 4px" }}>
                 What are you training for?
