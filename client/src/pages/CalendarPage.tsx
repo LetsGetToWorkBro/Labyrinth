@@ -131,6 +131,7 @@ export default function CalendarPage() {
   function getEventRegistrations(event: TournamentEvent) {
     return registrations.filter(r => {
       const rName = r.eventName.toLowerCase();
+      // @ts-ignore subNames added by combinedEvents mapping
       return event.subNames?.some(n => rName.includes(n.toLowerCase())) || rName.includes(event.name.toLowerCase());
     });
   }
@@ -181,7 +182,7 @@ export default function CalendarPage() {
             {new Date(nextHouston.date).toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" })}
             {" · "}
             <span style={{ color: "#C8A24C", fontWeight: 600 }}>
-              {daysUntil(nextHouston.date)} days away
+              {daysUntil(nextHouston.date)} {daysUntil(nextHouston.date) === 1 ? 'day' : 'days'} away
             </span>
           </p>
         </div>

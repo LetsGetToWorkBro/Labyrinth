@@ -161,14 +161,14 @@ function DashboardTab() {
           {data.recentPayments.slice(0, 6).map((p, i) => (
             <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "7px 0", borderBottom: "1px solid #111" }}>
               <div>
-                <p style={{ fontSize: 13, fontWeight: 500, color: "#F0F0F0", margin: 0 }}>{p.name || p.MemberName}</p>
-                <p style={{ fontSize: 11, color: "#666", margin: "2px 0 0" }}>{p.type || p.Type}</p>
+                <p style={{ fontSize: 13, fontWeight: 500, color: "#F0F0F0", margin: 0 }}>{p.name || (p as any).MemberName}</p>
+                <p style={{ fontSize: 11, color: "#666", margin: "2px 0 0" }}>{p.type || (p as any).Type}</p>
               </div>
               <div style={{ textAlign: "right" }}>
-                <p style={{ fontSize: 13, fontWeight: 600, color: (p.status || p.Status) === "Succeeded" ? "#4CAF80" : "#E05555", margin: 0 }}>
-                  ${Number(p.amount || p.Amount || 0).toFixed(2)}
+                <p style={{ fontSize: 13, fontWeight: 600, color: (p.status || (p as any).Status) === "Succeeded" ? "#4CAF80" : "#E05555", margin: 0 }}>
+                  ${Number(p.amount || (p as any).Amount || 0).toFixed(2)}
                 </p>
-                <p style={{ fontSize: 10, color: "#555", margin: "2px 0 0" }}>{new Date(p.date || p.Date).toLocaleDateString()}</p>
+                <p style={{ fontSize: 10, color: "#555", margin: "2px 0 0" }}>{new Date(p.date || (p as any).Date).toLocaleDateString()}</p>
               </div>
             </div>
           ))}
@@ -254,8 +254,8 @@ function MembersTab() {
   if (loading) return <LoadingState rows={6} />;
   if (error && members.length === 0) return <ErrorState message={error} onRetry={load} />;
 
-  const activeCount = members.filter(m => (m.Status || "").toLowerCase() === "active").length;
-  const trialCount = members.filter(m => (m.Status || "").toLowerCase() === "trial").length;
+  const activeCount = members.filter(m => m.StripeSubscriptionID && m.StripeSubscriptionID.trim() !== '').length;
+  const trialCount = 0;
 
   return (
     <div style={{ padding: "16px" }}>

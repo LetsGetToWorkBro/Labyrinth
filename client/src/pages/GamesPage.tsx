@@ -137,7 +137,7 @@ function GamesHub({ stats, rank, nextRank, onPlay, onStartGame, showDifficulty, 
         setLeaderboard(data);
         setLbLoaded(true);
         setLbLoading(false);
-      });
+      }).catch(() => { setLbLoading(false); });
     }
   }, [hubTab, lbLoaded]);
 
@@ -354,7 +354,7 @@ function GamesHub({ stats, rank, nextRank, onPlay, onStartGame, showDifficulty, 
             </div>
           )}
 
-          <button onClick={() => { setLbLoaded(false); setLbLoading(true); getLeaderboard().then(d => { setLeaderboard(d); setLbLoaded(true); setLbLoading(false); }); }}
+          <button onClick={() => { setLbLoaded(false); setLbLoading(true); getLeaderboard().then(d => { setLeaderboard(d); setLbLoaded(true); setLbLoading(false); }).catch(() => { setLbLoading(false); }); }}
             style={{ width: '100%', marginTop: 12, padding: '10px', background: 'transparent', border: '1px solid #1A1A1A', borderRadius: 10, color: '#555', fontSize: 12, cursor: 'pointer' }}>
             ↻ Refresh
           </button>

@@ -28,6 +28,7 @@ import {
 import type { LucideIcon } from "lucide-react";
 import { useEffect, useCallback, useState } from "react";
 import { useHashLocation as useHashLoc } from "wouter/use-hash-location";
+import { Redirect } from "wouter";
 
 // ─── Nav config ───────────────────────────────────────────────────
 
@@ -511,6 +512,7 @@ function AppShell() {
         <Route path="/messages"  component={MessagesPage} />
         <Route path="/admin"     component={AdminPageWrapper} />
         <Route path="/reset"     component={ResetPasswordPage} />
+        <Route path="/academy-stats"><Redirect to="/stats" /></Route>
         <Route component={NotFound} />
       </Switch>
       <TabBar />

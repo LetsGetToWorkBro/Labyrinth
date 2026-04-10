@@ -2,7 +2,7 @@ import { useState } from "react";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { CLASS_SCHEDULE, CLASS_TYPE_COLORS, DAYS_ORDER } from "@/lib/constants";
 import type { ClassScheduleItem } from "@/lib/constants";
-import { Clock, ChevronRight, X, User } from "lucide-react";
+import { Clock, ChevronRight, X, User, CheckCircle } from "lucide-react";
 
 const CLASS_DURATIONS: Record<string, string> = {
   default: "1 hour",
@@ -104,7 +104,7 @@ export default function SchedulePage() {
         ) : (
           <div className="space-y-2">
             {dayClasses.map((cls) => (
-              <ClassCard key={`${cls.day}-${cls.time}-${cls.name}`} cls={cls} />
+              <ClassCard key={`${cls.day}-${cls.time}-${cls.name}`} cls={cls} isToday={selectedDay === today} />
             ))}
           </div>
         )}
@@ -144,18 +144,34 @@ export default function SchedulePage() {
   );
 }
 
-function ClassCard({ cls }: { cls: ClassScheduleItem }) {
+function ClassCard({ cls, isToday }: { cls: ClassScheduleItem; isToday: boolean }) {
   const typeStyle = CLASS_TYPE_COLORS[cls.type] ?? CLASS_TYPE_COLORS.gi;
   const [timePart, ampm] = cls.time.split(" ");
   const [showDetail, setShowDetail] = useState(false);
   const duration = getDuration(cls.name);
+
+  // Check if this class has already ended today
+  const isPast = (() => {
+    if (!isToday) return false;
+    const now = new Date();
+    const [hm, period] = cls.time.split(" ");
+    const [hStr, mStr] = hm.split(":");
+    let hours = parseInt(hStr, 10);
+    const minutes = parseInt(mStr || "0", 10);
+    if (period?.toUpperCase() === "PM" && hours !== 12) hours += 12;
+    if (period?.toUpperCase() === "AM" && hours === 12) hours = 0;
+    // Consider class ended 1 hour after start
+    const classEnd = new Date();
+    classEnd.setHours(hours + 1, minutes, 0, 0);
+    return now > classEnd;
+  })();
 
   return (
     <>
       <button
         onClick={() => setShowDetail(true)}
         className="w-full p-4 rounded-xl transition-all active:scale-[0.98] text-left"
-        style={{ backgroundColor: "#111", border: "1px solid #1A1A1A", cursor: "pointer" }}
+        style={{ backgroundColor: "#111", border: "1px solid #1A1A1A", cursor: "pointer", opacity: isPast ? 0.5 : 1 }}
         data-testid={`button-class-${cls.name}`}
       >
         <div className="flex items-center justify-between">
@@ -175,7 +191,11 @@ function ClassCard({ cls }: { cls: ClassScheduleItem }) {
               </span>
             </div>
           </div>
-          <ChevronRight size={16} style={{ color: "#444", flexShrink: 0 }} />
+          {isPast ? (
+            <span style={{ fontSize: 11, color: "#4CAF80", fontWeight: 600, flexShrink: 0 }}>&#10003; Ended</span>
+          ) : (
+            <ChevronRight size={16} style={{ color: "#444", flexShrink: 0 }} />
+          )}
         </div>
       </button>
 
@@ -227,17 +247,30 @@ function ClassCard({ cls }: { cls: ClassScheduleItem }) {
             </div>
 
             {/* CTA */}
-            <a
-              href="/#/sauna"
-              style={{
-                display: "flex", alignItems: "center", justifyContent: "center",
-                gap: 8, padding: "14px", borderRadius: 12,
-                background: "#C8A24C", color: "#0A0A0A",
-                fontWeight: 700, fontSize: 15, textDecoration: "none",
-              }}
-            >
-              Check In to Class
-            </a>
+            {isPast ? (
+              <div
+                style={{
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  gap: 8, padding: "14px", borderRadius: 12,
+                  background: "rgba(74, 175, 128, 0.1)", color: "#4CAF80",
+                  fontWeight: 600, fontSize: 15, border: "1px solid rgba(74, 175, 128, 0.2)",
+                }}
+              >
+                <CheckCircle size={16} /> Class has ended
+              </div>
+            ) : (
+              <a
+                href="/#/sauna"
+                style={{
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  gap: 8, padding: "14px", borderRadius: 12,
+                  background: "#C8A24C", color: "#0A0A0A",
+                  fontWeight: 700, fontSize: 15, textDecoration: "none",
+                }}
+              >
+                Check In to Class
+              </a>
+            )}
           </div>
         </div>
       )}

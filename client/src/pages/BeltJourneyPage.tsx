@@ -271,8 +271,15 @@ export default function BeltJourneyPage() {
           <div className="w-16 h-16 mx-auto mb-3 rounded-2xl flex items-center justify-center" style={{ backgroundColor: "#1A1A1A" }}>
             <Trophy size={28} style={{ color: "#C8A24C" }} />
           </div>
-          <h3 className="text-sm font-semibold mb-1" style={{ color: "#F0F0F0" }}>Start Your Belt Journey</h3>
+          <h3 className="text-sm font-semibold mb-1" style={{ color: "#F0F0F0" }}>Your Belt Journey Starts Here</h3>
           <p className="text-xs mb-4" style={{ color: "#666" }}>Add your first promotion to begin tracking your progression</p>
+          <button
+            onClick={() => setShowAdd(true)}
+            className="mx-auto flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold transition-all active:scale-[0.98]"
+            style={{ backgroundColor: "#C8A24C", color: "#0A0A0A" }}
+          >
+            <Plus size={16} /> Add Promotion
+          </button>
         </div>
       )}
 
