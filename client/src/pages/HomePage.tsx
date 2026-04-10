@@ -129,7 +129,7 @@ export default function HomePage() {
   const hasWarnings = !member.waiverSigned || !member.agreementSigned;
   const hasFamily = familyMembers.length > 1;
   const joinDate = (() => {
-    const d = (member as any)?.startDate || member.joinDate || (member as any)?.memberSince;
+    const d = member.joinDate || (member as any)?.startDate || (member as any)?.memberSince || (member as any)?.StartDate || (member as any)?.start_date || (member as any)?.['Start Date'];
     if (!d) return '—';
     try {
       return new Date(d).toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
@@ -189,7 +189,7 @@ export default function HomePage() {
             <button
               onClick={() => { haptic(); setShowRankRequest(true); setRankBelt(member.belt || "white"); setRankStripes(0); setRankNote(""); setRankSent(false); }}
               style={{ background: "none", border: "none", padding: 0, cursor: "pointer", position: "relative" }}
-              title="Request rank update"
+              title="Tap to request a rank update"
             >
               <BeltIcon
                 belt={member.belt || "white"}
@@ -200,6 +200,9 @@ export default function HomePage() {
               {/* Tap hint dot */}
               <span style={{ position: "absolute", bottom: -2, right: -2, width: 14, height: 14, borderRadius: "50%", backgroundColor: "#C8A24C", border: "2px solid #0A0A0A", display: "flex", alignItems: "center", justifyContent: "center" }}>
                 <Shield size={7} style={{ color: "#0A0A0A" }} />
+              </span>
+              <span style={{ position: "absolute", bottom: -18, left: "50%", transform: "translateX(-50%)", fontSize: 9, color: "#555", whiteSpace: "nowrap", fontWeight: 500, letterSpacing: "0.02em" }}>
+                {(member.belt || "white").charAt(0).toUpperCase() + (member.belt || "white").slice(1)} Belt
               </span>
             </button>
           </div>
@@ -329,8 +332,8 @@ export default function HomePage() {
           <button
             onClick={() => { haptic(); handleAddCard(); }}
             disabled={addingCard}
-            className="flex items-center gap-1 text-xs font-medium px-2.5 py-1.5 rounded-lg transition-all active:scale-[0.97]"
-            style={{ backgroundColor: "rgba(200,162,76,0.1)", color: "#C8A24C", border: "1px solid rgba(200,162,76,0.15)" }}
+            className="flex items-center gap-1 text-xs font-medium px-2.5 rounded-lg transition-all active:scale-[0.97]"
+            style={{ backgroundColor: "rgba(200,162,76,0.1)", color: "#C8A24C", border: "1px solid rgba(200,162,76,0.15)", minHeight: 44 }}
           >
             {addingCard ? <Loader2 size={12} className="animate-spin" /> : <Plus size={12} />}
             Add Card

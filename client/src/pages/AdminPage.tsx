@@ -219,7 +219,7 @@ function MembersTab() {
   const filtered = members.filter(m => {
     const q = search.toLowerCase();
     const matchSearch = !q || (m.Name || "").toLowerCase().includes(q) || (m.Email || "").toLowerCase().includes(q) || (m.Phone || "").includes(q);
-    const matchStatus = !statusFilter || m.Status === statusFilter;
+    const matchStatus = !statusFilter || (m.Status || "").toLowerCase() === statusFilter.toLowerCase();
     return matchSearch && matchStatus;
   });
 
@@ -254,8 +254,8 @@ function MembersTab() {
   if (loading) return <LoadingState rows={6} />;
   if (error && members.length === 0) return <ErrorState message={error} onRetry={load} />;
 
-  const activeCount = members.filter(m => m.Status === "Active").length;
-  const trialCount = members.filter(m => m.Status === "Trial").length;
+  const activeCount = members.filter(m => (m.Status || "").toLowerCase() === "active").length;
+  const trialCount = members.filter(m => (m.Status || "").toLowerCase() === "trial").length;
 
   return (
     <div style={{ padding: "16px" }}>
