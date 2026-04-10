@@ -680,6 +680,20 @@ export async function saveGameScore(data: {
   }
 }
 
+// ─── Schedule Classes ────────────────────────────────────────────
+
+export async function getScheduleClasses(): Promise<any[]> {
+  try {
+    const result = await gasCall('getScheduleClasses', {});
+    if (result?.success && Array.isArray(result.classes)) {
+      return result.classes;
+    }
+    return [];
+  } catch {
+    return [];
+  }
+}
+
 export async function getLeaderboard(): Promise<LeaderboardEntry[]> {
   try {
     const result = await gasCall("getLeaderboard", {});

@@ -1,7 +1,8 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { CLASS_SCHEDULE, CLASS_TYPE_COLORS, DAYS_ORDER } from "@/lib/constants";
 import type { ClassScheduleItem } from "@/lib/constants";
+import { getScheduleClasses } from "@/lib/api";
 import { Clock, ChevronRight, X, User, CheckCircle } from "lucide-react";
 
 const CLASS_DURATIONS: Record<string, string> = {
@@ -37,8 +38,30 @@ export default function SchedulePage() {
     return DAYS_ORDER.includes(today) ? today : "Monday";
   });
   const [category, setCategory] = useState<"all" | "adult" | "kids">("all");
+  const [classes, setClasses] = useState<ClassScheduleItem[]>(CLASS_SCHEDULE);
 
-  const dayClasses = CLASS_SCHEDULE.filter(c => {
+  useEffect(() => {
+    getScheduleClasses().then((gasClasses) => {
+      if (!gasClasses.length) return;
+      const merged = CLASS_SCHEDULE.map((cls) => {
+        const match = gasClasses.find(
+          (g: any) =>
+            (g.classId && g.classId === `${cls.day}-${cls.time}-${cls.name}`) ||
+            (g.day === cls.day && g.time === cls.time && g.title === cls.name)
+        );
+        if (!match) return cls;
+        return {
+          ...cls,
+          instructor: match.instructor || cls.instructor,
+          capacity: match.capacity != null ? Number(match.capacity) : cls.capacity,
+          enrolled: match.enrolled != null ? Number(match.enrolled) : cls.enrolled,
+        };
+      });
+      setClasses(merged);
+    });
+  }, []);
+
+  const dayClasses = classes.filter(c => {
     if (c.day !== selectedDay) return false;
     if (category !== "all" && c.category !== category) return false;
     return true;
