@@ -84,7 +84,7 @@ function TabBar() {
     return () => window.removeEventListener('navConfigChanged', handler);
   }, []);
 
-  const hiddenPaths = ["/waiver", "/book"];
+  const hiddenPaths = ["/waiver", "/book", "/reset"];
   if (hiddenPaths.some(p => location.startsWith(p))) return null;
 
   // Build tab list from saved paths
@@ -237,6 +237,77 @@ function MorePage() {
   );
 }
 
+// ─── Reset Password Page ──────────────────────────────────────────
+
+function ResetPasswordPage() {
+  const [password, setPassword] = useState('');
+  const [confirm, setConfirm] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [done, setDone] = useState(false);
+  const [error, setError] = useState('');
+  const [, navigate] = useHashLoc();
+
+  // Extract token from hash: /#/reset?token=xxx
+  const token = new URLSearchParams(window.location.hash.split('?')[1] || '').get('token') || '';
+
+  const submit = async () => {
+    if (!password || password !== confirm) { setError('Passwords do not match'); return; }
+    if (password.length < 6) { setError('Password must be at least 6 characters'); return; }
+    if (!token) { setError('Invalid reset link'); return; }
+    setLoading(true); setError('');
+    try {
+      const GAS_URL = 'https://script.google.com/macros/s/AKfycbwkxkV6XlqKy3DDot_MTfb40WeAfd6KMgBwgcrCNStEFM5vcAQNYG9eR2OOFpCwJ3AJ/exec';
+      const payload = JSON.stringify({ action: 'memberConfirmReset', token, newPassword: password });
+      const url = GAS_URL + '?action=memberConfirmReset&payload=' + encodeURIComponent(payload);
+      const res = await fetch(url, { redirect: 'follow' });
+      const data = await res.json();
+      if (data.success) { setDone(true); }
+      else { setError(data.error || 'An error occurred'); }
+    } catch (e) { setError('Connection error. Try again.'); }
+    setLoading(false);
+  };
+
+  if (!token) return (
+    <div style={{ minHeight: '100dvh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#0A0A0A', padding: 24 }}>
+      <div style={{ textAlign: 'center', color: '#E05555' }}>Invalid or expired reset link.<br /><a href="/#/" style={{ color: '#C8A24C' }}>Back to login</a></div>
+    </div>
+  );
+
+  return (
+    <div style={{ minHeight: '100dvh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#0A0A0A', padding: 24 }}>
+      <div style={{ width: '100%', maxWidth: 360, background: '#111', borderRadius: 16, padding: '32px 24px', border: '1px solid #1A1A1A' }}>
+        <h2 style={{ color: '#C8A24C', fontWeight: 700, fontSize: 20, marginBottom: 8, textAlign: 'center' }}>Set New Password</h2>
+        {done ? (
+          <div style={{ textAlign: 'center' }}>
+            <p style={{ color: '#4CAF80', marginBottom: 16 }}>✓ Password updated successfully!</p>
+            <button onClick={() => navigate('/')} style={{ background: '#C8A24C', color: '#0A0A0A', border: 'none', borderRadius: 10, padding: '12px 24px', fontWeight: 700, cursor: 'pointer' }}>Sign In</button>
+          </div>
+        ) : (
+          <>
+            {error && <p style={{ color: '#E05555', fontSize: 13, marginBottom: 12 }}>{error}</p>}
+            <div style={{ marginBottom: 12 }}>
+              <label style={{ color: '#999', fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', display: 'block', marginBottom: 6 }}>New Password</label>
+              <input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="At least 6 characters"
+                style={{ width: '100%', background: '#0D0D0D', border: '1px solid #222', borderRadius: 10, padding: '12px 14px', color: '#F0F0F0', fontSize: 14, outline: 'none', boxSizing: 'border-box' }} />
+            </div>
+            <div style={{ marginBottom: 20 }}>
+              <label style={{ color: '#999', fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', display: 'block', marginBottom: 6 }}>Confirm Password</label>
+              <input type="password" value={confirm} onChange={e => setConfirm(e.target.value)} placeholder="Same password again"
+                style={{ width: '100%', background: '#0D0D0D', border: '1px solid #222', borderRadius: 10, padding: '12px 14px', color: '#F0F0F0', fontSize: 14, outline: 'none', boxSizing: 'border-box' }} />
+            </div>
+            <button onClick={submit} disabled={loading} style={{ width: '100%', padding: '13px', background: '#C8A24C', color: '#0A0A0A', border: 'none', borderRadius: 12, fontWeight: 700, fontSize: 14, cursor: loading ? 'default' : 'pointer', opacity: loading ? 0.7 : 1 }}>
+              {loading ? 'Updating…' : 'Set New Password'}
+            </button>
+            <div style={{ textAlign: 'center', marginTop: 12 }}>
+              <a href="/#/" style={{ color: '#666', fontSize: 12 }}>Back to sign in</a>
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ─── Admin wrappers ───────────────────────────────────────────────
 
 function AdminPageWrapper() {
@@ -265,6 +336,17 @@ function AdminShortcut() {
 function AppShell() {
   const { isAuthenticated } = useAuth();
 
+  const [location] = useHashLoc();
+
+  // Reset password page is public — show without auth check
+  if (location.startsWith('/reset')) {
+    return (
+      <div className="app-shell">
+        <ResetPasswordPage />
+      </div>
+    );
+  }
+
   if (!isAuthenticated) {
     return (
       <div className="app-shell">
@@ -290,6 +372,7 @@ function AppShell() {
         <Route path="/more"      component={MorePage} />
         <Route path="/messages"  component={MessagesPage} />
         <Route path="/admin"     component={AdminPageWrapper} />
+        <Route path="/reset"     component={ResetPasswordPage} />
         <Route component={NotFound} />
       </Switch>
       <TabBar />

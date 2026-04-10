@@ -32,6 +32,12 @@ export default function LoginPage() {
   const [loginError, setLoginError]     = useState("");
   const [loginLoading, setLoginLoading] = useState(false);
 
+  // Forgot password state
+  const [showForgot, setShowForgot]     = useState(false);
+  const [forgotEmail, setForgotEmail]   = useState('');
+  const [forgotSent, setForgotSent]     = useState(false);
+  const [forgotLoading, setForgotLoading] = useState(false);
+
   // Request state
   const [reqName, setReqName]   = useState("");
   const [reqEmail, setReqEmail] = useState("");
@@ -45,6 +51,16 @@ export default function LoginPage() {
     setActiveLocation(loc.id);
     setScreen("login");
     setLoginError("");
+  };
+
+  const handleForgotPassword = async () => {
+    if (!forgotEmail.trim()) return;
+    setForgotLoading(true);
+    try {
+      await gasCall('memberRequestReset', { email: forgotEmail.trim() });
+    } catch (_) {}
+    setForgotSent(true);
+    setForgotLoading(false);
   };
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -157,7 +173,7 @@ export default function LoginPage() {
             {activeLocations.length > 1 && (
               <button
                 onClick={() => setScreen("location")}
-                style={{ display: "flex", alignItems: "center", gap: 8, width: "100%", padding: "10px 16px", borderBottom: "1px solid #1A1A1A", background: "none", border: "none", borderBottom: "1px solid #1A1A1A", cursor: "pointer", textAlign: "left" }}
+                style={{ display: "flex", alignItems: "center", gap: 8, width: "100%", padding: "10px 16px", background: "none", border: "none", borderBottom: "1px solid #1A1A1A", cursor: "pointer", textAlign: "left" }}
               >
                 <div style={{ width: 8, height: 8, borderRadius: "50%", backgroundColor: selectedLocation.color, flexShrink: 0 }} />
                 <span style={{ fontSize: 12, color: "#888", flex: 1 }}>{selectedLocation.name}</span>
@@ -183,7 +199,7 @@ export default function LoginPage() {
 
             <div style={{ padding: "20px" }}>
               {/* ── Sign In ── */}
-              {screen === "login" && (
+              {screen === "login" && !showForgot && (
                 <form onSubmit={handleLogin} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
                   <Field label="Email">
                     <input type="email" value={email} onChange={e => setEmail(e.target.value)}
@@ -202,6 +218,12 @@ export default function LoginPage() {
                       </button>
                     </div>
                   </Field>
+                  <div style={{ textAlign: "right", marginTop: -6 }}>
+                    <button type="button" onClick={() => { setShowForgot(true); setForgotEmail(email); setForgotSent(false); }}
+                      style={{ background: "none", border: "none", color: "#777", fontSize: 12, cursor: "pointer", padding: 0, textDecoration: "underline" }}>
+                      Forgot password?
+                    </button>
+                  </div>
                   {loginError && <p style={{ fontSize: 12, color: "#E05555", margin: "-4px 0 0", padding: "8px 12px", background: "rgba(224,85,85,0.07)", borderRadius: 8 }}>{loginError}</p>}
                   <button type="submit" disabled={loginLoading} data-testid="button-login"
                     style={{ ...submitStyle(selectedLocation.color), opacity: loginLoading ? 0.7 : 1, marginTop: 4 }}>
@@ -210,6 +232,47 @@ export default function LoginPage() {
                       : <><span>Sign In</span><ArrowRight size={16} style={{ marginLeft: 8 }} /></>}
                   </button>
                 </form>
+              )}
+
+              {/* ── Forgot Password ── */}
+              {screen === "login" && showForgot && (
+                <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+                  {forgotSent ? (
+                    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center", gap: 10, padding: "8px 0" }}>
+                      <CheckCircle size={40} style={{ color: "#4CAF80" }} />
+                      <h3 style={{ fontSize: 16, fontWeight: 700, color: "#F0F0F0", margin: 0 }}>Check your email</h3>
+                      <p style={{ fontSize: 13, color: "#888", margin: 0, lineHeight: 1.5 }}>
+                        If an account exists for <strong style={{ color: "#F0F0F0" }}>{forgotEmail}</strong>, we sent a reset link.
+                      </p>
+                      <button onClick={() => { setShowForgot(false); setForgotSent(false); }}
+                        style={{ ...submitStyle(selectedLocation.color), marginTop: 8 }}>
+                        Back to Sign In
+                      </button>
+                    </div>
+                  ) : (
+                    <>
+                      <p style={{ fontSize: 13, color: "#888", margin: "0 0 4px", lineHeight: 1.5 }}>
+                        Enter your email and we'll send a password reset link.
+                      </p>
+                      <Field label="Email">
+                        <input type="email" value={forgotEmail} onChange={e => setForgotEmail(e.target.value)}
+                          placeholder="your@email.com" autoFocus style={inputStyle} />
+                      </Field>
+                      <button onClick={handleForgotPassword} disabled={forgotLoading}
+                        style={{ ...submitStyle(selectedLocation.color), opacity: forgotLoading ? 0.7 : 1 }}>
+                        {forgotLoading
+                          ? <><Loader2 size={16} className="animate-spin" style={{ marginRight: 8 }} /> Sending…</>
+                          : <><span>Send Reset Link</span><ArrowRight size={16} style={{ marginLeft: 8 }} /></>}
+                      </button>
+                      <div style={{ textAlign: "center" }}>
+                        <button type="button" onClick={() => { setShowForgot(false); setForgotSent(false); }}
+                          style={{ background: "none", border: "none", color: "#666", fontSize: 12, cursor: "pointer", textDecoration: "underline" }}>
+                          Back to sign in
+                        </button>
+                      </div>
+                    </>
+                  )}
+                </div>
               )}
 
               {/* ── Request Access ── */}
