@@ -83,7 +83,7 @@ function TabBar() {
     return () => window.removeEventListener('navConfigChanged', handler);
   }, []);
 
-  const hiddenPaths = ["/waiver", "/book", "/reset"];
+  const hiddenPaths = ["/waiver", "/book", "/reset", "/account"];
   if (hiddenPaths.some(p => location.startsWith(p))) return null;
 
   // Build tab list from saved paths
@@ -171,6 +171,116 @@ function NavCustomizer() {
 
 // ─── More page ────────────────────────────────────────────────────
 
+function AccountPage() {
+  const { member, logout, refreshProfile } = useAuth();
+  const [phone, setPhone] = useState(member?.phone || "");
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const [error, setError] = useState("");
+  const [, navigate] = useHashLoc();
+
+  const save = async () => {
+    setSaving(true); setSaved(false); setError("");
+    try {
+      const { memberUpdateProfile } = await import("@/lib/api");
+      await memberUpdateProfile(phone);
+      await refreshProfile();
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2000);
+    } catch (e: any) {
+      setError(e.message || "Failed to save");
+    }
+    setSaving(false);
+  };
+
+  const beltColorMap: Record<string, string> = {
+    white: "#E0E0E0", blue: "#3B82F6", purple: "#8B5CF6",
+    brown: "#92400E", black: "#1A1A1A", grey: "#9CA3AF",
+    yellow: "#EAB308", orange: "#F97316", green: "#22C55E",
+  };
+  const beltColor = beltColorMap[(member?.belt || "white").toLowerCase()] || "#C8A24C";
+  const initials = (member?.name || "M").split(" ").map((n: string) => n[0]).join("").toUpperCase().slice(0, 2);
+
+  return (
+    <div className="app-content">
+      <div className="px-5 pt-4 pb-3" style={{ paddingTop: "max(16px, env(safe-area-inset-top, 16px))", display: "flex", alignItems: "center", gap: 12 }}>
+        <button onClick={() => navigate("/more")} style={{ background: "none", border: "none", padding: "4px 0", cursor: "pointer", color: "#C8A24C", fontWeight: 600, fontSize: 14 }}>
+          ← Back
+        </button>
+        <h1 className="text-xl font-bold tracking-tight" style={{ color: "#F0F0F0", flex: 1 }}>My Account</h1>
+      </div>
+
+      <div className="px-5 pb-6 space-y-4">
+        {/* Avatar */}
+        <div style={{ display: "flex", justifyContent: "center", paddingTop: 8, paddingBottom: 4 }}>
+          <div style={{
+            width: 80, height: 80, borderRadius: "50%",
+            background: beltColor, color: ["white","yellow","grey"].includes((member?.belt||"").toLowerCase()) ? "#0A0A0A" : "#fff",
+            fontSize: 28, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center",
+            boxShadow: `0 0 0 4px ${beltColor}30, 0 0 30px ${beltColor}20`,
+          }}>
+            {initials}
+          </div>
+        </div>
+
+        {/* Read-only fields */}
+        {[
+          { label: "Name",       value: member?.name  || "—" },
+          { label: "Email",      value: member?.email || "—" },
+          { label: "Belt",       value: (member?.belt  || "white").charAt(0).toUpperCase() + (member?.belt || "white").slice(1) + " Belt" },
+          { label: "Plan",       value: member?.plan  || member?.membership || "—" },
+          { label: "Member Since", value: member?.joinDate || (member as any)?.startDate || "—" },
+        ].map(f => (
+          <div key={f.label} style={{ backgroundColor: "#111", border: "1px solid #1A1A1A", borderRadius: 12, padding: "12px 16px" }}>
+            <p style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: "#555", margin: "0 0 4px" }}>{f.label}</p>
+            <p style={{ fontSize: 15, color: "#E0E0E0", margin: 0 }}>{f.value}</p>
+          </div>
+        ))}
+
+        {/* Editable phone */}
+        <div style={{ backgroundColor: "#111", border: "1px solid #1A1A1A", borderRadius: 12, padding: "12px 16px" }}>
+          <label style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: "#555", display: "block", marginBottom: 6 }}>
+            Phone
+          </label>
+          <input
+            type="tel"
+            value={phone}
+            onChange={e => setPhone(e.target.value)}
+            placeholder="+1 (555) 000-0000"
+            style={{ width: "100%", background: "none", border: "none", fontSize: 15, color: "#F0F0F0", outline: "none", padding: 0 }}
+          />
+        </div>
+
+        {error && <p style={{ fontSize: 13, color: "#E05555", textAlign: "center" }}>{error}</p>}
+
+        <button
+          onClick={save}
+          disabled={saving}
+          style={{
+            width: "100%", padding: 14, borderRadius: 12,
+            background: saved ? "#4CAF80" : "#C8A24C",
+            color: "#0A0A0A", fontWeight: 700, fontSize: 15,
+            border: "none", cursor: "pointer", transition: "background 0.2s",
+            opacity: saving ? 0.7 : 1,
+          }}
+        >
+          {saving ? "Saving…" : saved ? "✓ Saved" : "Save Changes"}
+        </button>
+
+        <div style={{ borderTop: "1px solid #1A1A1A", paddingTop: 16, marginTop: 8 }}>
+          <button
+            onClick={logout}
+            style={{ width: "100%", padding: 14, borderRadius: 12, background: "rgba(224,85,85,0.08)", color: "#E05555", border: "1px solid rgba(224,85,85,0.15)", fontWeight: 600, fontSize: 14, cursor: "pointer" }}
+          >
+            Sign Out
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+
 function MorePage() {
   const { logout, isAdmin } = useAuth();
 
@@ -188,6 +298,12 @@ function MorePage() {
         { href: '/#/sauna',    icon: '🧖', label: 'Sauna Dashboard',     desc: 'Check in/out, active sessions'  },
         { href: '/#/stats',    icon: '📊', label: 'Academy Stats',       desc: 'Rankings, athletes, jits.gg'    },
         { href: '/#/calendar', icon: '🏆', label: 'Tournament Calendar', desc: 'Events and registrations'       },
+      ]
+    },
+    {
+      label: 'Account',
+      items: [
+        { href: '/#/account',  icon: '👤', label: 'My Account',         desc: 'Edit your phone number and info'  },
       ]
     },
     {
@@ -391,6 +507,7 @@ function AppShell() {
         <Route path="/book"      component={BookingPage} />
         <Route path="/games"     component={GamesPage} />
         <Route path="/more"      component={MorePage} />
+        <Route path="/account"    component={AccountPage} />
         <Route path="/messages"  component={MessagesPage} />
         <Route path="/admin"     component={AdminPageWrapper} />
         <Route path="/reset"     component={ResetPasswordPage} />

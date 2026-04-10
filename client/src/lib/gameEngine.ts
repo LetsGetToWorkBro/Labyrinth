@@ -18,7 +18,7 @@ export interface Rank {
 export const RANKS: Rank[] = [
   { name: 'White Belt', minWins: 0, color: '#F0F0F0', emoji: '🤍' },
   { name: 'Blue Belt', minWins: 3, color: '#3B6FD8', emoji: '💙' },
-  { name: 'Purple Belt', minWins: 6, color: '#8B4FBF', emoji: '💜' },
+  { name: 'Purple Belt', minWins: 6, color: '#8B4FBF', emoji: '🥋' },
   { name: 'Brown Belt', minWins: 10, color: '#8B5E3C', emoji: '🤎' },
   { name: 'Black Belt', minWins: 15, color: '#555', emoji: '🖤' },
 ];

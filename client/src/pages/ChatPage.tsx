@@ -112,6 +112,8 @@ export default function ChatPage() {
         timestamp: new Date().toISOString(),
       };
       setMessages(prev => [...prev, optimistic]);
+      // Refresh channel list so preview text updates
+      loadChannels();
     } else {
       setSendError("Failed to send. Try again.");
     }
@@ -413,9 +415,9 @@ function ChannelRow({ channel, isRank, onOpen }: { channel: ChatChannel; isRank?
           <span style={{ fontSize: 14, fontWeight: 600, color: channel.accessible ? "#F0F0F0" : "#666" }}>{channel.name}</span>
           {!channel.accessible && <Lock size={12} style={{ color: "#555" }} />}
         </div>
-        {channel.accessible && channel.lastMessage && (
-          <p style={{ fontSize: 12, color: "#666", margin: "2px 0 0", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-            {channel.lastMessage}
+        {channel.accessible && (
+          <p style={{ fontSize: 12, color: channel.lastMessage ? "#666" : "#333", margin: "2px 0 0", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontStyle: channel.lastMessage ? "normal" : "italic" }}>
+            {channel.lastMessage || "No messages yet"}
           </p>
         )}
       </div>
