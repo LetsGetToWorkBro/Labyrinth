@@ -201,6 +201,16 @@ export default function LoginPage() {
               {/* ── Sign In ── */}
               {screen === "login" && !showForgot && (
                 <form onSubmit={handleLogin} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+                  <p style={{
+                    fontSize: 13,
+                    color: '#666',
+                    textAlign: 'center',
+                    marginBottom: 24,
+                    lineHeight: 1.5,
+                    margin: '-4px 0 8px',
+                  }}>
+                    Track your belt journey. Stay connected with your gym.
+                  </p>
                   <Field label="Email">
                     <input type="email" value={email} onChange={e => setEmail(e.target.value)}
                       placeholder="your@email.com" autoComplete="email" autoFocus

@@ -266,11 +266,55 @@ export default function HomePage() {
         </div>
       </div>
 
+      {/* Attendance streak widget */}
+      <div style={{
+        display: 'flex',
+        gap: 10,
+        margin: '0 20px 16px',
+      }}>
+        <div style={{
+          flex: 1,
+          background: 'linear-gradient(135deg, rgba(200,162,76,0.12) 0%, rgba(200,162,76,0.04) 100%)',
+          border: '1px solid rgba(200,162,76,0.2)',
+          borderRadius: 12,
+          padding: '12px 14px',
+          display: 'flex',
+          alignItems: 'center',
+          gap: 10,
+        }}>
+          <span style={{ fontSize: 24 }}>🔥</span>
+          <div>
+            <div style={{ fontSize: 20, fontWeight: 700, color: '#C8A24C', lineHeight: 1 }}>
+              {(member as any)?.currentStreak || 0}
+            </div>
+            <div style={{ fontSize: 11, color: '#666', marginTop: 2 }}>Class streak</div>
+          </div>
+        </div>
+        <div style={{
+          flex: 1,
+          background: 'rgba(255,255,255,0.03)',
+          border: '1px solid #1A1A1A',
+          borderRadius: 12,
+          padding: '12px 14px',
+          display: 'flex',
+          alignItems: 'center',
+          gap: 10,
+        }}>
+          <span style={{ fontSize: 24 }}>📅</span>
+          <div>
+            <div style={{ fontSize: 20, fontWeight: 700, color: '#E0E0E0', lineHeight: 1 }}>
+              {(member as any)?.classesThisMonth || 0}
+            </div>
+            <div style={{ fontSize: 11, color: '#666', marginTop: 2 }}>This month</div>
+          </div>
+        </div>
+      </div>
+
       {/* Warning banners */}
       {hasWarnings && (
         <div className="mx-5 mb-4 space-y-2">
-          {!member.waiverSigned && <WarningBanner icon={<FileText size={16} />} text="Liability waiver not signed" action="Sign Now" href="/#/waiver" />}
-          {!member.agreementSigned && <WarningBanner icon={<FileText size={16} />} text="Membership agreement not signed" action="Sign Now" href="/#/waiver?tab=agreement" />}
+          {!member.waiverSigned && <WarningBanner text="Liability waiver not signed" action="Sign Now" href="/#/waiver" />}
+          {!member.agreementSigned && <WarningBanner text="Membership agreement not signed" action="Sign Now" href="/#/waiver?tab=agreement" />}
         </div>
       )}
 
@@ -495,13 +539,47 @@ function InfoItem({ label, value, isStatus }: { label: string; value: string; is
   );
 }
 
-function WarningBanner({ icon, text, action, href }: { icon: React.ReactNode; text: string; action: string; href: string }) {
+function WarningBanner({ text, action, href }: { text: string; action: string; href: string }) {
   return (
-    <a href={href} className="flex items-center gap-3 p-3 rounded-xl transition-colors" style={{ backgroundColor: "rgba(224, 130, 40, 0.1)", border: "1px solid rgba(224, 130, 40, 0.2)" }}>
-      <span style={{ color: "#E08228" }}>{icon}</span>
-      <span className="text-sm flex-1" style={{ color: "#E08228" }}>{text}</span>
-      <span className="text-xs font-medium" style={{ color: "#E08228" }}>{action}</span>
-      <ChevronRight size={14} style={{ color: "#E08228" }} />
+    <a
+      href={href}
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: 12,
+        padding: '14px 16px',
+        background: 'rgba(224, 85, 85, 0.1)',
+        border: '1px solid rgba(224, 85, 85, 0.25)',
+        borderLeft: '3px solid #E05555',
+        borderRadius: '0 10px 10px 0',
+        marginBottom: 10,
+        textDecoration: 'none',
+      }}
+    >
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="#E05555" style={{ flexShrink: 0 }}>
+        <path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/>
+        <line x1="12" y1="9" x2="12" y2="13" stroke="#fff" strokeWidth="2"/>
+        <circle cx="12" cy="17" r="1" fill="#fff"/>
+      </svg>
+      <span style={{ fontSize: 13, color: '#E05555', flex: 1, fontWeight: 500 }}>{text}</span>
+      <span
+        style={{
+          minHeight: 44,
+          padding: '10px 16px',
+          background: 'rgba(224,85,85,0.15)',
+          border: '1px solid rgba(224,85,85,0.4)',
+          borderRadius: 8,
+          color: '#E05555',
+          fontWeight: 700,
+          fontSize: 13,
+          cursor: 'pointer',
+          flexShrink: 0,
+          display: 'flex',
+          alignItems: 'center',
+        }}
+      >
+        {action}
+      </span>
     </a>
   );
 }

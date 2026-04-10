@@ -106,6 +106,30 @@ export default function SchedulePage() {
         >
           Book a Trial Class <ChevronRight size={14} />
         </a>
+
+        {/* Tournament link */}
+        <div style={{
+          margin: '20px 0',
+          padding: '14px 16px',
+          background: 'rgba(200,162,76,0.06)',
+          border: '1px solid rgba(200,162,76,0.15)',
+          borderRadius: 12,
+          display: 'flex',
+          alignItems: 'center',
+          gap: 12,
+        }}>
+          <span style={{ fontSize: 22 }}>🏆</span>
+          <div style={{ flex: 1 }}>
+            <p style={{ fontSize: 14, fontWeight: 600, color: '#E0E0E0', margin: 0 }}>Compete at a Tournament</p>
+            <p style={{ fontSize: 12, color: '#666', margin: '2px 0 0' }}>View upcoming events and registration links</p>
+          </div>
+          <a href="/#/calendar" style={{
+            fontSize: 12, fontWeight: 700, color: '#C8A24C',
+            textDecoration: 'none', flexShrink: 0,
+          }}>
+            View →
+          </a>
+        </div>
       </div>
     </div>
   );

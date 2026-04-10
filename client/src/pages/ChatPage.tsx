@@ -156,8 +156,30 @@ export default function ChatPage() {
               <Loader2 size={20} className="animate-spin" />
             </div>
           ) : messages.length === 0 ? (
-            <div style={{ display: "flex", justifyContent: "center", alignItems: "center", height: "100%", color: "#555", fontSize: 13 }}>
-              No messages yet. Be the first!
+            <div style={{
+              flex: 1,
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: '40px 24px',
+              gap: 12,
+              textAlign: 'center',
+            }}>
+              <div style={{
+                width: 64, height: 64, borderRadius: '50%',
+                background: 'rgba(200,162,76,0.1)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontSize: 28, marginBottom: 4,
+              }}>
+                💬
+              </div>
+              <p style={{ fontSize: 15, fontWeight: 600, color: '#E0E0E0', margin: 0 }}>
+                No messages yet
+              </p>
+              <p style={{ fontSize: 13, color: '#666', margin: 0, maxWidth: 240, lineHeight: 1.5 }}>
+                Your coaches will post updates, announcements, and class notes here.
+              </p>
             </div>
           ) : (
             messages.map(msg => <MessageBubble key={msg.id} msg={msg} myName={member?.name || ""} />)
@@ -232,6 +254,10 @@ export default function ChatPage() {
         {loadingChannels ? (
           <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 8 }}>
             {[1, 2, 3, 4].map(i => <div key={i} style={{ height: 60, borderRadius: 14, backgroundColor: "#111", border: "1px solid #1A1A1A", opacity: 1 - i * 0.15 }} />)}
+          </div>
+        ) : channels.length === 0 ? (
+          <div style={{ padding: '32px 20px', textAlign: 'center' }}>
+            <p style={{ fontSize: 14, color: '#666' }}>No channels yet — check back soon.</p>
           </div>
         ) : (
           <>

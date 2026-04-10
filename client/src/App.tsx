@@ -23,7 +23,7 @@ import MessagesPage from "@/pages/MessagesPage";
 import NotFound from "@/pages/not-found";
 import {
   Home, MessageCircle, CalendarDays, MoreHorizontal, Award,
-  ShieldCheck, Send, Gamepad2, BarChart2, Trophy, Thermometer,
+  Gamepad2, BarChart2, Trophy, Thermometer,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { useEffect, useCallback, useState } from "react";
@@ -75,7 +75,6 @@ function saveNavConfig(paths: string[]) {
 
 function TabBar() {
   const [location] = useLocation();
-  const { isAdmin } = useAuth();
   const [navPaths, setNavPaths] = useState<string[]>(getNavConfig);
 
   useEffect(() => {
@@ -93,19 +92,12 @@ function TabBar() {
     return opt;
   });
 
-  // Admin tabs always appended at end
-  const adminExtras: NavOption[] = isAdmin ? [
-    { path: '/messages', label: 'Blast', Icon: Send,        emoji: '📨' },
-    { path: '/admin',    label: 'Admin', Icon: ShieldCheck, emoji: '🛡️' },
-  ] : [];
-
-  const allTabs = [...tabs, ...adminExtras];
+  const allTabs = tabs; // Admin tools are in the More tab
 
   return (
     <nav className="tab-bar" data-testid="tab-bar">
       {allTabs.map(tab => {
         const isActive = tab.path === '/' ? location === '/' : location.startsWith(tab.path);
-        const isAdminTab = tab.path === '/admin' || tab.path === '/messages';
         const Icon = tab.Icon;
         return (
           <a
@@ -113,7 +105,6 @@ function TabBar() {
             href={`/#${tab.path}`}
             className={`tab-item ${isActive ? 'active' : ''}`}
             data-testid={`tab-${tab.label.toLowerCase()}`}
-            style={isAdminTab ? { color: isActive ? '#C8A24C' : '#888' } : undefined}
           >
             {Icon
               ? <Icon size={22} strokeWidth={isActive ? 2.2 : 1.5} />
@@ -183,17 +174,36 @@ function NavCustomizer() {
 function MorePage() {
   const { logout, isAdmin } = useAuth();
 
-  const items = [
-    { href: "/#/games",    icon: "🎮", label: "Games",               desc: "Challenge your teammates"        },
-    { href: "/#/sauna",    icon: "🧖", label: "Sauna Dashboard",     desc: "Check in/out, active sessions"   },
-    { href: "/#/stats",    icon: "📊", label: "Academy Stats",       desc: "Rankings, athletes, jits.gg"     },
-    { href: "/#/calendar", icon: "🏆", label: "Tournament Calendar", desc: "Events and registrations"        },
-    { href: "/#/book",     icon: "📅", label: "Book Trial Class",    desc: "Schedule a free trial"           },
-    { href: "/#/waiver",   icon: "📝", label: "Waiver & Agreement",  desc: "Sign or review documents"        },
-    ...(isAdmin ? [
-      { href: "/#/messages", icon: "📨", label: "Message Blast", desc: "Email or text all members"         },
-      { href: "/#/admin",    icon: "🛡️", label: "Admin Panel",   desc: "Member management, stats, notes"  },
-    ] : []),
+  const sections = [
+    {
+      label: 'Train',
+      items: [
+        { href: '/#/games',    icon: '🎮', label: 'Games',               desc: 'Challenge your teammates'       },
+        { href: '/#/schedule', icon: '📅', label: 'Class Schedule',       desc: 'View and bookmark classes'      },
+      ]
+    },
+    {
+      label: 'Manage',
+      items: [
+        { href: '/#/sauna',    icon: '🧖', label: 'Sauna Dashboard',     desc: 'Check in/out, active sessions'  },
+        { href: '/#/stats',    icon: '📊', label: 'Academy Stats',       desc: 'Rankings, athletes, jits.gg'    },
+        { href: '/#/calendar', icon: '🏆', label: 'Tournament Calendar', desc: 'Events and registrations'       },
+      ]
+    },
+    {
+      label: 'Documents',
+      items: [
+        { href: '/#/book',     icon: '📅', label: 'Book Trial Class',    desc: 'Schedule a free trial'          },
+        { href: '/#/waiver',   icon: '📝', label: 'Waiver & Agreement',  desc: 'Sign or review documents'       },
+      ]
+    },
+    ...(isAdmin ? [{
+      label: 'Admin',
+      items: [
+        { href: '/#/messages', icon: '📨', label: 'Message Blast',       desc: 'Email or text all members'      },
+        { href: '/#/admin',    icon: '🛡️', label: 'Admin Panel',         desc: 'Member management & stats'      },
+      ]
+    }] : []),
   ];
 
   return (
@@ -201,23 +211,34 @@ function MorePage() {
       <div className="px-5 pt-4 pb-3" style={{ paddingTop: "max(16px, env(safe-area-inset-top, 16px))" }}>
         <h1 className="text-xl font-bold tracking-tight" style={{ color: "#F0F0F0" }}>More</h1>
       </div>
-      <div className="px-5 pb-6 space-y-2">
-        {items.map((item, i) => (
-          <a key={i} href={item.href}
-            className="flex items-center gap-3 p-4 rounded-xl transition-all active:scale-[0.98]"
-            style={{ backgroundColor: "#111", border: "1px solid #1A1A1A" }}
-          >
-            <span className="text-xl">{item.icon}</span>
-            <div className="flex-1">
-              <p className="text-sm font-medium" style={{ color: "#F0F0F0" }}>{item.label}</p>
-              <p className="text-xs" style={{ color: "#666" }}>{item.desc}</p>
+      <div className="px-5 pb-6">
+        {sections.map((section, si) => (
+          <div key={section.label}>
+            <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#444', padding: '20px 0 8px', paddingTop: si === 0 ? '4px' : '20px' }}>
+              {section.label}
             </div>
-            <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-              <path d="M5 3l4 4-4 4" stroke="#444" strokeWidth="1.5" strokeLinecap="round" />
-            </svg>
-          </a>
+            <div className="space-y-2">
+              {section.items.map((item, i) => (
+                <a key={i} href={item.href}
+                  className="flex items-center gap-3 p-4 rounded-xl transition-all active:scale-[0.98]"
+                  style={{ backgroundColor: "#111", border: "1px solid #1A1A1A" }}
+                >
+                  <span className="text-xl">{item.icon}</span>
+                  <div className="flex-1">
+                    <p className="text-sm font-medium" style={{ color: "#F0F0F0" }}>{item.label}</p>
+                    <p className="text-xs" style={{ color: "#666" }}>{item.desc}</p>
+                  </div>
+                  <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                    <path d="M5 3l4 4-4 4" stroke="#444" strokeWidth="1.5" strokeLinecap="round" />
+                  </svg>
+                </a>
+              ))}
+            </div>
+          </div>
         ))}
-        <NavCustomizer />
+        <div style={{ marginTop: 20 }}>
+          <NavCustomizer />
+        </div>
         <div className="mt-6 p-4 rounded-xl" style={{ backgroundColor: "#111", border: "1px solid #1A1A1A" }}>
           <h3 className="text-sm font-semibold mb-2" style={{ color: "#F0F0F0" }}>Labyrinth BJJ</h3>
           <div className="space-y-1.5 text-xs" style={{ color: "#999" }}>

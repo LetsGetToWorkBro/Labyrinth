@@ -222,7 +222,15 @@ export default function BeltJourneyPage() {
         <div className="mx-5 mb-4 p-5 rounded-2xl relative overflow-hidden" style={{
           background: `linear-gradient(135deg, ${getBeltColor(currentBelt.belt)}15, ${getBeltColor(currentBelt.belt)}05)`,
           border: `1px solid ${getBeltColor(currentBelt.belt)}30`,
+          boxShadow: `0 0 0 0 ${getBeltColor(currentBelt.belt)}30`,
+          animation: 'belt-pulse 3s ease-in-out infinite',
         }}>
+        <style>{`
+          @keyframes belt-pulse {
+            0%, 100% { box-shadow: 0 0 0 0 ${getBeltColor(currentBelt.belt)}30; }
+            50% { box-shadow: 0 0 0 6px ${getBeltColor(currentBelt.belt)}00; }
+          }
+        `}</style>
           <div className="flex items-center gap-4">
             {/* Belt visual */}
             <div className="relative flex flex-col items-center gap-1">
@@ -324,7 +332,12 @@ export default function BeltJourneyPage() {
                         <button
                           onClick={() => startEdit(promo)}
                           className="flex-1 text-left p-3 rounded-xl transition-all active:scale-[0.98]"
-                          style={{ backgroundColor: "#111", border: "1px solid #1A1A1A" }}
+                          style={{
+                            backgroundColor: "#111",
+                            border: "1px solid #1A1A1A",
+                            borderLeft: `4px solid ${getBeltColor(promo.belt || 'white')}`,
+                            background: `linear-gradient(135deg, ${getBeltColor(promo.belt || 'white')}0F 0%, #111 60%)`,
+                          }}
                           data-testid={`promo-card-${i}`}
                         >
                           <div className="flex items-center justify-between mb-0.5">
