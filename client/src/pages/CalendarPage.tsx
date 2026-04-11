@@ -376,10 +376,10 @@ export default function CalendarPage() {
 
       {/* Event Detail Modal */}
       {selectedEvent && (
-        <div className="fixed inset-0 z-50 flex items-end justify-center" style={{ backgroundColor: "rgba(0,0,0,0.7)" }} onClick={() => setSelectedEvent(null)}>
+        <div style={{ position: 'fixed', inset: 0, zIndex: 50, display: 'flex', alignItems: 'flex-end', justifyContent: 'center', backgroundColor: 'rgba(0,0,0,0.7)' }} onClick={() => setSelectedEvent(null)}>
           <div
-            className="w-full max-w-md rounded-t-2xl p-5 pb-8"
-            style={{ backgroundColor: "#111", maxHeight: "70vh", overflowY: "auto" }}
+            className="w-full max-w-md rounded-t-2xl p-5"
+            style={{ backgroundColor: "#111", maxHeight: "75vh", overflowY: "auto", paddingBottom: 'max(80px, calc(env(safe-area-inset-bottom, 0px) + 80px))' }}
             onClick={e => e.stopPropagation()}
           >
             <div className="w-10 h-1 rounded-full mx-auto mb-4" style={{ backgroundColor: "#333" }} />
@@ -471,8 +471,8 @@ export default function CalendarPage() {
             style={{
               width: "100%", alignSelf: "center", maxWidth: 480,
               backgroundColor: "#111", borderRadius: "20px 20px 0 0",
-              padding: "20px 20px max(32px, env(safe-area-inset-bottom, 32px))",
-              maxHeight: "85vh", overflowY: "auto",
+              padding: "20px 20px max(80px, calc(env(safe-area-inset-bottom, 0px) + 80px))",
+              maxHeight: "75vh", overflowY: "auto",
             }}
             onClick={e => e.stopPropagation()}
           >

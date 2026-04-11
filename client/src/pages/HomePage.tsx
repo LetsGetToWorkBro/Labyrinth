@@ -8,7 +8,7 @@ import { chatGetChannels, fetchCSV, parseCSV, CSV_ENDPOINTS } from "@/lib/api";
 import { ALL_ACHIEVEMENTS } from "@/lib/achievements";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import {
-  CreditCard, FileText, ChevronRight, LogOut,
+  CreditCard, FileText, ChevronRight, ChevronDown, LogOut,
   Users, Check, Loader2, Plus, Trash2, Star, CheckCircle, Shield,
 } from "lucide-react";
 import {
@@ -109,6 +109,7 @@ export default function HomePage() {
   const [rankNote, setRankNote] = useState("");
   const [rankSubmitting, setRankSubmitting] = useState(false);
   const [rankSent, setRankSent] = useState(false);
+  const [profileExpanded, setProfileExpanded] = useState(false);
 
   // Profile photo state
   const [profilePic, setProfilePic] = useState<string | null>(() => {
@@ -405,151 +406,176 @@ export default function HomePage() {
         </h1>
       </div>
 
-      {/* Profile card */}
-      <div className="mx-5 rounded-xl p-5 mb-4" style={{ backgroundColor: "#111", border: "1px solid #1A1A1A" }}>
-        <div className="flex items-start justify-between mb-4">
-          <div className="flex-1 min-w-0 mr-3">
-            <div
-              onClick={() => avatarFileRef.current?.click()}
-              style={{
-                width: 52, height: 52, borderRadius: '50%',
-                background: profilePic ? 'none' : avatarBg, color: avatarFg,
-                fontSize: 18, fontWeight: 700,
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                textTransform: 'uppercase', letterSpacing: '-0.5px',
-                flexShrink: 0, marginBottom: 12,
-                boxShadow: `0 0 0 3px ${avatarBg}30, 0 0 20px ${avatarBg}20`,
-                cursor: 'pointer', position: 'relative', overflow: 'hidden',
-              }}
-            >
-              {profilePic ? (
-                <img src={profilePic} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-              ) : (
-                getInitials(member?.name || 'M')
-              )}
-              {/* Camera overlay */}
-              <div style={{
-                position: 'absolute', bottom: 0, right: 0,
-                width: 18, height: 18, borderRadius: '50%',
-                backgroundColor: '#C8A24C', border: '2px solid #111',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-              }}>
-                <svg width={9} height={9} viewBox="0 0 24 24" fill="none" stroke="#0A0A0A" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
-                  <circle cx="12" cy="13" r="4"/>
-                </svg>
-              </div>
-            </div>
-            <input
-              ref={avatarFileRef}
-              type="file"
-              accept="image/*"
-              onChange={handleAvatarPhoto}
-              style={{ display: 'none' }}
-            />
-            <h2 className="text-lg font-bold" style={{ color: "#F0F0F0" }} data-testid="text-member-name">
-              {member.name}
-            </h2>
-            <p className="text-xs mt-0.5" style={{ color: "#666" }}>Member since {joinDate}</p>
-          </div>
-          <div className="flex items-center gap-2 flex-shrink-0">
-            {hasFamily && (
-              <button
-                onClick={() => setShowFamilySwitcher(!showFamilySwitcher)}
-                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all active:scale-[0.97]"
-                style={{
-                  backgroundColor: showFamilySwitcher ? "rgba(200,162,76,0.15)" : "#1A1A1A",
-                  color: showFamilySwitcher ? "#C8A24C" : "#999",
-                  border: showFamilySwitcher ? "1px solid rgba(200,162,76,0.3)" : "1px solid #222",
-                }}
-                data-testid="button-family-switcher"
-              >
-                <Users size={13} />
-                Family
-              </button>
+      {/* Profile card — collapsible */}
+      <input
+        ref={avatarFileRef}
+        type="file"
+        accept="image/*"
+        onChange={handleAvatarPhoto}
+        style={{ display: 'none' }}
+      />
+      <div className="mx-5 mb-3" style={{ transition: 'all 0.2s ease' }}>
+        {/* Collapsed header row — always visible */}
+        <div
+          onClick={() => setProfileExpanded(p => !p)}
+          style={{
+            background: '#141414', border: '1px solid #1A1A1A',
+            borderRadius: profileExpanded ? '16px 16px 0 0' : 16,
+            padding: '12px 16px',
+            display: 'flex', alignItems: 'center', gap: 12,
+            cursor: 'pointer',
+            transition: 'border-radius 0.2s ease',
+          }}
+        >
+          {/* Avatar */}
+          <div
+            onClick={(e) => { e.stopPropagation(); avatarFileRef.current?.click(); }}
+            style={{
+              width: 44, height: 44, borderRadius: '50%',
+              background: profilePic ? 'none' : avatarBg, color: avatarFg,
+              fontSize: 16, fontWeight: 700,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              textTransform: 'uppercase', letterSpacing: '-0.5px',
+              flexShrink: 0,
+              boxShadow: `0 0 0 2px ${avatarBg}30`,
+              cursor: 'pointer', position: 'relative', overflow: 'hidden',
+            }}
+          >
+            {profilePic ? (
+              <img src={profilePic} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+            ) : (
+              getInitials(member?.name || 'M')
             )}
-            {/* Belt SVG — tappable to request rank update */}
-            <button
-              onClick={() => { haptic(); setShowRankRequest(true); setRankBelt(member.belt || "white"); setRankStripes(0); setRankNote(""); setRankSent(false); }}
-              style={{ background: "none", border: "none", padding: 0, cursor: "pointer", position: "relative" }}
-              title="Tap to request a rank update"
-            >
-              <BeltIcon
-                belt={member.belt || "white"}
-                stripes={0}
-                width={72}
-                style={{ filter: `drop-shadow(0 1px 6px ${getBeltColor(member.belt)}40)` }}
-              />
-              {/* Tap hint dot */}
-              <span style={{ position: "absolute", bottom: -2, right: -2, width: 14, height: 14, borderRadius: "50%", backgroundColor: "#C8A24C", border: "2px solid #0A0A0A", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                <Shield size={7} style={{ color: "#0A0A0A" }} />
-              </span>
-              <span style={{ position: "absolute", bottom: -18, left: "50%", transform: "translateX(-50%)", fontSize: 9, color: "#555", whiteSpace: "nowrap", fontWeight: 500, letterSpacing: "0.02em" }}>
-                {(member.belt || "white").charAt(0).toUpperCase() + (member.belt || "white").slice(1)} Belt
-              </span>
-            </button>
+            <div style={{
+              position: 'absolute', bottom: 0, right: 0,
+              width: 16, height: 16, borderRadius: '50%',
+              backgroundColor: '#C8A24C', border: '2px solid #141414',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+            }}>
+              <svg width={8} height={8} viewBox="0 0 24 24" fill="none" stroke="#0A0A0A" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round">
+                <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+                <circle cx="12" cy="13" r="4"/>
+              </svg>
+            </div>
           </div>
+
+          {/* Name + belt */}
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: 16, fontWeight: 700, color: '#F0F0F0' }} data-testid="text-member-name">{member?.name}</div>
+            <div style={{ fontSize: 12, color: getBeltColor(member?.belt || 'white'), fontWeight: 600, textTransform: 'capitalize' }}>{member?.belt || 'White'} Belt</div>
+          </div>
+
+          {/* Chevron */}
+          <ChevronDown size={16} style={{ color: '#444', transform: profileExpanded ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s', flexShrink: 0 }} />
         </div>
 
-        {/* Family switcher */}
-        {hasFamily && showFamilySwitcher && (
-          <div className="mb-4 rounded-xl overflow-hidden" style={{ border: "1px solid #222" }}>
-            <p className="text-[10px] uppercase tracking-wider px-3 pt-2.5 pb-1.5 font-medium" style={{ color: "#555", backgroundColor: "#0D0D0D" }}>
-              Switch Profile
-            </p>
-            {switchError && <p className="text-xs px-3 py-1.5" style={{ color: "#E05555", backgroundColor: "rgba(224,85,85,0.07)" }}>{switchError}</p>}
-            {familyMembers.map((fm) => {
-              const isActive = fm.row === member.row;
-              const isLoading = switchingRow === fm.row;
-              return (
+        {/* Expanded details */}
+        {profileExpanded && (
+          <div style={{
+            background: '#141414', border: '1px solid #1A1A1A', borderTop: 'none',
+            borderRadius: '0 0 16px 16px',
+            padding: '0 16px 16px',
+          }}>
+            <div style={{ borderTop: '1px solid #1A1A1A', paddingTop: 14, display: 'flex', flexDirection: 'column', gap: 8 }}>
+              <div style={{ fontSize: 12, color: '#666' }}>Member since <span style={{ color: '#999' }}>{joinDate}</span></div>
+              {member.phone && (
+                <div style={{ fontSize: 12, color: '#666' }}>Phone <span style={{ color: '#999' }}>{member.phone}</span></div>
+              )}
+              {member.email && member.email !== member.name && (
+                <div style={{ fontSize: 12, color: '#666' }}>Email <span style={{ color: '#999' }}>{member.email}</span></div>
+              )}
+            </div>
+
+            {/* Belt + Family row */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 14 }}>
+              {hasFamily && (
                 <button
-                  key={fm.row}
-                  onClick={() => handleSwitchProfile(fm)}
-                  disabled={!!switchingRow}
-                  className="w-full flex items-center gap-3 px-3 py-2.5 transition-colors text-left"
-                  style={{ backgroundColor: isActive ? "rgba(200,162,76,0.08)" : "#0D0D0D", borderTop: "1px solid #181818", opacity: switchingRow && !isLoading ? 0.5 : 1 }}
+                  onClick={(e) => { e.stopPropagation(); setShowFamilySwitcher(!showFamilySwitcher); }}
+                  className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all active:scale-[0.97]"
+                  style={{
+                    backgroundColor: showFamilySwitcher ? "rgba(200,162,76,0.15)" : "#1A1A1A",
+                    color: showFamilySwitcher ? "#C8A24C" : "#999",
+                    border: showFamilySwitcher ? "1px solid rgba(200,162,76,0.3)" : "1px solid #222",
+                  }}
+                  data-testid="button-family-switcher"
                 >
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium truncate" style={{ color: isActive ? "#C8A24C" : "#E0E0E0" }}>{fm.name}</p>
-                    <p className="text-[10px] mt-0.5" style={{ color: "#555" }}>{fm.type} · {fm.belt || "White"} belt{fm.isPrimary ? " · Primary" : ""}</p>
-                  </div>
-                  <div className="flex-shrink-0">
-                    {isLoading ? <Loader2 size={14} className="animate-spin" style={{ color: "#C8A24C" }} />
-                      : isActive ? <Check size={14} style={{ color: "#C8A24C" }} />
-                      : <ChevronRight size={14} style={{ color: "#333" }} />}
-                  </div>
+                  <Users size={13} />
+                  Family
                 </button>
-              );
-            })}
+              )}
+              <button
+                onClick={(e) => { e.stopPropagation(); haptic(); setShowRankRequest(true); setRankBelt(member.belt || "white"); setRankStripes(0); setRankNote(""); setRankSent(false); }}
+                style={{ background: "none", border: "none", padding: 0, cursor: "pointer", position: "relative" }}
+                title="Tap to request a rank update"
+              >
+                <BeltIcon
+                  belt={member.belt || "white"}
+                  stripes={0}
+                  width={72}
+                  style={{ filter: `drop-shadow(0 1px 6px ${getBeltColor(member.belt)}40)` }}
+                />
+                <span style={{ position: "absolute", bottom: -2, right: -2, width: 14, height: 14, borderRadius: "50%", backgroundColor: "#C8A24C", border: "2px solid #141414", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  <Shield size={7} style={{ color: "#0A0A0A" }} />
+                </span>
+              </button>
+              <div style={{ flex: 1 }} />
+              <a href="/#/account" style={{ fontSize: 12, color: '#C8A24C', fontWeight: 600, textDecoration: 'none' }}>Edit Profile →</a>
+            </div>
+
+            {/* Family switcher */}
+            {hasFamily && showFamilySwitcher && (
+              <div className="mt-3 rounded-xl overflow-hidden" style={{ border: "1px solid #222" }}>
+                <p className="text-[10px] uppercase tracking-wider px-3 pt-2.5 pb-1.5 font-medium" style={{ color: "#555", backgroundColor: "#0D0D0D" }}>
+                  Switch Profile
+                </p>
+                {switchError && <p className="text-xs px-3 py-1.5" style={{ color: "#E05555", backgroundColor: "rgba(224,85,85,0.07)" }}>{switchError}</p>}
+                {familyMembers.map((fm) => {
+                  const isActive = fm.row === member.row;
+                  const isLoading = switchingRow === fm.row;
+                  return (
+                    <button
+                      key={fm.row}
+                      onClick={(e) => { e.stopPropagation(); handleSwitchProfile(fm); }}
+                      disabled={!!switchingRow}
+                      className="w-full flex items-center gap-3 px-3 py-2.5 transition-colors text-left"
+                      style={{ backgroundColor: isActive ? "rgba(200,162,76,0.08)" : "#0D0D0D", borderTop: "1px solid #181818", opacity: switchingRow && !isLoading ? 0.5 : 1 }}
+                    >
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium truncate" style={{ color: isActive ? "#C8A24C" : "#E0E0E0" }}>{fm.name}</p>
+                        <p className="text-[10px] mt-0.5" style={{ color: "#555" }}>{fm.type} · {fm.belt || "White"} belt{fm.isPrimary ? " · Primary" : ""}</p>
+                      </div>
+                      <div className="flex-shrink-0">
+                        {isLoading ? <Loader2 size={14} className="animate-spin" style={{ color: "#C8A24C" }} />
+                          : isActive ? <Check size={14} style={{ color: "#C8A24C" }} />
+                          : <ChevronRight size={14} style={{ color: "#333" }} />}
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+
+            {/* Document status row */}
+            <div className="flex gap-3 mt-3 pt-3" style={{ borderTop: "1px solid #1A1A1A" }}>
+              <a href="/#/waiver" className="flex items-center gap-1.5 flex-1 text-xs" style={{ textDecoration: "none" }}>
+                {member.waiverSigned
+                  ? <CheckCircle size={13} style={{ color: "#4CAF80", flexShrink: 0 }} />
+                  : <FileText size={13} style={{ color: "#E08228", flexShrink: 0 }} />}
+                <span style={{ color: member.waiverSigned ? "#4CAF80" : "#E08228" }}>
+                  {member.waiverSigned ? "Waiver signed" : "Sign waiver"}
+                </span>
+              </a>
+              <a href="/#/waiver?tab=agreement" className="flex items-center gap-1.5 flex-1 text-xs" style={{ textDecoration: "none" }}>
+                {member.agreementSigned
+                  ? <CheckCircle size={13} style={{ color: "#4CAF80", flexShrink: 0 }} />
+                  : <FileText size={13} style={{ color: "#E08228", flexShrink: 0 }} />}
+                <span style={{ color: member.agreementSigned ? "#4CAF80" : "#E08228" }}>
+                  {member.agreementSigned ? "Agreement signed" : "Sign agreement"}
+                </span>
+              </a>
+            </div>
           </div>
         )}
-
-        <div className="grid grid-cols-2 gap-3">
-          <InfoItem label="Plan" value={member.plan || member.membership || "—"} />
-          <InfoItem label="Status" value={member.status || "Active"} isStatus />
-          <InfoItem label="Email" value={member.email} />
-          <InfoItem label="Phone" value={member.phone || "Not set"} />
-        </div>
-
-        {/* Document status row */}
-        <div className="flex gap-3 mt-3 pt-3" style={{ borderTop: "1px solid #1A1A1A" }}>
-          <a href="/#/waiver" className="flex items-center gap-1.5 flex-1 text-xs" style={{ textDecoration: "none" }}>
-            {member.waiverSigned
-              ? <CheckCircle size={13} style={{ color: "#4CAF80", flexShrink: 0 }} />
-              : <FileText size={13} style={{ color: "#E08228", flexShrink: 0 }} />}
-            <span style={{ color: member.waiverSigned ? "#4CAF80" : "#E08228" }}>
-              {member.waiverSigned ? "Waiver signed" : "Sign waiver"}
-            </span>
-          </a>
-          <a href="/#/waiver?tab=agreement" className="flex items-center gap-1.5 flex-1 text-xs" style={{ textDecoration: "none" }}>
-            {member.agreementSigned
-              ? <CheckCircle size={13} style={{ color: "#4CAF80", flexShrink: 0 }} />
-              : <FileText size={13} style={{ color: "#E08228", flexShrink: 0 }} />}
-            <span style={{ color: member.agreementSigned ? "#4CAF80" : "#E08228" }}>
-              {member.agreementSigned ? "Agreement signed" : "Sign agreement"}
-            </span>
-          </a>
-        </div>
       </div>
 
       {/* Animated flame pulse keyframes */}
@@ -922,16 +948,6 @@ export default function HomePage() {
   );
 }
 
-function InfoItem({ label, value, isStatus }: { label: string; value: string; isStatus?: boolean }) {
-  return (
-    <div>
-      <p className="text-[10px] uppercase tracking-wider mb-0.5" style={{ color: "#666" }}>{label}</p>
-      <p className="text-sm font-medium truncate" style={{ color: isStatus ? (value === "Active" ? "#4CAF80" : "#E08228") : "#F0F0F0" }}>
-        {value}
-      </p>
-    </div>
-  );
-}
 
 function WarningBanner({ text, action, href }: { text: string; action: string; href: string }) {
   return (
