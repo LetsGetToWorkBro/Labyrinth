@@ -19,7 +19,7 @@ export const RANK_PROFILES: Record<string, RankProfile> = {
     title: "Beginner",
     color: "#EEEEEE",
     glow: "none",
-    badge: "",
+    badge: "🤍",
     tier: 0,
     borderColor: "#333",
   },

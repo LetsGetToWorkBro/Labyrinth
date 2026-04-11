@@ -439,10 +439,11 @@ function AccountPage() {
           </>
         )}
 
-        {/* Achievements section */}
-        {badges.length > 0 && (
-          <div style={{ marginTop: 20 }}>
-            <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#444', marginBottom: 12 }}>Achievements</div>
+        {/* Always show Achievements section */}
+        <div style={{ marginTop: 24 }}>
+          <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#444', marginBottom: 12 }}>Achievements</div>
+
+          {badges.length > 0 ? (
             <div style={{ display: 'flex', gap: 10, overflowX: 'auto', paddingBottom: 4 }}>
               {badges.map(b => (
                 <div key={b.key} style={{
@@ -464,14 +465,25 @@ function AccountPage() {
                 </div>
               ))}
             </div>
-          </div>
-        )}
-        {badges.length === 0 && (
-          <div style={{ marginTop: 20, padding: '16px', background: '#111', borderRadius: 12, textAlign: 'center' }}>
-            <div style={{ fontSize: 24, marginBottom: 6 }}>{'\uD83C\uDFC5'}</div>
-            <div style={{ fontSize: 13, color: '#555' }}>Complete classes, hit streaks, and compete to unlock achievements</div>
-          </div>
-        )}
+          ) : (
+            <div style={{ background: '#0D0D0D', border: '1px solid #1A1A1A', borderRadius: 14, padding: '20px 16px' }}>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 14 }}>
+                {['\uD83E\uDD47', '\uD83D\uDD25', '\u26A1', '\uD83D\uDC51', '\uD83D\uDEE1\uFE0F', '\uD83C\uDFC6'].map(e => (
+                  <div key={e} style={{
+                    width: 44, height: 44, borderRadius: 10,
+                    background: '#141414', border: '1px solid #222',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    fontSize: 22, opacity: 0.35
+                  }}>{e}</div>
+                ))}
+              </div>
+              <div style={{ fontSize: 13, fontWeight: 600, color: '#555', marginBottom: 4 }}>No achievements yet</div>
+              <div style={{ fontSize: 12, color: '#3A3A3A', lineHeight: 1.5 }}>
+                Attend classes, hit training streaks, compete in tournaments, and earn belt promotions to unlock achievements.
+              </div>
+            </div>
+          )}
+        </div>
 
         <div style={{ borderTop: "1px solid #1A1A1A", paddingTop: 16, marginTop: 8 }}>
           <button
