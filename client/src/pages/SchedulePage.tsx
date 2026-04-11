@@ -319,6 +319,12 @@ function ClassCard({ cls, isToday }: { cls: ClassScheduleItem; isToday: boolean 
       localStorage.setItem('lbjj_game_stats_v2', JSON.stringify(stats));
     } catch (_) {}
 
+    // Update today's check-in count for immediate display on HomePage
+    const today = new Date().toISOString().split('T')[0];
+    const todayData = (() => { try { return JSON.parse(localStorage.getItem('lbjj_checkins_today') || '{}'); } catch { return {}; } })();
+    const newCount = (todayData.date === today ? (todayData.count || 0) : 0) + 1;
+    localStorage.setItem('lbjj_checkins_today', JSON.stringify({ date: today, count: newCount }));
+
     // Fire-and-forget GAS gamification call
     const profile = (() => { try { return JSON.parse(localStorage.getItem('lbjj_member_profile') || '{}'); } catch { return {}; } })();
     if (profile.Email) {

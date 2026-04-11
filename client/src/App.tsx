@@ -447,19 +447,28 @@ function AccountPage() {
           </>
         )}
 
-        {/* My Badges section */}
+        {/* Achievements section */}
         {badges.length > 0 && (
           <div style={{ marginTop: 20 }}>
-            <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#444', marginBottom: 12 }}>Badges Earned</div>
+            <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#444', marginBottom: 12 }}>Achievements</div>
             <div style={{ display: 'flex', gap: 10, overflowX: 'auto', paddingBottom: 4 }}>
               {badges.map(b => (
                 <div key={b.key} style={{
                   flexShrink: 0, textAlign: 'center',
-                  background: '#111', border: `1px solid ${b.color}44`,
-                  borderRadius: 12, padding: '12px 14px', minWidth: 70
+                  background: '#0D0D0D',
+                  border: '1px solid #C8A24C44',
+                  borderRadius: 14, padding: '14px 10px',
+                  minWidth: 76, maxWidth: 84,
+                  position: 'relative'
                 }}>
-                  <div style={{ fontSize: 28 }}>{b.icon}</div>
-                  <div style={{ fontSize: 10, color: b.color, fontWeight: 600, marginTop: 4, lineHeight: 1.3 }}>{b.label}</div>
+                  <div style={{ fontSize: 30, marginBottom: 6 }}>{b.icon}</div>
+                  <div style={{ fontSize: 10, color: '#C8A24C', fontWeight: 700, lineHeight: 1.3, letterSpacing: '0.02em' }}>{b.label}</div>
+                  <div style={{
+                    position: 'absolute', top: 6, right: 6,
+                    width: 14, height: 14, borderRadius: '50%',
+                    background: '#C8A24C', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    fontSize: 8, color: '#000'
+                  }}>{'\u2713'}</div>
                 </div>
               ))}
             </div>
@@ -467,8 +476,8 @@ function AccountPage() {
         )}
         {badges.length === 0 && (
           <div style={{ marginTop: 20, padding: '16px', background: '#111', borderRadius: 12, textAlign: 'center' }}>
-            <div style={{ fontSize: 24, marginBottom: 6 }}>&#127941;</div>
-            <div style={{ fontSize: 13, color: '#555' }}>Earn badges by attending classes, competing, and hitting streaks</div>
+            <div style={{ fontSize: 24, marginBottom: 6 }}>{'\uD83C\uDFC5'}</div>
+            <div style={{ fontSize: 13, color: '#555' }}>Complete classes, hit streaks, and compete to unlock achievements</div>
           </div>
         )}
 
@@ -675,9 +684,59 @@ function AdminShortcut() {
 
 // ─── Auth gate — shows login until authenticated ──────────────────
 
+// ── Face ID / WebAuthn registration helper ────────────────────────
+async function registerPasskeyGlobal(email: string): Promise<boolean> {
+  try {
+    const challenge = new Uint8Array(32);
+    crypto.getRandomValues(challenge);
+    const userId = new TextEncoder().encode(email);
+    const credential = await navigator.credentials.create({
+      publicKey: {
+        challenge,
+        rp: { name: 'Labyrinth BJJ', id: window.location.hostname },
+        user: { id: userId, name: email, displayName: email },
+        pubKeyCredParams: [{ alg: -7, type: 'public-key' as const }],
+        authenticatorSelection: {
+          authenticatorAttachment: 'platform' as const,
+          userVerification: 'required' as const,
+        },
+        timeout: 60000,
+      }
+    }) as PublicKeyCredential;
+    const rawId = btoa(String.fromCharCode.apply(null, Array.from(new Uint8Array(credential.rawId))));
+    localStorage.setItem('lbjj_passkey_id', rawId);
+    localStorage.setItem('lbjj_passkey_email', email);
+    localStorage.setItem('lbjj_passkey_registered', 'true');
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 function AppShell() {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, member } = useAuth();
   const [location] = useHashLoc();
+
+  // ── Global Face ID / Passkey setup prompt ─────────────────────
+  const [showPasskeySetup, setShowPasskeySetup] = useState(false);
+  const [passkeyRegistering, setPasskeyRegistering] = useState(false);
+  const supportsPasskey = typeof window !== 'undefined' && !!window.PublicKeyCredential;
+
+  useEffect(() => {
+    if (isAuthenticated && supportsPasskey && !localStorage.getItem('lbjj_passkey_registered')) {
+      const timer = setTimeout(() => setShowPasskeySetup(true), 1500);
+      return () => clearTimeout(timer);
+    }
+  }, [isAuthenticated]);
+
+  const handlePasskeyRegister = async () => {
+    const email = member?.email || '';
+    if (!email) return;
+    setPasskeyRegistering(true);
+    await registerPasskeyGlobal(email);
+    setPasskeyRegistering(false);
+    setShowPasskeySetup(false);
+  };
 
   // Reset password page is public — show without auth check
   if (location.startsWith('/reset')) {
@@ -696,9 +755,56 @@ function AppShell() {
     );
   }
 
+  const GOLD = "#C8A24C";
+
   return (
     <div className="app-shell">
       <AdminShortcut />
+
+      {/* Global Face ID registration prompt overlay */}
+      {showPasskeySetup && supportsPasskey && (
+        <div style={{
+          position: "fixed", inset: 0, background: "rgba(0,0,0,0.7)",
+          display: "flex", alignItems: "center", justifyContent: "center",
+          zIndex: 10000, padding: 24,
+        }} onClick={() => setShowPasskeySetup(false)}>
+          <div onClick={e => e.stopPropagation()} style={{
+            background: "#111", borderRadius: 20, padding: "32px 24px",
+            maxWidth: 340, width: "100%", textAlign: "center",
+            border: "1px solid #1A1A1A",
+          }}>
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke={GOLD} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ margin: "0 auto 16px", display: "block" }}>
+              <circle cx="12" cy="8" r="5"/>
+              <path d="M3 21v-2a7 7 0 0 1 7-7h0"/>
+              <path d="M16 18l2 2 4-4"/>
+            </svg>
+            <h3 style={{ fontSize: 18, fontWeight: 700, color: "#F0F0F0", margin: "0 0 8px" }}>Enable Face ID?</h3>
+            <p style={{ fontSize: 13, color: "#888", margin: "0 0 24px", lineHeight: 1.5 }}>
+              Sign in instantly next time with Face ID or biometrics.
+            </p>
+            <button
+              onClick={handlePasskeyRegister}
+              disabled={passkeyRegistering}
+              style={{
+                display: "flex", alignItems: "center", justifyContent: "center",
+                gap: 8, width: "100%", padding: "13px", borderRadius: 12,
+                background: GOLD, color: "#0A0A0A", fontWeight: 700, fontSize: 14,
+                border: "none", cursor: "pointer", marginBottom: 10,
+                opacity: passkeyRegistering ? 0.7 : 1,
+              }}
+            >
+              {passkeyRegistering ? "Setting up\u2026" : "Enable Face ID"}
+            </button>
+            <button
+              onClick={() => setShowPasskeySetup(false)}
+              style={{ background: "none", border: "none", color: "#666", fontSize: 13, cursor: "pointer", padding: "8px" }}
+            >
+              Not now
+            </button>
+          </div>
+        </div>
+      )}
+
       <Switch>
         <Route path="/"          component={HomePage} />
 

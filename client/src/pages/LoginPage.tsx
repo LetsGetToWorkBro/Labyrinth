@@ -166,11 +166,6 @@ export default function LoginPage() {
     setLoginLoading(false);
     if (!result.success) {
       setLoginError(result.error || "Invalid email or password");
-    } else {
-      // Offer Face ID registration if supported and not yet registered
-      if (supportsPasskey && !localStorage.getItem('lbjj_passkey_registered')) {
-        setTimeout(() => setShowPasskeyPrompt(true), 1000);
-      }
     }
   };
 
@@ -508,49 +503,6 @@ export default function LoginPage() {
         {screen !== "location" ? `${selectedLocation.city}, TX` : "LABYRINTH BJJ"}
       </p>
 
-      {/* Face ID registration prompt overlay */}
-      {showPasskeyPrompt && supportsPasskey && (
-        <div style={{
-          position: "fixed", inset: 0, background: "rgba(0,0,0,0.7)",
-          display: "flex", alignItems: "center", justifyContent: "center",
-          zIndex: 10000, padding: 24,
-        }} onClick={() => setShowPasskeyPrompt(false)}>
-          <div onClick={e => e.stopPropagation()} style={{
-            background: "#111", borderRadius: 20, padding: "32px 24px",
-            maxWidth: 340, width: "100%", textAlign: "center",
-            border: "1px solid #1A1A1A",
-          }}>
-            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke={GOLD} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ margin: "0 auto 16px", display: "block" }}>
-              <circle cx="12" cy="8" r="5"/>
-              <path d="M3 21v-2a7 7 0 0 1 7-7h0"/>
-              <path d="M16 18l2 2 4-4"/>
-            </svg>
-            <h3 style={{ fontSize: 18, fontWeight: 700, color: "#F0F0F0", margin: "0 0 8px" }}>Enable Face ID?</h3>
-            <p style={{ fontSize: 13, color: "#888", margin: "0 0 24px", lineHeight: 1.5 }}>
-              Sign in instantly next time with Face ID or biometrics.
-            </p>
-            <button
-              onClick={() => handlePasskeyRegister(email)}
-              disabled={passkeyRegistering}
-              style={{
-                display: "flex", alignItems: "center", justifyContent: "center",
-                gap: 8, width: "100%", padding: "13px", borderRadius: 12,
-                background: GOLD, color: "#0A0A0A", fontWeight: 700, fontSize: 14,
-                border: "none", cursor: "pointer", marginBottom: 10,
-                opacity: passkeyRegistering ? 0.7 : 1,
-              }}
-            >
-              {passkeyRegistering ? <><Loader2 size={15} className="animate-spin" /> Setting up…</> : "Enable Face ID"}
-            </button>
-            <button
-              onClick={() => setShowPasskeyPrompt(false)}
-              style={{ background: "none", border: "none", color: "#666", fontSize: 13, cursor: "pointer", padding: "8px" }}
-            >
-              Not now
-            </button>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

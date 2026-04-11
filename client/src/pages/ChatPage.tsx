@@ -24,11 +24,11 @@ const GOLD = "#C8A24C";
 const POLL_INTERVAL_MS = 20_000; // refresh messages every 20 s
 
 const RANK_LEGEND = [
-  { belt: 'white',  title: 'Beginner',              color: '#E5E5E5' },
-  { belt: 'blue',   title: 'Student',               color: '#1A56DB' },
-  { belt: 'purple', title: 'Intermediate',          color: '#7E3AF2' },
-  { belt: 'brown',  title: 'Advanced Practitioner', color: '#92400E' },
-  { belt: 'black',  title: 'Expert / Instructor',   color: '#111827', border: '#C8A24C' },
+  { belt: 'white',  title: 'Beginner',              color: '#E5E5E5', emoji: '\u26AA', tier: 'Foundation', desc: 'The journey begins. Every legend started here.' },
+  { belt: 'blue',   title: 'Student',               color: '#1A56DB', emoji: '\uD83D\uDD35', tier: 'Developing', desc: 'Building the fundamentals. The hardest belt to earn.' },
+  { belt: 'purple', title: 'Intermediate',          color: '#7E3AF2', emoji: '\uD83D\uDFE3', tier: 'Skilled',    desc: 'Deep understanding of position and submission.' },
+  { belt: 'brown',  title: 'Advanced Practitioner', color: '#92400E', emoji: '\uD83D\uDFE4', tier: 'Advanced',   desc: 'Refining every detail. Black belt is within reach.' },
+  { belt: 'black',  title: 'Expert / Instructor',   color: '#1A1A1A', emoji: '\u2B1B', tier: 'Master',     desc: 'A lifetime of dedication. The art lives in you.', border: '#C8A24C' },
 ] as const;
 
 // ─── Root ──────────────────────────────────────────────────────────
@@ -408,16 +408,19 @@ export default function ChatPage() {
             </div>
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
               {RANK_LEGEND.map(r => (
-                <div key={r.belt} style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 12px", borderRadius: 10, backgroundColor: "#0D0D0D", border: "1px solid #1A1A1A" }}>
-                  <div style={{
-                    width: 28, height: 28, borderRadius: "50%",
-                    backgroundColor: r.color,
-                    border: 'border' in r ? `2px solid ${r.border}` : "2px solid transparent",
-                    flexShrink: 0,
-                  }} />
-                  <div>
-                    <p style={{ fontSize: 14, fontWeight: 600, color: "#E0E0E0", margin: 0, textTransform: "capitalize" }}>{r.belt} Belt</p>
-                    <p style={{ fontSize: 12, color: "#888", margin: "2px 0 0" }}>{r.title}</p>
+                <div key={r.belt} style={{
+                  display: 'flex', alignItems: 'flex-start', gap: 14, padding: '14px 12px',
+                  borderRadius: 12, background: '#0D0D0D', border: '1px solid #1A1A1A',
+                  borderLeft: `3px solid ${r.color}`
+                }}>
+                  <div style={{ fontSize: 28, lineHeight: 1 }}>{r.emoji}</div>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                      <span style={{ fontSize: 15, fontWeight: 700, color: '#F0F0F0', textTransform: 'capitalize' }}>{r.belt} Belt</span>
+                      <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 7px', borderRadius: 6, background: `${r.color}22`, color: r.color, border: `1px solid ${r.color}44`, letterSpacing: '0.05em' }}>{r.tier}</span>
+                    </div>
+                    <p style={{ fontSize: 13, fontWeight: 600, color: '#AAA', margin: '0 0 4px' }}>{r.title}</p>
+                    <p style={{ fontSize: 12, color: '#555', margin: 0, lineHeight: 1.4 }}>{r.desc}</p>
                   </div>
                 </div>
               ))}
@@ -502,6 +505,25 @@ function MessageBubble({ msg, myName }: { msg: ChatMessage; myName: string }) {
   );
 }
 
+// ─── Channel descriptions ─────────────────────────────────────────
+
+const CHANNEL_DESCRIPTIONS: Record<string, string> = {
+  'announcements': 'Gym news & updates',
+  'adults': 'Adult members',
+  'coaches': 'Coaching staff only',
+  'kids-parents': 'Kids & parent community',
+  'white-belts': 'White belt members',
+  'blue-belts': 'Blue belt members',
+  'purple-belts': 'Purple belt members',
+  'brown-belts': 'Brown belt members',
+  'black-belts': 'Black belt members',
+  'kids-white': 'Kids white belts',
+  'kids-grey': 'Kids grey belts',
+  'kids-yellow': 'Kids yellow belts',
+  'kids-orange': 'Kids orange belts',
+  'kids-green': 'Kids green belts',
+};
+
 // ─── Channel row ───────────────────────────────────────────────────
 
 function ChannelRow({ channel, isRank, onOpen }: { channel: ChatChannel; isRank?: boolean; onOpen: () => void }) {
@@ -544,22 +566,22 @@ function ChannelRow({ channel, isRank, onOpen }: { channel: ChatChannel; isRank?
       }}
     >
       {isRank ? (
-        <div style={{ width: 36, height: 36, borderRadius: "50%", backgroundColor: `${beltColor}15`, border: `1.5px solid ${beltColor}40`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-          <div style={{ width: 12, height: 12, borderRadius: "50%", backgroundColor: beltColor }} />
+        <div style={{ width: 42, height: 42, borderRadius: "50%", backgroundColor: `${beltColor}18`, border: `1.5px solid ${beltColor}40`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+          <div style={{ width: 14, height: 14, borderRadius: "50%", backgroundColor: beltColor }} />
         </div>
       ) : (
-        <div style={{ width: 36, height: 36, borderRadius: 10, backgroundColor: channel.accessible ? "#1A1A1A" : "transparent", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+        <div style={{ width: 42, height: 42, borderRadius: 11, backgroundColor: channel.accessible ? "#1A1A1A" : "transparent", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
           {iconMap[channel.type] || <MessageCircle size={16} style={{ color: "#666" }} />}
         </div>
       )}
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
-          <span style={{ fontSize: 14, fontWeight: 600, color: channel.accessible ? "#F0F0F0" : "#666" }}>{channel.name}</span>
+          <span style={{ fontSize: 15, fontWeight: 600, color: channel.accessible ? "#F0F0F0" : "#666" }}>{channel.name}</span>
           {!channel.accessible && <Lock size={12} style={{ color: "#555" }} />}
         </div>
         {channel.accessible && (
-          <p style={{ fontSize: 12, color: channel.lastMessage ? "#666" : "#333", margin: "2px 0 0", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontStyle: channel.lastMessage ? "normal" : "italic" }}>
-            {channel.lastMessage || "No messages yet"}
+          <p style={{ fontSize: 12, color: channel.lastMessage ? "#666" : "#555", margin: "2px 0 0", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontStyle: channel.lastMessage ? "normal" : "italic" }}>
+            {channel.lastMessage || CHANNEL_DESCRIPTIONS[channel.id] || "No messages yet"}
           </p>
         )}
       </div>

@@ -174,6 +174,22 @@ export default function HomePage() {
 
   const streakCount = (member as any)?.currentStreak || 0;
 
+  // ─── Today's check-in count (immediate, localStorage-based) ────
+  const [classesToday, setClassesToday] = useState(0);
+  const readClassesToday = useCallback(() => {
+    try {
+      const raw = JSON.parse(localStorage.getItem('lbjj_checkins_today') || '{}');
+      const today = new Date().toISOString().split('T')[0];
+      setClassesToday(raw.date === today ? (raw.count || 0) : 0);
+    } catch { setClassesToday(0); }
+  }, []);
+  useEffect(() => {
+    readClassesToday();
+    const onFocus = () => readClassesToday();
+    window.addEventListener('focus', onFocus);
+    return () => window.removeEventListener('focus', onFocus);
+  }, [readClassesToday]);
+
   // ─── Streak milestone celebration ──────────────────────────────────
   useEffect(() => {
     if (!streakCount) return;
@@ -375,20 +391,20 @@ export default function HomePage() {
         </div>
         <div style={{
           flex: 1,
-          background: 'rgba(255,255,255,0.03)',
-          border: '1px solid #1A1A1A',
+          background: classesToday > 0 ? 'linear-gradient(135deg, rgba(76,175,128,0.12) 0%, rgba(76,175,128,0.04) 100%)' : 'rgba(255,255,255,0.03)',
+          border: classesToday > 0 ? '1px solid rgba(76,175,128,0.2)' : '1px solid #1A1A1A',
           borderRadius: 12,
           padding: '12px 14px',
           display: 'flex',
           alignItems: 'center',
           gap: 10,
         }}>
-          <span style={{ fontSize: 24 }}>📅</span>
+          <span style={{ fontSize: 24 }}>{classesToday > 0 ? '✅' : '📅'}</span>
           <div>
-            <div style={{ fontSize: 20, fontWeight: 700, color: '#E0E0E0', lineHeight: 1 }}>
-              {(member as any)?.classesThisMonth || 0}
+            <div style={{ fontSize: 20, fontWeight: 700, color: classesToday > 0 ? '#4CAF80' : '#E0E0E0', lineHeight: 1 }}>
+              {classesToday}
             </div>
-            <div style={{ fontSize: 11, color: '#666', marginTop: 2 }}>This month</div>
+            <div style={{ fontSize: 11, color: '#666', marginTop: 2 }}>Classes today</div>
           </div>
         </div>
       </div>

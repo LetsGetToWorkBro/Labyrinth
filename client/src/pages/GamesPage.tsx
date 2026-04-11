@@ -292,8 +292,13 @@ function GamesHub({ stats, rank, nextRank, onPlay, onStartGame, showDifficulty, 
       {/* ── Leaderboard tab ── */}
       {hubTab === 'leaderboard' && (
         <div style={{ margin: '0 16px', flex: 1, display: 'flex', flexDirection: 'column', overflowX: 'hidden', minWidth: 0 }}>
-          <div style={{ color: '#666', fontSize: 11, fontWeight: 600, marginBottom: 10, textTransform: 'uppercase', letterSpacing: 1 }}>
-            Gym Leaderboard
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+            <div style={{ color: '#666', fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 1 }}>
+              Gym Leaderboard
+            </div>
+            <div style={{ fontSize: 10, color: '#555', fontWeight: 600, padding: '2px 8px', borderRadius: 6, background: '#1A1A1A', border: '1px solid #222' }}>
+              This Week
+            </div>
           </div>
 
           {lbLoading ? (
@@ -327,24 +332,33 @@ function GamesHub({ stats, rank, nextRank, onPlay, onStartGame, showDifficulty, 
                         : <span style={{ color: '#555', fontSize: 13, fontWeight: 700 }}>#{entry.rank}</span>}
                     </div>
 
-                    {/* Name + rank */}
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ color: isTop3 ? '#F0F0F0' : '#DDD', fontSize: 13, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                        {entry.name}
-                      </div>
-                      <div style={{ color: '#666', fontSize: 11, marginTop: 1 }}>
-                        {entry.topRank}
+                    {/* Belt dot + Name + rank */}
+                    <div style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
+                      {entry.belt && (
+                        <div style={{
+                          width: 10, height: 10, borderRadius: '50%', flexShrink: 0,
+                          backgroundColor: { white: '#E0E0E0', blue: '#3B82F6', purple: '#8B5CF6', brown: '#92400E', black: '#1A1A1A' }[entry.belt.toLowerCase()] || '#666',
+                          border: entry.belt.toLowerCase() === 'black' ? '1px solid #C8A24C' : '1px solid transparent',
+                        }} />
+                      )}
+                      <div style={{ minWidth: 0 }}>
+                        <div style={{ color: isTop3 ? '#F0F0F0' : '#DDD', fontSize: 13, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {entry.name}
+                        </div>
+                        <div style={{ color: '#666', fontSize: 11, marginTop: 1 }}>
+                          {entry.topRank}
+                        </div>
                       </div>
                     </div>
 
                     {/* Stats */}
                     <div style={{ display: 'flex', gap: 8, flexShrink: 0, textAlign: 'right' }}>
                       <div>
-                        <div style={{ color: GOLD, fontSize: 13, fontWeight: 700 }}>{entry.wins}W</div>
-                        <div style={{ color: '#555', fontSize: 10 }}>{entry.winRate}%</div>
+                        <div style={{ color: GOLD, fontSize: 13, fontWeight: 700 }}>{entry.classCount || entry.score || entry.wins}{ entry.classCount ? '' : 'W' }</div>
+                        <div style={{ color: '#555', fontSize: 10 }}>{entry.classCount ? 'classes' : `${entry.winRate}%`}</div>
                       </div>
                       <div>
-                        <div style={{ color: '#888', fontSize: 12, fontWeight: 600 }}>🔥{entry.bestStreak}</div>
+                        <div style={{ color: '#888', fontSize: 12, fontWeight: 600 }}>{'\uD83D\uDD25'}{entry.bestStreak}</div>
                         <div style={{ color: '#555', fontSize: 10 }}>best</div>
                       </div>
                     </div>

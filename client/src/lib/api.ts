@@ -664,6 +664,9 @@ export interface LeaderboardEntry {
   bestStreak: number;
   topRank: string;
   isMe?: boolean;
+  belt?: string;
+  classCount?: number;
+  score?: number;
 }
 
 export async function saveGameScore(data: {
@@ -696,8 +699,10 @@ export async function getScheduleClasses(): Promise<any[]> {
 
 export async function getLeaderboard(): Promise<LeaderboardEntry[]> {
   try {
-    const result = await gasCall("getLeaderboard", {});
-    return result.leaderboard || [];
+    const result = await gasCall("getLeaderboard", { type: 'weekly' });
+    // Handle both leaderboard.gs format and legacy format
+    const entries = result?.leaderboard || result?.scores || result?.entries || [];
+    return entries;
   } catch (err) {
     console.error("getLeaderboard failed:", err);
     return [];
