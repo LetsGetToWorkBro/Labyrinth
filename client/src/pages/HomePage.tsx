@@ -1,11 +1,11 @@
 import { useAuth } from "@/lib/auth-context";
 import type { FamilyMember, PaymentCard } from "@/lib/api";
-import { beltSavePromotion } from "@/lib/api";
+import { beltSavePromotion, gasCall } from "@/lib/api";
 import { BeltIcon } from "@/components/BeltIcon";
 import { ADULT_BELT_OPTIONS } from "@/components/BeltIcon";
 import { getBeltColor, CLASS_SCHEDULE } from "@/lib/constants";
 import { chatGetChannels, fetchCSV, parseCSV, CSV_ENDPOINTS } from "@/lib/api";
-import { ALL_ACHIEVEMENTS } from "@/lib/achievements";
+import { ALL_ACHIEVEMENTS, checkAndUnlockAchievements } from "@/lib/achievements";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import {
   CreditCard, FileText, ChevronRight, ChevronDown, LogOut,
@@ -52,6 +52,76 @@ function showBadgeUnlock(badge: { key: string; label: string; icon: string; desc
   const dismiss = () => { overlay.remove(); style.remove(); };
   overlay.onclick = dismiss;
   setTimeout(dismiss, 4000);
+}
+
+function triggerConfetti() {
+  const container = document.createElement('div');
+  container.style.cssText = 'position:fixed;inset:0;pointer-events:none;z-index:9999;overflow:hidden;';
+  document.body.appendChild(container);
+
+  const colors = ['#C8A24C', '#E8C86C', '#FFD700', '#FFF8DC', '#ffffff'];
+
+  for (let i = 0; i < 40; i++) {
+    const dot = document.createElement('div');
+    const size = Math.random() * 8 + 4;
+    const x = Math.random() * 100;
+    const duration = Math.random() * 800 + 600;
+    const delay = Math.random() * 300;
+    const color = colors[Math.floor(Math.random() * colors.length)];
+    const endY = -(Math.random() * 60 + 40);
+    const endX = (Math.random() - 0.5) * 40;
+
+    dot.style.cssText = `
+      position:absolute; bottom:30%; left:${x}%;
+      width:${size}px; height:${size}px;
+      border-radius:${Math.random() > 0.5 ? '50%' : '2px'};
+      background:${color};
+      animation: confettiFly_${i} ${duration}ms ${delay}ms ease-out forwards;
+    `;
+
+    const style = document.createElement('style');
+    style.textContent = `
+      @keyframes confettiFly_${i} {
+        0% { transform: translate(0, 0) rotate(0deg); opacity: 1; }
+        100% { transform: translate(${endX}vw, ${endY}vh) rotate(${Math.random() * 720}deg); opacity: 0; }
+      }
+    `;
+    document.head.appendChild(style);
+    container.appendChild(dot);
+  }
+
+  setTimeout(() => { container.remove(); }, 2000);
+}
+
+function showPointsToast(points: number) {
+  const el = document.createElement('div');
+  el.textContent = `+${points} pts`;
+  el.style.cssText = `
+    position: fixed;
+    bottom: 120px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(200, 162, 76, 0.95);
+    color: #000;
+    font-weight: 700;
+    font-size: 18px;
+    padding: 8px 20px;
+    border-radius: 20px;
+    z-index: 9999;
+    pointer-events: none;
+    animation: pointsFloat 1.5s ease-out forwards;
+  `;
+
+  const style = document.createElement('style');
+  style.textContent = `
+    @keyframes pointsFloat {
+      0% { transform: translateX(-50%) translateY(0); opacity: 1; }
+      100% { transform: translateX(-50%) translateY(-60px); opacity: 0; }
+    }
+  `;
+  document.head.appendChild(style);
+  document.body.appendChild(el);
+  setTimeout(() => { el.remove(); style.remove(); }, 1600);
 }
 
 const haptic = (pattern: number | number[] = 10) => {
@@ -320,6 +390,45 @@ export default function HomePage() {
   }, []);
 
   const nextClass = getNextClass();
+
+  const handleHomeCheckIn = useCallback((cls: any) => {
+    // Same logic as SchedulePage handleCheckIn
+    try {
+      const raw = localStorage.getItem('lbjj_game_stats_v2');
+      const stats = raw ? JSON.parse(raw) : {};
+      stats.classesAttended = (stats.classesAttended || 0) + 1;
+      localStorage.setItem('lbjj_game_stats_v2', JSON.stringify(stats));
+    } catch {}
+
+    // Update today's check-in count
+    const today = new Date().toISOString().split('T')[0];
+    const todayData = (() => { try { return JSON.parse(localStorage.getItem('lbjj_checkins_today') || '{}'); } catch { return {}; } })();
+    const newCount = (todayData.date === today ? (todayData.count || 0) : 0) + 1;
+    localStorage.setItem('lbjj_checkins_today', JSON.stringify({ date: today, count: newCount }));
+
+    // Update weekly training
+    const weekly = (() => { try { return JSON.parse(localStorage.getItem('lbjj_weekly_training') || '[]'); } catch { return []; } })();
+    if (!weekly.includes(today)) {
+      weekly.push(today);
+      localStorage.setItem('lbjj_weekly_training', JSON.stringify(weekly.filter((d: string) => d >= new Date(Date.now() - 14*24*60*60*1000).toISOString().split('T')[0])));
+    }
+
+    // Trigger confetti
+    triggerConfetti();
+
+    // Show success toast
+    showPointsToast(10);
+
+    // GAS call fire-and-forget
+    const profile = (() => { try { return JSON.parse(localStorage.getItem('lbjj_member_profile') || '{}'); } catch { return {}; } })();
+    if (profile.Email) {
+      gasCall('recordCheckIn', { email: profile.Email, name: profile.Name || '', className: cls.name || '' }).catch(() => {});
+    }
+
+    // Check achievements
+    const gameStats = (() => { try { return JSON.parse(localStorage.getItem('lbjj_game_stats_v2') || '{}'); } catch { return {}; } })();
+    checkAndUnlockAchievements(profile, gameStats);
+  }, []);
 
   // ─── Weekly training dots ─────────────────────────────────────────
   const weeklyTraining = useCallback(() => {
@@ -693,18 +802,37 @@ export default function HomePage() {
       {/* Next Class Card */}
       {nextClass && (
         <div className="mx-5 mb-3">
-          <a href="/#/schedule" style={{ textDecoration: 'none', display: 'block' }}>
-            <div style={{
-              background: '#141414', border: '1px solid #1A1A1A',
-              borderLeft: '3px solid #C8A24C', borderRadius: 14,
-              padding: 16, cursor: 'pointer',
-            }}>
-              <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', color: '#C8A24C', textTransform: 'uppercase' as const, marginBottom: 6 }}>Next Class</div>
-              <div style={{ fontSize: 17, fontWeight: 700, color: '#F0F0F0', marginBottom: 4 }}>{nextClass.name}</div>
-              <div style={{ fontSize: 13, color: '#666' }}>{nextClass.dayLabel} · {formatClassTime(nextClass.time)}</div>
-              {nextClass.instructor && <div style={{ fontSize: 12, color: '#555', marginTop: 2 }}>w/ {nextClass.instructor}</div>}
-            </div>
-          </a>
+          <div style={{
+            background: '#141414', border: '1px solid #1A1A1A',
+            borderLeft: '3px solid #C8A24C', borderRadius: 14,
+            padding: '14px 16px', display: 'flex', alignItems: 'center', gap: 12
+          }}>
+            {/* Left: class info — taps to schedule */}
+            <a href="/#/schedule" style={{ textDecoration: 'none', flex: 1 }}>
+              <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', color: '#C8A24C', textTransform: 'uppercase' as const, marginBottom: 4 }}>Next Class</div>
+              <div style={{ fontSize: 16, fontWeight: 700, color: '#F0F0F0', marginBottom: 2 }}>{nextClass.name}</div>
+              <div style={{ fontSize: 12, color: '#666' }}>{nextClass.dayLabel} · {formatClassTime(nextClass.time)}</div>
+              {nextClass.instructor && <div style={{ fontSize: 11, color: '#555', marginTop: 1 }}>w/ {nextClass.instructor}</div>}
+            </a>
+
+            {/* Right: Check In button */}
+            {nextClass.isToday && (
+              <button
+                onClick={() => handleHomeCheckIn(nextClass)}
+                style={{
+                  flexShrink: 0, padding: '10px 14px', borderRadius: 10,
+                  background: '#C8A24C', border: 'none', color: '#000',
+                  fontWeight: 700, fontSize: 13, cursor: 'pointer',
+                  display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2
+                }}
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                  <polyline points="20 6 9 17 4 12"/>
+                </svg>
+                <span style={{ fontSize: 10 }}>Check In</span>
+              </button>
+            )}
+          </div>
         </div>
       )}
 
