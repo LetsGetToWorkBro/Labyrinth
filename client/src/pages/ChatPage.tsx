@@ -201,6 +201,7 @@ export default function ChatPage() {
                 background: "#111", borderRadius: "20px 20px 0 0",
                 padding: "24px 20px", borderTop: "1px solid #1A1A1A",
                 paddingBottom: "max(24px, calc(env(safe-area-inset-bottom, 0px) + 24px))",
+                maxHeight: '80vh', overflowY: 'auto',
               }}
             >
               <div style={{ width: 36, height: 4, borderRadius: 2, background: "#2A2A2A", margin: "0 auto 16px" }} />
@@ -227,9 +228,11 @@ export default function ChatPage() {
                         border: 'border' in r ? `2px solid ${r.border}` : "2px solid transparent",
                         flexShrink: 0,
                       }} />
+                      <span style={{ fontSize: 24 }}>{r.emoji}</span>
                       <div>
-                        <p style={{ fontSize: 14, fontWeight: 600, color: "#E0E0E0", margin: 0, textTransform: "capitalize" }}>{r.belt} Belt</p>
-                        <p style={{ fontSize: 12, color: "#888", margin: "2px 0 0" }}>{r.title}</p>
+                        <span style={{ fontWeight: 700, color: '#F0F0F0', textTransform: 'capitalize' }}>{r.belt} Belt</span>
+                        <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 7px', borderRadius: 6, background: `${r.color}22`, color: r.color, border: `1px solid ${r.color}44`, letterSpacing: '0.05em', marginLeft: 8 }}>{r.title}</span>
+                        <p style={{ fontSize: 12, color: "#666", margin: "4px 0 0" }}>{r.desc}</p>
                       </div>
                     </div>
                   </div>
@@ -415,6 +418,7 @@ export default function ChatPage() {
               background: "#111", borderRadius: "20px 20px 0 0",
               padding: "24px 20px", borderTop: "1px solid #1A1A1A",
               paddingBottom: "max(24px, calc(env(safe-area-inset-bottom, 0px) + 24px))",
+              maxHeight: '80vh', overflowY: 'auto',
             }}
           >
             <div style={{ width: 36, height: 4, borderRadius: 2, background: "#2A2A2A", margin: "0 auto 16px" }} />
@@ -443,9 +447,8 @@ export default function ChatPage() {
                     <div style={{ flex: 1 }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
                         <span style={{ fontSize: 15, fontWeight: 700, color: '#F0F0F0', textTransform: 'capitalize' }}>{r.belt} Belt</span>
-                        <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 7px', borderRadius: 6, background: `${r.color}22`, color: r.color, border: `1px solid ${r.color}44`, letterSpacing: '0.05em' }}>{r.tier}</span>
+                        <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 7px', borderRadius: 6, background: `${r.color}22`, color: r.color, border: `1px solid ${r.color}44`, letterSpacing: '0.05em' }}>{r.title}</span>
                       </div>
-                      <p style={{ fontSize: 13, fontWeight: 600, color: '#AAA', margin: '0 0 4px' }}>{r.title}</p>
                       <p style={{ fontSize: 12, color: '#555', margin: 0, lineHeight: 1.4 }}>{r.desc}</p>
                     </div>
                   </div>
@@ -514,8 +517,14 @@ function MessageBubble({ msg, myName }: { msg: ChatMessage; myName: string }) {
         <span style={{ fontSize: 12, fontWeight: isHighRank ? 800 : 600, color: isHighRank ? rank.color : "#BBB", letterSpacing: isHighRank ? "0.02em" : "0", textShadow: isHighRank ? rank.glow : "none" }}>
           {msg.sender}
         </span>
-        {rank.badge && <span style={{ fontSize: 12 }}>{rank.badge}</span>}
-        <span style={{ fontSize: 9, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", padding: "2px 7px", borderRadius: 5, backgroundColor: `${rank.color}20`, color: rank.color, border: `1px solid ${rank.color}35` }}>
+        <span style={{
+          fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em',
+          padding: '2px 7px', borderRadius: 5,
+          backgroundColor: `${rank.color}20`, color: rank.color,
+          border: `1px solid ${rank.color}35`,
+          display: 'inline-flex', alignItems: 'center', gap: 3,
+        }}>
+          {rank.badge && <span style={{ fontSize: 11 }}>{rank.badge}</span>}
           {rankTitle.toUpperCase()}
         </span>
         {isCoachMsg && (

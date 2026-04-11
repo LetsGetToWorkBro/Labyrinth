@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import { ChevronLeft } from 'lucide-react';
 import logoImg from '@assets/maze-gold-md.png';
 import posStanding from '@assets/pos-standing.png';
 import posGuardTop from '@assets/pos-guard-top.png';
@@ -31,7 +32,41 @@ const POSITION_IMAGES: Record<Position, string> = {
 import { useGameRecords } from '@/lib/game-records';
 import { useAuth } from '@/lib/auth-context';
 import { saveGameScore, getLeaderboard, type LeaderboardEntry } from '@/lib/api';
-import { checkAndUnlockAchievements } from '@/lib/achievements';
+import { checkAndUnlockAchievements, ALL_ACHIEVEMENTS } from '@/lib/achievements';
+
+function showBadgeUnlock(badge: { key: string; label: string; icon: string; desc: string; color?: string }) {
+  const color = badge.color || '#C8A24C';
+  const overlay = document.createElement('div');
+  overlay.style.cssText = `
+    position: fixed; inset: 0; background: rgba(0,0,0,0.85);
+    display: flex; align-items: center; justify-content: center;
+    z-index: 10000; animation: fadeInOverlay 0.3s ease-out forwards;
+  `;
+  overlay.innerHTML = `
+    <div style="text-align:center;padding:40px;max-width:300px;animation:slideUpCard 0.4s cubic-bezier(0.34,1.56,0.64,1) forwards;">
+      <div style="font-size:14px;letter-spacing:3px;text-transform:uppercase;color:#888;margin-bottom:16px;">New Badge Unlocked</div>
+      <div style="width:100px;height:100px;border-radius:50%;background:${color}22;border:3px solid ${color};
+        display:flex;align-items:center;justify-content:center;margin:0 auto 20px;
+        font-size:48px;box-shadow:0 0 30px ${color}66;animation:badgePulse 1s ease-in-out infinite alternate;">
+        ${badge.icon}
+      </div>
+      <div style="font-size:22px;font-weight:800;color:#fff;margin-bottom:8px;">${badge.label}</div>
+      <div style="font-size:14px;color:#888;line-height:1.5;">${badge.desc}</div>
+      <div style="margin-top:24px;font-size:12px;color:#555;">Tap to dismiss</div>
+    </div>
+  `;
+  const style = document.createElement('style');
+  style.textContent = `
+    @keyframes fadeInOverlay { from { opacity: 0; } to { opacity: 1; } }
+    @keyframes slideUpCard { from { transform: translateY(40px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+    @keyframes badgePulse { from { box-shadow: 0 0 20px ${color}44; } to { box-shadow: 0 0 50px ${color}99; } }
+  `;
+  document.head.appendChild(style);
+  document.body.appendChild(overlay);
+  const dismiss = () => { overlay.remove(); style.remove(); };
+  overlay.onclick = dismiss;
+  setTimeout(dismiss, 4000);
+}
 
 function GamesPage() {
   const { stats, addRecord } = useGameRecords();
@@ -83,7 +118,14 @@ function GamesPage() {
     // Check and unlock local achievements after game
     const profile = (() => { try { return JSON.parse(localStorage.getItem('lbjj_member_profile') || '{}'); } catch { return {}; } })();
     const gameStatsLocal = (() => { try { return JSON.parse(localStorage.getItem('lbjj_game_stats_v2') || '{}'); } catch { return {}; } })();
-    checkAndUnlockAchievements(profile, gameStatsLocal);
+    const newlyEarned = checkAndUnlockAchievements(profile, gameStatsLocal);
+    if (newlyEarned.length > 0) {
+      const first = ALL_ACHIEVEMENTS.find(a => a.key === newlyEarned[0]);
+      if (first) {
+        showBadgeUnlock({ key: first.key, label: first.label, icon: first.icon, desc: first.desc, color: first.color });
+        setTimeout(() => { window.location.hash = '#/achievements'; }, 3000);
+      }
+    }
   }, [stats, member, addRecord]);
 
   if (view === 'hub' || view === 'difficulty') {
@@ -155,18 +197,25 @@ function GamesHub({ stats, rank, nextRank, onPlay, onStartGame, showDifficulty, 
   const GOLD = '#C8A24C';
 
   return (
-    <div style={{
-      minHeight: '100dvh', maxWidth: 430, margin: '0 auto',
+    <div className="app-content" style={{
+      maxWidth: 430, margin: '0 auto',
       display: 'flex', flexDirection: 'column', background: '#0A0A0A',
-      paddingTop: 'env(safe-area-inset-top, 0px)',
-      paddingBottom: 'calc(64px + env(safe-area-inset-bottom, 0px))',
       overflowX: 'hidden', width: '100%',
-    }}
-    className="app-page-fill">
+      paddingBottom: 'max(80px, calc(env(safe-area-inset-bottom, 0px) + 70px))',
+    }}>
       {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px 20px 8px', gap: 10 }}>
-        <img src={logoImg} alt="Labyrinth" style={{ height: 26, opacity: 0.9 }} />
-        <span style={{ color: GOLD, fontSize: 15, fontWeight: 700, letterSpacing: 1 }}>GAMES</span>
+      <div style={{ display: 'flex', alignItems: 'center', padding: '16px 20px 8px', gap: 10 }}>
+        <button onClick={() => window.history.back()} style={{
+          background: 'none', border: 'none', padding: '8px',
+          cursor: 'pointer', color: '#666', display: 'flex', alignItems: 'center', gap: 4,
+        }}>
+          <ChevronLeft size={20} />
+        </button>
+        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10 }}>
+          <img src={logoImg} alt="Labyrinth" style={{ height: 26, opacity: 0.9 }} />
+          <span style={{ color: GOLD, fontSize: 15, fontWeight: 700, letterSpacing: 1 }}>GAMES</span>
+        </div>
+        <div style={{ width: 36 }} />
       </div>
 
       {/* Hub tabs */}

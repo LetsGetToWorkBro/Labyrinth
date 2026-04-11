@@ -90,15 +90,18 @@ export default function CalendarPage() {
     setLoading(false);
   }
 
-  // Combine JJWL sub-events
+  // Combine events from same org on same date into one entry
   const combinedEvents = useMemo(() => {
     const map = new Map<string, TournamentEvent & { subNames: string[] }>();
     events.forEach(e => {
-      const key = `${e.date}-${e.org}`;
-      if (e.org?.toUpperCase() === "JJWL" && map.has(key)) {
-        map.get(key)!.subNames.push(e.name);
+      const key = `${e.date}-${(e.org || e.name || '').toUpperCase()}`;
+      if (map.has(key)) {
+        const existing = map.get(key)!;
+        if (!existing.subNames.includes(e.name)) {
+          existing.subNames.push(e.name);
+        }
       } else {
-        map.set(e.date + "-" + e.name, { ...e, subNames: [e.name] });
+        map.set(key, { ...e, subNames: [e.name] });
       }
     });
     return Array.from(map.values());

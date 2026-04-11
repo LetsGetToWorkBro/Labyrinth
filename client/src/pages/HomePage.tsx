@@ -431,28 +431,33 @@ export default function HomePage() {
           <div
             onClick={(e) => { e.stopPropagation(); avatarFileRef.current?.click(); }}
             style={{
-              width: 44, height: 44, borderRadius: '50%',
+              position: 'relative', display: 'inline-block',
+              flexShrink: 0, cursor: 'pointer',
+            }}
+          >
+            <div style={{
+              width: 52, height: 52, borderRadius: '50%',
               background: profilePic ? 'none' : avatarBg, color: avatarFg,
               fontSize: 16, fontWeight: 700,
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               textTransform: 'uppercase', letterSpacing: '-0.5px',
-              flexShrink: 0,
               boxShadow: `0 0 0 2px ${avatarBg}30`,
-              cursor: 'pointer', position: 'relative', overflow: 'hidden',
-            }}
-          >
-            {profilePic ? (
-              <img src={profilePic} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-            ) : (
-              getInitials(member?.name || 'M')
-            )}
-            <div style={{
-              position: 'absolute', bottom: 0, right: 0,
-              width: 16, height: 16, borderRadius: '50%',
-              backgroundColor: '#C8A24C', border: '2px solid #141414',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              overflow: 'hidden',
             }}>
-              <svg width={8} height={8} viewBox="0 0 24 24" fill="none" stroke="#0A0A0A" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round">
+              {profilePic ? (
+                <img src={profilePic} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              ) : (
+                getInitials(member?.name || 'M')
+              )}
+            </div>
+            <div style={{
+              position: 'absolute', bottom: -2, right: -2,
+              width: 18, height: 18, borderRadius: '50%',
+              background: '#1A1A1A', border: '1px solid #2A2A2A',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              zIndex: 1,
+            }}>
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#C8A24C" strokeWidth="2">
                 <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
                 <circle cx="12" cy="13" r="4"/>
               </svg>
@@ -650,7 +655,7 @@ export default function HomePage() {
               background: '#111', border: '1px solid #1A1A1A', borderRadius: 12,
               padding: '10px 14px',
             }}>
-              <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: '#555', whiteSpace: 'nowrap' }}>Recent</div>
+              <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: '#555', whiteSpace: 'nowrap' }}>Recent Achievements</div>
               <div style={{ display: 'flex', gap: 6, flex: 1 }}>
                 {recentAchievements.map(a => (
                   <div key={a.key} style={{

@@ -4,7 +4,7 @@ import { CLASS_SCHEDULE, CLASS_TYPE_COLORS, DAYS_ORDER } from "@/lib/constants";
 import type { ClassScheduleItem } from "@/lib/constants";
 import { getScheduleClasses, gasCall } from "@/lib/api";
 import { Clock, ChevronRight, X, User, CheckCircle } from "lucide-react";
-import { checkAndUnlockAchievements } from "@/lib/achievements";
+import { checkAndUnlockAchievements, ALL_ACHIEVEMENTS } from "@/lib/achievements";
 
 // ── Gamification animations ─────────────────────────────────────
 
@@ -337,7 +337,14 @@ function ClassCard({ cls, isToday }: { cls: ClassScheduleItem; isToday: boolean 
     // Check and unlock local achievements after check-in
     const profile = (() => { try { return JSON.parse(localStorage.getItem('lbjj_member_profile') || '{}'); } catch { return {}; } })();
     const gameStats = (() => { try { return JSON.parse(localStorage.getItem('lbjj_game_stats_v2') || '{}'); } catch { return {}; } })();
-    checkAndUnlockAchievements(profile, gameStats);
+    const newlyEarned = checkAndUnlockAchievements(profile, gameStats);
+    if (newlyEarned.length > 0) {
+      const first = ALL_ACHIEVEMENTS.find(a => a.key === newlyEarned[0]);
+      if (first) {
+        showBadgeUnlock({ key: first.key, label: first.label, icon: first.icon, desc: first.desc, color: first.color });
+        setTimeout(() => { window.location.hash = '#/achievements'; }, 3000);
+      }
+    }
 
     // Fire-and-forget GAS gamification call
     if (profile.Email) {
