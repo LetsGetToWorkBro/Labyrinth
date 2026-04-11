@@ -212,31 +212,42 @@ export default function ChatPage() {
                 </button>
               </div>
               <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                {RANK_LEGEND.map((r, i) => (
-                  <div key={r.belt}>
-                    {r.belt === 'grey' && (
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, margin: '4px 0 14px' }}>
-                        <div style={{ flex: 1, height: 1, background: '#1A1A1A' }} />
-                        <span style={{ fontSize: 10, color: '#444', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase' }}>Kids Program</span>
-                        <div style={{ flex: 1, height: 1, background: '#1A1A1A' }} />
-                      </div>
-                    )}
-                    <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 12px", borderRadius: 10, backgroundColor: "#0D0D0D", border: "1px solid #1A1A1A" }}>
-                      <div style={{
-                        width: 28, height: 28, borderRadius: "50%",
-                        backgroundColor: r.color,
-                        border: 'border' in r ? `2px solid ${r.border}` : "2px solid transparent",
-                        flexShrink: 0,
-                      }} />
-                      <span style={{ fontSize: 24 }}>{r.emoji}</span>
-                      <div>
-                        <span style={{ fontWeight: 700, color: '#F0F0F0', textTransform: 'capitalize' }}>{r.belt} Belt</span>
-                        <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 7px', borderRadius: 6, background: `${r.color}22`, color: r.color, border: `1px solid ${r.color}44`, letterSpacing: '0.05em', marginLeft: 8 }}>{r.title}</span>
-                        <p style={{ fontSize: 12, color: "#666", margin: "4px 0 0" }}>{r.desc}</p>
+                {RANK_LEGEND.map((r, i) => {
+                  const titleColor = r.belt === 'black' ? '#C8A24C'
+                    : r.belt === 'grey' || r.belt === 'gray' ? '#AAAAAA'
+                    : r.belt === 'white' ? '#BBBBBB'
+                    : r.color;
+                  const patchColor = r.belt === 'black' ? '#C8A24C' : '#000';
+                  return (
+                    <div key={r.belt}>
+                      {r.belt === 'grey' && (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, margin: '4px 0 14px' }}>
+                          <div style={{ flex: 1, height: 1, background: '#1A1A1A' }} />
+                          <span style={{ fontSize: 10, color: '#444', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase' }}>Kids Program</span>
+                          <div style={{ flex: 1, height: 1, background: '#1A1A1A' }} />
+                        </div>
+                      )}
+                      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, padding: '12px', borderRadius: 10, background: '#0D0D0D', border: '1px solid #1A1A1A', borderLeft: `3px solid ${r.color}` }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, flexShrink: 0, paddingTop: 2 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 1, height: 10 }}>
+                            <div style={{ width: 20, height: 10, background: r.color, borderRadius: '2px 0 0 2px' }} />
+                            <div style={{ width: 6, height: 10, background: patchColor, borderRadius: 1 }} />
+                            <div style={{ width: 20, height: 10, background: r.color, borderRadius: '0 2px 2px 0' }} />
+                          </div>
+                        </div>
+                        <div style={{ flex: 1 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 3 }}>
+                            <span style={{ fontSize: 16 }}>{r.emoji}</span>
+                            <span style={{ fontSize: 14, fontWeight: 700, color: titleColor }}>{r.title}</span>
+                            <span style={{ fontSize: 9, fontWeight: 700, padding: '1px 6px', borderRadius: 4, background: `${r.color}20`, color: titleColor, border: `1px solid ${r.color}30`, letterSpacing: '0.06em', textTransform: 'uppercase' }}>{r.tier}</span>
+                          </div>
+                          <div style={{ fontSize: 11, color: '#555', textTransform: 'capitalize' }}>{r.belt} Belt</div>
+                          <div style={{ fontSize: 11, color: '#444', marginTop: 3, lineHeight: 1.4 }}>{r.desc}</div>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           </div>
@@ -429,31 +440,42 @@ export default function ChatPage() {
               </button>
             </div>
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-              {RANK_LEGEND.map((r, i) => (
-                <div key={r.belt}>
-                  {r.belt === 'grey' && (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, margin: '4px 0 14px' }}>
-                      <div style={{ flex: 1, height: 1, background: '#1A1A1A' }} />
-                      <span style={{ fontSize: 10, color: '#444', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase' }}>Kids Program</span>
-                      <div style={{ flex: 1, height: 1, background: '#1A1A1A' }} />
-                    </div>
-                  )}
-                  <div style={{
-                    display: 'flex', alignItems: 'flex-start', gap: 14, padding: '14px 12px',
-                    borderRadius: 12, background: '#0D0D0D', border: '1px solid #1A1A1A',
-                    borderLeft: `3px solid ${r.color}`
-                  }}>
-                    <div style={{ fontSize: 28, lineHeight: 1 }}>{r.emoji}</div>
-                    <div style={{ flex: 1 }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-                        <span style={{ fontSize: 15, fontWeight: 700, color: '#F0F0F0', textTransform: 'capitalize' }}>{r.belt} Belt</span>
-                        <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 7px', borderRadius: 6, background: `${r.color}22`, color: r.color, border: `1px solid ${r.color}44`, letterSpacing: '0.05em' }}>{r.title}</span>
+              {RANK_LEGEND.map((r, i) => {
+                const titleColor = r.belt === 'black' ? '#C8A24C'
+                  : r.belt === 'grey' || r.belt === 'gray' ? '#AAAAAA'
+                  : r.belt === 'white' ? '#BBBBBB'
+                  : r.color;
+                const patchColor = r.belt === 'black' ? '#C8A24C' : '#000';
+                return (
+                  <div key={r.belt}>
+                    {r.belt === 'grey' && (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, margin: '4px 0 14px' }}>
+                        <div style={{ flex: 1, height: 1, background: '#1A1A1A' }} />
+                        <span style={{ fontSize: 10, color: '#444', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase' }}>Kids Program</span>
+                        <div style={{ flex: 1, height: 1, background: '#1A1A1A' }} />
                       </div>
-                      <p style={{ fontSize: 12, color: '#555', margin: 0, lineHeight: 1.4 }}>{r.desc}</p>
+                    )}
+                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, padding: '12px', borderRadius: 10, background: '#0D0D0D', border: '1px solid #1A1A1A', borderLeft: `3px solid ${r.color}` }}>
+                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, flexShrink: 0, paddingTop: 2 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 1, height: 10 }}>
+                          <div style={{ width: 20, height: 10, background: r.color, borderRadius: '2px 0 0 2px' }} />
+                          <div style={{ width: 6, height: 10, background: patchColor, borderRadius: 1 }} />
+                          <div style={{ width: 20, height: 10, background: r.color, borderRadius: '0 2px 2px 0' }} />
+                        </div>
+                      </div>
+                      <div style={{ flex: 1 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 3 }}>
+                          <span style={{ fontSize: 16 }}>{r.emoji}</span>
+                          <span style={{ fontSize: 14, fontWeight: 700, color: titleColor }}>{r.title}</span>
+                          <span style={{ fontSize: 9, fontWeight: 700, padding: '1px 6px', borderRadius: 4, background: `${r.color}20`, color: titleColor, border: `1px solid ${r.color}30`, letterSpacing: '0.06em', textTransform: 'uppercase' }}>{r.tier}</span>
+                        </div>
+                        <div style={{ fontSize: 11, color: '#555', textTransform: 'capitalize' }}>{r.belt} Belt</div>
+                        <div style={{ fontSize: 11, color: '#444', marginTop: 3, lineHeight: 1.4 }}>{r.desc}</div>
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         </div>

@@ -10,6 +10,8 @@ export default function AchievementsPage() {
   const { member } = useAuth();
   const [activeCategory, setActiveCategory] = useState<string>('all');
   const [earnedKeys, setEarnedKeys] = useState<string[]>([]);
+  const [selectedAchievement, setSelectedAchievement] = useState<Achievement | null>(null);
+  const [isSelectedEarned, setIsSelectedEarned] = useState(false);
 
   useEffect(() => {
     // Run local achievement checks
@@ -39,6 +41,14 @@ export default function AchievementsPage() {
     : ALL_ACHIEVEMENTS.filter(a => a.category === activeCategory);
 
   const earnedCount = earnedKeys.length;
+  const totalCount = ALL_ACHIEVEMENTS.length;
+
+  const getEarnedDate = (key: string): string | null => {
+    try {
+      const dates = JSON.parse(localStorage.getItem('lbjj_achievement_dates') || '{}');
+      return dates[key] || null;
+    } catch { return null; }
+  };
 
   return (
     <div className="app-content" style={{ background: '#0A0A0A', minHeight: '100dvh' }}>
@@ -61,7 +71,24 @@ export default function AchievementsPage() {
             fontWeight: 700,
             color: '#C8A24C',
           }}>
-            {earnedCount} / {ALL_ACHIEVEMENTS.length}
+            {earnedCount} / {totalCount}
+          </div>
+        </div>
+
+        {/* Progress bar */}
+        <div style={{ margin: '0 0 20px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
+            <span style={{ fontSize: 13, fontWeight: 700, color: '#F0F0F0' }}>Progress</span>
+            <span style={{ fontSize: 13, color: '#C8A24C', fontWeight: 700 }}>{earnedCount} / {totalCount}</span>
+          </div>
+          <div style={{ height: 6, background: '#1A1A1A', borderRadius: 3, overflow: 'hidden' }}>
+            <div style={{
+              height: '100%',
+              width: `${totalCount > 0 ? Math.round(earnedCount / totalCount * 100) : 0}%`,
+              background: 'linear-gradient(90deg, #C8A24C, #E8C86C)',
+              borderRadius: 3,
+              transition: 'width 0.5s ease'
+            }} />
           </div>
         </div>
 
@@ -125,11 +152,97 @@ export default function AchievementsPage() {
         {filtered.map(a => {
           const isEarned = earnedKeys.includes(a.key);
           const isSecret = !!a.secret && !isEarned;
-          return isEarned
-            ? <UnlockedCard key={a.key} achievement={a} />
-            : <LockedCard key={a.key} achievement={a} isSecret={isSecret} />;
+          return (
+            <div
+              key={a.key}
+              onClick={() => { setSelectedAchievement(a); setIsSelectedEarned(isEarned); }}
+              style={{ cursor: 'pointer' }}
+            >
+              {isEarned
+                ? <UnlockedCard achievement={a} />
+                : <LockedCard achievement={a} isSecret={isSecret} />
+              }
+            </div>
+          );
         })}
       </div>
+
+      {/* Achievement detail modal */}
+      {selectedAchievement && (
+        <div
+          style={{ position: 'fixed', inset: 0, zIndex: 200, display: 'flex', alignItems: 'flex-end' }}
+          onClick={() => setSelectedAchievement(null)}
+        >
+          <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)' }} />
+          <div
+            onClick={e => e.stopPropagation()}
+            style={{
+              position: 'relative', width: '100%',
+              background: '#111', borderRadius: '20px 20px 0 0',
+              padding: '24px 20px', borderTop: '1px solid #1A1A1A',
+              paddingBottom: 'max(24px, calc(env(safe-area-inset-bottom, 0px) + 24px))',
+            }}
+          >
+            <div style={{ width: 36, height: 4, borderRadius: 2, background: '#2A2A2A', margin: '0 auto 20px' }} />
+            <div style={{ textAlign: 'center' }}>
+              <div style={{ fontSize: 56, marginBottom: 12 }}>
+                {(selectedAchievement.secret && !isSelectedEarned) ? '🔒' : selectedAchievement.icon}
+              </div>
+              <div style={{ fontSize: 18, fontWeight: 700, color: '#F0F0F0', marginBottom: 8 }}>
+                {(selectedAchievement.secret && !isSelectedEarned) ? '???' : selectedAchievement.label}
+              </div>
+              <div style={{
+                display: 'inline-block',
+                fontSize: 11, fontWeight: 600,
+                padding: '3px 10px', borderRadius: 12,
+                background: isSelectedEarned ? 'rgba(76,175,128,0.15)' : 'rgba(255,255,255,0.05)',
+                color: isSelectedEarned ? '#4CAF80' : '#666',
+                border: isSelectedEarned ? '1px solid rgba(76,175,128,0.3)' : '1px solid #222',
+                marginBottom: 12,
+              }}>
+                {isSelectedEarned ? '✅ Achieved!' : '🔒 Not yet achieved'}
+              </div>
+              {isSelectedEarned && (() => {
+                const date = getEarnedDate(selectedAchievement.key);
+                if (!date) return null;
+                return (
+                  <div style={{ fontSize: 12, color: '#666', marginBottom: 8 }}>
+                    Earned {new Date(date).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
+                  </div>
+                );
+              })()}
+              <div style={{ fontSize: 13, color: '#888', lineHeight: 1.5, marginTop: 4 }}>
+                {(selectedAchievement.secret && !isSelectedEarned)
+                  ? 'Keep training to discover this achievement.'
+                  : selectedAchievement.desc}
+              </div>
+              {selectedAchievement.category && (
+                <div style={{
+                  display: 'inline-block', marginTop: 12,
+                  fontSize: 10, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em',
+                  padding: '3px 10px', borderRadius: 10,
+                  background: `${selectedAchievement.color}15`,
+                  color: selectedAchievement.color,
+                  border: `1px solid ${selectedAchievement.color}30`,
+                }}>
+                  {ACHIEVEMENT_CATEGORIES.find(c => c.key === selectedAchievement.category)?.label || selectedAchievement.category}
+                </div>
+              )}
+            </div>
+            <button
+              onClick={() => setSelectedAchievement(null)}
+              style={{
+                display: 'block', width: '100%', marginTop: 20,
+                padding: '12px', borderRadius: 12,
+                background: '#1A1A1A', border: '1px solid #222',
+                color: '#999', fontSize: 14, fontWeight: 600, cursor: 'pointer',
+              }}
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

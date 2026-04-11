@@ -27,7 +27,7 @@ import LivePage from "@/pages/LivePage";
 import NotFound from "@/pages/not-found";
 import {
   Home, MessageCircle, CalendarDays, MoreHorizontal,
-  Gamepad2, BarChart2, Trophy, Thermometer, Award,
+  Gamepad2, BarChart2, Trophy, Thermometer,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { useEffect, useCallback, useState, useRef } from "react";
@@ -50,7 +50,7 @@ type NavOption = {
 const ALL_NAV_OPTIONS: NavOption[] = [
   { path: '/',         label: 'Home',     Icon: Home,           emoji: '🏠' },
   { path: '/chat',     label: 'Chat',     Icon: MessageCircle,  emoji: '💬' },
-  { path: '/belt',     label: 'Belts',    Icon: Award,          emoji: '🥋' },
+  { path: '/achievements', label: 'Progress', Icon: Trophy,      emoji: '🏆' },
   { path: '/schedule', label: 'Schedule', Icon: CalendarDays,   emoji: '📅' },
   { path: '/more',     label: 'More',     Icon: MoreHorizontal, emoji: '⋯'  },
   { path: '/games',    label: 'Games',    Icon: Gamepad2,       emoji: '🎮' },
@@ -59,7 +59,7 @@ const ALL_NAV_OPTIONS: NavOption[] = [
   { path: '/sauna',    label: 'Sauna',    Icon: Thermometer,    emoji: '🧖' },
 ];
 
-const DEFAULT_NAV_PATHS = ['/', '/chat', '/belt', '/schedule', '/more'];
+const DEFAULT_NAV_PATHS = ['/', '/chat', '/achievements', '/schedule', '/more'];
 
 function getNavConfig(): string[] {
   try {
@@ -142,7 +142,12 @@ function NavCustomizer() {
         className="w-full flex items-center gap-3 p-4 rounded-xl transition-all active:scale-[0.98]"
         style={{ backgroundColor: '#111', border: '1px solid #1A1A1A', cursor: 'pointer' }}
       >
-        <span className="text-xl">🔧</span>
+        <span className="text-xl" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <line x1="4" y1="6" x2="20" y2="6"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="18" x2="20" y2="18"/>
+            <circle cx="8" cy="6" r="2" fill="currentColor"/><circle cx="16" cy="12" r="2" fill="currentColor"/><circle cx="8" cy="18" r="2" fill="currentColor"/>
+          </svg>
+        </span>
         <div className="flex-1 text-left">
           <p className="text-sm font-medium" style={{ color: '#F0F0F0' }}>Customize Nav</p>
           <p className="text-xs" style={{ color: '#666' }}>Choose what appears in the bottom bar</p>
@@ -151,20 +156,26 @@ function NavCustomizer() {
 
       {open && (
         <div style={{ backgroundColor: '#111', border: '1px solid #1A1A1A', borderTop: 'none', borderRadius: '0 0 12px 12px', padding: '12px 16px' }}>
-          {slots.map((path, i) => (
-            <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
-              <span style={{ color: '#555', fontSize: 12, width: 16, flexShrink: 0 }}>#{i + 1}</span>
-              <select
-                value={path}
-                onChange={e => { const n = [...slots]; n[i] = e.target.value; setSlots(n); }}
-                style={{ flex: 1, backgroundColor: '#0D0D0D', border: '1px solid #222', borderRadius: 8, padding: '8px 10px', fontSize: 13, color: '#F0F0F0', outline: 'none' }}
-              >
-                {ALL_NAV_OPTIONS.map(o => (
-                  <option key={o.path + o.label} value={o.path}>{o.emoji} {o.label}</option>
-                ))}
-              </select>
-            </div>
-          ))}
+          {slots.map((path, i) => {
+            const selectedTab = ALL_NAV_OPTIONS.find(o => o.path === path) || ALL_NAV_OPTIONS[0];
+            return (
+              <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+                <span style={{ color: '#555', fontSize: 12, width: 16, flexShrink: 0 }}>#{i + 1}</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#888', flexShrink: 0 }}>
+                  {selectedTab.Icon ? <selectedTab.Icon size={16} /> : <span style={{ fontSize: 16 }}>{selectedTab.emoji}</span>}
+                </div>
+                <select
+                  value={path}
+                  onChange={e => { const n = [...slots]; n[i] = e.target.value; setSlots(n); }}
+                  style={{ flex: 1, backgroundColor: '#0D0D0D', border: '1px solid #222', borderRadius: 8, padding: '8px 10px', fontSize: 13, color: '#F0F0F0', outline: 'none' }}
+                >
+                  {ALL_NAV_OPTIONS.map(o => (
+                    <option key={o.path + o.label} value={o.path}>{o.emoji} {o.label}</option>
+                  ))}
+                </select>
+              </div>
+            );
+          })}
           <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
             <button onClick={() => setSlots([...DEFAULT_NAV_PATHS])} style={{ flex: 1, padding: '8px', background: 'transparent', border: '1px solid #333', borderRadius: 8, color: '#666', fontSize: 12, cursor: 'pointer' }}>Reset</button>
             <button onClick={apply} style={{ flex: 2, padding: '8px', background: '#C8A24C', border: 'none', borderRadius: 8, color: '#0A0A0A', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>Apply</button>

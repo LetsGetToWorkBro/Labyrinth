@@ -9,7 +9,7 @@ import { ALL_ACHIEVEMENTS } from "@/lib/achievements";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import {
   CreditCard, FileText, ChevronRight, ChevronDown, LogOut,
-  Users, Check, Loader2, Plus, Trash2, Star, CheckCircle, Shield,
+  Users, Check, Loader2, Plus, Trash2, Star, CheckCircle,
 } from "lucide-react";
 import {
   memberGetCards, memberSetDefaultCard, memberRemoveCard,
@@ -96,6 +96,19 @@ const beltColorMap: Record<string, string> = {
   brown: '#92400E', black: '#1A1A1A', grey: '#9CA3AF',
   yellow: '#EAB308', orange: '#F97316', green: '#22C55E',
 };
+
+function BeltVisual({ belt, size = 'sm' }: { belt: string; size?: 'sm' | 'md' }) {
+  const color = beltColorMap[belt.toLowerCase()] || '#C8A24C';
+  const h = size === 'sm' ? 8 : 12;
+  const patchColor = belt.toLowerCase() === 'black' ? '#C8A24C' : '#000';
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 1, borderRadius: 2, overflow: 'hidden', height: h }}>
+      <div style={{ width: 28, height: h, background: color, borderRadius: '2px 0 0 2px' }} />
+      <div style={{ width: 8, height: h, background: patchColor, borderRadius: 1 }} />
+      <div style={{ width: 28, height: h, background: color, borderRadius: '0 2px 2px 0' }} />
+    </div>
+  );
+}
 
 export default function HomePage() {
   const { member, familyMembers, isAuthenticated, logout, switchProfile } = useAuth();
@@ -499,7 +512,10 @@ export default function HomePage() {
           {/* Name + belt */}
           <div style={{ flex: 1 }}>
             <div style={{ fontSize: 16, fontWeight: 700, color: '#F0F0F0' }} data-testid="text-member-name">{member?.name}</div>
-            <div style={{ fontSize: 12, color: getBeltColor(member?.belt || 'white'), fontWeight: 600, textTransform: 'capitalize' }}>{member?.belt || 'White'} Belt</div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 2 }}>
+              <BeltVisual belt={member?.belt || 'white'} />
+              <span style={{ fontSize: 12, color: getBeltColor(member?.belt || 'white'), fontWeight: 600, textTransform: 'capitalize' }}>{member?.belt || 'White'} Belt</span>
+            </div>
           </div>
 
           {/* Chevron */}
@@ -542,7 +558,7 @@ export default function HomePage() {
               )}
               <button
                 onClick={(e) => { e.stopPropagation(); haptic(); setShowRankRequest(true); setRankBelt(member.belt || "white"); setRankStripes(0); setRankNote(""); setRankSent(false); }}
-                style={{ background: "none", border: "none", padding: 0, cursor: "pointer", position: "relative" }}
+                style={{ background: "none", border: "none", padding: 0, cursor: "pointer", position: "relative", overflow: "visible" }}
                 title="Tap to request a rank update"
               >
                 <BeltIcon
@@ -551,8 +567,11 @@ export default function HomePage() {
                   width={72}
                   style={{ filter: `drop-shadow(0 1px 6px ${getBeltColor(member.belt)}40)` }}
                 />
-                <span style={{ position: "absolute", bottom: -2, right: -2, width: 14, height: 14, borderRadius: "50%", backgroundColor: "#C8A24C", border: "2px solid #141414", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                  <Shield size={7} style={{ color: "#0A0A0A" }} />
+                <span style={{ position: "absolute", bottom: -2, right: -2, width: 14, height: 14, borderRadius: "50%", backgroundColor: "#C8A24C", border: "2px solid #141414", display: "flex", alignItems: "center", justifyContent: "center", overflow: "visible" }}>
+                  <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="#0A0A0A" strokeWidth="2.5">
+                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                  </svg>
                 </span>
               </button>
               <div style={{ flex: 1 }} />
@@ -623,6 +642,72 @@ export default function HomePage() {
         }
       `}</style>
 
+      {/* Warning banners */}
+      {hasWarnings && (
+        <div className="mx-5 mb-4 space-y-2">
+          {!member.waiverSigned && <WarningBanner text="Liability waiver not signed" action="Sign Now" href="/#/waiver" />}
+          {!member.agreementSigned && <WarningBanner text="Membership agreement not signed" action="Sign Now" href="/#/waiver?tab=agreement" />}
+        </div>
+      )}
+
+      {/* Announcements Preview */}
+      {announcementPreview && (
+        <div className="mx-5 mb-3">
+          <a href="/#/chat" style={{ textDecoration: 'none', display: 'block' }}>
+            <div style={{
+              background: '#141414', border: '1px solid #1A1A1A',
+              borderRadius: 14, padding: '14px 16px',
+              cursor: 'pointer',
+            }}>
+              <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', color: '#666', textTransform: 'uppercase' as const, marginBottom: 6 }}>📢 Announcement</div>
+              <div style={{ fontSize: 13, color: '#CCC', lineHeight: 1.5, overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' as const }}>{announcementPreview}</div>
+            </div>
+          </a>
+        </div>
+      )}
+
+      {/* Next Class Card */}
+      {nextClass && (
+        <div className="mx-5 mb-3">
+          <a href="/#/schedule" style={{ textDecoration: 'none', display: 'block' }}>
+            <div style={{
+              background: '#141414', border: '1px solid #1A1A1A',
+              borderLeft: '3px solid #C8A24C', borderRadius: 14,
+              padding: 16, cursor: 'pointer',
+            }}>
+              <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', color: '#C8A24C', textTransform: 'uppercase' as const, marginBottom: 6 }}>Next Class</div>
+              <div style={{ fontSize: 17, fontWeight: 700, color: '#F0F0F0', marginBottom: 4 }}>{nextClass.name}</div>
+              <div style={{ fontSize: 13, color: '#666' }}>{nextClass.dayLabel} · {formatClassTime(nextClass.time)}</div>
+              {nextClass.instructor && <div style={{ fontSize: 12, color: '#555', marginTop: 2 }}>w/ {nextClass.instructor}</div>}
+            </div>
+          </a>
+        </div>
+      )}
+
+      {/* Weekly Training Progress */}
+      <div className="mx-5 mb-3">
+        <div style={{ display: 'flex', justifyContent: 'center', gap: 8 }}>
+          {weekDots.map((d, i) => (
+            <div key={i} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
+              <div style={{
+                width: 28, height: 28, borderRadius: '50%',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontSize: 14,
+                ...(d.trained
+                  ? { background: '#C8A24C', color: '#0A0A0A' }
+                  : d.isToday
+                    ? { background: 'transparent', border: '2px solid #E0E0E0', color: '#E0E0E0' }
+                    : { background: 'transparent', border: '2px solid #2A2A2A', color: '#2A2A2A' }
+                ),
+              }}>
+                {d.trained ? '●' : '○'}
+              </div>
+              <span style={{ fontSize: 9, color: d.isToday ? '#E0E0E0' : '#555', fontWeight: d.isToday ? 700 : 400 }}>{d.label}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+
       {/* Attendance streak widget */}
       <div style={{
         display: 'flex',
@@ -671,6 +756,23 @@ export default function HomePage() {
         </div>
       </div>
 
+      {/* Tournament Countdown (conditional) */}
+      {nextTournament && tournamentDaysUntil <= 30 && (
+        <div className="mx-5 mb-3">
+          <a href="/#/calendar" style={{ textDecoration: 'none', display: 'block' }}>
+            <div style={{
+              background: 'linear-gradient(135deg, #141414, #1A1A0A)',
+              border: '1px solid rgba(200,162,76,0.19)', borderRadius: 14, padding: 16,
+              cursor: 'pointer',
+            }}>
+              <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', color: '#C8A24C', textTransform: 'uppercase' as const, marginBottom: 6 }}>🏆 Upcoming Tournament</div>
+              <div style={{ fontSize: 16, fontWeight: 700, color: '#F0F0F0', marginBottom: 4 }}>{nextTournament.name}</div>
+              <div style={{ fontSize: 13, color: '#888' }}>{tournamentDaysUntil === 0 ? 'Today!' : tournamentDaysUntil === 1 ? 'Tomorrow' : `${tournamentDaysUntil} days away`}</div>
+            </div>
+          </a>
+        </div>
+      )}
+
       {/* Recent Achievements strip */}
       {(() => {
         const earned: string[] = (() => { try { return JSON.parse(localStorage.getItem('lbjj_achievements') || '[]'); } catch { return []; } })();
@@ -705,14 +807,6 @@ export default function HomePage() {
           </a>
         );
       })()}
-
-      {/* Warning banners */}
-      {hasWarnings && (
-        <div className="mx-5 mb-4 space-y-2">
-          {!member.waiverSigned && <WarningBanner text="Liability waiver not signed" action="Sign Now" href="/#/waiver" />}
-          {!member.agreementSigned && <WarningBanner text="Membership agreement not signed" action="Sign Now" href="/#/waiver?tab=agreement" />}
-        </div>
-      )}
 
       {/* Payment Methods */}
       <div className="mx-5 mb-4 rounded-xl overflow-hidden" style={{ backgroundColor: "#111", border: "1px solid #1A1A1A" }}>
@@ -803,81 +897,6 @@ export default function HomePage() {
           </div>
         )}
       </div>
-
-      {/* Widget 1 — Next Class Card */}
-      {nextClass && (
-        <div className="mx-5 mb-3">
-          <a href="/#/schedule" style={{ textDecoration: 'none', display: 'block' }}>
-            <div style={{
-              background: '#141414', border: '1px solid #1A1A1A',
-              borderLeft: '3px solid #C8A24C', borderRadius: 14,
-              padding: 16, cursor: 'pointer',
-            }}>
-              <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', color: '#C8A24C', textTransform: 'uppercase' as const, marginBottom: 6 }}>Next Class</div>
-              <div style={{ fontSize: 17, fontWeight: 700, color: '#F0F0F0', marginBottom: 4 }}>{nextClass.name}</div>
-              <div style={{ fontSize: 13, color: '#666' }}>{nextClass.dayLabel} · {formatClassTime(nextClass.time)}</div>
-              {nextClass.instructor && <div style={{ fontSize: 12, color: '#555', marginTop: 2 }}>w/ {nextClass.instructor}</div>}
-            </div>
-          </a>
-        </div>
-      )}
-
-      {/* Widget 2 — Weekly Training Progress */}
-      <div className="mx-5 mb-3">
-        <div style={{ display: 'flex', justifyContent: 'center', gap: 8 }}>
-          {weekDots.map((d, i) => (
-            <div key={i} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
-              <div style={{
-                width: 28, height: 28, borderRadius: '50%',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                fontSize: 14,
-                ...(d.trained
-                  ? { background: '#C8A24C', color: '#0A0A0A' }
-                  : d.isToday
-                    ? { background: 'transparent', border: '2px solid #E0E0E0', color: '#E0E0E0' }
-                    : { background: 'transparent', border: '2px solid #2A2A2A', color: '#2A2A2A' }
-                ),
-              }}>
-                {d.trained ? '●' : '○'}
-              </div>
-              <span style={{ fontSize: 9, color: d.isToday ? '#E0E0E0' : '#555', fontWeight: d.isToday ? 700 : 400 }}>{d.label}</span>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Widget 3 — Tournament Countdown (conditional) */}
-      {nextTournament && tournamentDaysUntil <= 30 && (
-        <div className="mx-5 mb-3">
-          <a href="/#/calendar" style={{ textDecoration: 'none', display: 'block' }}>
-            <div style={{
-              background: 'linear-gradient(135deg, #141414, #1A1A0A)',
-              border: '1px solid rgba(200,162,76,0.19)', borderRadius: 14, padding: 16,
-              cursor: 'pointer',
-            }}>
-              <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', color: '#C8A24C', textTransform: 'uppercase' as const, marginBottom: 6 }}>🏆 Upcoming Tournament</div>
-              <div style={{ fontSize: 16, fontWeight: 700, color: '#F0F0F0', marginBottom: 4 }}>{nextTournament.name}</div>
-              <div style={{ fontSize: 13, color: '#888' }}>{tournamentDaysUntil === 0 ? 'Today!' : tournamentDaysUntil === 1 ? 'Tomorrow' : `${tournamentDaysUntil} days away`}</div>
-            </div>
-          </a>
-        </div>
-      )}
-
-      {/* Widget 4 — Announcements Preview (conditional) */}
-      {announcementPreview && (
-        <div className="mx-5 mb-6">
-          <a href="/#/chat" style={{ textDecoration: 'none', display: 'block' }}>
-            <div style={{
-              background: '#141414', border: '1px solid #1A1A1A',
-              borderRadius: 14, padding: '14px 16px',
-              cursor: 'pointer',
-            }}>
-              <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', color: '#666', textTransform: 'uppercase' as const, marginBottom: 6 }}>📢 Announcement</div>
-              <div style={{ fontSize: 13, color: '#CCC', lineHeight: 1.5, overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' as const }}>{announcementPreview}</div>
-            </div>
-          </a>
-        </div>
-      )}
 
       {/* ── Rank Request Bottom Sheet ── */}
       {showRankRequest && (
