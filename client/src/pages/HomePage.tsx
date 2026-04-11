@@ -99,25 +99,27 @@ const beltColorMap: Record<string, string> = {
 
 function BeltVisual({ belt, size = 'sm' }: { belt: string; size?: 'sm' | 'md' }) {
   const beltColors: Record<string, string> = {
-    white: '#E5E5E5', blue: '#1A56DB', purple: '#7E3AF2',
-    brown: '#92400E', black: '#111827',
+    white: '#EEEEEE', blue: '#1A5DAB', purple: '#6A1B9A',
+    brown: '#6D4C2A', black: '#111111',
     grey: '#6B6B6B', gray: '#6B6B6B', yellow: '#C49B1A',
     orange: '#C4641A', green: '#2D8040'
   };
-  const color = beltColors[belt.toLowerCase()] || '#C8A24C';
+  const patchColors: Record<string, string> = {
+    black: '#CC0000',
+    white: 'transparent',
+  };
+  const beltLower = belt.toLowerCase();
+  const color = beltColors[beltLower] || '#C8A24C';
+  const patchColor = patchColors[beltLower] || '#000';
+  const showPatch = beltLower !== 'white';
   const h = size === 'sm' ? 9 : 13;
-
-  // Black belt: black bars with gold center patch (very visible)
-  // All other belts: colored bars with black center patch
-  const patchColor = belt.toLowerCase() === 'black' ? '#C8A24C' :
-                     belt.toLowerCase() === 'white' ? '#333' : '#000';
-  const patchWidth = belt.toLowerCase() === 'black' ? 10 : 7; // gold patch wider on black belt
+  const patchW = size === 'sm' ? 7 : 10;
 
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 1, height: h, borderRadius: 2, overflow: 'hidden' }}>
-      <div style={{ width: 22, height: h, background: color, borderRadius: '2px 0 0 2px' }} />
-      <div style={{ width: patchWidth, height: h, background: patchColor }} />
-      <div style={{ width: 22, height: h, background: color, borderRadius: '0 2px 2px 0' }} />
+    <div style={{ display: 'flex', alignItems: 'center', gap: 0, height: h, borderRadius: 2, overflow: 'hidden' }}>
+      <div style={{ flex: 1, height: h, background: color }} />
+      {showPatch && <div style={{ width: patchW, height: h, background: patchColor, flexShrink: 0 }} />}
+      <div style={{ flex: 1, height: h, background: color }} />
     </div>
   );
 }

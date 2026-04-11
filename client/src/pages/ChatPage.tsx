@@ -217,7 +217,8 @@ export default function ChatPage() {
                     : r.belt === 'grey' || r.belt === 'gray' ? '#AAAAAA'
                     : r.belt === 'white' ? '#BBBBBB'
                     : r.color;
-                  const patchColor = r.belt === 'black' ? '#C8A24C' : '#000';
+                  const patchColor = r.belt === 'black' ? '#CC0000' : '#000';
+                  const showPatch = r.belt !== 'white';
                   return (
                     <div key={r.belt}>
                       {r.belt === 'grey' && (
@@ -231,7 +232,7 @@ export default function ChatPage() {
                         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, flexShrink: 0, paddingTop: 2 }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: 1, height: 10 }}>
                             <div style={{ width: 20, height: 10, background: r.color, borderRadius: '2px 0 0 2px' }} />
-                            <div style={{ width: r.belt === 'black' ? 10 : 6, height: 10, background: patchColor, borderRadius: 1 }} />
+                            {showPatch && <div style={{ width: r.belt === 'black' ? 10 : 6, height: 10, background: patchColor, borderRadius: 1 }} />}
                             <div style={{ width: 20, height: 10, background: r.color, borderRadius: '0 2px 2px 0' }} />
                           </div>
                         </div>
@@ -445,7 +446,8 @@ export default function ChatPage() {
                   : r.belt === 'grey' || r.belt === 'gray' ? '#AAAAAA'
                   : r.belt === 'white' ? '#BBBBBB'
                   : r.color;
-                const patchColor = r.belt === 'black' ? '#C8A24C' : '#000';
+                const patchColor = r.belt === 'black' ? '#CC0000' : '#000';
+                const showPatch = r.belt !== 'white';
                 return (
                   <div key={r.belt}>
                     {r.belt === 'grey' && (
@@ -459,7 +461,7 @@ export default function ChatPage() {
                       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, flexShrink: 0, paddingTop: 2 }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 1, height: 10 }}>
                           <div style={{ width: 20, height: 10, background: r.color, borderRadius: '2px 0 0 2px' }} />
-                          <div style={{ width: r.belt === 'black' ? 10 : 6, height: 10, background: patchColor, borderRadius: 1 }} />
+                          {showPatch && <div style={{ width: r.belt === 'black' ? 10 : 6, height: 10, background: patchColor, borderRadius: 1 }} />}
                           <div style={{ width: 20, height: 10, background: r.color, borderRadius: '0 2px 2px 0' }} />
                         </div>
                       </div>
