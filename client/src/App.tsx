@@ -20,7 +20,7 @@ import ChatPage from "@/pages/ChatPage";
 import GamesPage from "@/pages/GamesPage";
 import AdminPage from "@/pages/AdminPage";
 import MessagesPage from "@/pages/MessagesPage";
-import OnboardingPage from "@/pages/OnboardingPage";
+
 import NotFound from "@/pages/not-found";
 import {
   Home, MessageCircle, CalendarDays, MoreHorizontal, Award,
@@ -594,8 +594,6 @@ function AdminShortcut() {
 
 function AppShell() {
   const { isAuthenticated } = useAuth();
-  const [onboardingDone, setOnboardingDone] = useState(() => !!localStorage.getItem("lbjj_onboarding_complete"));
-
   const [location] = useHashLoc();
 
   // Reset password page is public — show without auth check
@@ -615,22 +613,12 @@ function AppShell() {
     );
   }
 
-  // Redirect to onboarding if first login (no onboarding completed)
-  const needsOnboarding = !onboardingDone;
-  if (needsOnboarding) {
-    return (
-      <div className="app-shell">
-        <OnboardingPage onComplete={() => setOnboardingDone(true)} />
-      </div>
-    );
-  }
-
   return (
     <div className="app-shell">
       <AdminShortcut />
       <Switch>
         <Route path="/"          component={HomePage} />
-        <Route path="/onboarding" component={OnboardingPage} />
+
         <Route path="/calendar"  component={CalendarPage} />
         <Route path="/stats"     component={StatsPage} />
         <Route path="/belt"      component={BeltJourneyPage} />

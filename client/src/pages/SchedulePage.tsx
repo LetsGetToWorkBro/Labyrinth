@@ -199,7 +199,25 @@ function ClassCard({ cls, isToday }: { cls: ClassScheduleItem; isToday: boolean 
   const displayTime = formatClassTime(cls.time);
   const [timePart, ampm] = displayTime.split(" ");
   const [showDetail, setShowDetail] = useState(false);
+  const [checkInDone, setCheckInDone] = useState(false);
   const duration = getDuration(cls.name);
+
+  const handleCheckIn = () => {
+    // Increment local attendance
+    try {
+      const raw = localStorage.getItem('lbjj_game_stats_v2');
+      const stats = raw ? JSON.parse(raw) : {};
+      stats.classesAttended = (stats.classesAttended || 0) + 1;
+      localStorage.setItem('lbjj_game_stats_v2', JSON.stringify(stats));
+    } catch (_) {}
+
+    setCheckInDone(true);
+    setTimeout(() => {
+      setShowDetail(false);
+      setCheckInDone(false);
+      window.location.hash = '#/';
+    }, 1500);
+  };
 
   // Check if this class has already ended today
   const isPast = (() => {
@@ -297,76 +315,86 @@ function ClassCard({ cls, isToday }: { cls: ClassScheduleItem; isToday: boolean 
             {/* Handle bar */}
             <div style={{ width: 36, height: 4, borderRadius: 2, background: "#2A2A2A", margin: "0 auto 20px" }} />
 
-            {/* Header */}
-            <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 20 }}>
-              <div>
-                <h3 style={{ fontSize: 20, fontWeight: 700, color: "#F0F0F0", margin: 0 }}>{cls.name}</h3>
-                <span style={{ display: "inline-block", marginTop: 6, fontSize: 11, fontWeight: 600, padding: "3px 10px", borderRadius: 6, backgroundColor: typeStyle.bg, color: typeStyle.text }}>
-                  {typeStyle.label}
-                </span>
-              </div>
-              <button onClick={() => setShowDetail(false)} style={{ background: "none", border: "none", padding: 4, cursor: "pointer" }}>
-                <X size={20} style={{ color: "#555" }} />
-              </button>
-            </div>
-
-            {/* Detail rows */}
-            <div style={{ display: "flex", flexDirection: "column", gap: 14, marginBottom: 24 }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                <Clock size={16} style={{ color: "#C8A24C", flexShrink: 0 }} />
-                <div>
-                  <p style={{ fontSize: 14, color: "#F0F0F0", margin: 0, fontWeight: 600 }}>{displayTime}</p>
-                  <p style={{ fontSize: 12, color: "#666", margin: "2px 0 0" }}>{duration}</p>
-                </div>
-              </div>
-              <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                <User size={16} style={{ color: "#666", flexShrink: 0 }} />
-                <div>
-                  <p style={{ fontSize: 13, color: "#999", margin: 0 }}>
-                    {cls.category === "kids" ? "Kids & Teens" : "Adults"} · {typeStyle.label}
-                    {cls.instructor && <span style={{ color: "#C8A24C" }}> · w/ Coach {cls.instructor}</span>}
-                  </p>
-                  {cls.capacity != null && cls.enrolled != null ? (
-                    <p style={{
-                      fontSize: 12, margin: "4px 0 0",
-                      color: cls.enrolled >= cls.capacity ? "#E05555"
-                        : cls.enrolled >= cls.capacity * 0.8 ? "#E08228"
-                        : "#666",
-                      fontWeight: 600,
-                    }}>
-                      {cls.enrolled >= cls.capacity ? "Class Full" : `${cls.enrolled}/${cls.capacity} spots`}
-                    </p>
-                  ) : (
-                    <p style={{ fontSize: 12, margin: "4px 0 0", color: "#444" }}>Capacity: —</p>
-                  )}
-                </div>
-              </div>
-            </div>
-
-            {/* CTA */}
-            {isPast ? (
-              <div
-                style={{
-                  display: "flex", alignItems: "center", justifyContent: "center",
-                  gap: 8, padding: "14px", borderRadius: 12,
-                  background: "rgba(74, 175, 128, 0.1)", color: "#4CAF80",
-                  fontWeight: 600, fontSize: 15, border: "1px solid rgba(74, 175, 128, 0.2)",
-                }}
-              >
-                <CheckCircle size={16} /> Class has ended
+            {checkInDone ? (
+              <div style={{ textAlign: 'center', padding: '32px 0' }}>
+                <div style={{ fontSize: 48, marginBottom: 12 }}>✓</div>
+                <div style={{ fontSize: 18, fontWeight: 700, color: '#4CAF50' }}>Checked In!</div>
+                <div style={{ fontSize: 14, color: '#888', marginTop: 6 }}>{cls.name}</div>
               </div>
             ) : (
-              <a
-                href="/#/sauna"
-                style={{
-                  display: "flex", alignItems: "center", justifyContent: "center",
-                  gap: 8, padding: "14px", borderRadius: 12,
-                  background: "#C8A24C", color: "#0A0A0A",
-                  fontWeight: 700, fontSize: 15, textDecoration: "none",
-                }}
-              >
-                Check In to Class
-              </a>
+              <>
+                {/* Header */}
+                <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 20 }}>
+                  <div>
+                    <h3 style={{ fontSize: 20, fontWeight: 700, color: "#F0F0F0", margin: 0 }}>{cls.name}</h3>
+                    <span style={{ display: "inline-block", marginTop: 6, fontSize: 11, fontWeight: 600, padding: "3px 10px", borderRadius: 6, backgroundColor: typeStyle.bg, color: typeStyle.text }}>
+                      {typeStyle.label}
+                    </span>
+                  </div>
+                  <button onClick={() => setShowDetail(false)} style={{ background: "none", border: "none", padding: 4, cursor: "pointer" }}>
+                    <X size={20} style={{ color: "#555" }} />
+                  </button>
+                </div>
+
+                {/* Detail rows */}
+                <div style={{ display: "flex", flexDirection: "column", gap: 14, marginBottom: 24 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                    <Clock size={16} style={{ color: "#C8A24C", flexShrink: 0 }} />
+                    <div>
+                      <p style={{ fontSize: 14, color: "#F0F0F0", margin: 0, fontWeight: 600 }}>{displayTime}</p>
+                      <p style={{ fontSize: 12, color: "#666", margin: "2px 0 0" }}>{duration}</p>
+                    </div>
+                  </div>
+                  <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                    <User size={16} style={{ color: "#666", flexShrink: 0 }} />
+                    <div>
+                      <p style={{ fontSize: 13, color: "#999", margin: 0 }}>
+                        {cls.category === "kids" ? "Kids & Teens" : "Adults"} · {typeStyle.label}
+                        {cls.instructor && <span style={{ color: "#C8A24C" }}> · w/ Coach {cls.instructor}</span>}
+                      </p>
+                      {cls.capacity != null && cls.enrolled != null ? (
+                        <p style={{
+                          fontSize: 12, margin: "4px 0 0",
+                          color: cls.enrolled >= cls.capacity ? "#E05555"
+                            : cls.enrolled >= cls.capacity * 0.8 ? "#E08228"
+                            : "#666",
+                          fontWeight: 600,
+                        }}>
+                          {cls.enrolled >= cls.capacity ? "Class Full" : `${cls.enrolled}/${cls.capacity} spots`}
+                        </p>
+                      ) : (
+                        <p style={{ fontSize: 12, margin: "4px 0 0", color: "#444" }}>Capacity: —</p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* CTA */}
+                {isPast ? (
+                  <div
+                    style={{
+                      display: "flex", alignItems: "center", justifyContent: "center",
+                      gap: 8, padding: "14px", borderRadius: 12,
+                      background: "rgba(74, 175, 128, 0.1)", color: "#4CAF80",
+                      fontWeight: 600, fontSize: 15, border: "1px solid rgba(74, 175, 128, 0.2)",
+                    }}
+                  >
+                    <CheckCircle size={16} /> Class has ended
+                  </div>
+                ) : (
+                  <button
+                    onClick={handleCheckIn}
+                    style={{
+                      display: "flex", alignItems: "center", justifyContent: "center",
+                      gap: 8, padding: "14px", borderRadius: 12, width: "100%",
+                      background: "#C8A24C", color: "#0A0A0A",
+                      fontWeight: 700, fontSize: 15, border: "none", cursor: "pointer",
+                    }}
+                  >
+                    Check In to Class
+                  </button>
+                )}
+              </>
             )}
           </div>
         </div>
