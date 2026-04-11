@@ -4,6 +4,7 @@ import { beltSavePromotion } from "@/lib/api";
 import { BeltIcon } from "@/components/BeltIcon";
 import { ADULT_BELT_OPTIONS } from "@/components/BeltIcon";
 import { getBeltColor } from "@/lib/constants";
+import { ALL_ACHIEVEMENTS } from "@/lib/achievements";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import {
   CreditCard, FileText, ChevronRight, LogOut,
@@ -461,6 +462,41 @@ export default function HomePage() {
           </div>
         </div>
       </div>
+
+      {/* Recent Achievements strip */}
+      {(() => {
+        const earned: string[] = (() => { try { return JSON.parse(localStorage.getItem('lbjj_achievements') || '[]'); } catch { return []; } })();
+        if (earned.length === 0) return null;
+        const recent = earned.slice(-3).reverse();
+        const recentAchievements = recent
+          .map(key => ALL_ACHIEVEMENTS.find(a => a.key === key))
+          .filter(Boolean) as typeof ALL_ACHIEVEMENTS;
+        if (recentAchievements.length === 0) return null;
+        return (
+          <a href="/#/achievements" style={{ textDecoration: 'none', display: 'block', margin: '0 20px 16px' }}>
+            <div style={{
+              display: 'flex', alignItems: 'center', gap: 10,
+              background: '#111', border: '1px solid #1A1A1A', borderRadius: 12,
+              padding: '10px 14px',
+            }}>
+              <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: '#555', whiteSpace: 'nowrap' }}>Recent</div>
+              <div style={{ display: 'flex', gap: 6, flex: 1 }}>
+                {recentAchievements.map(a => (
+                  <div key={a.key} style={{
+                    width: 36, height: 36, borderRadius: 10,
+                    background: `${a.color}18`, border: `1px solid ${a.color}40`,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    fontSize: 18,
+                  }}>
+                    {a.icon}
+                  </div>
+                ))}
+              </div>
+              <div style={{ fontSize: 11, color: '#C8A24C', fontWeight: 600, whiteSpace: 'nowrap' }}>View All →</div>
+            </div>
+          </a>
+        );
+      })()}
 
       {/* Warning banners */}
       {hasWarnings && (

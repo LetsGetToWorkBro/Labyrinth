@@ -4,6 +4,7 @@ import { CLASS_SCHEDULE, CLASS_TYPE_COLORS, DAYS_ORDER } from "@/lib/constants";
 import type { ClassScheduleItem } from "@/lib/constants";
 import { getScheduleClasses, gasCall } from "@/lib/api";
 import { Clock, ChevronRight, X, User, CheckCircle } from "lucide-react";
+import { checkAndUnlockAchievements } from "@/lib/achievements";
 
 // ── Gamification animations ─────────────────────────────────────
 
@@ -325,8 +326,12 @@ function ClassCard({ cls, isToday }: { cls: ClassScheduleItem; isToday: boolean 
     const newCount = (todayData.date === today ? (todayData.count || 0) : 0) + 1;
     localStorage.setItem('lbjj_checkins_today', JSON.stringify({ date: today, count: newCount }));
 
-    // Fire-and-forget GAS gamification call
+    // Check and unlock local achievements after check-in
     const profile = (() => { try { return JSON.parse(localStorage.getItem('lbjj_member_profile') || '{}'); } catch { return {}; } })();
+    const gameStats = (() => { try { return JSON.parse(localStorage.getItem('lbjj_game_stats_v2') || '{}'); } catch { return {}; } })();
+    checkAndUnlockAchievements(profile, gameStats);
+
+    // Fire-and-forget GAS gamification call
     if (profile.Email) {
       gasCall('recordCheckIn', {
         email: profile.Email,

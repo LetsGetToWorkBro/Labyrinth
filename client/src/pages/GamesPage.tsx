@@ -31,6 +31,7 @@ const POSITION_IMAGES: Record<Position, string> = {
 import { useGameRecords } from '@/lib/game-records';
 import { useAuth } from '@/lib/auth-context';
 import { saveGameScore, getLeaderboard, type LeaderboardEntry } from '@/lib/api';
+import { checkAndUnlockAchievements } from '@/lib/achievements';
 
 function GamesPage() {
   const { stats, addRecord } = useGameRecords();
@@ -78,6 +79,11 @@ function GamesPage() {
         topRankName: currentRank.name,
       }).catch(() => {});
     }
+
+    // Check and unlock local achievements after game
+    const profile = (() => { try { return JSON.parse(localStorage.getItem('lbjj_member_profile') || '{}'); } catch { return {}; } })();
+    const gameStatsLocal = (() => { try { return JSON.parse(localStorage.getItem('lbjj_game_stats_v2') || '{}'); } catch { return {}; } })();
+    checkAndUnlockAchievements(profile, gameStatsLocal);
   }, [stats, member, addRecord]);
 
   if (view === 'hub' || view === 'difficulty') {
