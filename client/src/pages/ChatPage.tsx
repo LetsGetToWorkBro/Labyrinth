@@ -24,11 +24,11 @@ const GOLD = "#C8A24C";
 const POLL_INTERVAL_MS = 20_000; // refresh messages every 20 s
 
 const RANK_LEGEND = [
-  { belt: 'white',  title: 'Beginner',              color: '#E5E5E5', emoji: '\u26AA', tier: 'Foundation', desc: 'The journey begins. Every legend started here.' },
-  { belt: 'blue',   title: 'Student',               color: '#1A56DB', emoji: '\uD83D\uDD35', tier: 'Developing', desc: 'Building the fundamentals. The hardest belt to earn.' },
-  { belt: 'purple', title: 'Intermediate',          color: '#7E3AF2', emoji: '\uD83D\uDFE3', tier: 'Skilled',    desc: 'Deep understanding of position and submission.' },
-  { belt: 'brown',  title: 'Advanced Practitioner', color: '#92400E', emoji: '\uD83D\uDFE4', tier: 'Advanced',   desc: 'Refining every detail. Black belt is within reach.' },
-  { belt: 'black',  title: 'Expert / Instructor',   color: '#1A1A1A', emoji: '\u2B1B', tier: 'Master',     desc: 'A lifetime of dedication. The art lives in you.', border: '#C8A24C' },
+  { belt: 'white',  title: 'Beginner',      color: '#E5E5E5', emoji: '\u26AA', tier: 'WHITE BELT',  desc: 'The journey begins. Every legend started here.' },
+  { belt: 'blue',   title: 'Student',        color: '#1A56DB', emoji: '\uD83D\uDD35', tier: 'BLUE BELT',   desc: 'Building the fundamentals. The hardest belt to earn.' },
+  { belt: 'purple', title: 'Intermediate',   color: '#7E3AF2', emoji: '\uD83D\uDFE3', tier: 'PURPLE BELT', desc: 'Deep understanding of position and submission.' },
+  { belt: 'brown',  title: 'Advanced',       color: '#92400E', emoji: '\uD83D\uDFE4', tier: 'BROWN BELT',  desc: 'Refining every detail. Black belt is within reach.' },
+  { belt: 'black',  title: 'Expert',         color: '#1A1A1A', emoji: '\u2B1B', tier: 'GRANDMASTER', desc: 'A lifetime of dedication. The art lives in you.', border: '#C8A24C' },
 ] as const;
 
 // ─── Root ──────────────────────────────────────────────────────────
@@ -164,7 +164,7 @@ export default function ChatPage() {
                 }}
               >
                 <BeltIcon belt={myBelt} width={18} />
-                {userRank.title}
+                {(myBelt === 'black' ? 'GRANDMASTER' : userRank.title).toUpperCase()}
               </button>
             )}
           </div>
@@ -322,7 +322,10 @@ export default function ChatPage() {
               onClick={() => setShowRankLegend(true)}
               style={{ display: "flex", alignItems: "center", gap: 6, padding: "5px 12px 5px 8px", borderRadius: 20, backgroundColor: `${getBeltColor(myBelt)}10`, border: `1px solid ${getBeltColor(myBelt)}25`, cursor: "pointer" }}
             >
-              <BeltIcon belt={myBelt} width={28} style={{ filter: `drop-shadow(0 1px 4px ${getBeltColor(myBelt)}60)` }} />
+              <BeltIcon belt={myBelt} width={22} />
+              <span style={{ fontSize: 11, fontWeight: 700, color: getBeltColor(myBelt), letterSpacing: '0.05em' }}>
+                {(myBelt === 'black' ? 'GRANDMASTER' : userRank.title).toUpperCase()}
+              </span>
             </button>
           )}
         </div>
@@ -366,15 +369,15 @@ export default function ChatPage() {
               </>
             )}
 
-            {/* Kids Ranks (collapsible, default closed) */}
-            {kidsRankChannels.some(c => c.accessible) && (
+            {/* Kids Ranks (collapsible, default closed) — show all, greyed if not accessible */}
+            {kidsRankChannels.length > 0 && (
               <>
                 <CollapsibleSectionLabel
                   label="Kids Ranks"
                   collapsed={!!collapsed['Kids Ranks']}
                   onToggle={() => toggleSection('Kids Ranks')}
                 />
-                {!collapsed['Kids Ranks'] && kidsRankChannels.filter(c => c.accessible).map(ch => (
+                {!collapsed['Kids Ranks'] && kidsRankChannels.map(ch => (
                   <ChannelRow key={ch.id} channel={ch} isRank onOpen={() => setActiveChannelId(ch.id)} />
                 ))}
               </>
@@ -441,6 +444,8 @@ function MessageBubble({ msg, myName }: { msg: ChatMessage; myName: string }) {
   const rank = getRankProfile(msg.senderBelt || "white");
   const isHighRank = rank.tier >= 3;
   const isCoachMsg = (msg.senderRole || "").toLowerCase().includes("coach") || (msg.senderRole || "").toLowerCase().includes("instructor");
+  const isOwnerMsg = (msg.senderRole || "").toLowerCase().includes("owner");
+  const rankTitle = (isOwnerMsg || (msg.senderBelt || "").toLowerCase() === "black") ? "GRANDMASTER" : rank.title;
 
   function fmt(ts: string) {
     try { return new Date(ts).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" }); }
@@ -486,11 +491,9 @@ function MessageBubble({ msg, myName }: { msg: ChatMessage; myName: string }) {
           {msg.sender}
         </span>
         {rank.badge && <span style={{ fontSize: 12 }}>{rank.badge}</span>}
-        {rank.tier >= 2 && (
-          <span style={{ fontSize: 8, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", padding: "1px 5px", borderRadius: 4, backgroundColor: `${rank.color}18`, color: rank.color, border: `1px solid ${rank.color}30` }}>
-            {rank.title}
-          </span>
-        )}
+        <span style={{ fontSize: 9, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", padding: "2px 7px", borderRadius: 5, backgroundColor: `${rank.color}20`, color: rank.color, border: `1px solid ${rank.color}35` }}>
+          {rankTitle.toUpperCase()}
+        </span>
         {isCoachMsg && (
           <span style={{ fontSize: 8, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", padding: "1px 5px", borderRadius: 4, backgroundColor: `${GOLD}18`, color: GOLD, border: `1px solid ${GOLD}30`, display: "flex", alignItems: "center", gap: 2 }}>
             <Crown size={8} /> Coach

@@ -13,7 +13,7 @@ import {
   memberGetCards, memberSetDefaultCard, memberRemoveCard,
   memberAddCard, memberCreateSetupLink,
 } from "@/lib/api";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 
 // ── Badge unlock overlay (shared with SchedulePage pattern) ────
 function showBadgeUnlock(badge: { key: string; label: string; icon: string; desc: string; color?: string }) {
@@ -80,6 +80,32 @@ export default function HomePage() {
   const [rankNote, setRankNote] = useState("");
   const [rankSubmitting, setRankSubmitting] = useState(false);
   const [rankSent, setRankSent] = useState(false);
+
+  // Profile photo state
+  const [profilePic, setProfilePic] = useState<string | null>(() => {
+    try { return localStorage.getItem('lbjj_profile_picture'); } catch { return null; }
+  });
+  const avatarFileRef = useRef<HTMLInputElement>(null);
+  const handleAvatarPhoto = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const canvas = document.createElement('canvas');
+    canvas.width = 200;
+    canvas.height = 200;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    const img = new Image();
+    img.onload = () => {
+      const size = Math.min(img.width, img.height);
+      const sx = (img.width - size) / 2;
+      const sy = (img.height - size) / 2;
+      ctx.drawImage(img, sx, sy, size, size, 0, 0, 200, 200);
+      const base64 = canvas.toDataURL('image/jpeg', 0.8);
+      setProfilePic(base64);
+      try { localStorage.setItem('lbjj_profile_picture', base64); } catch {}
+    };
+    img.src = URL.createObjectURL(file);
+  };
 
   // Card management state
   const [cards, setCards] = useState<PaymentCard[]>([]);
@@ -237,17 +263,44 @@ export default function HomePage() {
       <div className="mx-5 rounded-xl p-5 mb-4" style={{ backgroundColor: "#111", border: "1px solid #1A1A1A" }}>
         <div className="flex items-start justify-between mb-4">
           <div className="flex-1 min-w-0 mr-3">
-            <div style={{
-              width: 52, height: 52, borderRadius: '50%',
-              background: avatarBg, color: avatarFg,
-              fontSize: 18, fontWeight: 700,
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              textTransform: 'uppercase', letterSpacing: '-0.5px',
-              flexShrink: 0, marginBottom: 12,
-              boxShadow: `0 0 0 3px ${avatarBg}30, 0 0 20px ${avatarBg}20`
-            }}>
-              {getInitials(member?.name || 'M')}
+            <div
+              onClick={() => avatarFileRef.current?.click()}
+              style={{
+                width: 52, height: 52, borderRadius: '50%',
+                background: profilePic ? 'none' : avatarBg, color: avatarFg,
+                fontSize: 18, fontWeight: 700,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                textTransform: 'uppercase', letterSpacing: '-0.5px',
+                flexShrink: 0, marginBottom: 12,
+                boxShadow: `0 0 0 3px ${avatarBg}30, 0 0 20px ${avatarBg}20`,
+                cursor: 'pointer', position: 'relative', overflow: 'hidden',
+              }}
+            >
+              {profilePic ? (
+                <img src={profilePic} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              ) : (
+                getInitials(member?.name || 'M')
+              )}
+              {/* Camera overlay */}
+              <div style={{
+                position: 'absolute', bottom: 0, right: 0,
+                width: 18, height: 18, borderRadius: '50%',
+                backgroundColor: '#C8A24C', border: '2px solid #111',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+              }}>
+                <svg width={9} height={9} viewBox="0 0 24 24" fill="none" stroke="#0A0A0A" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+                  <circle cx="12" cy="13" r="4"/>
+                </svg>
+              </div>
             </div>
+            <input
+              ref={avatarFileRef}
+              type="file"
+              accept="image/*"
+              onChange={handleAvatarPhoto}
+              style={{ display: 'none' }}
+            />
             <h2 className="text-lg font-bold" style={{ color: "#F0F0F0" }} data-testid="text-member-name">
               {member.name}
             </h2>
@@ -511,13 +564,14 @@ export default function HomePage() {
       <div className="mx-5 mb-6">
         <h3 className="text-xs font-medium uppercase tracking-wider mb-3" style={{ color: "#666" }}>Quick Links</h3>
         <div className="space-y-1">
-          <QuickLink href="/#/belt" icon={<svg width={20} height={20} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><circle cx="12" cy="8" r="6"/><path d="M15.477 12.89 17 22l-5-3-5 3 1.523-9.11"/></svg>} label="Belt Journey" />
-          <QuickLink href="/#/schedule" icon={<svg width={20} height={20} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>} label="Class Schedule" />
-          <QuickLink href="/#/calendar" icon={<svg width={20} height={20} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></svg>} label="Tournament Calendar" />
-          <QuickLink href="/#/stats" icon={<svg width={20} height={20} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/><line x1="2" y1="20" x2="22" y2="20"/></svg>} label="Academy Stats" />
-          <QuickLink href="/#/sauna" icon={<svg width={20} height={20} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><path d="M12 2a5 5 0 0 1 5 5v3H7V7a5 5 0 0 1 5-5Z"/><path d="M7 10v2a5 5 0 0 0 10 0v-2"/><line x1="8" y1="21" x2="8" y2="14"/><line x1="12" y1="21" x2="12" y2="14"/><line x1="16" y1="21" x2="16" y2="14"/></svg>} label="Sauna Dashboard" />
-          <QuickLink href="/#/book" icon={<svg width={20} height={20} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>} label="Book a Trial Class" />
-          <QuickLink href="/#/games" icon={<svg width={20} height={20} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><line x1="6" y1="12" x2="18" y2="12"/><line x1="12" y1="6" x2="12" y2="18"/><rect x="2" y="6" width="20" height="12" rx="4"/></svg>} label="Games" />
+          <QuickLink href="/#/belt" icon={<svg width={20} height={20} viewBox="0 0 24 24" fill="none" stroke="#C8A24C" strokeWidth={2}><circle cx="12" cy="8" r="6"/><path d="M15.477 12.89 17 22l-5-3-5 3 1.523-9.11"/></svg>} label="Belt Journey" />
+          <QuickLink href="/#/schedule" icon={<svg width={20} height={20} viewBox="0 0 24 24" fill="none" stroke="#C8A24C" strokeWidth={2}><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>} label="Class Schedule" />
+          <QuickLink href="/#/calendar" icon={<svg width={20} height={20} viewBox="0 0 24 24" fill="none" stroke="#C8A24C" strokeWidth={2}><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></svg>} label="Tournament Calendar" />
+          <QuickLink href="/#/stats" icon={<svg width={20} height={20} viewBox="0 0 24 24" fill="none" stroke="#C8A24C" strokeWidth={2}><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/><line x1="2" y1="20" x2="22" y2="20"/></svg>} label="Academy Stats" />
+          <QuickLink href="/#/sauna" icon={<svg width={20} height={20} viewBox="0 0 24 24" fill="none" stroke="#C8A24C" strokeWidth={2}><path d="M12 2a5 5 0 0 1 5 5v3H7V7a5 5 0 0 1 5-5Z"/><path d="M7 10v2a5 5 0 0 0 10 0v-2"/><line x1="8" y1="21" x2="8" y2="14"/><line x1="12" y1="21" x2="12" y2="14"/><line x1="16" y1="21" x2="16" y2="14"/></svg>} label="Sauna Dashboard" />
+          <QuickLink href="/#/book" icon={<svg width={20} height={20} viewBox="0 0 24 24" fill="none" stroke="#C8A24C" strokeWidth={2}><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>} label="Book a Trial Class" />
+          <QuickLink href="/#/leaderboard" icon={<svg width={20} height={20} viewBox="0 0 24 24" fill="none" stroke="#C8A24C" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></svg>} label="Leaderboard" />
+          <QuickLink href="/#/games" icon={<svg width={20} height={20} viewBox="0 0 24 24" fill="none" stroke="#C8A24C" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="6" width="20" height="12" rx="4"/><path d="M12 12h.01M7 12h.01M17 12h.01M12 8v8"/></svg>} label="Games" />
         </div>
       </div>
 
