@@ -16,7 +16,7 @@ export interface RankProfile {
 export const RANK_PROFILES: Record<string, RankProfile> = {
   // Adult ranks
   white: {
-    title: "Novice",
+    title: "Beginner",
     color: "#EEEEEE",
     glow: "none",
     badge: "",

@@ -24,11 +24,17 @@ const GOLD = "#C8A24C";
 const POLL_INTERVAL_MS = 20_000; // refresh messages every 20 s
 
 const RANK_LEGEND = [
-  { belt: 'white',  title: 'Beginner',      color: '#E5E5E5', emoji: '\u26AA', tier: 'WHITE BELT',  desc: 'The journey begins. Every legend started here.' },
-  { belt: 'blue',   title: 'Student',        color: '#1A56DB', emoji: '\uD83D\uDD35', tier: 'BLUE BELT',   desc: 'Building the fundamentals. The hardest belt to earn.' },
-  { belt: 'purple', title: 'Intermediate',   color: '#7E3AF2', emoji: '\uD83D\uDFE3', tier: 'PURPLE BELT', desc: 'Deep understanding of position and submission.' },
-  { belt: 'brown',  title: 'Advanced',       color: '#92400E', emoji: '\uD83D\uDFE4', tier: 'BROWN BELT',  desc: 'Refining every detail. Black belt is within reach.' },
-  { belt: 'black',  title: 'Expert',         color: '#1A1A1A', emoji: '\u2B1B', tier: 'GRANDMASTER', desc: 'A lifetime of dedication. The art lives in you.', border: '#C8A24C' },
+  // Adult belts
+  { belt: 'white',  title: 'Beginner',    color: '#E5E5E5', emoji: '⚪', tier: 'Foundation', desc: 'The journey begins. Every legend started here.' },
+  { belt: 'blue',   title: 'Warrior',     color: '#1A5DAB', emoji: '🔵', tier: 'Student',    desc: 'Building the fundamentals. The hardest belt to earn.' },
+  { belt: 'purple', title: 'Elite',       color: '#7E3AF2', emoji: '🟣', tier: 'Skilled',    desc: 'Deep understanding of position and submission.' },
+  { belt: 'brown',  title: 'Master',      color: '#92400E', emoji: '🟤', tier: 'Advanced',   desc: 'Refining every detail. Black belt is within reach.' },
+  { belt: 'black',  title: 'Grandmaster', color: '#1A1A1A', emoji: '⬛', tier: 'Legend',     desc: 'A lifetime of dedication. The art lives in you.', border: '#C8A24C' },
+  // Kids belts
+  { belt: 'grey',   title: 'Initiate',    color: '#6B6B6B', emoji: '🛡️', tier: 'Kids I',    desc: 'First steps on the mat. Every champion starts here.' },
+  { belt: 'yellow', title: 'Striker',     color: '#C49B1A', emoji: '⭐', tier: 'Kids II',   desc: 'Developing technique and heart.' },
+  { belt: 'orange', title: 'Challenger',  color: '#C4641A', emoji: '🔥', tier: 'Kids III',  desc: 'Pushing limits and competing with confidence.' },
+  { belt: 'green',  title: 'Champion',    color: '#2D8040', emoji: '🏆', tier: 'Kids IV',   desc: 'Top of the kids program. Just as hard as any adult belt.' },
 ] as const;
 
 // ─── Root ──────────────────────────────────────────────────────────
@@ -205,17 +211,26 @@ export default function ChatPage() {
                 </button>
               </div>
               <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                {RANK_LEGEND.map(r => (
-                  <div key={r.belt} style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 12px", borderRadius: 10, backgroundColor: "#0D0D0D", border: "1px solid #1A1A1A" }}>
-                    <div style={{
-                      width: 28, height: 28, borderRadius: "50%",
-                      backgroundColor: r.color,
-                      border: 'border' in r ? `2px solid ${r.border}` : "2px solid transparent",
-                      flexShrink: 0,
-                    }} />
-                    <div>
-                      <p style={{ fontSize: 14, fontWeight: 600, color: "#E0E0E0", margin: 0, textTransform: "capitalize" }}>{r.belt} Belt</p>
-                      <p style={{ fontSize: 12, color: "#888", margin: "2px 0 0" }}>{r.title}</p>
+                {RANK_LEGEND.map((r, i) => (
+                  <div key={r.belt}>
+                    {r.belt === 'grey' && (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, margin: '4px 0 14px' }}>
+                        <div style={{ flex: 1, height: 1, background: '#1A1A1A' }} />
+                        <span style={{ fontSize: 10, color: '#444', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase' }}>Kids Program</span>
+                        <div style={{ flex: 1, height: 1, background: '#1A1A1A' }} />
+                      </div>
+                    )}
+                    <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 12px", borderRadius: 10, backgroundColor: "#0D0D0D", border: "1px solid #1A1A1A" }}>
+                      <div style={{
+                        width: 28, height: 28, borderRadius: "50%",
+                        backgroundColor: r.color,
+                        border: 'border' in r ? `2px solid ${r.border}` : "2px solid transparent",
+                        flexShrink: 0,
+                      }} />
+                      <div>
+                        <p style={{ fontSize: 14, fontWeight: 600, color: "#E0E0E0", margin: 0, textTransform: "capitalize" }}>{r.belt} Belt</p>
+                        <p style={{ fontSize: 12, color: "#888", margin: "2px 0 0" }}>{r.title}</p>
+                      </div>
                     </div>
                   </div>
                 ))}
@@ -410,20 +425,29 @@ export default function ChatPage() {
               </button>
             </div>
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-              {RANK_LEGEND.map(r => (
-                <div key={r.belt} style={{
-                  display: 'flex', alignItems: 'flex-start', gap: 14, padding: '14px 12px',
-                  borderRadius: 12, background: '#0D0D0D', border: '1px solid #1A1A1A',
-                  borderLeft: `3px solid ${r.color}`
-                }}>
-                  <div style={{ fontSize: 28, lineHeight: 1 }}>{r.emoji}</div>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-                      <span style={{ fontSize: 15, fontWeight: 700, color: '#F0F0F0', textTransform: 'capitalize' }}>{r.belt} Belt</span>
-                      <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 7px', borderRadius: 6, background: `${r.color}22`, color: r.color, border: `1px solid ${r.color}44`, letterSpacing: '0.05em' }}>{r.tier}</span>
+              {RANK_LEGEND.map((r, i) => (
+                <div key={r.belt}>
+                  {r.belt === 'grey' && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, margin: '4px 0 14px' }}>
+                      <div style={{ flex: 1, height: 1, background: '#1A1A1A' }} />
+                      <span style={{ fontSize: 10, color: '#444', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase' }}>Kids Program</span>
+                      <div style={{ flex: 1, height: 1, background: '#1A1A1A' }} />
                     </div>
-                    <p style={{ fontSize: 13, fontWeight: 600, color: '#AAA', margin: '0 0 4px' }}>{r.title}</p>
-                    <p style={{ fontSize: 12, color: '#555', margin: 0, lineHeight: 1.4 }}>{r.desc}</p>
+                  )}
+                  <div style={{
+                    display: 'flex', alignItems: 'flex-start', gap: 14, padding: '14px 12px',
+                    borderRadius: 12, background: '#0D0D0D', border: '1px solid #1A1A1A',
+                    borderLeft: `3px solid ${r.color}`
+                  }}>
+                    <div style={{ fontSize: 28, lineHeight: 1 }}>{r.emoji}</div>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                        <span style={{ fontSize: 15, fontWeight: 700, color: '#F0F0F0', textTransform: 'capitalize' }}>{r.belt} Belt</span>
+                        <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 7px', borderRadius: 6, background: `${r.color}22`, color: r.color, border: `1px solid ${r.color}44`, letterSpacing: '0.05em' }}>{r.tier}</span>
+                      </div>
+                      <p style={{ fontSize: 13, fontWeight: 600, color: '#AAA', margin: '0 0 4px' }}>{r.title}</p>
+                      <p style={{ fontSize: 12, color: '#555', margin: 0, lineHeight: 1.4 }}>{r.desc}</p>
+                    </div>
                   </div>
                 </div>
               ))}
