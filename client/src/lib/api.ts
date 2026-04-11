@@ -329,7 +329,7 @@ export async function memberCreateSetupLink(): Promise<{ url: string }> {
 export async function memberSaveWaiver(signerName: string, signatureData: string, participantType: string): Promise<any> {
   const token = getToken();
   if (!token) throw new Error("Not authenticated");
-  return gasCall("memberSaveWaiver", { token, signerName, signatureData, participantType });
+  return gasCall("memberSaveWaiver", { token, signerName, signatureData, documentType: 'waiver', participantType });
 }
 
 export async function memberSaveAgreement(signerName: string, signatureData: string, planName?: string): Promise<any> {

@@ -261,18 +261,28 @@ export default function HomePage() {
 
   // ─── Today's check-in count (immediate, localStorage-based) ────
   const [classesToday, setClassesToday] = useState(0);
+  const [totalClasses, setTotalClasses] = useState(0);
   const readClassesToday = useCallback(() => {
     try {
       const raw = JSON.parse(localStorage.getItem('lbjj_checkins_today') || '{}');
       const today = new Date().toISOString().split('T')[0];
       setClassesToday(raw.date === today ? (raw.count || 0) : 0);
     } catch { setClassesToday(0); }
+    try {
+      const stats = JSON.parse(localStorage.getItem('lbjj_game_stats_v2') || '{}');
+      setTotalClasses(stats.classesAttended || 0);
+    } catch { setTotalClasses(0); }
   }, []);
   useEffect(() => {
     readClassesToday();
     const onFocus = () => readClassesToday();
     window.addEventListener('focus', onFocus);
-    return () => window.removeEventListener('focus', onFocus);
+    const onVisibility = () => { if (!document.hidden) readClassesToday(); };
+    document.addEventListener('visibilitychange', onVisibility);
+    return () => {
+      window.removeEventListener('focus', onFocus);
+      document.removeEventListener('visibilitychange', onVisibility);
+    };
   }, [readClassesToday]);
 
   // ─── Streak milestone celebration ──────────────────────────────────
@@ -763,9 +773,9 @@ export default function HomePage() {
           <span style={{ fontSize: 24 }}>{classesToday > 0 ? '✅' : '📅'}</span>
           <div>
             <div style={{ fontSize: 20, fontWeight: 700, color: classesToday > 0 ? '#4CAF80' : '#E0E0E0', lineHeight: 1 }}>
-              {classesToday}
+              {totalClasses}
             </div>
-            <div style={{ fontSize: 11, color: '#666', marginTop: 2 }}>Classes today</div>
+            <div style={{ fontSize: 11, color: '#666', marginTop: 2 }}>Total classes{classesToday > 0 ? ` · ${classesToday} today` : ''}</div>
           </div>
         </div>
       </div>
