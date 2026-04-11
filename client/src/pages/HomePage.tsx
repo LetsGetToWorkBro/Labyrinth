@@ -98,14 +98,26 @@ const beltColorMap: Record<string, string> = {
 };
 
 function BeltVisual({ belt, size = 'sm' }: { belt: string; size?: 'sm' | 'md' }) {
-  const color = beltColorMap[belt.toLowerCase()] || '#C8A24C';
-  const h = size === 'sm' ? 8 : 12;
-  const patchColor = belt.toLowerCase() === 'black' ? '#C8A24C' : '#000';
+  const beltColors: Record<string, string> = {
+    white: '#E5E5E5', blue: '#1A56DB', purple: '#7E3AF2',
+    brown: '#92400E', black: '#111827',
+    grey: '#6B6B6B', gray: '#6B6B6B', yellow: '#C49B1A',
+    orange: '#C4641A', green: '#2D8040'
+  };
+  const color = beltColors[belt.toLowerCase()] || '#C8A24C';
+  const h = size === 'sm' ? 9 : 13;
+
+  // Black belt: black bars with gold center patch (very visible)
+  // All other belts: colored bars with black center patch
+  const patchColor = belt.toLowerCase() === 'black' ? '#C8A24C' :
+                     belt.toLowerCase() === 'white' ? '#333' : '#000';
+  const patchWidth = belt.toLowerCase() === 'black' ? 10 : 7; // gold patch wider on black belt
+
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 1, borderRadius: 2, overflow: 'hidden', height: h }}>
-      <div style={{ width: 28, height: h, background: color, borderRadius: '2px 0 0 2px' }} />
-      <div style={{ width: 8, height: h, background: patchColor, borderRadius: 1 }} />
-      <div style={{ width: 28, height: h, background: color, borderRadius: '0 2px 2px 0' }} />
+    <div style={{ display: 'flex', alignItems: 'center', gap: 1, height: h, borderRadius: 2, overflow: 'hidden' }}>
+      <div style={{ width: 22, height: h, background: color, borderRadius: '2px 0 0 2px' }} />
+      <div style={{ width: patchWidth, height: h, background: patchColor }} />
+      <div style={{ width: 22, height: h, background: color, borderRadius: '0 2px 2px 0' }} />
     </div>
   );
 }

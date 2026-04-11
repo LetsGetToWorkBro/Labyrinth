@@ -1,18 +1,26 @@
 import { useState, useEffect, useCallback } from 'react';
 import { getLeaderboard, type LeaderboardEntry } from '@/lib/api';
 import { useAuth } from '@/lib/auth-context';
-import { getBeltColor } from '@/lib/constants';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { Loader2, RefreshCw } from 'lucide-react';
 
 const GOLD = '#C8A24C';
 
+type Tab = 'classes' | 'games';
 type Period = 'weekly' | 'monthly' | 'allTime';
+
+const BELT_DOT_COLORS: Record<string, string> = {
+  white: '#E0E0E0', blue: '#3B82F6', purple: '#8B5CF6',
+  brown: '#92400E', black: '#1A1A1A', grey: '#9CA3AF',
+  yellow: '#EAB308', orange: '#F97316', green: '#22C55E',
+};
 
 export default function LeaderboardPage() {
   const { member } = useAuth();
+  const [tab, setTab] = useState<Tab>('classes');
   const [period, setPeriod] = useState<Period>('weekly');
-  const [entries, setEntries] = useState<LeaderboardEntry[]>([]);
+  const [classEntries, setClassEntries] = useState<LeaderboardEntry[]>([]);
+  const [gameEntries, setGameEntries] = useState<LeaderboardEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
@@ -21,7 +29,24 @@ export default function LeaderboardPage() {
     else setLoading(true);
     try {
       const data = await getLeaderboard();
-      setEntries(data);
+      // Split entries: those with classCount go to classes, others to games
+      const classes: LeaderboardEntry[] = [];
+      const games: LeaderboardEntry[] = [];
+      for (const entry of data) {
+        if (entry.classCount && entry.classCount > 0) {
+          classes.push(entry);
+        }
+        if (entry.wins > 0 || entry.score || entry.bestStreak > 0) {
+          games.push(entry);
+        }
+        // If entry has both, it appears in both tabs
+        // If entry has neither classCount nor game stats, put in classes as default
+        if (!(entry.classCount && entry.classCount > 0) && !(entry.wins > 0 || entry.score || entry.bestStreak > 0)) {
+          classes.push(entry);
+        }
+      }
+      setClassEntries(classes);
+      setGameEntries(games);
     } catch {
       // silent
     }
@@ -31,13 +56,11 @@ export default function LeaderboardPage() {
 
   useEffect(() => { load(); }, [load, period]);
 
+  const entries = tab === 'classes' ? classEntries : gameEntries;
+
   const beltDotColor = (belt?: string) => {
     if (!belt) return '#666';
-    const colors: Record<string, string> = {
-      white: '#E0E0E0', blue: '#3B82F6', purple: '#8B5CF6',
-      brown: '#92400E', black: '#1A1A1A',
-    };
-    return colors[belt.toLowerCase()] || '#666';
+    return BELT_DOT_COLORS[belt.toLowerCase()] || '#666';
   };
 
   return (
@@ -54,6 +77,26 @@ export default function LeaderboardPage() {
           </button>
         }
       />
+
+      {/* Classes / Games tabs */}
+      <div style={{ display: 'flex', margin: '0 20px 12px', gap: 4, padding: 4, backgroundColor: '#111', borderRadius: 12, border: '1px solid #1A1A1A' }}>
+        {([
+          { key: 'classes' as Tab, label: 'Classes', icon: '📅' },
+          { key: 'games' as Tab, label: 'Games', icon: '🎮' },
+        ]).map(t => (
+          <button key={t.key} onClick={() => setTab(t.key)}
+            style={{
+              flex: 1, padding: '9px 0', borderRadius: 9, fontSize: 13, fontWeight: 700,
+              border: 'none', cursor: 'pointer', transition: 'all 0.15s',
+              backgroundColor: tab === t.key ? '#1A1A1A' : 'transparent',
+              color: tab === t.key ? GOLD : '#666',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+            }}
+          >
+            <span style={{ fontSize: 14 }}>{t.icon}</span> {t.label}
+          </button>
+        ))}
+      </div>
 
       {/* Period tabs */}
       <div style={{ display: 'flex', margin: '0 20px 16px', gap: 4, padding: 4, backgroundColor: '#111', borderRadius: 12, border: '1px solid #1A1A1A' }}>
@@ -85,9 +128,13 @@ export default function LeaderboardPage() {
           </div>
         ) : entries.length === 0 ? (
           <div style={{ background: '#111', borderRadius: 12, padding: '40px 20px', textAlign: 'center', border: '1px solid #1A1A1A' }}>
-            <div style={{ fontSize: 40, marginBottom: 12 }}>🏆</div>
+            <div style={{ fontSize: 40, marginBottom: 12 }}>{tab === 'classes' ? '📅' : '🎮'}</div>
             <div style={{ color: '#888', fontSize: 14, fontWeight: 600, marginBottom: 6 }}>No entries yet</div>
-            <div style={{ color: '#555', fontSize: 13 }}>Check in to classes to appear on the leaderboard!</div>
+            <div style={{ color: '#555', fontSize: 13 }}>
+              {tab === 'classes'
+                ? 'Check in to classes to appear on the leaderboard!'
+                : 'Play games and win to appear here!'}
+            </div>
           </div>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
@@ -95,6 +142,7 @@ export default function LeaderboardPage() {
               const medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : null;
               const isTop3 = i < 3;
               const isMe = entry.isMe || (member && entry.name === member.name);
+              const hasClassCount = entry.classCount && entry.classCount > 0;
               return (
                 <div key={i} style={{
                   background: isMe ? `${GOLD}14` : isTop3 ? `${GOLD}0A` : '#111',
@@ -110,7 +158,7 @@ export default function LeaderboardPage() {
                   <div style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
                     {entry.belt && (
                       <div style={{
-                        width: 10, height: 10, borderRadius: '50%', flexShrink: 0,
+                        width: 8, height: 8, borderRadius: '50%', flexShrink: 0,
                         backgroundColor: beltDotColor(entry.belt),
                         border: entry.belt.toLowerCase() === 'black' ? '1px solid #C8A24C' : '1px solid transparent',
                       }} />
@@ -124,10 +172,13 @@ export default function LeaderboardPage() {
                   <div style={{ display: 'flex', gap: 8, flexShrink: 0, textAlign: 'right' }}>
                     <div>
                       <div style={{ color: GOLD, fontSize: 14, fontWeight: 700 }}>
-                        {entry.classCount || entry.score || entry.wins}{entry.classCount ? '' : 'W'}
+                        {tab === 'classes'
+                          ? (entry.classCount || entry.score || 0)
+                          : (entry.score || entry.wins || 0)
+                        }
                       </div>
                       <div style={{ color: '#555', fontSize: 10 }}>
-                        {entry.classCount ? 'classes' : 'wins'}
+                        {tab === 'classes' ? 'classes' : 'pts'}
                       </div>
                     </div>
                   </div>

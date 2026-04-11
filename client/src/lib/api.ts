@@ -11,6 +11,23 @@ const GAS_MAX_RETRIES = 2;
 // Active GAS endpoint — updates when user selects a location
 let _gasEndpoint: string = getActiveGasUrl(getSavedLocationId());
 
+/** Show a brief DOM toast when session expires (can't use React hooks from here) */
+function showSessionExpiredToast() {
+  const el = document.createElement('div');
+  el.textContent = 'Session expired — please log in again';
+  el.style.cssText = `
+    position:fixed;top:env(safe-area-inset-top,12px);left:50%;transform:translateX(-50%);
+    z-index:99999;padding:12px 24px;border-radius:12px;font-size:14px;font-weight:600;
+    background:#1A1A1A;color:#C8A24C;border:1px solid #333;box-shadow:0 4px 20px rgba(0,0,0,0.5);
+    animation:slideDown .3s ease-out;
+  `;
+  const style = document.createElement('style');
+  style.textContent = '@keyframes slideDown{from{opacity:0;transform:translateX(-50%) translateY(-20px)}to{opacity:1;transform:translateX(-50%) translateY(0)}}';
+  document.head.appendChild(style);
+  document.body.appendChild(el);
+  setTimeout(() => { el.remove(); style.remove(); }, 3500);
+}
+
 /** Called when user picks a location on the login screen */
 export function setActiveLocation(locationId: string): void {
   saveLocationId(locationId);
@@ -215,12 +232,25 @@ export async function gasCall(action: string, payload: Record<string, any> = {},
 
     clearTimeout(timer);
     const text = await response.text();
+    let result: any;
     try {
-      return JSON.parse(text);
+      result = JSON.parse(text);
     } catch {
       console.error(`gasCall ${action} non-JSON:`, text.substring(0, 200));
       throw new Error("Invalid response from server");
     }
+
+    // Session expiry detection — clear auth and redirect to login
+    if (result && (result.code === 401 || (result.error && typeof result.error === 'string' && result.error.includes('Session expired')))) {
+      localStorage.removeItem('lbjj_session_token');
+      localStorage.removeItem('lbjj_member_profile');
+      // Show a brief toast before redirecting
+      showSessionExpiredToast();
+      window.location.hash = '#/login';
+      throw new Error('Session expired');
+    }
+
+    return result;
   } catch (err: any) {
     clearTimeout(timer);
     const isTimeout = err.name === "AbortError" || err.name === "TimeoutError";
@@ -306,6 +336,17 @@ export async function memberSaveAgreement(signerName: string, signatureData: str
   const token = getToken();
   if (!token) throw new Error("Not authenticated");
   return gasCall("memberSaveAgreement", { token, signerName, signatureData, planName: planName || "" });
+}
+
+// ─── Check-in History ────────────────────────────────────────────
+
+export async function getMemberCheckIns(): Promise<any[]> {
+  const token = localStorage.getItem('lbjj_session_token') || '';
+  const profile = JSON.parse(localStorage.getItem('lbjj_member_profile') || '{}');
+  try {
+    const result = await gasCall('getMemberCheckIns', { token, email: profile.Email || profile.email });
+    return result?.checkIns || result?.bookings || [];
+  } catch { return []; }
 }
 
 // ─── Sauna ────────────────────────────────────────────────────────

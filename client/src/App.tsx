@@ -23,6 +23,7 @@ import AdminPage from "@/pages/AdminPage";
 import MessagesPage from "@/pages/MessagesPage";
 import AchievementsPage from "@/pages/AchievementsPage";
 import LivePage from "@/pages/LivePage";
+import CheckInHistoryPage from "@/pages/CheckInHistoryPage";
 
 import NotFound from "@/pages/not-found";
 import {
@@ -452,6 +453,20 @@ function AccountPage() {
           </>
         )}
 
+        {/* Class History link */}
+        <a href="/#/history" style={{
+          display: 'flex', alignItems: 'center', gap: 12, marginTop: 20,
+          padding: '14px 16px', borderRadius: 12, background: '#111', border: '1px solid #1A1A1A',
+          textDecoration: 'none', cursor: 'pointer',
+        }}>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#C8A24C" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: 14, fontWeight: 600, color: '#F0F0F0' }}>Class History</div>
+            <div style={{ fontSize: 11, color: '#666' }}>View your attendance record</div>
+          </div>
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M5 3l4 4-4 4" stroke="#444" strokeWidth="1.5" strokeLinecap="round" /></svg>
+        </a>
+
         {/* Always show Achievements section */}
         <div style={{ marginTop: 24 }}>
           <div onClick={() => navigate('/achievements')} style={{ cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
@@ -529,6 +544,7 @@ function MorePage() {
       label: 'Train',
       items: [
         { href: '/#/achievements', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#C8A24C" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></svg>, label: 'Achievements', desc: 'Unlock badges and track your progress' },
+        { href: '/#/history',  icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#C8A24C" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/><path d="M8 14h.01M12 14h.01M16 14h.01M8 18h.01M12 18h.01"/></svg>, label: 'Class History', desc: 'Your attendance record' },
         { href: '/#/games',    icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#C8A24C" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="6" width="20" height="12" rx="4"/><path d="M12 12h.01M7 12h.01M17 12h.01M12 8v8"/></svg>, label: 'Games', desc: 'Challenge your teammates' },
         { href: '/#/leaderboard', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#C8A24C" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></svg>, label: 'Leaderboard', desc: 'Weekly class attendance rankings' },
         { href: '/#/live', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#C8A24C" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="5 3 19 12 5 21 5 3"/><circle cx="19" cy="12" r="2" fill="#C8A24C" stroke="none"/></svg>, label: 'Live & Archive', desc: 'Watch live classes and recordings' },
@@ -843,6 +859,7 @@ function AppShell() {
         <Route path="/leaderboard" component={LeaderboardPage} />
         <Route path="/achievements" component={AchievementsPage} />
         <Route path="/live"      component={LivePage} />
+        <Route path="/history"   component={CheckInHistoryPage} />
         <Route path="/more"      component={MorePage} />
         <Route path="/account"    component={AccountPage} />
         <Route path="/messages"  component={MessagesPage} />
