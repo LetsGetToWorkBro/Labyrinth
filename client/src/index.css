@@ -318,6 +318,13 @@
   scrollbar-width: none;
 }
 
+/* ===== LIVE STREAMING PULSE ===== */
+
+@keyframes livePulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.4; transform: scale(0.85); }
+}
+
 /* ===== BJJ POSITION CHESS — GAME ANIMATIONS ===== */
 
 @keyframes spin {

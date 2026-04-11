@@ -16,6 +16,8 @@ import {
   memberAddCard, memberCreateSetupLink,
 } from "@/lib/api";
 import { useState, useEffect, useCallback, useRef } from "react";
+import { getStreamStatus } from "@/lib/streaming";
+import type { StreamStatus } from "@/lib/streaming";
 
 // ── Badge unlock overlay (shared with SchedulePage pattern) ────
 function showBadgeUnlock(badge: { key: string; label: string; icon: string; desc: string; color?: string }) {
@@ -375,6 +377,16 @@ export default function HomePage() {
     }).catch(() => {});
   }, []);
 
+  // ─── Live stream status (poll every 30s) ───────────────────────────
+  const [stream, setStream] = useState<StreamStatus | null>(null);
+  useEffect(() => {
+    getStreamStatus().then(setStream);
+    const interval = setInterval(() => {
+      getStreamStatus().then(setStream);
+    }, 30_000);
+    return () => clearInterval(interval);
+  }, []);
+
   // ─── Logged-in home ───────────────────────────────────────────────
   const hasWarnings = !member.waiverSigned || !member.agreementSigned;
   const hasFamily = familyMembers.length > 1;
@@ -405,6 +417,26 @@ export default function HomePage() {
           {getGreeting()}
         </h1>
       </div>
+
+      {/* LIVE banner */}
+      {stream?.isLive && (
+        <a href="/#/live" style={{ textDecoration: 'none', display: 'block' }}>
+          <div style={{
+            background: 'linear-gradient(135deg, #1A0A0A, #1A1010)',
+            border: '1px solid #EF444430',
+            borderRadius: 14, padding: '12px 16px',
+            margin: '0 20px 12px', cursor: 'pointer',
+            display: 'flex', alignItems: 'center', gap: 12,
+          }}>
+            <span style={{ width: 10, height: 10, borderRadius: '50%', background: '#EF4444', flexShrink: 0, display: 'inline-block', animation: 'livePulse 1.5s ease-in-out infinite', boxShadow: '0 0 8px #EF4444' }} />
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: 12, fontWeight: 800, color: '#EF4444', letterSpacing: '0.08em', textTransform: 'uppercase' }}>Live Now</div>
+              <div style={{ fontSize: 14, fontWeight: 600, color: '#F0F0F0', marginTop: 2 }}>{stream.className}</div>
+            </div>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#EF4444" strokeWidth="2"><polygon points="5 3 19 12 5 21 5 3" /></svg>
+          </div>
+        </a>
+      )}
 
       {/* Profile card — collapsible */}
       <input

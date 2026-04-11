@@ -5,6 +5,8 @@ import type { ClassScheduleItem } from "@/lib/constants";
 import { getScheduleClasses, gasCall } from "@/lib/api";
 import { Clock, ChevronRight, X, User, CheckCircle } from "lucide-react";
 import { checkAndUnlockAchievements, ALL_ACHIEVEMENTS } from "@/lib/achievements";
+import { getStreamStatus, getLiveBadgeStyle } from "@/lib/streaming";
+import type { StreamStatus } from "@/lib/streaming";
 
 // ── Gamification animations ─────────────────────────────────────
 
@@ -161,6 +163,11 @@ export default function SchedulePage() {
   });
   const [category, setCategory] = useState<"all" | "adult" | "kids">("all");
   const [classes, setClasses] = useState<ClassScheduleItem[]>(CLASS_SCHEDULE);
+  const [stream, setStream] = useState<StreamStatus | null>(null);
+
+  useEffect(() => {
+    getStreamStatus().then(setStream);
+  }, []);
 
   useEffect(() => {
     getScheduleClasses().then((gasClasses) => {
@@ -263,7 +270,7 @@ export default function SchedulePage() {
         ) : (
           <div className="space-y-2">
             {dayClasses.map((cls) => (
-              <ClassCard key={`${cls.day}-${cls.time}-${cls.name}`} cls={cls} isToday={selectedDay === today} />
+              <ClassCard key={`${cls.day}-${cls.time}-${cls.name}`} cls={cls} isToday={selectedDay === today} stream={stream} />
             ))}
           </div>
         )}
@@ -303,7 +310,8 @@ export default function SchedulePage() {
   );
 }
 
-function ClassCard({ cls, isToday }: { cls: ClassScheduleItem; isToday: boolean }) {
+function ClassCard({ cls, isToday, stream }: { cls: ClassScheduleItem; isToday: boolean; stream: StreamStatus | null }) {
+  const isClassLive = stream?.isLive && (stream.className === cls.name || stream.className === (cls as any).title);
   const typeStyle = CLASS_TYPE_COLORS[cls.type] ?? CLASS_TYPE_COLORS.gi;
   const displayTime = formatClassTime(cls.time);
   const [timePart, ampm] = displayTime.split(" ");
@@ -409,7 +417,12 @@ function ClassCard({ cls, isToday }: { cls: ClassScheduleItem; isToday: boolean 
             </div>
             <div className="w-px h-8" style={{ backgroundColor: "#222" }} />
             <div>
-              <p className="text-sm font-medium" style={{ color: "#F0F0F0" }}>{cls.name}</p>
+              <div className="flex items-center gap-2">
+                <p className="text-sm font-medium" style={{ color: "#F0F0F0" }}>{cls.name}</p>
+                {isClassLive && (
+                  <span style={{ ...getLiveBadgeStyle(), fontSize: 9 }}>● LIVE</span>
+                )}
+              </div>
               <div className="flex items-center gap-2 flex-wrap mt-1">
                 <span
                   className="inline-block text-[10px] font-medium px-2 py-0.5 rounded"
@@ -525,6 +538,21 @@ function ClassCard({ cls, isToday }: { cls: ClassScheduleItem; isToday: boolean 
                     </div>
                   </div>
                 </div>
+
+                {/* Watch Live button */}
+                {isClassLive && (
+                  <a href="/#/live" style={{
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    gap: 8, padding: '14px', borderRadius: 12, width: '100%',
+                    background: 'linear-gradient(135deg, #1A0A0A, #1A1010)',
+                    border: '1px solid #EF444430',
+                    color: '#EF4444', fontWeight: 700, fontSize: 15,
+                    textDecoration: 'none', marginBottom: 10,
+                  }}>
+                    <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#EF4444', display: 'inline-block', animation: 'livePulse 1.5s ease-in-out infinite' }} />
+                    Watch Live
+                  </a>
+                )}
 
                 {/* CTA */}
                 {isPast ? (
