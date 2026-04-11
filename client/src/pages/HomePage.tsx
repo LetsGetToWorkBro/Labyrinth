@@ -15,6 +15,41 @@ import {
 } from "@/lib/api";
 import { useState, useEffect, useCallback } from "react";
 
+// ── Badge unlock overlay (shared with SchedulePage pattern) ────
+function showBadgeUnlock(badge: { key: string; label: string; icon: string; desc: string; color?: string }) {
+  const color = badge.color || '#C8A24C';
+  const overlay = document.createElement('div');
+  overlay.style.cssText = `
+    position: fixed; inset: 0; background: rgba(0,0,0,0.85);
+    display: flex; align-items: center; justify-content: center;
+    z-index: 10000; animation: fadeInOverlay 0.3s ease-out forwards;
+  `;
+  overlay.innerHTML = `
+    <div style="text-align:center;padding:40px;max-width:300px;animation:slideUpCard 0.4s cubic-bezier(0.34,1.56,0.64,1) forwards;">
+      <div style="font-size:14px;letter-spacing:3px;text-transform:uppercase;color:#888;margin-bottom:16px;">New Badge Unlocked</div>
+      <div style="width:100px;height:100px;border-radius:50%;background:${color}22;border:3px solid ${color};
+        display:flex;align-items:center;justify-content:center;margin:0 auto 20px;
+        font-size:48px;box-shadow:0 0 30px ${color}66;animation:badgePulse 1s ease-in-out infinite alternate;">
+        ${badge.icon}
+      </div>
+      <div style="font-size:22px;font-weight:800;color:#fff;margin-bottom:8px;">${badge.label}</div>
+      <div style="font-size:14px;color:#888;line-height:1.5;">${badge.desc}</div>
+      <div style="margin-top:24px;font-size:12px;color:#555;">Tap to dismiss</div>
+    </div>
+  `;
+  const style = document.createElement('style');
+  style.textContent = `
+    @keyframes fadeInOverlay { from { opacity: 0; } to { opacity: 1; } }
+    @keyframes slideUpCard { from { transform: translateY(40px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+    @keyframes badgePulse { from { box-shadow: 0 0 20px ${color}44; } to { box-shadow: 0 0 50px ${color}99; } }
+  `;
+  document.head.appendChild(style);
+  document.body.appendChild(overlay);
+  const dismiss = () => { overlay.remove(); style.remove(); };
+  overlay.onclick = dismiss;
+  setTimeout(dismiss, 4000);
+}
+
 const haptic = (pattern: number | number[] = 10) => {
   if (typeof navigator !== 'undefined' && navigator.vibrate) {
     navigator.vibrate(pattern);
@@ -138,6 +173,18 @@ export default function HomePage() {
   };
 
   const streakCount = (member as any)?.currentStreak || 0;
+
+  // ─── Streak milestone celebration ──────────────────────────────────
+  useEffect(() => {
+    if (!streakCount) return;
+    const lastMilestone = parseInt(localStorage.getItem('lbjj_last_streak_milestone') || '0');
+    const milestones = [7, 14, 21, 30, 52];
+    const newMilestone = milestones.find(m => streakCount >= m && m > lastMilestone);
+    if (newMilestone) {
+      localStorage.setItem('lbjj_last_streak_milestone', String(newMilestone));
+      showBadgeUnlock({ key: 'streak', label: `${newMilestone}-Week Streak!`, icon: '\u{1F525}', desc: `${newMilestone} consecutive weeks of training. Consistency is everything.`, color: '#F97316' });
+    }
+  }, [streakCount]);
 
   // ─── Logged-in home ───────────────────────────────────────────────
   const hasWarnings = !member.waiverSigned || !member.agreementSigned;

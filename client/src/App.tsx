@@ -30,6 +30,7 @@ import type { LucideIcon } from "lucide-react";
 import { useEffect, useCallback, useState, useRef } from "react";
 import { useHashLocation as useHashLoc } from "wouter/use-hash-location";
 import { Redirect } from "wouter";
+import { gasCall } from "@/lib/api";
 
 // ─── Belt tab icon ───────────────────────────────────────────────
 const BeltTabIcon = ({ size = 20, strokeWidth = 2 }: { size?: number; strokeWidth?: number }) => (
@@ -204,6 +205,16 @@ function AccountPage() {
     try { return localStorage.getItem("lbjj_profile_picture"); } catch { return null; }
   });
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Badge showcase state
+  const [badges, setBadges] = useState<Array<{key: string; label: string; icon: string; color: string; earnedAt: string}>>([]);
+  useEffect(() => {
+    if (member?.email) {
+      gasCall('getMemberBadges', { email: member.email }).then((res: any) => {
+        if (res?.badges) setBadges(res.badges);
+      }).catch(() => {});
+    }
+  }, [member?.email]);
 
   const handlePhotoSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -434,6 +445,31 @@ function AccountPage() {
               Edit Profile
             </button>
           </>
+        )}
+
+        {/* My Badges section */}
+        {badges.length > 0 && (
+          <div style={{ marginTop: 20 }}>
+            <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#444', marginBottom: 12 }}>Badges Earned</div>
+            <div style={{ display: 'flex', gap: 10, overflowX: 'auto', paddingBottom: 4 }}>
+              {badges.map(b => (
+                <div key={b.key} style={{
+                  flexShrink: 0, textAlign: 'center',
+                  background: '#111', border: `1px solid ${b.color}44`,
+                  borderRadius: 12, padding: '12px 14px', minWidth: 70
+                }}>
+                  <div style={{ fontSize: 28 }}>{b.icon}</div>
+                  <div style={{ fontSize: 10, color: b.color, fontWeight: 600, marginTop: 4, lineHeight: 1.3 }}>{b.label}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+        {badges.length === 0 && (
+          <div style={{ marginTop: 20, padding: '16px', background: '#111', borderRadius: 12, textAlign: 'center' }}>
+            <div style={{ fontSize: 24, marginBottom: 6 }}>&#127941;</div>
+            <div style={{ fontSize: 13, color: '#555' }}>Earn badges by attending classes, competing, and hitting streaks</div>
+          </div>
         )}
 
         <div style={{ borderTop: "1px solid #1A1A1A", paddingTop: 16, marginTop: 8 }}>

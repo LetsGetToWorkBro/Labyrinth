@@ -15,6 +15,54 @@ const requestAccessAttempts: number[] = [];
 const SUSPICIOUS_NAMES = ['test', 'audit', 'demo', 'fake', 'sample', 'trial user', 'test user'];
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
+// ── Face ID / WebAuthn helpers ────────────────────────────────────
+
+async function registerPasskey(email: string): Promise<boolean> {
+  try {
+    const challenge = new Uint8Array(32);
+    crypto.getRandomValues(challenge);
+    const userId = new TextEncoder().encode(email);
+    const credential = await navigator.credentials.create({
+      publicKey: {
+        challenge,
+        rp: { name: 'Labyrinth BJJ', id: window.location.hostname },
+        user: { id: userId, name: email, displayName: email },
+        pubKeyCredParams: [{ alg: -7, type: 'public-key' as const }],
+        authenticatorSelection: {
+          authenticatorAttachment: 'platform' as const,
+          userVerification: 'required' as const,
+        },
+        timeout: 60000,
+      }
+    }) as PublicKeyCredential;
+    const rawId = btoa(String.fromCharCode.apply(null, Array.from(new Uint8Array(credential.rawId))));
+    localStorage.setItem('lbjj_passkey_id', rawId);
+    localStorage.setItem('lbjj_passkey_email', email);
+    localStorage.setItem('lbjj_passkey_registered', 'true');
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+async function authenticateWithPasskey(): Promise<boolean> {
+  try {
+    const challenge = new Uint8Array(32);
+    crypto.getRandomValues(challenge);
+    const assertion = await navigator.credentials.get({
+      publicKey: {
+        challenge,
+        rpId: window.location.hostname,
+        userVerification: 'required' as const,
+        timeout: 60000,
+      }
+    });
+    return !!assertion;
+  } catch {
+    return false;
+  }
+}
+
 export default function LoginPage() {
   const { login } = useAuth();
 
@@ -53,6 +101,43 @@ export default function LoginPage() {
   const [reqSent, setReqSent]       = useState(false);
   const [honeypot, setHoneypot]     = useState("");
 
+  // Face ID / Passkey state
+  const supportsPasskey = typeof window !== 'undefined' && !!window.PublicKeyCredential;
+  const [hasPasskey] = useState(() => localStorage.getItem('lbjj_passkey_registered') === 'true');
+  const [passkeyLoading, setPasskeyLoading] = useState(false);
+  const [showPasskeyPrompt, setShowPasskeyPrompt] = useState(false);
+  const [passkeyRegistering, setPasskeyRegistering] = useState(false);
+
+  const handlePasskeyLogin = async () => {
+    setPasskeyLoading(true);
+    setLoginError("");
+    const ok = await authenticateWithPasskey();
+    if (ok) {
+      const savedEmail = localStorage.getItem('lbjj_passkey_email') || '';
+      if (savedEmail) {
+        const result = await login(savedEmail, '__passkey__');
+        if (!result.success) {
+          // Passkey verified but session expired — ask for password
+          setEmail(savedEmail);
+          setLoginError("Session expired. Please enter your password.");
+        }
+      }
+    } else {
+      setLoginError("Face ID authentication failed. Try again or use password.");
+    }
+    setPasskeyLoading(false);
+  };
+
+  const handlePasskeyRegister = async (memberEmail: string) => {
+    setPasskeyRegistering(true);
+    const ok = await registerPasskey(memberEmail);
+    setPasskeyRegistering(false);
+    setShowPasskeyPrompt(false);
+    if (!ok) {
+      // Silently ignore — Face ID is optional
+    }
+  };
+
   const selectLocation = (loc: Location) => {
     setSelectedLocationId(loc.id);
     setActiveLocation(loc.id);
@@ -79,7 +164,14 @@ export default function LoginPage() {
     setLoginError("");
     const result = await login(email, password);
     setLoginLoading(false);
-    if (!result.success) setLoginError(result.error || "Invalid email or password");
+    if (!result.success) {
+      setLoginError(result.error || "Invalid email or password");
+    } else {
+      // Offer Face ID registration if supported and not yet registered
+      if (supportsPasskey && !localStorage.getItem('lbjj_passkey_registered')) {
+        setTimeout(() => setShowPasskeyPrompt(true), 1000);
+      }
+    }
   };
 
   const handleRequest = async (e: React.FormEvent) => {
@@ -280,6 +372,33 @@ export default function LoginPage() {
                       ? <><Loader2 size={16} className="animate-spin" style={{ marginRight: 8 }} /> Signing in…</>
                       : <><span>Sign In</span><ArrowRight size={16} style={{ marginLeft: 8 }} /></>}
                   </button>
+                  {/* Face ID button */}
+                  {supportsPasskey && hasPasskey && (
+                    <button
+                      type="button"
+                      onClick={handlePasskeyLogin}
+                      disabled={passkeyLoading}
+                      style={{
+                        display: "flex", alignItems: "center", justifyContent: "center",
+                        gap: 10, padding: "13px 20px", borderRadius: 12, fontSize: 14, fontWeight: 600,
+                        backgroundColor: "transparent", color: GOLD, border: `1px solid ${GOLD}44`,
+                        cursor: "pointer", width: "100%", transition: "opacity 0.15s",
+                        opacity: passkeyLoading ? 0.6 : 1, marginTop: 4,
+                      }}
+                    >
+                      {passkeyLoading
+                        ? <><Loader2 size={16} className="animate-spin" /> Verifying…</>
+                        : <>
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={GOLD} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                              <circle cx="12" cy="8" r="5"/>
+                              <path d="M3 21v-2a7 7 0 0 1 7-7h0"/>
+                              <path d="M16 18l2 2 4-4"/>
+                            </svg>
+                            Sign in with Face ID
+                          </>
+                      }
+                    </button>
+                  )}
                 </form>
               )}
 
@@ -388,6 +507,50 @@ export default function LoginPage() {
         <MapPin size={10} style={{ color: "#555" }} />
         {screen !== "location" ? `${selectedLocation.city}, TX` : "LABYRINTH BJJ"}
       </p>
+
+      {/* Face ID registration prompt overlay */}
+      {showPasskeyPrompt && supportsPasskey && (
+        <div style={{
+          position: "fixed", inset: 0, background: "rgba(0,0,0,0.7)",
+          display: "flex", alignItems: "center", justifyContent: "center",
+          zIndex: 10000, padding: 24,
+        }} onClick={() => setShowPasskeyPrompt(false)}>
+          <div onClick={e => e.stopPropagation()} style={{
+            background: "#111", borderRadius: 20, padding: "32px 24px",
+            maxWidth: 340, width: "100%", textAlign: "center",
+            border: "1px solid #1A1A1A",
+          }}>
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke={GOLD} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ margin: "0 auto 16px", display: "block" }}>
+              <circle cx="12" cy="8" r="5"/>
+              <path d="M3 21v-2a7 7 0 0 1 7-7h0"/>
+              <path d="M16 18l2 2 4-4"/>
+            </svg>
+            <h3 style={{ fontSize: 18, fontWeight: 700, color: "#F0F0F0", margin: "0 0 8px" }}>Enable Face ID?</h3>
+            <p style={{ fontSize: 13, color: "#888", margin: "0 0 24px", lineHeight: 1.5 }}>
+              Sign in instantly next time with Face ID or biometrics.
+            </p>
+            <button
+              onClick={() => handlePasskeyRegister(email)}
+              disabled={passkeyRegistering}
+              style={{
+                display: "flex", alignItems: "center", justifyContent: "center",
+                gap: 8, width: "100%", padding: "13px", borderRadius: 12,
+                background: GOLD, color: "#0A0A0A", fontWeight: 700, fontSize: 14,
+                border: "none", cursor: "pointer", marginBottom: 10,
+                opacity: passkeyRegistering ? 0.7 : 1,
+              }}
+            >
+              {passkeyRegistering ? <><Loader2 size={15} className="animate-spin" /> Setting up…</> : "Enable Face ID"}
+            </button>
+            <button
+              onClick={() => setShowPasskeyPrompt(false)}
+              style={{ background: "none", border: "none", color: "#666", fontSize: 13, cursor: "pointer", padding: "8px" }}
+            >
+              Not now
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

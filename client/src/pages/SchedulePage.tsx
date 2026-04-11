@@ -2,8 +2,116 @@ import { useState, useEffect } from "react";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { CLASS_SCHEDULE, CLASS_TYPE_COLORS, DAYS_ORDER } from "@/lib/constants";
 import type { ClassScheduleItem } from "@/lib/constants";
-import { getScheduleClasses } from "@/lib/api";
+import { getScheduleClasses, gasCall } from "@/lib/api";
 import { Clock, ChevronRight, X, User, CheckCircle } from "lucide-react";
+
+// ── Gamification animations ─────────────────────────────────────
+
+function triggerConfetti() {
+  const container = document.createElement('div');
+  container.style.cssText = 'position:fixed;inset:0;pointer-events:none;z-index:9999;overflow:hidden;';
+  document.body.appendChild(container);
+
+  const colors = ['#C8A24C', '#E8C86C', '#FFD700', '#FFF8DC', '#ffffff'];
+
+  for (let i = 0; i < 40; i++) {
+    const dot = document.createElement('div');
+    const size = Math.random() * 8 + 4;
+    const x = Math.random() * 100;
+    const duration = Math.random() * 800 + 600;
+    const delay = Math.random() * 300;
+    const color = colors[Math.floor(Math.random() * colors.length)];
+    const endY = -(Math.random() * 60 + 40);
+    const endX = (Math.random() - 0.5) * 40;
+
+    dot.style.cssText = `
+      position:absolute; bottom:30%; left:${x}%;
+      width:${size}px; height:${size}px;
+      border-radius:${Math.random() > 0.5 ? '50%' : '2px'};
+      background:${color};
+      animation: confettiFly_${i} ${duration}ms ${delay}ms ease-out forwards;
+    `;
+
+    const style = document.createElement('style');
+    style.textContent = `
+      @keyframes confettiFly_${i} {
+        0% { transform: translate(0, 0) rotate(0deg); opacity: 1; }
+        100% { transform: translate(${endX}vw, ${endY}vh) rotate(${Math.random() * 720}deg); opacity: 0; }
+      }
+    `;
+    document.head.appendChild(style);
+    container.appendChild(dot);
+  }
+
+  setTimeout(() => { container.remove(); }, 2000);
+}
+
+function showPointsToast(points: number) {
+  const el = document.createElement('div');
+  el.textContent = `+${points} pts`;
+  el.style.cssText = `
+    position: fixed;
+    bottom: 120px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(200, 162, 76, 0.95);
+    color: #000;
+    font-weight: 700;
+    font-size: 18px;
+    padding: 8px 20px;
+    border-radius: 20px;
+    z-index: 9999;
+    pointer-events: none;
+    animation: pointsFloat 1.5s ease-out forwards;
+  `;
+
+  const style = document.createElement('style');
+  style.textContent = `
+    @keyframes pointsFloat {
+      0% { transform: translateX(-50%) translateY(0); opacity: 1; }
+      100% { transform: translateX(-50%) translateY(-60px); opacity: 0; }
+    }
+  `;
+  document.head.appendChild(style);
+  document.body.appendChild(el);
+  setTimeout(() => { el.remove(); style.remove(); }, 1600);
+}
+
+function showBadgeUnlock(badge: { key: string; label: string; icon: string; desc: string; color?: string }) {
+  const color = badge.color || '#C8A24C';
+  const overlay = document.createElement('div');
+  overlay.style.cssText = `
+    position: fixed; inset: 0; background: rgba(0,0,0,0.85);
+    display: flex; align-items: center; justify-content: center;
+    z-index: 10000; animation: fadeInOverlay 0.3s ease-out forwards;
+  `;
+  overlay.innerHTML = `
+    <div style="text-align:center;padding:40px;max-width:300px;animation:slideUpCard 0.4s cubic-bezier(0.34,1.56,0.64,1) forwards;">
+      <div style="font-size:14px;letter-spacing:3px;text-transform:uppercase;color:#888;margin-bottom:16px;">New Badge Unlocked</div>
+      <div style="width:100px;height:100px;border-radius:50%;background:${color}22;border:3px solid ${color};
+        display:flex;align-items:center;justify-content:center;margin:0 auto 20px;
+        font-size:48px;box-shadow:0 0 30px ${color}66;animation:badgePulse 1s ease-in-out infinite alternate;">
+        ${badge.icon}
+      </div>
+      <div style="font-size:22px;font-weight:800;color:#fff;margin-bottom:8px;">${badge.label}</div>
+      <div style="font-size:14px;color:#888;line-height:1.5;">${badge.desc}</div>
+      <div style="margin-top:24px;font-size:12px;color:#555;">Tap to dismiss</div>
+    </div>
+  `;
+
+  const style = document.createElement('style');
+  style.textContent = `
+    @keyframes fadeInOverlay { from { opacity: 0; } to { opacity: 1; } }
+    @keyframes slideUpCard { from { transform: translateY(40px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+    @keyframes badgePulse { from { box-shadow: 0 0 20px ${color}44; } to { box-shadow: 0 0 50px ${color}99; } }
+  `;
+  document.head.appendChild(style);
+  document.body.appendChild(overlay);
+
+  const dismiss = () => { overlay.remove(); style.remove(); };
+  overlay.onclick = dismiss;
+  setTimeout(dismiss, 4000);
+}
 
 const CLASS_DURATIONS: Record<string, string> = {
   default: "1 hour",
@@ -211,7 +319,30 @@ function ClassCard({ cls, isToday }: { cls: ClassScheduleItem; isToday: boolean 
       localStorage.setItem('lbjj_game_stats_v2', JSON.stringify(stats));
     } catch (_) {}
 
+    // Fire-and-forget GAS gamification call
+    const profile = (() => { try { return JSON.parse(localStorage.getItem('lbjj_member_profile') || '{}'); } catch { return {}; } })();
+    if (profile.Email) {
+      gasCall('recordCheckIn', {
+        email: profile.Email,
+        name: profile.Name || '',
+        className: cls.name || '',
+        day: cls.day || '',
+        time: cls.time || '',
+      }).then((result: any) => {
+        if (result?.pointsAwarded) {
+          showPointsToast(result.pointsAwarded);
+        }
+        if (result?.newBadges && result.newBadges.length > 0) {
+          showBadgeUnlock(result.newBadges[0]);
+        }
+        if (result?.streakMilestone) {
+          showBadgeUnlock({ key: 'streak', label: `${result.streakMilestone}-Week Streak!`, icon: '\u{1F525}', desc: `${result.streakMilestone} consecutive weeks of training. Consistency is everything.`, color: '#F97316' });
+        }
+      }).catch(() => {});
+    }
+
     setCheckInDone(true);
+    triggerConfetti();
     setTimeout(() => {
       setShowDetail(false);
       setCheckInDone(false);
