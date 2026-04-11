@@ -4,6 +4,7 @@ import { ALL_ACHIEVEMENTS, ACHIEVEMENT_CATEGORIES, checkAndUnlockAchievements } 
 import type { Achievement } from '@/lib/achievements';
 import { gasCall } from '@/lib/api';
 import { useAuth } from '@/lib/auth-context';
+import { AchievementBadge } from '@/lib/achievement-icons';
 
 export default function AchievementsPage() {
   const [, navigate] = useHashLocation();
@@ -185,8 +186,12 @@ export default function AchievementsPage() {
           >
             <div style={{ width: 36, height: 4, borderRadius: 2, background: '#2A2A2A', margin: '0 auto 20px' }} />
             <div style={{ textAlign: 'center' }}>
-              <div style={{ fontSize: 56, marginBottom: 12 }}>
-                {(selectedAchievement.secret && !isSelectedEarned) ? '🔒' : selectedAchievement.icon}
+              <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 12 }}>
+                <AchievementBadge
+                  achievementKey={(selectedAchievement.secret && !isSelectedEarned) ? 'secret_1' : selectedAchievement.key}
+                  size={72}
+                  unlocked={isSelectedEarned}
+                />
               </div>
               <div style={{ fontSize: 18, fontWeight: 700, color: '#F0F0F0', marginBottom: 8 }}>
                 {(selectedAchievement.secret && !isSelectedEarned) ? '???' : selectedAchievement.label}
@@ -257,7 +262,9 @@ function UnlockedCard({ achievement }: { achievement: Achievement }) {
       textAlign: 'center',
       boxShadow: `0 0 12px ${achievement.color}15`,
     }}>
-      <div style={{ fontSize: 32, marginBottom: 8 }}>{achievement.icon}</div>
+      <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 8 }}>
+        <AchievementBadge achievementKey={achievement.key} size={44} unlocked={true} />
+      </div>
       <div style={{ fontSize: 11, fontWeight: 700, color: achievement.color, lineHeight: 1.3 }}>{achievement.label}</div>
       <div style={{ fontSize: 10, color: '#555', marginTop: 4, lineHeight: 1.4 }}>{achievement.desc}</div>
     </div>
@@ -272,10 +279,10 @@ function LockedCard({ achievement, isSecret }: { achievement: Achievement; isSec
       borderRadius: 14,
       padding: '14px 10px',
       textAlign: 'center',
-      opacity: 0.5,
-      filter: 'grayscale(1)',
     }}>
-      <div style={{ fontSize: 32, marginBottom: 8 }}>{isSecret ? '🔒' : achievement.icon}</div>
+      <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 8 }}>
+        <AchievementBadge achievementKey={isSecret ? 'secret_1' : achievement.key} size={44} unlocked={false} />
+      </div>
       <div style={{ fontSize: 11, fontWeight: 700, color: '#444', lineHeight: 1.3 }}>{isSecret ? '???' : achievement.label}</div>
       <div style={{ fontSize: 10, color: '#333', marginTop: 4, lineHeight: 1.4 }}>
         {isSecret ? 'Keep training to discover this achievement.' : achievement.desc}
