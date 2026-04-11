@@ -23,7 +23,7 @@ import MessagesPage from "@/pages/MessagesPage";
 
 import NotFound from "@/pages/not-found";
 import {
-  Home, MessageCircle, CalendarDays, MoreHorizontal, Award,
+  Home, MessageCircle, CalendarDays, MoreHorizontal,
   Gamepad2, BarChart2, Trophy, Thermometer,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
@@ -31,22 +31,31 @@ import { useEffect, useCallback, useState, useRef } from "react";
 import { useHashLocation as useHashLoc } from "wouter/use-hash-location";
 import { Redirect } from "wouter";
 
+// ─── Belt tab icon ───────────────────────────────────────────────
+const BeltTabIcon = ({ size = 20, strokeWidth = 2 }: { size?: number; strokeWidth?: number }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round">
+    <rect x="2" y="9" width="20" height="6" rx="1"/>
+    <rect x="9" y="9" width="6" height="6" fill="currentColor" opacity={0.4}/>
+    <line x1="2" y1="12" x2="22" y2="12" opacity={0.3}/>
+  </svg>
+);
+
 // ─── Nav config ───────────────────────────────────────────────────
 
 const NAV_STORAGE_KEY = 'lbjj_nav_config_v1';
 
-// Each option maps to a Lucide icon (or null = use emoji fallback)
+// Each option maps to a Lucide icon, custom component, or null = use emoji fallback
 type NavOption = {
   path: string;
   label: string;
-  Icon: LucideIcon | null;
+  Icon: LucideIcon | React.FC<{ size?: number; strokeWidth?: number }> | null;
   emoji: string; // fallback when no Lucide icon
 };
 
 const ALL_NAV_OPTIONS: NavOption[] = [
   { path: '/',         label: 'Home',     Icon: Home,           emoji: '🏠' },
   { path: '/chat',     label: 'Chat',     Icon: MessageCircle,  emoji: '💬' },
-  { path: '/belt',     label: 'Belts',    Icon: Award,          emoji: '🥋' },
+  { path: '/belt',     label: 'Belts',    Icon: BeltTabIcon,    emoji: '🥋' },
   { path: '/schedule', label: 'Schedule', Icon: CalendarDays,   emoji: '📅' },
   { path: '/more',     label: 'More',     Icon: MoreHorizontal, emoji: '⋯'  },
   { path: '/games',    label: 'Games',    Icon: Gamepad2,       emoji: '🎮' },
@@ -178,6 +187,13 @@ function AccountPage() {
   const [editing, setEditing] = useState(false);
   const [editName, setEditName] = useState(member?.name || "");
   const [phone, setPhone] = useState(member?.phone || "");
+  const [secondaryEmail, setSecondaryEmail] = useState(() => {
+    try {
+      const stored = localStorage.getItem("lbjj_member_profile");
+      if (stored) return JSON.parse(stored).SecondaryEmail || "";
+    } catch {}
+    return "";
+  });
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState("");
@@ -216,7 +232,7 @@ function AccountPage() {
     try {
       const { gasCall } = await import("@/lib/api");
       // GAS stub: updateMemberProfile action — backend needs this action
-      await gasCall("updateMemberProfile", { memberEmail: member?.email, name: editName, phone });
+      await gasCall("updateMemberProfileApp", { memberEmail: member?.email, name: editName, phone, secondaryEmail });
       // Update localStorage profile
       const stored = localStorage.getItem("lbjj_member_profile");
       if (stored) {
@@ -224,6 +240,7 @@ function AccountPage() {
           const profile = JSON.parse(stored);
           profile.Name = editName;
           profile.Phone = phone;
+          profile.SecondaryEmail = secondaryEmail;
           localStorage.setItem("lbjj_member_profile", JSON.stringify(profile));
         } catch { /* ignore parse error */ }
       }
@@ -258,13 +275,14 @@ function AccountPage() {
         {/* Avatar with photo support */}
         <div style={{ display: "flex", flexDirection: "column", alignItems: "center", paddingTop: 8, paddingBottom: 4 }}>
           <div
+            onClick={() => fileInputRef.current?.click()}
             style={{
               width: 88, height: 88, borderRadius: "50%", overflow: "hidden",
               background: profilePic ? "none" : beltColor,
               color: ["white","yellow","grey"].includes((member?.belt||"").toLowerCase()) ? "#0A0A0A" : "#fff",
               fontSize: 30, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center",
               boxShadow: `0 0 0 4px ${beltColor}30, 0 0 30px ${beltColor}20`,
-              position: "relative",
+              position: "relative", cursor: "pointer",
             }}
           >
             {profilePic ? (
@@ -325,6 +343,20 @@ function AccountPage() {
               <p style={{ fontSize: 15, color: "#999", margin: 0 }}>{member?.email || "\u2014"}</p>
             </div>
 
+            {/* Secondary Email */}
+            <div style={{ backgroundColor: "#111", border: "1px solid #1A1A1A", borderRadius: 12, padding: "12px 16px" }}>
+              <label style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: "#555", display: "block", marginBottom: 6 }}>
+                Secondary Email <span style={{ color: "#444", fontSize: 9, fontWeight: 400 }}>(optional)</span>
+              </label>
+              <input
+                type="email"
+                value={secondaryEmail}
+                onChange={e => setSecondaryEmail(e.target.value)}
+                placeholder="alternate@example.com"
+                style={{ width: "100%", background: "none", border: "none", fontSize: 15, color: "#F0F0F0", outline: "none", padding: 0 }}
+              />
+            </div>
+
             {error && <p style={{ fontSize: 13, color: "#E05555", textAlign: "center" }}>{error}</p>}
 
             <div style={{ display: "flex", gap: 10 }}>
@@ -351,24 +383,39 @@ function AccountPage() {
           </>
         ) : (
           <>
-            {/* Read-only fields */}
-            {[
-              { label: "Name",       value: member?.name  || "\u2014" },
-              { label: "Email",      value: member?.email || "\u2014" },
-              { label: "Belt",       value: (member?.belt  || "white").charAt(0).toUpperCase() + (member?.belt || "white").slice(1) + " Belt" },
-              { label: "Plan",       value: member?.plan  || member?.membership || "\u2014" },
-              { label: "Phone",      value: member?.phone || "Not set" },
-              { label: "Member Since", value: (() => {
-                const d = member?.joinDate || (member as any)?.startDate || (member as any)?.StartDate || (member as any)?.memberSince || (member as any)?.['Start Date'] || (member as any)?.CreatedAt;
-                if (!d) return 'Charter Member';
-                try { return new Date(d).toLocaleDateString('en-US', { month: 'long', year: 'numeric' }); } catch { return 'Charter Member'; }
-              })() },
-            ].map(f => (
-              <div key={f.label} style={{ backgroundColor: "#111", border: "1px solid #1A1A1A", borderRadius: 12, padding: "12px 16px" }}>
-                <p style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: "#555", margin: "0 0 4px" }}>{f.label}</p>
-                <p style={{ fontSize: 15, color: "#E0E0E0", margin: 0 }}>{f.value}</p>
+            {/* Read-only fields — tap to edit */}
+            <div
+              onClick={() => { setEditing(true); setEditName(member?.name || ""); setPhone(member?.phone || ""); }}
+              style={{ cursor: "pointer", position: "relative" }}
+            >
+              {/* Pencil hint */}
+              <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 4, marginBottom: 4 }}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#666" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M17 3a2.83 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/>
+                  <path d="m15 5 4 4"/>
+                </svg>
+                <span style={{ fontSize: 11, color: "#666" }}>Tap to edit</span>
               </div>
-            ))}
+              <div className="space-y-4">
+                {[
+                  { label: "Name",       value: member?.name  || "\u2014" },
+                  { label: "Email",      value: member?.email || "\u2014" },
+                  { label: "Belt",       value: (member?.belt  || "white").charAt(0).toUpperCase() + (member?.belt || "white").slice(1) + " Belt" },
+                  { label: "Plan",       value: member?.plan  || member?.membership || "\u2014" },
+                  { label: "Phone",      value: member?.phone || "Not set" },
+                  { label: "Member Since", value: (() => {
+                    const d = member?.joinDate || (member as any)?.startDate || (member as any)?.StartDate || (member as any)?.memberSince || (member as any)?.['Start Date'] || (member as any)?.CreatedAt;
+                    if (!d) return 'Charter Member';
+                    try { return new Date(d).toLocaleDateString('en-US', { month: 'long', year: 'numeric' }); } catch { return 'Charter Member'; }
+                  })() },
+                ].map(f => (
+                  <div key={f.label} style={{ backgroundColor: "#111", border: "1px solid #1A1A1A", borderRadius: 12, padding: "12px 16px" }}>
+                    <p style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: "#555", margin: "0 0 4px" }}>{f.label}</p>
+                    <p style={{ fontSize: 15, color: "#E0E0E0", margin: 0 }}>{f.value}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
 
             {saved && (
               <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, padding: "10px", borderRadius: 10, backgroundColor: "rgba(76,175,128,0.1)" }}>
@@ -406,40 +453,40 @@ function AccountPage() {
 function MorePage() {
   const { logout, isAdmin } = useAuth();
 
-  const sections = [
+  const sections: { label: string; items: { href: string; icon: React.ReactNode; label: string; desc: string }[] }[] = [
+    {
+      label: 'Account',
+      items: [
+        { href: '/#/account',  icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#C8A24C" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>, label: 'My Account', desc: 'Edit your phone number and info' },
+      ]
+    },
     {
       label: 'Train',
       items: [
-        { href: '/#/games',    icon: '🎮', label: 'Games',               desc: 'Challenge your teammates'       },
-        { href: '/#/schedule', icon: '📅', label: 'Class Schedule',       desc: 'View and bookmark classes'      },
+        { href: '/#/games',    icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#C8A24C" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="6" width="20" height="12" rx="4"/><path d="M12 12h.01M7 12h.01M17 12h.01M12 8v8"/></svg>, label: 'Games', desc: 'Challenge your teammates' },
+        { href: '/#/schedule', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#C8A24C" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>, label: 'Class Schedule', desc: 'View and bookmark classes' },
       ]
     },
     {
       label: 'Manage',
       items: [
-        { href: '/#/sauna',    icon: '🧖', label: 'Sauna Dashboard',     desc: 'Check in/out, active sessions'  },
-        { href: '/#/stats',    icon: '📊', label: 'Academy Stats',       desc: 'Rankings, athletes, jits.gg'    },
-        { href: '/#/calendar', icon: '🏆', label: 'Tournament Calendar', desc: 'Events and registrations'       },
-      ]
-    },
-    {
-      label: 'Account',
-      items: [
-        { href: '/#/account',  icon: '👤', label: 'My Account',         desc: 'Edit your phone number and info'  },
+        { href: '/#/sauna',    icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#C8A24C" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 12c.553-1.333 2-2 3-2s2.447.667 3 2"/><path d="M3 12c1.333-4 5-6 9-6s7.667 2 9 6"/><path d="M6 20c1-2.667 3.333-4 6-4s5 1.333 6 4"/><line x1="12" y1="2" x2="12" y2="4"/></svg>, label: 'Sauna Dashboard', desc: 'Check in/out, active sessions' },
+        { href: '/#/stats',    icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#C8A24C" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20V10"/><path d="M18 20V4"/><path d="M6 20v-4"/></svg>, label: 'Academy Stats', desc: 'Rankings, athletes, jits.gg' },
+        { href: '/#/calendar', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#C8A24C" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></svg>, label: 'Tournament Calendar', desc: 'Events and registrations' },
       ]
     },
     {
       label: 'Documents',
       items: [
-        { href: '/#/book',     icon: '📅', label: 'Book Trial Class',    desc: 'Schedule a free trial'          },
-        { href: '/#/waiver',   icon: '📝', label: 'Waiver & Agreement',  desc: 'Sign or review documents'       },
+        { href: '/#/book',     icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#C8A24C" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>, label: 'Book Trial Class', desc: 'Schedule a free trial' },
+        { href: '/#/waiver',   icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#C8A24C" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>, label: 'Waiver & Agreement', desc: 'Sign or review documents' },
       ]
     },
     ...(isAdmin ? [{
       label: 'Admin',
       items: [
-        { href: '/#/messages', icon: '📨', label: 'Message Blast',       desc: 'Email or text all members'      },
-        { href: '/#/admin',    icon: '🛡️', label: 'Admin Panel',         desc: 'Member management & stats'      },
+        { href: '/#/messages', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#C8A24C" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg>, label: 'Message Blast', desc: 'Email or text all members' },
+        { href: '/#/admin',    icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#C8A24C" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>, label: 'Admin Panel', desc: 'Member management & stats' },
       ]
     }] : []),
   ];
@@ -461,7 +508,7 @@ function MorePage() {
                   className="flex items-center gap-3 p-4 rounded-xl transition-all active:scale-[0.98]"
                   style={{ backgroundColor: "#111", border: "1px solid #1A1A1A" }}
                 >
-                  <span className="text-xl">{item.icon}</span>
+                  <span className="text-xl" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{item.icon}</span>
                   <div className="flex-1">
                     <p className="text-sm font-medium" style={{ color: "#F0F0F0" }}>{item.label}</p>
                     <p className="text-xs" style={{ color: "#666" }}>{item.desc}</p>

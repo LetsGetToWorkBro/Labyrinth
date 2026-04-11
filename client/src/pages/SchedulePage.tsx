@@ -113,8 +113,8 @@ export default function SchedulePage() {
       </div>
 
       {/* Day Selector */}
-      <div className="px-5 mb-4 overflow-x-auto" style={{ WebkitOverflowScrolling: "touch" }}>
-        <div className="flex gap-2 min-w-max">
+      <div className="px-5 mb-4 overflow-x-auto" style={{ WebkitOverflowScrolling: "touch", display: 'flex', justifyContent: 'center' }}>
+        <div className="flex gap-2" style={{ minWidth: 'max-content' }}>
           {DAYS_ORDER.map(day => {
             const isSelected = selectedDay === day;
             const isToday = day === today;

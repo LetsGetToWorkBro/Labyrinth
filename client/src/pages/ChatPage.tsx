@@ -16,12 +16,20 @@ import { chatGetMessages, chatSendMessage, chatGetChannels, type ChatMessage, ty
 import { getRankProfile } from "@/lib/chat-data";
 import logoMaze from "@assets/maze-gold-md.png";
 import {
-  Send, ArrowLeft, Lock, Users, Hash, ChevronRight,
+  Send, ArrowLeft, Lock, Users, Hash, ChevronRight, X,
   Shield, Crown, MessageCircle, Megaphone, Loader2, RefreshCw,
 } from "lucide-react";
 
 const GOLD = "#C8A24C";
 const POLL_INTERVAL_MS = 20_000; // refresh messages every 20 s
+
+const RANK_LEGEND = [
+  { belt: 'white',  title: 'Beginner',              color: '#E5E5E5' },
+  { belt: 'blue',   title: 'Student',               color: '#1A56DB' },
+  { belt: 'purple', title: 'Intermediate',          color: '#7E3AF2' },
+  { belt: 'brown',  title: 'Advanced Practitioner', color: '#92400E' },
+  { belt: 'black',  title: 'Expert / Instructor',   color: '#111827', border: '#C8A24C' },
+] as const;
 
 // ─── Root ──────────────────────────────────────────────────────────
 
@@ -36,6 +44,8 @@ export default function ChatPage() {
   const [inputText, setInputText] = useState("");
   const [sending, setSending] = useState(false);
   const [sendError, setSendError] = useState("");
+  const [collapsed, setCollapsed] = useState<Record<string, boolean>>({ 'Kids Ranks': true });
+  const [showRankLegend, setShowRankLegend] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -123,6 +133,10 @@ export default function ChatPage() {
     if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendMessage(); }
   };
 
+  // ─── Shared rank info ──────────────────────────────────────────
+  const myBelt = (member?.belt || "white").toLowerCase();
+  const userRank = getRankProfile(myBelt);
+
   // ─── Channel Room ─────────────────────────────────────────────
   const activeChannel = channels.find(c => c.id === activeChannelId);
 
@@ -135,8 +149,24 @@ export default function ChatPage() {
           <button onClick={() => setActiveChannelId(null)} style={{ color: "#999", background: "none", border: "none", cursor: "pointer", padding: 4 }}>
             <ArrowLeft size={20} />
           </button>
-          <div style={{ flex: 1 }}>
+          <div style={{ flex: 1, display: "flex", alignItems: "center", gap: 8 }}>
             <h2 style={{ color: "#F0F0F0", fontSize: 16, fontWeight: 700, margin: 0 }}>{activeChannel.name}</h2>
+            {member && (
+              <button
+                onClick={() => setShowRankLegend(true)}
+                style={{
+                  display: "inline-flex", alignItems: "center", gap: 4,
+                  padding: "2px 8px 2px 4px", borderRadius: 12,
+                  backgroundColor: `${getBeltColor(myBelt)}15`,
+                  border: `1px solid ${getBeltColor(myBelt)}30`,
+                  cursor: "pointer", fontSize: 10, fontWeight: 600,
+                  color: getBeltColor(myBelt),
+                }}
+              >
+                <BeltIcon belt={myBelt} width={18} />
+                {userRank.title}
+              </button>
+            )}
           </div>
           <button onClick={() => loadMessages(activeChannel.id)} style={{ color: "#555", background: "none", border: "none", cursor: "pointer", padding: 4 }}>
             <RefreshCw size={15} />
@@ -150,6 +180,49 @@ export default function ChatPage() {
             </button>
           )}
         </div>
+
+        {/* Rank Legend Bottom Sheet */}
+        {showRankLegend && (
+          <div
+            style={{ position: "fixed", inset: 0, zIndex: 200, display: "flex", alignItems: "flex-end" }}
+            onClick={() => setShowRankLegend(false)}
+          >
+            <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.5)", backdropFilter: "blur(4px)" }} />
+            <div
+              onClick={e => e.stopPropagation()}
+              style={{
+                position: "relative", width: "100%",
+                background: "#111", borderRadius: "20px 20px 0 0",
+                padding: "24px 20px", borderTop: "1px solid #1A1A1A",
+                paddingBottom: "max(24px, calc(env(safe-area-inset-bottom, 0px) + 24px))",
+              }}
+            >
+              <div style={{ width: 36, height: 4, borderRadius: 2, background: "#2A2A2A", margin: "0 auto 16px" }} />
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
+                <h3 style={{ fontSize: 16, fontWeight: 700, color: "#F0F0F0", margin: 0 }}>BJJ Rank Hierarchy</h3>
+                <button onClick={() => setShowRankLegend(false)} style={{ background: "none", border: "none", padding: 4, cursor: "pointer" }}>
+                  <X size={18} style={{ color: "#555" }} />
+                </button>
+              </div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                {RANK_LEGEND.map(r => (
+                  <div key={r.belt} style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 12px", borderRadius: 10, backgroundColor: "#0D0D0D", border: "1px solid #1A1A1A" }}>
+                    <div style={{
+                      width: 28, height: 28, borderRadius: "50%",
+                      backgroundColor: r.color,
+                      border: 'border' in r ? `2px solid ${r.border}` : "2px solid transparent",
+                      flexShrink: 0,
+                    }} />
+                    <div>
+                      <p style={{ fontSize: 14, fontWeight: 600, color: "#E0E0E0", margin: 0, textTransform: "capitalize" }}>{r.belt} Belt</p>
+                      <p style={{ fontSize: 12, color: "#888", margin: "2px 0 0" }}>{r.title}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Messages */}
         <div style={{ flex: 1, overflowY: "auto", padding: "12px 16px", display: "flex", flexDirection: "column", gap: 4 }}>
@@ -226,14 +299,15 @@ export default function ChatPage() {
   }
 
   // ─── Channel list ─────────────────────────────────────────────
-  const grouped = {
-    main: channels.filter(c => ["general", "kids", "coaches", "announcements"].includes(c.type)),
-    rank: channels.filter(c => c.type === "rank"),
-    kidsRank: channels.filter(c => c.type === "kids-rank"),
-  };
+  // Announcements pinned to top
+  const announcementChannel = channels.find(c => c.type === "announcements");
+  const mainChannels = channels.filter(c => ["general", "kids", "coaches"].includes(c.type));
+  const adultRankChannels = channels.filter(c => c.type === "rank");
+  const kidsRankChannels = channels.filter(c => c.type === "kids-rank");
 
-  const myBelt = (member?.belt || "white").toLowerCase();
-  const userRank = getRankProfile(myBelt);
+  const toggleSection = (label: string) => {
+    setCollapsed(prev => ({ ...prev, [label]: !prev[label] }));
+  };
 
   return (
     <div className="app-content">
@@ -244,9 +318,12 @@ export default function ChatPage() {
             <p style={{ fontSize: 12, color: "#666", margin: "2px 0 0" }}>Gym channels</p>
           </div>
           {member && (
-            <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "5px 12px 5px 8px", borderRadius: 20, backgroundColor: `${getBeltColor(myBelt)}10`, border: `1px solid ${getBeltColor(myBelt)}25` }}>
+            <button
+              onClick={() => setShowRankLegend(true)}
+              style={{ display: "flex", alignItems: "center", gap: 6, padding: "5px 12px 5px 8px", borderRadius: 20, backgroundColor: `${getBeltColor(myBelt)}10`, border: `1px solid ${getBeltColor(myBelt)}25`, cursor: "pointer" }}
+            >
               <BeltIcon belt={myBelt} width={28} style={{ filter: `drop-shadow(0 1px 4px ${getBeltColor(myBelt)}60)` }} />
-            </div>
+            </button>
           )}
         </div>
       </div>
@@ -262,27 +339,93 @@ export default function ChatPage() {
           </div>
         ) : (
           <>
-            {grouped.main.length > 0 && (
+            {/* Announcements pinned to top */}
+            {announcementChannel && (
+              <ChannelRow key={announcementChannel.id} channel={announcementChannel} onOpen={() => setActiveChannelId(announcementChannel.id)} />
+            )}
+
+            {/* Main section (not collapsible) */}
+            {mainChannels.length > 0 && (
               <>
                 <SectionLabel>Main</SectionLabel>
-                {grouped.main.map(ch => <ChannelRow key={ch.id} channel={ch} onOpen={() => setActiveChannelId(ch.id)} />)}
+                {mainChannels.map(ch => <ChannelRow key={ch.id} channel={ch} onOpen={() => setActiveChannelId(ch.id)} />)}
               </>
             )}
-            {grouped.rank.length > 0 && (
+
+            {/* Adult Ranks (collapsible, default open) */}
+            {adultRankChannels.length > 0 && (
               <>
-                <SectionLabel>Adult Ranks</SectionLabel>
-                {grouped.rank.map(ch => <ChannelRow key={ch.id} channel={ch} isRank onOpen={() => setActiveChannelId(ch.id)} />)}
+                <CollapsibleSectionLabel
+                  label="Adult Ranks"
+                  collapsed={!!collapsed['Adult Ranks']}
+                  onToggle={() => toggleSection('Adult Ranks')}
+                />
+                {!collapsed['Adult Ranks'] && adultRankChannels.map(ch => (
+                  <ChannelRow key={ch.id} channel={ch} isRank onOpen={() => setActiveChannelId(ch.id)} />
+                ))}
               </>
             )}
-            {grouped.kidsRank.some(c => c.accessible) && (
+
+            {/* Kids Ranks (collapsible, default closed) */}
+            {kidsRankChannels.some(c => c.accessible) && (
               <>
-                <SectionLabel>Kids Ranks</SectionLabel>
-                {grouped.kidsRank.filter(c => c.accessible).map(ch => <ChannelRow key={ch.id} channel={ch} isRank onOpen={() => setActiveChannelId(ch.id)} />)}
+                <CollapsibleSectionLabel
+                  label="Kids Ranks"
+                  collapsed={!!collapsed['Kids Ranks']}
+                  onToggle={() => toggleSection('Kids Ranks')}
+                />
+                {!collapsed['Kids Ranks'] && kidsRankChannels.filter(c => c.accessible).map(ch => (
+                  <ChannelRow key={ch.id} channel={ch} isRank onOpen={() => setActiveChannelId(ch.id)} />
+                ))}
               </>
             )}
           </>
         )}
       </div>
+
+      {/* Rank Legend Bottom Sheet (from channel list view) */}
+      {showRankLegend && (
+        <div
+          style={{ position: "fixed", inset: 0, zIndex: 200, display: "flex", alignItems: "flex-end" }}
+          onClick={() => setShowRankLegend(false)}
+        >
+          <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.5)", backdropFilter: "blur(4px)" }} />
+          <div
+            onClick={e => e.stopPropagation()}
+            style={{
+              position: "relative", width: "100%",
+              background: "#111", borderRadius: "20px 20px 0 0",
+              padding: "24px 20px", borderTop: "1px solid #1A1A1A",
+              paddingBottom: "max(24px, calc(env(safe-area-inset-bottom, 0px) + 24px))",
+            }}
+          >
+            <div style={{ width: 36, height: 4, borderRadius: 2, background: "#2A2A2A", margin: "0 auto 16px" }} />
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
+              <h3 style={{ fontSize: 16, fontWeight: 700, color: "#F0F0F0", margin: 0 }}>BJJ Rank Hierarchy</h3>
+              <button onClick={() => setShowRankLegend(false)} style={{ background: "none", border: "none", padding: 4, cursor: "pointer" }}>
+                <X size={18} style={{ color: "#555" }} />
+              </button>
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              {RANK_LEGEND.map(r => (
+                <div key={r.belt} style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 12px", borderRadius: 10, backgroundColor: "#0D0D0D", border: "1px solid #1A1A1A" }}>
+                  <div style={{
+                    width: 28, height: 28, borderRadius: "50%",
+                    backgroundColor: r.color,
+                    border: 'border' in r ? `2px solid ${r.border}` : "2px solid transparent",
+                    flexShrink: 0,
+                  }} />
+                  <div>
+                    <p style={{ fontSize: 14, fontWeight: 600, color: "#E0E0E0", margin: 0, textTransform: "capitalize" }}>{r.belt} Belt</p>
+                    <p style={{ fontSize: 12, color: "#888", margin: "2px 0 0" }}>{r.title}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
       <div style={{ height: 20 }} />
     </div>
   );
@@ -433,4 +576,20 @@ function ChannelRow({ channel, isRank, onOpen }: { channel: ChatChannel; isRank?
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
   return <p style={{ fontSize: 12, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.1em", color: "#555", margin: "16px 0 10px" }}>{children}</p>;
+}
+
+function CollapsibleSectionLabel({ label, collapsed, onToggle }: { label: string; collapsed: boolean; onToggle: () => void }) {
+  return (
+    <button
+      onClick={onToggle}
+      style={{
+        display: "flex", alignItems: "center", gap: 6, width: "100%",
+        background: "none", border: "none", cursor: "pointer", padding: 0,
+        margin: "16px 0 10px",
+      }}
+    >
+      <p style={{ fontSize: 12, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.1em", color: "#555", margin: 0 }}>{label}</p>
+      <ChevronRight size={14} style={{ color: "#555", transition: "transform 0.2s", transform: collapsed ? "rotate(0deg)" : "rotate(90deg)" }} />
+    </button>
+  );
 }
