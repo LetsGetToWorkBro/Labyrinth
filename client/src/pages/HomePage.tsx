@@ -3,7 +3,8 @@ import type { FamilyMember, PaymentCard } from "@/lib/api";
 import { beltSavePromotion } from "@/lib/api";
 import { BeltIcon } from "@/components/BeltIcon";
 import { ADULT_BELT_OPTIONS } from "@/components/BeltIcon";
-import { getBeltColor } from "@/lib/constants";
+import { getBeltColor, CLASS_SCHEDULE } from "@/lib/constants";
+import { chatGetChannels, fetchCSV, parseCSV, CSV_ENDPOINTS } from "@/lib/api";
 import { ALL_ACHIEVEMENTS } from "@/lib/achievements";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import {
@@ -60,6 +61,33 @@ const haptic = (pattern: number | number[] = 10) => {
 const getInitials = (name: string) => {
   return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
 };
+
+function parseClassMinutes(timeStr: string): number {
+  if (!timeStr) return 0;
+  if (timeStr.includes('T') && timeStr.includes('Z')) {
+    const d = new Date(timeStr);
+    return d.getUTCHours() * 60 + d.getUTCMinutes();
+  }
+  const match = timeStr.match(/^(\d+):(\d+)\s*(AM|PM)$/i);
+  if (!match) return 0;
+  let h = parseInt(match[1], 10);
+  const m = parseInt(match[2], 10);
+  const period = match[3].toUpperCase();
+  if (period === 'PM' && h !== 12) h += 12;
+  if (period === 'AM' && h === 12) h = 0;
+  return h * 60 + m;
+}
+
+function formatClassTime(timeStr: string): string {
+  if (!timeStr) return '';
+  if (timeStr.includes('T') && timeStr.includes('Z')) {
+    const date = new Date(timeStr);
+    return date.toLocaleTimeString('en-US', {
+      hour: 'numeric', minute: '2-digit', hour12: true, timeZone: 'UTC',
+    });
+  }
+  return timeStr;
+}
 
 const beltColorMap: Record<string, string> = {
   white: '#E0E0E0', blue: '#3B82F6', purple: '#8B5CF6',
@@ -228,6 +256,123 @@ export default function HomePage() {
       showBadgeUnlock({ key: 'streak', label: `${newMilestone}-Week Streak!`, icon: '\u{1F525}', desc: `${newMilestone} consecutive weeks of training. Consistency is everything.`, color: '#F97316' });
     }
   }, [streakCount]);
+
+  // ─── Next Class widget ─────────────────────────────────────────────
+  const getNextClass = useCallback(() => {
+    const now = new Date();
+    const days = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+    const today = days[now.getDay()];
+    const currentMins = now.getHours() * 60 + now.getMinutes();
+
+    for (let dayOffset = 0; dayOffset <= 1; dayOffset++) {
+      const checkDay = days[(now.getDay() + dayOffset) % 7];
+      const dayClasses = CLASS_SCHEDULE
+        .filter(c => c.day === checkDay)
+        .sort((a, b) => parseClassMinutes(a.time) - parseClassMinutes(b.time));
+      for (const cls of dayClasses) {
+        const clsMins = parseClassMinutes(cls.time);
+        if (dayOffset > 0 || clsMins > currentMins + 15) {
+          return { ...cls, isToday: dayOffset === 0, dayLabel: dayOffset === 0 ? 'Today' : 'Tomorrow' };
+        }
+      }
+    }
+    return null;
+  }, []);
+
+  const nextClass = getNextClass();
+
+  // ─── Weekly training dots ─────────────────────────────────────────
+  const weeklyTraining = useCallback(() => {
+    const DAYS = ['M','T','W','T','F','S','S'];
+    const now = new Date();
+    const todayIdx = (now.getDay() + 6) % 7; // Mon=0
+    // Get the Monday of this week
+    const monday = new Date(now);
+    monday.setDate(now.getDate() - todayIdx);
+    monday.setHours(0, 0, 0, 0);
+
+    let weekly: string[] = [];
+    try { weekly = JSON.parse(localStorage.getItem('lbjj_weekly_training') || '[]'); } catch {}
+
+    return DAYS.map((d, i) => {
+      const dayDate = new Date(monday);
+      dayDate.setDate(monday.getDate() + i);
+      const dateStr = dayDate.toISOString().split('T')[0];
+      return {
+        label: d,
+        trained: weekly.includes(dateStr),
+        isToday: i === todayIdx,
+      };
+    });
+  }, []);
+
+  const weekDots = weeklyTraining();
+
+  // ─── Tournament countdown ─────────────────────────────────────────
+  const [nextTournament, setNextTournament] = useState<{ name: string; date: string } | null>(null);
+  const [tournamentDaysUntil, setTournamentDaysUntil] = useState(0);
+
+  useEffect(() => {
+    const CACHE_KEY = 'lbjj_tournaments_cache';
+    const CACHE_TTL = 10 * 60 * 1000; // 10 minutes
+
+    async function loadTournaments() {
+      try {
+        const cached = localStorage.getItem(CACHE_KEY);
+        if (cached) {
+          const { data, ts } = JSON.parse(cached);
+          if (Date.now() - ts < CACHE_TTL) {
+            findNext(data);
+            return;
+          }
+        }
+      } catch {}
+
+      try {
+        const csv = await fetchCSV(CSV_ENDPOINTS.events);
+        const events = parseCSV<any>(csv).map((e: any) => ({
+          date: e.Date || e.date || '',
+          name: e.Name || e.name || '',
+        }));
+        try { localStorage.setItem(CACHE_KEY, JSON.stringify({ data: events, ts: Date.now() })); } catch {}
+        findNext(events);
+      } catch {}
+    }
+
+    function findNext(events: { date: string; name: string }[]) {
+      const now = new Date();
+      now.setHours(0, 0, 0, 0);
+      let best: { name: string; date: string; days: number } | null = null;
+      for (const ev of events) {
+        if (!ev.date) continue;
+        const d = new Date(ev.date);
+        if (isNaN(d.getTime())) continue;
+        d.setHours(0, 0, 0, 0);
+        const diff = Math.round((d.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+        if (diff >= 0 && diff <= 30 && (!best || diff < best.days)) {
+          best = { name: ev.name, date: ev.date, days: diff };
+        }
+      }
+      if (best) {
+        setNextTournament({ name: best.name, date: best.date });
+        setTournamentDaysUntil(best.days);
+      }
+    }
+
+    loadTournaments();
+  }, []);
+
+  // ─── Announcement preview ─────────────────────────────────────────
+  const [announcementPreview, setAnnouncementPreview] = useState<string | null>(null);
+
+  useEffect(() => {
+    chatGetChannels().then(channels => {
+      const ann = channels.find(ch => ch.id === 'announcements');
+      if (ann?.lastMessage) {
+        setAnnouncementPreview(ann.lastMessage);
+      }
+    }).catch(() => {});
+  }, []);
 
   // ─── Logged-in home ───────────────────────────────────────────────
   const hasWarnings = !member.waiverSigned || !member.agreementSigned;
@@ -596,20 +741,80 @@ export default function HomePage() {
         )}
       </div>
 
-      {/* Quick Links */}
-      <div className="mx-5 mb-6">
-        <h3 className="text-xs font-medium uppercase tracking-wider mb-3" style={{ color: "#666" }}>Quick Links</h3>
-        <div className="space-y-1">
-          <QuickLink href="/#/belt" icon={<svg width={20} height={20} viewBox="0 0 24 24" fill="none" stroke="#C8A24C" strokeWidth={2}><circle cx="12" cy="8" r="6"/><path d="M15.477 12.89 17 22l-5-3-5 3 1.523-9.11"/></svg>} label="Belt Journey" />
-          <QuickLink href="/#/schedule" icon={<svg width={20} height={20} viewBox="0 0 24 24" fill="none" stroke="#C8A24C" strokeWidth={2}><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>} label="Class Schedule" />
-          <QuickLink href="/#/calendar" icon={<svg width={20} height={20} viewBox="0 0 24 24" fill="none" stroke="#C8A24C" strokeWidth={2}><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></svg>} label="Tournament Calendar" />
-          <QuickLink href="/#/stats" icon={<svg width={20} height={20} viewBox="0 0 24 24" fill="none" stroke="#C8A24C" strokeWidth={2}><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/><line x1="2" y1="20" x2="22" y2="20"/></svg>} label="Academy Stats" />
-          <QuickLink href="/#/sauna" icon={<svg width={20} height={20} viewBox="0 0 24 24" fill="none" stroke="#C8A24C" strokeWidth={2}><path d="M12 2a5 5 0 0 1 5 5v3H7V7a5 5 0 0 1 5-5Z"/><path d="M7 10v2a5 5 0 0 0 10 0v-2"/><line x1="8" y1="21" x2="8" y2="14"/><line x1="12" y1="21" x2="12" y2="14"/><line x1="16" y1="21" x2="16" y2="14"/></svg>} label="Sauna Dashboard" />
-          <QuickLink href="/#/book" icon={<svg width={20} height={20} viewBox="0 0 24 24" fill="none" stroke="#C8A24C" strokeWidth={2}><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>} label="Book a Trial Class" />
-          <QuickLink href="/#/leaderboard" icon={<svg width={20} height={20} viewBox="0 0 24 24" fill="none" stroke="#C8A24C" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></svg>} label="Leaderboard" />
-          <QuickLink href="/#/games" icon={<svg width={20} height={20} viewBox="0 0 24 24" fill="none" stroke="#C8A24C" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="6" width="20" height="12" rx="4"/><path d="M12 12h.01M7 12h.01M17 12h.01M12 8v8"/></svg>} label="Games" />
+      {/* Widget 1 — Next Class Card */}
+      {nextClass && (
+        <div className="mx-5 mb-3">
+          <a href="/#/schedule" style={{ textDecoration: 'none', display: 'block' }}>
+            <div style={{
+              background: '#141414', border: '1px solid #1A1A1A',
+              borderLeft: '3px solid #C8A24C', borderRadius: 14,
+              padding: 16, cursor: 'pointer',
+            }}>
+              <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', color: '#C8A24C', textTransform: 'uppercase' as const, marginBottom: 6 }}>Next Class</div>
+              <div style={{ fontSize: 17, fontWeight: 700, color: '#F0F0F0', marginBottom: 4 }}>{nextClass.name}</div>
+              <div style={{ fontSize: 13, color: '#666' }}>{nextClass.dayLabel} · {formatClassTime(nextClass.time)}</div>
+              {nextClass.instructor && <div style={{ fontSize: 12, color: '#555', marginTop: 2 }}>w/ {nextClass.instructor}</div>}
+            </div>
+          </a>
+        </div>
+      )}
+
+      {/* Widget 2 — Weekly Training Progress */}
+      <div className="mx-5 mb-3">
+        <div style={{ display: 'flex', justifyContent: 'center', gap: 8 }}>
+          {weekDots.map((d, i) => (
+            <div key={i} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
+              <div style={{
+                width: 28, height: 28, borderRadius: '50%',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontSize: 14,
+                ...(d.trained
+                  ? { background: '#C8A24C', color: '#0A0A0A' }
+                  : d.isToday
+                    ? { background: 'transparent', border: '2px solid #E0E0E0', color: '#E0E0E0' }
+                    : { background: 'transparent', border: '2px solid #2A2A2A', color: '#2A2A2A' }
+                ),
+              }}>
+                {d.trained ? '●' : '○'}
+              </div>
+              <span style={{ fontSize: 9, color: d.isToday ? '#E0E0E0' : '#555', fontWeight: d.isToday ? 700 : 400 }}>{d.label}</span>
+            </div>
+          ))}
         </div>
       </div>
+
+      {/* Widget 3 — Tournament Countdown (conditional) */}
+      {nextTournament && tournamentDaysUntil <= 30 && (
+        <div className="mx-5 mb-3">
+          <a href="/#/calendar" style={{ textDecoration: 'none', display: 'block' }}>
+            <div style={{
+              background: 'linear-gradient(135deg, #141414, #1A1A0A)',
+              border: '1px solid rgba(200,162,76,0.19)', borderRadius: 14, padding: 16,
+              cursor: 'pointer',
+            }}>
+              <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', color: '#C8A24C', textTransform: 'uppercase' as const, marginBottom: 6 }}>🏆 Upcoming Tournament</div>
+              <div style={{ fontSize: 16, fontWeight: 700, color: '#F0F0F0', marginBottom: 4 }}>{nextTournament.name}</div>
+              <div style={{ fontSize: 13, color: '#888' }}>{tournamentDaysUntil === 0 ? 'Today!' : tournamentDaysUntil === 1 ? 'Tomorrow' : `${tournamentDaysUntil} days away`}</div>
+            </div>
+          </a>
+        </div>
+      )}
+
+      {/* Widget 4 — Announcements Preview (conditional) */}
+      {announcementPreview && (
+        <div className="mx-5 mb-6">
+          <a href="/#/chat" style={{ textDecoration: 'none', display: 'block' }}>
+            <div style={{
+              background: '#141414', border: '1px solid #1A1A1A',
+              borderRadius: 14, padding: '14px 16px',
+              cursor: 'pointer',
+            }}>
+              <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', color: '#666', textTransform: 'uppercase' as const, marginBottom: 6 }}>📢 Announcement</div>
+              <div style={{ fontSize: 13, color: '#CCC', lineHeight: 1.5, overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' as const }}>{announcementPreview}</div>
+            </div>
+          </a>
+        </div>
+      )}
 
       {/* ── Rank Request Bottom Sheet ── */}
       {showRankRequest && (
@@ -773,12 +978,3 @@ function WarningBanner({ text, action, href }: { text: string; action: string; h
   );
 }
 
-function QuickLink({ href, icon, label }: { href: string; icon: React.ReactNode; label: string }) {
-  return (
-    <a href={href} className="flex items-center gap-3 p-3 rounded-xl transition-all active:scale-[0.98]" style={{ backgroundColor: "#111" }}>
-      <span style={{ width: 20, height: 20, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#C8A24C', flexShrink: 0 }}>{icon}</span>
-      <span className="text-sm font-medium flex-1" style={{ color: "#F0F0F0" }}>{label}</span>
-      <ChevronRight size={16} style={{ color: "#444" }} />
-    </a>
-  );
-}

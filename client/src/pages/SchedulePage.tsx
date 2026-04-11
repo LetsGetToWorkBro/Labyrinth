@@ -326,6 +326,14 @@ function ClassCard({ cls, isToday }: { cls: ClassScheduleItem; isToday: boolean 
     const newCount = (todayData.date === today ? (todayData.count || 0) : 0) + 1;
     localStorage.setItem('lbjj_checkins_today', JSON.stringify({ date: today, count: newCount }));
 
+    // Track weekly training days for the home screen dots
+    const weekly: string[] = (() => { try { return JSON.parse(localStorage.getItem('lbjj_weekly_training') || '[]'); } catch { return []; } })();
+    if (!weekly.includes(today)) {
+      weekly.push(today);
+      const cutoff = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+      localStorage.setItem('lbjj_weekly_training', JSON.stringify(weekly.filter((d: string) => d >= cutoff)));
+    }
+
     // Check and unlock local achievements after check-in
     const profile = (() => { try { return JSON.parse(localStorage.getItem('lbjj_member_profile') || '{}'); } catch { return {}; } })();
     const gameStats = (() => { try { return JSON.parse(localStorage.getItem('lbjj_game_stats_v2') || '{}'); } catch { return {}; } })();
