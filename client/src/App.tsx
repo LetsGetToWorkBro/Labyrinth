@@ -251,22 +251,39 @@ function AccountPage() {
 
     // Only works on iOS Safari
     const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
-    const passUrl = `https://labyrinth-pass-server-production.up.railway.app/pass/${encodeURIComponent(member?.belt || 'white')}/${encodeURIComponent(member?.name || 'Member')}`;
+    const belt = (member?.belt || 'white').toLowerCase();
+    const name = member?.name || 'Member';
+
     if (!isIOS) {
-      window.open(passUrl, '_blank');
+      // Non-iOS: open test pass URL directly
+      window.open(`https://labyrinth-pass-server-production.up.railway.app/pass/test/${encodeURIComponent(belt)}/${encodeURIComponent(name)}`, '_blank');
       return;
     }
 
     setWalletLoading(true);
     try {
-      const response = await fetch(passUrl);
+      // Use POST /pass/generate with real member data
+      const response = await fetch('https://labyrinth-pass-server-production.up.railway.app/pass/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          apiSecret: 'lbjj-pass-secret-2026',
+          memberData: {
+            name,
+            email: member?.email || '',
+            belt,
+            membership: member?.membership || 'Active',
+            plan: member?.plan || '',
+          }
+        })
+      });
 
       if (!response.ok) throw new Error('Failed to generate pass');
 
       const blob = await response.blob();
       const url = URL.createObjectURL(blob);
 
-      // Trigger iOS Wallet prompt by navigating to the .pkpass URL
+      // Trigger iOS Wallet prompt
       window.location.href = url;
 
     } catch (err) {
