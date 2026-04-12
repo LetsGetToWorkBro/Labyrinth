@@ -40,7 +40,7 @@ export default function LivePage() {
     <div className="app-content">
       <ScreenHeader title="Live" subtitle="Class Streaming" />
 
-      <div className="px-5 pb-6">
+      <div style={{ padding: '20px 20px 0', paddingBottom: 'max(80px, calc(env(safe-area-inset-bottom, 0px) + 70px))' }}>
         {/* Now Live section */}
         {stream.isLive && (
           <div style={{ margin: '0 0 20px' }}>
@@ -57,7 +57,7 @@ export default function LivePage() {
             <div style={{ position: 'relative', width: '100%', paddingTop: '56.25%', borderRadius: 14, overflow: 'hidden', background: '#0D0D0D' }}>
               <iframe
                 src={getEmbedUrl(stream.videoId)}
-                style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', border: 'none' }}
+                style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', border: 'none' }}
                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                 allowFullScreen
                 title={stream.className}
@@ -86,7 +86,7 @@ export default function LivePage() {
           <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#444', marginBottom: 14 }}>Class Archive</div>
 
           {/* Category filter tabs */}
-          <div style={{ display: 'flex', gap: 8, overflowX: 'auto', marginBottom: 16, paddingBottom: 4 }}>
+          <div style={{ display: 'flex', gap: 8, overflowX: 'auto', WebkitOverflowScrolling: 'touch', scrollbarWidth: 'none', marginBottom: 16, paddingBottom: 4 }}>
             {['All', 'Gi', 'No-Gi', 'Kids', 'Comp', 'Open Mat'].map(cat => (
               <button key={cat}
                 onClick={() => setActiveCategory(cat === 'All' ? '' : cat)}
@@ -109,9 +109,9 @@ export default function LivePage() {
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
               {archives.map(entry => (
                 <a key={entry.archiveId} href={entry.videoUrl} target="_blank" rel="noopener noreferrer"
-                  style={{ display: 'flex', gap: 12, background: '#141414', borderRadius: 12, overflow: 'hidden', textDecoration: 'none', alignItems: 'stretch' }}>
+                  style={{ display: 'flex', gap: 12, background: '#141414', borderRadius: 12, overflow: 'hidden', textDecoration: 'none', alignItems: 'stretch', boxSizing: 'border-box' }}>
                   {/* Thumbnail */}
-                  <div style={{ width: 120, flexShrink: 0, background: '#0D0D0D', position: 'relative' }}>
+                  <div style={{ width: 'min(120px, 30vw)', flexShrink: 0, background: '#0D0D0D', position: 'relative' }}>
                     {entry.thumbnail ? (
                       <img src={entry.thumbnail} alt={entry.title} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                     ) : (
