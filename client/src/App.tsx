@@ -1,3 +1,4 @@
+// v2.1.0 — Apple Wallet integration
 import { Switch, Route, Router, useLocation } from "wouter";
 import { useHashLocation } from "wouter/use-hash-location";
 import { queryClient } from "./lib/queryClient";
