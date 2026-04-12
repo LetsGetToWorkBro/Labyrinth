@@ -251,30 +251,15 @@ function AccountPage() {
 
     // Only works on iOS Safari
     const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+    const passUrl = `https://labyrinth-pass-server-production.up.railway.app/pass/${encodeURIComponent(member?.belt || 'white')}/${encodeURIComponent(member?.name || 'Member')}`;
     if (!isIOS) {
-      // On Android/desktop, show a friendly message
-      alert('Apple Wallet is only available on iPhone. Android members can use the QR code in the app to access the door.');
+      window.open(passUrl, '_blank');
       return;
     }
 
     setWalletLoading(true);
     try {
-      const sessionToken = localStorage.getItem('lbjj_session_token') || '';
-      const profile = (() => { try { return JSON.parse(localStorage.getItem('lbjj_member_profile') || '{}'); } catch { return {}; } })();
-
-      const response = await fetch('https://labyrinth-pass-server-production.up.railway.app/pass/generate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          apiSecret: 'lbjj-pass-secret-2026',
-          memberData: {
-            name:  profile.Name  || profile.name  || 'Member',
-            email: profile.Email || profile.email || '',
-            belt:  profile.Belt  || profile.belt  || 'white',
-            role:  profile.Role  || profile.role  || '',
-          }
-        })
-      });
+      const response = await fetch(passUrl);
 
       if (!response.ok) throw new Error('Failed to generate pass');
 
@@ -500,7 +485,10 @@ function AccountPage() {
           </>
         )}
 
-        {member && (
+        {member && (<>
+          <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#555', marginTop: 24, marginBottom: 8 }}>
+            Member Pass
+          </div>
           <div style={{ marginTop: 14 }}>
             <button
               onClick={handleAddToWallet}
@@ -531,7 +519,7 @@ function AccountPage() {
               )}
             </button>
           </div>
-        )}
+        </>)}
 
         {/* Class History link */}
         <a href="/#/history" style={{

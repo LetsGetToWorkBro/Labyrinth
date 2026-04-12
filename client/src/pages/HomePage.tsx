@@ -458,7 +458,7 @@ export default function HomePage() {
   const weekDots = weeklyTraining();
 
   // ─── Tournament countdown ─────────────────────────────────────────
-  const [nextTournament, setNextTournament] = useState<{ name: string; date: string } | null>(null);
+  const [nextTournament, setNextTournament] = useState<{ name: string; date: string; location?: string; link?: string } | null>(null);
   const [tournamentDaysUntil, setTournamentDaysUntil] = useState(0);
 
   useEffect(() => {
@@ -482,28 +482,30 @@ export default function HomePage() {
         const events = parseCSV<any>(csv).map((e: any) => ({
           date: e.Date || e.date || '',
           name: e.Name || e.name || '',
+          location: e.Location || e.location || '',
+          link: e.Link || e.link || '',
         }));
         try { localStorage.setItem(CACHE_KEY, JSON.stringify({ data: events, ts: Date.now() })); } catch {}
         findNext(events);
       } catch {}
     }
 
-    function findNext(events: { date: string; name: string }[]) {
+    function findNext(events: { date: string; name: string; location?: string; link?: string }[]) {
       const now = new Date();
       now.setHours(0, 0, 0, 0);
-      let best: { name: string; date: string; days: number } | null = null;
+      let best: { name: string; date: string; days: number; location?: string; link?: string } | null = null;
       for (const ev of events) {
         if (!ev.date) continue;
         const d = new Date(ev.date);
         if (isNaN(d.getTime())) continue;
         d.setHours(0, 0, 0, 0);
         const diff = Math.round((d.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
-        if (diff >= 0 && diff <= 30 && (!best || diff < best.days)) {
-          best = { name: ev.name, date: ev.date, days: diff };
+        if (diff >= 0 && diff <= 60 && (!best || diff < best.days)) {
+          best = { name: ev.name, date: ev.date, days: diff, location: ev.location, link: ev.link };
         }
       }
       if (best) {
-        setNextTournament({ name: best.name, date: best.date });
+        setNextTournament({ name: best.name, date: best.date, location: best.location, link: best.link });
         setTournamentDaysUntil(best.days);
       }
     }
@@ -909,7 +911,7 @@ export default function HomePage() {
       </div>
 
       {/* Tournament Countdown (conditional) */}
-      {nextTournament && tournamentDaysUntil <= 30 && (
+      {nextTournament && tournamentDaysUntil <= 60 && (
         <div className="mx-5 mb-3">
           <a href="/#/calendar" style={{ textDecoration: 'none', display: 'block' }}>
             <div style={{
@@ -920,6 +922,55 @@ export default function HomePage() {
               <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', color: '#C8A24C', textTransform: 'uppercase' as const, marginBottom: 6 }}>🏆 Upcoming Tournament</div>
               <div style={{ fontSize: 16, fontWeight: 700, color: '#F0F0F0', marginBottom: 4 }}>{nextTournament.name}</div>
               <div style={{ fontSize: 13, color: '#888' }}>{tournamentDaysUntil === 0 ? 'Today!' : tournamentDaysUntil === 1 ? 'Tomorrow' : `${tournamentDaysUntil} days away`}</div>
+
+              {/* Location row */}
+              {nextTournament.location && (
+                <a
+                  href={`https://maps.google.com/?q=${encodeURIComponent(nextTournament.location)}`}
+                  target="_blank" rel="noopener noreferrer"
+                  style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 10, textDecoration: 'none' }}
+                  onClick={e => e.stopPropagation()}
+                >
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#C8A24C" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+                  <span style={{ fontSize: 12, color: '#C8A24C', fontWeight: 500 }}>{nextTournament.location}</span>
+                </a>
+              )}
+
+              {/* Action buttons */}
+              <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
+                {nextTournament.location && (
+                  <a
+                    href={`https://maps.google.com/?q=${encodeURIComponent(nextTournament.location)}`}
+                    target="_blank" rel="noopener noreferrer"
+                    onClick={e => e.stopPropagation()}
+                    style={{
+                      flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                      padding: '9px 0', borderRadius: 9, background: 'rgba(200,162,76,0.12)',
+                      border: '1px solid rgba(200,162,76,0.25)', textDecoration: 'none',
+                      fontSize: 12, fontWeight: 600, color: '#C8A24C',
+                    }}
+                  >
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+                    Map
+                  </a>
+                )}
+                {nextTournament.link && (
+                  <a
+                    href={nextTournament.link}
+                    target="_blank" rel="noopener noreferrer"
+                    onClick={e => e.stopPropagation()}
+                    style={{
+                      flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                      padding: '9px 0', borderRadius: 9, background: 'rgba(200,162,76,0.12)',
+                      border: '1px solid rgba(200,162,76,0.25)', textDecoration: 'none',
+                      fontSize: 12, fontWeight: 600, color: '#C8A24C',
+                    }}
+                  >
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+                    Website
+                  </a>
+                )}
+              </div>
             </div>
           </a>
         </div>
