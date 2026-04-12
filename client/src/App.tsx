@@ -204,6 +204,7 @@ function AccountPage() {
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState("");
+  const [walletLoading, setWalletLoading] = useState(false);
   const [, navigate] = useHashLoc();
 
   // Profile picture state
@@ -242,6 +243,51 @@ function AccountPage() {
       try { localStorage.setItem("lbjj_profile_picture", base64); } catch { /* storage full */ }
     };
     img.src = URL.createObjectURL(file);
+  };
+
+  const handleAddToWallet = async () => {
+    if (walletLoading) return;
+
+    // Only works on iOS Safari
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+    if (!isIOS) {
+      // On Android/desktop, show a friendly message
+      alert('Apple Wallet is only available on iPhone. Android members can use the QR code in the app to access the door.');
+      return;
+    }
+
+    setWalletLoading(true);
+    try {
+      const sessionToken = localStorage.getItem('lbjj_session_token') || '';
+      const profile = (() => { try { return JSON.parse(localStorage.getItem('lbjj_member_profile') || '{}'); } catch { return {}; } })();
+
+      const response = await fetch('https://labyrinth-pass-server-production.up.railway.app/pass/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          apiSecret: 'lbjj-pass-secret-2026',
+          memberData: {
+            name:  profile.Name  || profile.name  || 'Member',
+            email: profile.Email || profile.email || '',
+            belt:  profile.Belt  || profile.belt  || 'white',
+            role:  profile.Role  || profile.role  || '',
+          }
+        })
+      });
+
+      if (!response.ok) throw new Error('Failed to generate pass');
+
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+
+      // Trigger iOS Wallet prompt by navigating to the .pkpass URL
+      window.location.href = url;
+
+    } catch (err) {
+      alert('Could not generate your pass. Please try again or contact info@labyrinth.vision');
+    } finally {
+      setWalletLoading(false);
+    }
   };
 
   const save = async () => {
@@ -451,6 +497,39 @@ function AccountPage() {
               Edit Profile
             </button>
           </>
+        )}
+
+        {member && (
+          <div style={{ marginTop: 14 }}>
+            <button
+              onClick={handleAddToWallet}
+              disabled={walletLoading}
+              style={{
+                width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                gap: 10, padding: '14px 20px', borderRadius: 12,
+                background: walletLoading ? '#1A1A1A' : '#000',
+                border: '1px solid #2A2A2A',
+                cursor: walletLoading ? 'default' : 'pointer',
+                transition: 'all 0.2s',
+              }}
+            >
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+                <rect width="24" height="24" rx="5" fill="#1A1A1A"/>
+                <path d="M12 6.5c1.1 0 2-.4 2.7-1.1.7-.7 1-1.6.9-2.6-.9.1-2 .6-2.6 1.3-.6.7-1 1.5-.9 2.4zm.7 1.1c-1.5 0-2.7.8-3.4.8-.7 0-1.8-.8-3-.8C4.8 7.6 3 8.8 3 11.4c0 1.6.6 3.3 1.4 4.4.7 1 1.3 1.8 2.2 1.8.9 0 1.3-.6 2.4-.6 1.1 0 1.5.6 2.4.6.9 0 1.6-.8 2.2-1.8.5-.7.8-1.4 1-2.1-2.6-1-2.2-4.7.1-5.5-.7-.7-1.6-1.1-2-1.1z" fill="white"/>
+              </svg>
+              <div style={{ textAlign: 'left' }}>
+                <div style={{ fontSize: 10, color: '#888', letterSpacing: '0.05em', textTransform: 'uppercase' }}>
+                  {walletLoading ? 'Generating...' : 'Add to'}
+                </div>
+                <div style={{ fontSize: 15, fontWeight: 700, color: '#FFFFFF', letterSpacing: '-0.02em' }}>
+                  {walletLoading ? 'Apple Wallet' : 'Apple Wallet'}
+                </div>
+              </div>
+              {!walletLoading && (
+                <svg style={{ marginLeft: 'auto' }} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#444" strokeWidth="2"><path d="M9 18l6-6-6-6"/></svg>
+              )}
+            </button>
+          </div>
         )}
 
         {/* Class History link */}
