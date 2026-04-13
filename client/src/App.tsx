@@ -540,29 +540,25 @@ function AccountPage() {
               onClick={handleAddToWallet}
               disabled={walletLoading}
               style={{
-                width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                gap: 10, padding: '14px 20px', borderRadius: 12,
+                width: '100%', display: 'flex', alignItems: 'center',
+                gap: 10, padding: '13px 20px', borderRadius: 12,
                 background: walletLoading ? '#1A1A1A' : '#000',
-                border: '1px solid #2A2A2A',
+                border: '1.5px solid rgba(255,255,255,0.15)',
                 cursor: walletLoading ? 'default' : 'pointer',
                 transition: 'all 0.2s',
               }}
             >
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
-                <rect width="24" height="24" rx="5" fill="#1A1A1A"/>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
                 <path d="M12 6.5c1.1 0 2-.4 2.7-1.1.7-.7 1-1.6.9-2.6-.9.1-2 .6-2.6 1.3-.6.7-1 1.5-.9 2.4zm.7 1.1c-1.5 0-2.7.8-3.4.8-.7 0-1.8-.8-3-.8C4.8 7.6 3 8.8 3 11.4c0 1.6.6 3.3 1.4 4.4.7 1 1.3 1.8 2.2 1.8.9 0 1.3-.6 2.4-.6 1.1 0 1.5.6 2.4.6.9 0 1.6-.8 2.2-1.8.5-.7.8-1.4 1-2.1-2.6-1-2.2-4.7.1-5.5-.7-.7-1.6-1.1-2-1.1z" fill="white"/>
               </svg>
               <div style={{ textAlign: 'left' }}>
-                <div style={{ fontSize: 10, color: '#888', letterSpacing: '0.05em', textTransform: 'uppercase' }}>
+                <div style={{ fontSize: 10, color: '#aaa', letterSpacing: '0.05em', textTransform: 'uppercase' }}>
                   {walletLoading ? 'Generating...' : 'Add to'}
                 </div>
                 <div style={{ fontSize: 15, fontWeight: 700, color: '#FFFFFF', letterSpacing: '-0.02em' }}>
-                  {walletLoading ? 'Apple Wallet' : 'Apple Wallet'}
+                  Apple Wallet
                 </div>
               </div>
-              {!walletLoading && (
-                <svg style={{ marginLeft: 'auto' }} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#444" strokeWidth="2"><path d="M9 18l6-6-6-6"/></svg>
-              )}
             </button>
           </div>
           {/* Google Wallet button */}
@@ -574,27 +570,24 @@ function AccountPage() {
                 width: '100%',
                 display: 'flex',
                 alignItems: 'center',
-                justifyContent: 'center',
                 gap: 10,
                 padding: '13px 20px',
                 borderRadius: 12,
-                background: googleWalletLoading ? '#333' : '#1a1a2e',
-                border: '1.5px solid #4285F4',
-                cursor: googleWalletLoading ? 'not-allowed' : 'pointer',
-                transition: 'opacity 0.2s',
-                opacity: googleWalletLoading ? 0.6 : 1,
+                background: googleWalletLoading ? '#1A1A1A' : '#000',
+                border: '1.5px solid rgba(255,255,255,0.15)',
+                cursor: googleWalletLoading ? 'default' : 'pointer',
+                transition: 'all 0.2s',
               }}
             >
-              {/* Google Wallet G logo SVG */}
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                 <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
                 <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
                 <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z" fill="#FBBC05"/>
                 <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
               </svg>
-              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
-                <div style={{ fontSize: 10, color: '#aaa', letterSpacing: '0.05em' }}>
-                  {googleWalletLoading ? 'GENERATING...' : 'ADD TO'}
+              <div style={{ textAlign: 'left' }}>
+                <div style={{ fontSize: 10, color: '#aaa', letterSpacing: '0.05em', textTransform: 'uppercase' }}>
+                  {googleWalletLoading ? 'Generating...' : 'Add to'}
                 </div>
                 <div style={{ fontSize: 15, fontWeight: 700, color: '#FFFFFF', letterSpacing: '-0.02em' }}>
                   Google Wallet
