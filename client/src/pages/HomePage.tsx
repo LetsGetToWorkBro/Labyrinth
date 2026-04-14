@@ -1019,7 +1019,7 @@ export default function HomePage() {
         gap: 10,
         margin: '0 20px 16px',
       }}>
-        <div style={{
+        <a href="/#/history" style={{
           flex: 1,
           background: 'linear-gradient(135deg, rgba(200,162,76,0.12) 0%, rgba(200,162,76,0.04) 100%)',
           border: '1px solid rgba(200,162,76,0.2)',
@@ -1028,20 +1028,26 @@ export default function HomePage() {
           display: 'flex',
           alignItems: 'center',
           gap: 10,
-        }}>
+          textDecoration: 'none',
+          transition: 'transform 120ms cubic-bezier(0.16, 1, 0.3, 1)',
+          cursor: 'pointer',
+        }}
+          className="active:scale-[0.95]"
+        >
           <span className="streak-icon" style={{
             fontSize: 24,
             display: 'inline-block',
             ...(streakCount > 0 ? { animation: 'flamePulse 2s ease-in-out infinite' } : {}),
           }}>🔥</span>
-          <div>
+          <div style={{ flex: 1 }}>
             <div style={{ fontSize: 20, fontWeight: 700, color: '#C8A24C', lineHeight: 1 }}>
               {displayStreak}
             </div>
             <div style={{ fontSize: 11, color: '#666', marginTop: 2 }}>Class streak</div>
           </div>
-        </div>
-        <div style={{
+          <ChevronRight size={14} color="#555" strokeWidth={2} />
+        </a>
+        <a href="/#/history" style={{
           flex: 1,
           background: classesToday > 0 ? 'linear-gradient(135deg, rgba(76,175,128,0.12) 0%, rgba(76,175,128,0.04) 100%)' : 'rgba(255,255,255,0.03)',
           border: classesToday > 0 ? '1px solid rgba(76,175,128,0.2)' : '1px solid #1A1A1A',
@@ -1050,15 +1056,21 @@ export default function HomePage() {
           display: 'flex',
           alignItems: 'center',
           gap: 10,
-        }}>
+          textDecoration: 'none',
+          transition: 'transform 120ms cubic-bezier(0.16, 1, 0.3, 1)',
+          cursor: 'pointer',
+        }}
+          className="active:scale-[0.95]"
+        >
           <span style={{ fontSize: 24 }}>{classesToday > 0 ? '✅' : '📅'}</span>
-          <div>
+          <div style={{ flex: 1 }}>
             <div style={{ fontSize: 20, fontWeight: 700, color: classesToday > 0 ? '#4CAF80' : '#E0E0E0', lineHeight: 1 }}>
               {displayTotalClasses}
             </div>
             <div style={{ fontSize: 11, color: '#666', marginTop: 2 }}>Total classes{classesToday > 0 ? ` · ${classesToday} today` : ''}</div>
           </div>
-        </div>
+          <ChevronRight size={14} color="#555" strokeWidth={2} />
+        </a>
       </div>
 
       {/* Class Leaders Widget */}
