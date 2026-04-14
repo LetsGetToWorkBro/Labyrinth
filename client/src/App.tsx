@@ -1033,6 +1033,27 @@ function AppShell() {
     };
   }, []);
 
+  // ── Page transition on route change ──────────────────────────
+  const prevLocation = useRef(location);
+  useEffect(() => {
+    if (prevLocation.current === location) return;
+
+    // Determine direction
+    const tabPaths = ['/', '/chat', '/achievements', '/schedule', '/more', '/games', '/leaderboard', '/live', '/history'];
+    const isTab = tabPaths.includes(location) && tabPaths.includes(prevLocation.current);
+
+    const content = document.querySelector('.app-content');
+    if (content) {
+      const cls = isTab ? 'page-enter-tab' : 'page-enter-forward';
+      content.classList.remove('page-enter-forward', 'page-enter-back', 'page-enter-tab');
+      content.classList.add(cls);
+      const cleanup = () => content.classList.remove(cls);
+      content.addEventListener('animationend', cleanup, { once: true });
+    }
+
+    prevLocation.current = location;
+  }, [location]);
+
   // ── Global Biometric / Passkey setup prompt ───────────────────
   const [showPasskeySetup, setShowPasskeySetup] = useState(false);
   const [passkeyRegistering, setPasskeyRegistering] = useState(false);
@@ -1128,30 +1149,32 @@ function AppShell() {
         />
       )}
 
-      <Switch>
-        <Route path="/"          component={HomePage} />
+      <div className="app-content">
+        <Switch>
+          <Route path="/"          component={HomePage} />
 
-        <Route path="/calendar"  component={CalendarPage} />
-        <Route path="/stats"     component={StatsPage} />
-        <Route path="/belt"      component={BeltJourneyPage} />
-        <Route path="/chat"      component={ChatPage} />
-        <Route path="/schedule"  component={SchedulePage} />
-        <Route path="/sauna"     component={SaunaPage} />
-        <Route path="/waiver"    component={WaiverPage} />
-        <Route path="/book"      component={BookingPage} />
-        <Route path="/games"     component={GamesPage} />
-        <Route path="/leaderboard" component={LeaderboardPage} />
-        <Route path="/achievements" component={AchievementsPage} />
-        <Route path="/live"      component={LivePage} />
-        <Route path="/history"   component={CheckInHistoryPage} />
-        <Route path="/more"      component={MorePage} />
-        <Route path="/account"    component={AccountPage} />
-        <Route path="/messages"  component={MessagesPage} />
-        <Route path="/admin"     component={AdminPageWrapper} />
-        <Route path="/reset"     component={ResetPasswordPage} />
-        <Route path="/academy-stats"><Redirect to="/stats" /></Route>
-        <Route component={NotFound} />
-      </Switch>
+          <Route path="/calendar"  component={CalendarPage} />
+          <Route path="/stats"     component={StatsPage} />
+          <Route path="/belt"      component={BeltJourneyPage} />
+          <Route path="/chat"      component={ChatPage} />
+          <Route path="/schedule"  component={SchedulePage} />
+          <Route path="/sauna"     component={SaunaPage} />
+          <Route path="/waiver"    component={WaiverPage} />
+          <Route path="/book"      component={BookingPage} />
+          <Route path="/games"     component={GamesPage} />
+          <Route path="/leaderboard" component={LeaderboardPage} />
+          <Route path="/achievements" component={AchievementsPage} />
+          <Route path="/live"      component={LivePage} />
+          <Route path="/history"   component={CheckInHistoryPage} />
+          <Route path="/more"      component={MorePage} />
+          <Route path="/account"    component={AccountPage} />
+          <Route path="/messages"  component={MessagesPage} />
+          <Route path="/admin"     component={AdminPageWrapper} />
+          <Route path="/reset"     component={ResetPasswordPage} />
+          <Route path="/academy-stats"><Redirect to="/stats" /></Route>
+          <Route component={NotFound} />
+        </Switch>
+      </div>
       <TabBar />
     </div>
   );

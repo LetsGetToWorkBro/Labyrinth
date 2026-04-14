@@ -329,9 +329,36 @@ export default function HomePage() {
 
   const streakCount = (member as any)?.currentStreak || 0;
 
+  // ─── Streak count-up animation ────────────────────────────────
+  const [displayStreak, setDisplayStreak] = useState(0);
+  const streakAnimated = useRef(false);
+
+  useEffect(() => {
+    const streak = member?.currentStreak || 0;
+    if (streakAnimated.current || streak === 0) {
+      setDisplayStreak(streak);
+      return;
+    }
+    streakAnimated.current = true;
+    const duration = 400;
+    const startTime = performance.now();
+    const tick = (now: number) => {
+      const elapsed = now - startTime;
+      const progress = Math.min(elapsed / duration, 1);
+      const eased = 1 - Math.pow(1 - progress, 3); // ease-out cubic
+      setDisplayStreak(Math.round(eased * streak));
+      if (progress < 1) requestAnimationFrame(tick);
+    };
+    requestAnimationFrame(tick);
+  }, [member?.currentStreak]);
+
   // ─── Today's check-in count (immediate, localStorage-based) ────
   const [classesToday, setClassesToday] = useState(0);
   const [totalClasses, setTotalClasses] = useState(0);
+
+  // ─── Total classes count-up animation ─────────────────────────
+  const [displayTotalClasses, setDisplayTotalClasses] = useState(0);
+  const totalClassesAnimated = useRef(false);
   const readClassesToday = useCallback(() => {
     try {
       const raw = JSON.parse(localStorage.getItem('lbjj_checkins_today') || '{}');
@@ -354,6 +381,25 @@ export default function HomePage() {
       document.removeEventListener('visibilitychange', onVisibility);
     };
   }, [readClassesToday]);
+
+  // ─── Total classes count-up animation effect ──────────────────────
+  useEffect(() => {
+    if (totalClassesAnimated.current || totalClasses === 0) {
+      setDisplayTotalClasses(totalClasses);
+      return;
+    }
+    totalClassesAnimated.current = true;
+    const duration = 400;
+    const startTime = performance.now();
+    const tick = (now: number) => {
+      const elapsed = now - startTime;
+      const progress = Math.min(elapsed / duration, 1);
+      const eased = 1 - Math.pow(1 - progress, 3); // ease-out cubic
+      setDisplayTotalClasses(Math.round(eased * totalClasses));
+      if (progress < 1) requestAnimationFrame(tick);
+    };
+    requestAnimationFrame(tick);
+  }, [totalClasses]);
 
   // ─── Streak milestone celebration ──────────────────────────────────
   useEffect(() => {
@@ -466,6 +512,25 @@ export default function HomePage() {
 
     // Show success toast
     showPointsToast(10);
+
+    // Ring pulse on check-in button
+    const btn = document.querySelector('[data-checkin-btn]');
+    if (btn) {
+      const ring = document.createElement('span');
+      ring.className = 'checkin-ring';
+      btn.parentElement!.style.position = 'relative';
+      btn.parentElement!.appendChild(ring);
+      ring.addEventListener('animationend', () => ring.remove(), { once: true });
+    }
+
+    // Flame flicker on streak icon
+    setTimeout(() => {
+      const flame = document.querySelector('.streak-icon');
+      if (flame) {
+        flame.classList.add('streak-icon-flicker');
+        flame.addEventListener('animationend', () => flame.classList.remove('streak-icon-flicker'), { once: true });
+      }
+    }, 150);
 
     // Mark class as checked in
     setCheckedInClasses(prev => [...prev, cls.name || '']);
@@ -609,7 +674,7 @@ export default function HomePage() {
       />
 
       {/* Personalized greeting */}
-      <div className="mx-5 mb-4">
+      <div className="mx-5 mb-4 stagger-child">
         <h1 className="text-xl font-bold" style={{ color: "#F0F0F0" }} data-testid="text-greeting">
           {getGreeting()}
         </h1>
@@ -643,7 +708,7 @@ export default function HomePage() {
         onChange={handleAvatarPhoto}
         style={{ display: 'none' }}
       />
-      <div className="mx-5 mb-3" style={{ transition: 'all 0.2s ease' }}>
+      <div className="mx-5 mb-3 stagger-child" style={{ transition: 'all 0.2s ease' }}>
         {/* Collapsed header row — always visible */}
         <div
           onClick={() => setProfileExpanded(p => !p)}
@@ -836,7 +901,7 @@ export default function HomePage() {
 
       {/* Announcements Preview */}
       {announcementPreview && (
-        <div className="mx-5 mb-3">
+        <div className="mx-5 mb-3 stagger-child">
           <a href="/#/chat" style={{ textDecoration: 'none', display: 'block' }}>
             <div style={{
               background: '#141414', border: '1px solid #1A1A1A',
@@ -852,7 +917,7 @@ export default function HomePage() {
 
       {/* Next Class Card */}
       {nextClass && (
-        <div className="mx-5 mb-3">
+        <div className="mx-5 mb-3 stagger-child">
           <div style={{
             background: '#141414', border: '1px solid #1A1A1A',
             borderLeft: '3px solid #C8A24C', borderRadius: 14,
@@ -871,6 +936,7 @@ export default function HomePage() {
               const alreadyCheckedIn = checkedInClasses.includes(nextClass.name || '');
               return (
                 <button
+                  data-checkin-btn
                   onClick={() => !alreadyCheckedIn && handleHomeCheckIn(nextClass)}
                   disabled={alreadyCheckedIn}
                   style={{
@@ -896,7 +962,7 @@ export default function HomePage() {
       )}
 
       {/* Weekly Training Progress */}
-      <div className="mx-5 mb-3">
+      <div className="mx-5 mb-3 stagger-child">
         <div style={{ display: 'flex', justifyContent: 'center', gap: 8 }}>
           {weekDots.map((d, i) => (
             <div key={i} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
@@ -920,7 +986,7 @@ export default function HomePage() {
       </div>
 
       {/* Attendance streak widget */}
-      <div style={{
+      <div className="stagger-child" style={{
         display: 'flex',
         gap: 10,
         margin: '0 20px 16px',
@@ -935,14 +1001,14 @@ export default function HomePage() {
           alignItems: 'center',
           gap: 10,
         }}>
-          <span style={{
+          <span className="streak-icon" style={{
             fontSize: 24,
             display: 'inline-block',
             ...(streakCount > 0 ? { animation: 'flamePulse 2s ease-in-out infinite' } : {}),
           }}>🔥</span>
           <div>
             <div style={{ fontSize: 20, fontWeight: 700, color: '#C8A24C', lineHeight: 1 }}>
-              {(member as any)?.currentStreak || 0}
+              {displayStreak}
             </div>
             <div style={{ fontSize: 11, color: '#666', marginTop: 2 }}>Class streak</div>
           </div>
@@ -960,7 +1026,7 @@ export default function HomePage() {
           <span style={{ fontSize: 24 }}>{classesToday > 0 ? '✅' : '📅'}</span>
           <div>
             <div style={{ fontSize: 20, fontWeight: 700, color: classesToday > 0 ? '#4CAF80' : '#E0E0E0', lineHeight: 1 }}>
-              {totalClasses}
+              {displayTotalClasses}
             </div>
             <div style={{ fontSize: 11, color: '#666', marginTop: 2 }}>Total classes{classesToday > 0 ? ` · ${classesToday} today` : ''}</div>
           </div>

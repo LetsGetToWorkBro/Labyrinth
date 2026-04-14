@@ -4,6 +4,328 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ═══════════════════════════════════════════════
+   LABYRINTH MOTION SYSTEM v2 — CSS Foundation
+   "Through the Maze"
+   ═══════════════════════════════════════════════ */
+
+:root {
+  /* Labyrinth gold palette */
+  --color-gold:           #c9a227;
+  --color-gold-bright:    #e8b84b;
+  --color-gold-dim:       #7a6118;
+  --color-gold-glow:      rgba(201, 162, 39, 0.18);
+
+  /* Surfaces */
+  --color-bg:             #111111;
+  --color-surface:        #1a1a1a;
+  --color-surface-2:      #212121;
+  --color-surface-card:   #1e1e1e;
+  --color-border:         rgba(255,255,255,0.08);
+
+  /* Belt colors */
+  --belt-white:   #e8e8e8;
+  --belt-blue:    #3a6bc9;
+  --belt-purple:  #7b3fc4;
+  --belt-brown:   #7a3d1e;
+  --belt-black:   #1a1a1a;
+
+  /* Motion timing */
+  --ease-out:           cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in:            cubic-bezier(0.4, 0, 1, 1);
+  --ease-in-out:        cubic-bezier(0.4, 0, 0.2, 1);
+  --spring-bounce:      cubic-bezier(0.34, 1.56, 0.64, 1);
+  --transition-snap:    80ms  var(--ease-out);
+  --transition-fast:    160ms var(--ease-out);
+  --transition-base:    280ms var(--ease-out);
+  --transition-morph:   320ms var(--ease-in-out);
+  --transition-reveal:  500ms var(--ease-out);
+  --scale-press:        0.97;
+}
+
+/* ── Reduced motion ── */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+  .live-dot, .typing-dot, .game-pulse-dot { animation: none; opacity: 1; }
+  .rank-reveal { transition: opacity 150ms ease-out; }
+  .streak-icon { animation: none; }
+}
+
+/* ── Live / Game dot pulse ── */
+.live-dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: #e05a2b;
+  display: inline-block;
+  animation: live-breath 2s ease-in-out infinite;
+}
+.game-pulse-dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: var(--color-gold);
+  display: inline-block;
+  animation: live-breath 2.5s ease-in-out infinite;
+}
+@keyframes live-breath {
+  0%, 100% { transform: scale(1);    opacity: 1;   }
+  50%       { transform: scale(1.18); opacity: 0.7; }
+}
+
+/* ── Tab bar icon transition ── */
+.tab-item {
+  transition: color 200ms var(--ease-out);
+}
+.tab-item svg, .tab-item span:first-child {
+  transition: transform 200ms var(--ease-out);
+}
+.tab-item.active svg, .tab-item.active span:first-child {
+  transform: scale(1.08);
+}
+
+/* ── Primary button press (all gold CTAs) ── */
+.btn-primary, button[data-testid="button-login"], [data-checkin-btn] {
+  transition: transform var(--transition-snap), opacity 100ms var(--ease-out);
+}
+.btn-primary:active {
+  transform: scale(var(--scale-press)) translateY(1px);
+}
+
+/* ── More menu row tap feedback ── */
+.more-menu-row {
+  transition: background-color 120ms var(--ease-out);
+  position: relative;
+}
+.more-menu-row:active {
+  background-color: rgba(255,255,255,0.04);
+}
+.more-menu-row .chevron {
+  transition: transform 80ms var(--ease-out);
+}
+.more-menu-row:active .chevron {
+  transform: translateX(2px);
+}
+
+/* ── Card mount stagger animation ── */
+@keyframes card-reveal {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.stagger-child {
+  animation: card-reveal 200ms var(--ease-out) both;
+}
+.stagger-child:nth-child(1) { animation-delay: 0ms; }
+.stagger-child:nth-child(2) { animation-delay: 50ms; }
+.stagger-child:nth-child(3) { animation-delay: 100ms; }
+.stagger-child:nth-child(4) { animation-delay: 150ms; }
+.stagger-child:nth-child(5) { animation-delay: 200ms; }
+.stagger-child:nth-child(6) { animation-delay: 250ms; }
+.stagger-child:nth-child(7) { animation-delay: 300ms; }
+.stagger-child:nth-child(8) { animation-delay: 350ms; }
+
+/* ── Typing dots ── */
+.typing-dot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: #888;
+  display: inline-block;
+  animation: typing-pulse 1.2s ease-in-out infinite;
+}
+.typing-dot:nth-child(2) { animation-delay: 0.2s; }
+.typing-dot:nth-child(3) { animation-delay: 0.4s; }
+@keyframes typing-pulse {
+  0%, 100% { opacity: 0.3; transform: scale(0.8); }
+  50%       { opacity: 1;   transform: scale(1); }
+}
+
+/* ── Reaction pop ── */
+@keyframes reaction-pop {
+  from { transform: scale(0); opacity: 0; }
+  60%  { transform: scale(1.15); opacity: 1; }
+  to   { transform: scale(1);   opacity: 1; }
+}
+.reaction-new {
+  animation: reaction-pop 140ms cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+/* ── Unread badge appear ── */
+@keyframes badge-appear {
+  from { transform: scale(0); }
+  60%  { transform: scale(1.2); }
+  to   { transform: scale(1); }
+}
+.unread-badge-new {
+  animation: badge-appear 180ms var(--spring-bounce) both;
+}
+
+/* ── Toast notification ── */
+@keyframes toast-in {
+  from { opacity: 0; transform: translateX(-50%) translateY(-8px); }
+  to   { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
+@keyframes toast-out {
+  from { opacity: 1; transform: translateX(-50%) translateY(0); }
+  to   { opacity: 0; transform: translateX(-50%) translateY(-8px); }
+}
+
+/* ── Check-in ring pulse ── */
+@keyframes ring-pulse {
+  from { transform: scale(1); opacity: 0.8; }
+  to   { transform: scale(2.2); opacity: 0; }
+}
+.checkin-ring {
+  position: absolute;
+  inset: -4px;
+  border-radius: inherit;
+  border: 2px solid var(--color-gold);
+  pointer-events: none;
+  animation: ring-pulse 220ms var(--ease-out) forwards;
+}
+
+/* ── Flame flicker ── */
+@keyframes flame-flicker {
+  0%   { transform: scale(1);    filter: brightness(1); }
+  40%  { transform: scale(1.15); filter: brightness(1.4); }
+  100% { transform: scale(1);    filter: brightness(1); }
+}
+.streak-icon-flicker {
+  animation: flame-flicker 300ms var(--ease-out) forwards;
+}
+
+/* ── Achievement progress bar ── */
+.achievement-progress-bar {
+  height: 4px;
+  background: var(--color-surface-2);
+  border-radius: 999px;
+  overflow: hidden;
+}
+.achievement-progress-fill {
+  height: 100%;
+  background: var(--color-gold);
+  border-radius: 999px;
+  width: var(--progress, 0%);
+  transform-origin: left;
+  transform: scaleX(0);
+  transition: transform var(--transition-reveal);
+}
+.achievement-progress-fill.animate {
+  transform: scaleX(1);
+}
+
+/* ── Badge grid stagger ── */
+@keyframes badge-reveal {
+  from { opacity: 0; transform: scale(0.9); }
+  to   { opacity: 1; transform: scale(1); }
+}
+.badge-grid-item {
+  animation: badge-reveal 180ms var(--ease-out) both;
+}
+
+/* ── Badge unlock bounce ── */
+@keyframes badge-unlock {
+  0%   { transform: scale(0.85); opacity: 0.35; filter: brightness(0.6); }
+  60%  { transform: scale(1.08); opacity: 1;    filter: brightness(1.2); box-shadow: 0 0 16px var(--color-gold-glow); }
+  100% { transform: scale(1);    opacity: 1;    filter: brightness(1);   box-shadow: 0 0 8px var(--color-gold-glow); }
+}
+.badge-unlocking {
+  animation: badge-unlock 400ms var(--spring-bounce) forwards;
+}
+
+/* ── Locked badge dim ── */
+.badge-locked {
+  opacity: 0.35;
+  filter: grayscale(0.6);
+}
+.badge-unlocked {
+  box-shadow: 0 0 8px var(--color-gold-glow);
+}
+
+/* ── Belt milestone overlay ── */
+.belt-milestone-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: rgba(10, 10, 10, 0.95);
+  gap: 16px;
+}
+.bm-sweep {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, var(--belt-color, var(--color-gold)) 0%, transparent 60%);
+  opacity: 0.08;
+  clip-path: inset(0 100% 0 0);
+}
+.bm-badge {
+  font-size: 72px;
+  transform: scale(0.4);
+  opacity: 0;
+}
+.bm-name {
+  font-size: 22px;
+  font-weight: 800;
+  color: var(--color-gold);
+  opacity: 0;
+  transform: translateY(10px);
+  text-align: center;
+}
+.bm-label {
+  font-size: 13px;
+  color: #888;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.bm-dismiss {
+  margin-top: 24px;
+  padding: 12px 32px;
+  border-radius: 999px;
+  background: var(--color-gold);
+  color: #000;
+  font-weight: 700;
+  border: none;
+  cursor: pointer;
+  font-size: 15px;
+}
+
+/* ── Day pill slide (schedule) ── */
+.day-pill-indicator {
+  transition: transform 220ms var(--ease-in-out);
+}
+
+/* ── Page transition classes ── */
+@keyframes page-slide-in-right {
+  from { opacity: 0; transform: translateX(28%); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+@keyframes page-slide-out-left {
+  from { opacity: 1; transform: translateX(0); }
+  to   { opacity: 0; transform: translateX(-28%); }
+}
+@keyframes page-slide-in-left {
+  from { opacity: 0; transform: translateX(-28%); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+@keyframes page-slide-out-right {
+  from { opacity: 1; transform: translateX(0); }
+  to   { opacity: 0; transform: translateX(28%); }
+}
+@keyframes page-crossfade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+.page-enter-forward  { animation: page-slide-in-right 300ms var(--ease-out) both; }
+.page-exit-forward   { animation: page-slide-out-left 200ms var(--ease-in) both; }
+.page-enter-back     { animation: page-slide-in-left 280ms var(--ease-out) both; }
+.page-exit-back      { animation: page-slide-out-right 180ms var(--ease-in) both; }
+.page-enter-tab      { animation: page-crossfade-in 200ms var(--ease-out) both; }
+
 :root {
   --button-outline: rgba(255,255,255, .10);
   --badge-outline: rgba(255,255,255, .05);
