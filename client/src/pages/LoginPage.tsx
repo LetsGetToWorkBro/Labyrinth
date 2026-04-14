@@ -431,6 +431,7 @@ export default function LoginPage() {
                         <input id="login-email" type="email" name="email" value={email} onChange={e => setEmail(e.target.value)}
                           placeholder="your@email.com" autoComplete="email" autoFocus
                           autoCapitalize="none" autoCorrect="off" inputMode="email" spellCheck={false}
+                          enterKeyHint="next"
                           aria-describedby={loginError ? 'login-error' : undefined}
                           style={inputStyle} data-testid="input-email" />
                       </Field>
@@ -439,6 +440,7 @@ export default function LoginPage() {
                           <input id="login-password" type={showPw ? "text" : "password"} name="password" value={password}
                             onChange={e => setPassword(e.target.value)}
                             placeholder="Your password" autoComplete="current-password"
+                            enterKeyHint="go"
                             style={{ ...inputStyle, paddingRight: 44 }} data-testid="input-password" />
                           <button type="button" onClick={() => setShowPw(!showPw)}
                             style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", color: "#555", cursor: "pointer", padding: 4 }}>
@@ -530,17 +532,19 @@ export default function LoginPage() {
                     Train with us at {selectedLocation.short}? Request portal access and we'll get you set up.
                   </p>
                   <Field label="Full Name" htmlFor="req-name">
-                    <input id="req-name" type="text" value={reqName} onChange={e => setReqName(e.target.value)}
-                      placeholder="John Smith" autoFocus style={inputStyle} />
+                    <input id="req-name" type="text" name="name" value={reqName} onChange={e => setReqName(e.target.value)}
+                      placeholder="John Smith" autoFocus enterKeyHint="next"
+                      autoCapitalize="words" autoComplete="name" style={inputStyle} />
                   </Field>
                   <Field label="Email" htmlFor="req-email">
-                    <input id="req-email" type="email" value={reqEmail} onChange={e => setReqEmail(e.target.value)}
-                      placeholder="your@email.com" style={inputStyle} />
+                    <input id="req-email" type="email" name="email" value={reqEmail} onChange={e => setReqEmail(e.target.value)}
+                      placeholder="your@email.com" enterKeyHint="next"
+                      autoCapitalize="none" autoCorrect="off" inputMode="email" spellCheck={false} style={inputStyle} />
                   </Field>
                   <Field label={<>Note <span style={{ color: "#555", fontWeight: 400 }}>(optional)</span></>} htmlFor="req-note">
                     <textarea id="req-note" value={reqNote} onChange={e => setReqNote(e.target.value)}
-                      placeholder="e.g. I train Tuesday evenings…" rows={2}
-                      style={{ ...inputStyle, resize: "none", lineHeight: 1.5 }} />
+                      placeholder="e.g. I train Tuesday evenings…" rows={2} enterKeyHint="send"
+                      style={{ ...inputStyle, resize: 'vertical', lineHeight: 1.5, minHeight: 44 }} />
                   </Field>
                   {reqError && <p style={{ fontSize: 12, color: "#E05555", margin: "-4px 0 0", padding: "8px 12px", background: "rgba(224,85,85,0.07)", borderRadius: 8 }}>{reqError}</p>}
                   <button type="submit" disabled={reqLoading}
