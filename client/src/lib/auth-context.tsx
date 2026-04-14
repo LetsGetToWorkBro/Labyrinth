@@ -36,6 +36,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         localStorage.setItem('lbjj_session_token', result.token);
         setIsAuthenticated(true);
         setMemberState(result.member);
+        setMemberData(result.member);
+        localStorage.setItem('lbjj_member_profile', JSON.stringify(result.member));
         setFamilyMembers(result.member.familyMembers || []);
         return { success: true };
       }
@@ -59,6 +61,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setIsAuthenticated(true);
           setMemberState(normalized);
           setMemberData(normalized);
+          localStorage.setItem('lbjj_member_profile', JSON.stringify(normalized));
           if (normalized.familyMembers) setFamilyMembers(normalized.familyMembers);
           localStorage.setItem('lbjj_member_email', email);
           return { success: true };
@@ -74,6 +77,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const logout = useCallback(() => {
     clearAuth();
     localStorage.removeItem('lbjj_session_token');
+    localStorage.removeItem('lbjj_member_profile');
+    localStorage.removeItem('lbjj_game_stats_v2');
+    localStorage.removeItem('lbjj_checkins_today');
+    localStorage.removeItem('lbjj_weekly_training');
     setIsAuthenticated(false);
     setMemberState(null);
     setFamilyMembers([]);
@@ -84,6 +91,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const profile = await memberGetProfile();
       setMemberState(profile);
       setMemberData(profile);
+      localStorage.setItem('lbjj_member_profile', JSON.stringify(profile));
       if (profile.familyMembers) setFamilyMembers(profile.familyMembers);
     } catch (err) {
       console.error("Failed to refresh profile:", err);

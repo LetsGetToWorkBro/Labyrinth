@@ -2,14 +2,15 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { CLASS_SCHEDULE, CLASS_TYPE_COLORS, DAYS_ORDER } from "@/lib/constants";
 import type { ClassScheduleItem } from "@/lib/constants";
-import { getScheduleClasses, gasCall } from "@/lib/api";
+import { getScheduleClasses, gasCall, getMemberData } from "@/lib/api";
 import { Clock, ChevronRight, X, User, CheckCircle } from "lucide-react";
 import { checkAndUnlockAchievements, ALL_ACHIEVEMENTS } from "@/lib/achievements";
 import { getStreamStatus, getLiveBadgeStyle } from "@/lib/streaming";
 import type { StreamStatus } from "@/lib/streaming";
 
 // Shared check-in dedup state for SchedulePage class cards
-const getScheduleTodayKey = () => 'lbjj_checkins_' + new Date().toISOString().split('T')[0];
+const getScheduleTodayKey = (email?: string) =>
+  'lbjj_checkins_' + new Date().toISOString().split('T')[0] + (email ? '_' + email : '');
 
 // ── Gamification animations ─────────────────────────────────────
 
@@ -168,21 +169,23 @@ export default function SchedulePage() {
   const [classes, setClasses] = useState<ClassScheduleItem[]>(CLASS_SCHEDULE);
   const [stream, setStream] = useState<StreamStatus | null>(null);
 
-  // Dedup: track which classes have been checked into today
+  // Dedup: track which classes have been checked into today (per-user, per-day)
+  const dedupEmail = getMemberData()?.email || '';
   const [checkedInClasses, setCheckedInClasses] = useState<string[]>(() => {
-    try { return JSON.parse(sessionStorage.getItem(getScheduleTodayKey()) || '[]'); } catch { return []; }
+    try { return JSON.parse(localStorage.getItem(getScheduleTodayKey(dedupEmail)) || '[]'); } catch { return []; }
   });
 
-  // Persist to sessionStorage on change
+  // Persist to localStorage on change
   useEffect(() => {
-    try { sessionStorage.setItem(getScheduleTodayKey(), JSON.stringify(checkedInClasses)); } catch {}
+    const email = getMemberData()?.email || '';
+    try { localStorage.setItem(getScheduleTodayKey(email), JSON.stringify(checkedInClasses)); } catch {}
   }, [checkedInClasses]);
 
   // Pre-populate from GAS on mount
   useEffect(() => {
-    const profile = (() => { try { return JSON.parse(localStorage.getItem('lbjj_member_profile') || '{}'); } catch { return {}; } })();
-    if (profile.Email) {
-      gasCall('getMemberCheckIns', { email: profile.Email }).then((res: any) => {
+    const memberEmail = getMemberData()?.email || '';
+    if (memberEmail) {
+      gasCall('getMemberCheckIns', { email: memberEmail }).then((res: any) => {
         const today = new Date().toISOString().split('T')[0];
         const todayNames = (res?.checkIns || [])
           .filter((c: any) => (c.date || c.timestamp || '').startsWith(today))
@@ -405,9 +408,9 @@ function ClassCard({ cls, isToday, stream, checkedInClasses, markClassCheckedIn 
     }
 
     // Check and unlock local achievements after check-in
-    const profile = (() => { try { return JSON.parse(localStorage.getItem('lbjj_member_profile') || '{}'); } catch { return {}; } })();
+    const member = getMemberData();
     const gameStats = (() => { try { return JSON.parse(localStorage.getItem('lbjj_game_stats_v2') || '{}'); } catch { return {}; } })();
-    const newlyEarned = checkAndUnlockAchievements(profile, gameStats);
+    const newlyEarned = checkAndUnlockAchievements(member || {}, gameStats);
     if (newlyEarned.length > 0) {
       const first = ALL_ACHIEVEMENTS.find(a => a.key === newlyEarned[0]);
       if (first) {
@@ -417,10 +420,12 @@ function ClassCard({ cls, isToday, stream, checkedInClasses, markClassCheckedIn 
     }
 
     // Fire-and-forget GAS gamification call
-    if (profile.Email) {
+    const memberEmail = member?.email || '';
+    const memberName = member?.name || '';
+    if (memberEmail) {
       gasCall('recordCheckIn', {
-        email: profile.Email,
-        name: profile.Name || '',
+        email: memberEmail,
+        name: memberName,
         className: cls.name || '',
         day: cls.day || '',
         time: cls.time || '',

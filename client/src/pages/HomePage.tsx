@@ -1,6 +1,6 @@
 import { useAuth } from "@/lib/auth-context";
 import type { FamilyMember, PaymentCard } from "@/lib/api";
-import { beltSavePromotion, gasCall, getLeaderboard } from "@/lib/api";
+import { beltSavePromotion, gasCall, getLeaderboard, getMemberData } from "@/lib/api";
 import { BeltIcon } from "@/components/BeltIcon";
 import { ADULT_BELT_OPTIONS } from "@/components/BeltIcon";
 import { getBeltColor, CLASS_SCHEDULE } from "@/lib/constants";
@@ -396,6 +396,36 @@ export default function HomePage() {
     };
   }, [readClassesToday]);
 
+  // Hydrate totalClasses, classesToday, and weekly training from GAS on login
+  useEffect(() => {
+    const email = getMemberData()?.email || member?.email || '';
+    if (!email) return;
+    gasCall('getMemberCheckIns', { email }).then((res: any) => {
+      const checkIns = res?.checkIns || [];
+      const today = new Date().toISOString().split('T')[0];
+      const todayCount = checkIns.filter((c: any) => (c.date || c.timestamp || '').startsWith(today)).length;
+      const total = checkIns.length;
+      if (total > 0) {
+        setTotalClasses(total);
+        localStorage.setItem('lbjj_game_stats_v2', JSON.stringify({ classesAttended: total }));
+      }
+      if (todayCount > 0) {
+        setClassesToday(todayCount);
+        localStorage.setItem('lbjj_checkins_today', JSON.stringify({ date: today, count: todayCount }));
+      }
+      // Hydrate weekly training days from GAS check-in dates
+      const cutoff = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+      const recentDays = [...new Set(
+        checkIns
+          .map((c: any) => (c.date || c.timestamp || '').split('T')[0])
+          .filter((d: string) => d >= cutoff)
+      )];
+      if (recentDays.length > 0) {
+        localStorage.setItem('lbjj_weekly_training', JSON.stringify(recentDays));
+      }
+    }).catch(() => {});
+  }, [member?.email]);
+
   // ─── Total classes count-up animation effect ──────────────────────
   useEffect(() => {
     if (totalClassesAnimated.current || totalClasses === 0) {
@@ -451,14 +481,16 @@ export default function HomePage() {
 
   const [nextClass, setNextClass] = useState<ReturnType<typeof getNextClass>>(getNextClass);
 
-  const getTodayKey = () => `lbjj_checkins_${new Date().toISOString().split('T')[0]}`;
+  const getTodayKey = (email?: string) => `lbjj_checkins_${new Date().toISOString().split('T')[0]}${email ? '_' + email : ''}`;
+  const homeDedupEmail = getMemberData()?.email || '';
   const [checkedInClasses, setCheckedInClasses] = useState<string[]>(() => {
-    try { return JSON.parse(sessionStorage.getItem(getTodayKey()) || '[]'); } catch { return []; }
+    try { return JSON.parse(localStorage.getItem(getTodayKey(homeDedupEmail)) || '[]'); } catch { return []; }
   });
 
-  // Persist checked-in classes to sessionStorage
+  // Persist checked-in classes to localStorage (per-user, per-day)
   useEffect(() => {
-    try { sessionStorage.setItem(getTodayKey(), JSON.stringify(checkedInClasses)); } catch {}
+    const email = getMemberData()?.email || '';
+    try { localStorage.setItem(getTodayKey(email), JSON.stringify(checkedInClasses)); } catch {}
   }, [checkedInClasses]);
 
   // Fetch today's check-ins from GAS on mount
@@ -478,11 +510,13 @@ export default function HomePage() {
 
   const handleHomeCheckIn = useCallback(async (cls: any) => {
     // GAS call first to check for dedup
-    const profile = (() => { try { return JSON.parse(localStorage.getItem('lbjj_member_profile') || '{}'); } catch { return {}; } })();
+    const memberProfile = getMemberData();
+    const profileEmail = memberProfile?.email || '';
+    const profileName = memberProfile?.name || '';
     let res: any = null;
-    if (profile.Email) {
+    if (profileEmail) {
       try {
-        res = await gasCall('recordCheckIn', { email: profile.Email, name: profile.Name || '', className: cls.name || '' });
+        res = await gasCall('recordCheckIn', { email: profileEmail, name: profileName, className: cls.name || '' });
         if (res?.alreadyCheckedIn) {
           // Show "already checked in" toast instead of confetti
           const el = document.createElement('div');
@@ -555,7 +589,7 @@ export default function HomePage() {
 
     // Check achievements
     const gameStats = (() => { try { return JSON.parse(localStorage.getItem('lbjj_game_stats_v2') || '{}'); } catch { return {}; } })();
-    checkAndUnlockAchievements(profile, gameStats);
+    checkAndUnlockAchievements(memberProfile || {}, gameStats);
 
     // Belt milestone overlay trigger
     const beltMilestoneKeys = ['mat_warrior', 'mat_legend', 'loyal_1yr', 'loyal_2yr', 'streak_30', 'podium', 'century_club'];
