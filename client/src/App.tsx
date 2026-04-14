@@ -131,6 +131,13 @@ function TabBar() {
 function NavCustomizer() {
   const [open, setOpen] = useState(false);
   const [slots, setSlots] = useState<string[]>(getNavConfig);
+  const [openDropdown, setOpenDropdown] = useState<number | null>(null);
+
+  useEffect(() => {
+    const handler = () => setOpenDropdown(null);
+    if (openDropdown !== null) document.addEventListener('click', handler);
+    return () => document.removeEventListener('click', handler);
+  }, [openDropdown]);
 
   const apply = () => {
     saveNavConfig(slots);
@@ -158,23 +165,56 @@ function NavCustomizer() {
 
       {open && (
         <div style={{ backgroundColor: '#111', border: '1px solid #1A1A1A', borderTop: 'none', borderRadius: '0 0 12px 12px', padding: '12px 16px' }}>
-          {slots.map((path, i) => {
+          {slots.map((path, idx) => {
             const selectedTab = ALL_NAV_OPTIONS.find(o => o.path === path) || ALL_NAV_OPTIONS[0];
             return (
-              <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
-                <span style={{ color: '#555', fontSize: 12, width: 16, flexShrink: 0 }}>#{i + 1}</span>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#888', flexShrink: 0 }}>
-                  {selectedTab.Icon ? <selectedTab.Icon size={16} /> : <span style={{ fontSize: 16 }}>{selectedTab.emoji}</span>}
+              <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+                <span style={{ color: '#555', fontSize: 12, width: 16, flexShrink: 0 }}>#{idx + 1}</span>
+                <div style={{ position: 'relative', flex: 1 }}>
+                  <button
+                    onClick={(e) => { e.stopPropagation(); setOpenDropdown(openDropdown === idx ? null : idx); }}
+                    style={{
+                      width: '100%', display: 'flex', alignItems: 'center', gap: 8,
+                      padding: '10px 12px', borderRadius: 8, cursor: 'pointer',
+                      background: '#1A1A1A', border: '1px solid #2A2A2A', color: '#F0F0F0',
+                      fontSize: 13, fontWeight: 500,
+                    }}
+                  >
+                    {selectedTab.Icon ? <selectedTab.Icon size={16} color="#C8A24C" /> : <span>{selectedTab.emoji}</span>}
+                    <span style={{ flex: 1, textAlign: 'left' }}>{selectedTab.label}</span>
+                    <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 4l4 4 4-4" stroke="#666" strokeWidth="1.5" strokeLinecap="round"/></svg>
+                  </button>
+                  {openDropdown === idx && (
+                    <div style={{
+                      position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 100,
+                      background: '#1A1A1A', border: '1px solid #2A2A2A', borderRadius: 8,
+                      marginTop: 4, overflow: 'hidden', boxShadow: '0 8px 24px rgba(0,0,0,0.5)'
+                    }}>
+                      {ALL_NAV_OPTIONS.map(opt => (
+                        <button
+                          key={opt.path + opt.label}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            const updated = [...slots];
+                            updated[idx] = opt.path;
+                            setSlots(updated);
+                            setOpenDropdown(null);
+                          }}
+                          style={{
+                            width: '100%', display: 'flex', alignItems: 'center', gap: 10,
+                            padding: '11px 14px', background: 'none', border: 'none', cursor: 'pointer',
+                            color: slots[idx] === opt.path ? '#C8A24C' : '#CCC', fontSize: 13,
+                            borderBottom: '1px solid #222',
+                          }}
+                        >
+                          {opt.Icon ? <opt.Icon size={16} color={slots[idx] === opt.path ? '#C8A24C' : '#888'} /> : <span>{opt.emoji}</span>}
+                          <span>{opt.label}</span>
+                          {slots[idx] === opt.path && <svg style={{ marginLeft: 'auto' }} width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#C8A24C" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>}
+                        </button>
+                      ))}
+                    </div>
+                  )}
                 </div>
-                <select
-                  value={path}
-                  onChange={e => { const n = [...slots]; n[i] = e.target.value; setSlots(n); }}
-                  style={{ flex: 1, backgroundColor: '#0D0D0D', border: '1px solid #222', borderRadius: 8, padding: '8px 10px', fontSize: 13, color: '#F0F0F0', outline: 'none' }}
-                >
-                  {ALL_NAV_OPTIONS.map(o => (
-                    <option key={o.path + o.label} value={o.path}>{o.emoji} {o.label}</option>
-                  ))}
-                </select>
               </div>
             );
           })}

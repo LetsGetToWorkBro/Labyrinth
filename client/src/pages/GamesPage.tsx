@@ -201,6 +201,7 @@ function GamesHub({ stats, rank, nextRank, onPlay, onStartGame, showDifficulty, 
       maxWidth: 430, margin: '0 auto',
       display: 'flex', flexDirection: 'column', background: '#0A0A0A',
       overflowX: 'hidden', width: '100%',
+      paddingTop: 'max(16px, env(safe-area-inset-top, 16px))',
       paddingBottom: 'max(80px, calc(env(safe-area-inset-bottom, 0px) + 70px))',
     }}>
       {/* Header */}
