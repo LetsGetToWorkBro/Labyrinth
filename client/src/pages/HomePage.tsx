@@ -966,7 +966,7 @@ export default function HomePage() {
         <div style={{ display: 'flex', justifyContent: 'center', gap: 8 }}>
           {weekDots.map((d, i) => (
             <div key={i} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
-              <div style={{
+              <div className={d.isToday ? 'weekly-dot-active' : ''} style={{
                 width: 28, height: 28, borderRadius: '50%',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                 fontSize: 14,
