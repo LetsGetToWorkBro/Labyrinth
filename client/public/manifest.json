@@ -1,0 +1,25 @@
+{
+  "name": "Labyrinth BJJ",
+  "short_name": "Labyrinth",
+  "description": "Labyrinth BJJ Member Portal — Classes, Calendar, Stats",
+  "start_url": "/#/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "theme_color": "#0A0A0A",
+  "background_color": "#0A0A0A",
+  "icons": [
+    {
+      "src": "/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["sports", "health", "fitness"]
+}

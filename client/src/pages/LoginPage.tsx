@@ -377,7 +377,14 @@ export default function LoginPage() {
                   }}>
                     Track your belt journey. Stay connected with your gym.
                   </p>
-                  {loginError && <p style={{ fontSize: 12, color: "#E05555", margin: "-4px 0 0", padding: "8px 12px", background: "rgba(224,85,85,0.07)", borderRadius: 8 }}>{loginError}</p>}
+                  {/* Privacy policy notice */}
+                  <p style={{ fontSize: 11, color: '#444', textAlign: 'center', margin: '4px 0 -4px' }}>
+                    By signing in, you agree to our{' '}
+                    <a href="https://labyrinth.vision/privacy" target="_blank" rel="noopener noreferrer" style={{ color: '#666', textDecoration: 'underline' }}>Privacy Policy</a>
+                    {' '}and{' '}
+                    <a href="https://labyrinth.vision/terms" target="_blank" rel="noopener noreferrer" style={{ color: '#666', textDecoration: 'underline' }}>Terms</a>.
+                  </p>
+                  {loginError && <p id="login-error" role="alert" aria-live="polite" style={{ fontSize: 12, color: "#E05555", margin: "-4px 0 0", padding: "8px 12px", background: "rgba(224,85,85,0.07)", borderRadius: 8 }}>{loginError}</p>}
 
                   {/* Biometric button — shown prominently above the form */}
                   {supportsPasskey && hasPasskey && !showPasswordForm && (
@@ -422,6 +429,7 @@ export default function LoginPage() {
                         <input id="login-email" type="email" name="email" value={email} onChange={e => setEmail(e.target.value)}
                           placeholder="your@email.com" autoComplete="email" autoFocus
                           autoCapitalize="none" autoCorrect="off" inputMode="email" spellCheck={false}
+                          aria-describedby={loginError ? 'login-error' : undefined}
                           style={inputStyle} data-testid="input-email" />
                       </Field>
                       <Field label="Password" htmlFor="login-password">
@@ -436,21 +444,21 @@ export default function LoginPage() {
                           </button>
                         </div>
                       </Field>
-                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: -6 }}>
-                        <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
-                          <input
-                            type="checkbox"
-                            checked={rememberMe}
-                            onChange={e => setRememberMe(e.target.checked)}
-                            style={{ width: 16, height: 16, accentColor: GOLD }}
-                          />
-                          <span style={{ fontSize: 13, color: '#666' }}>Remember me</span>
-                        </label>
-                        <button type="button" onClick={() => { setShowForgot(true); setForgotEmail(email); setForgotSent(false); }}
-                          style={{ background: "none", border: "none", color: "#777", fontSize: 12, cursor: "pointer", padding: 0, textDecoration: "underline" }}>
-                          Forgot password?
-                        </button>
-                      </div>
+                      {/* Remember me — full row for easy tapping */}
+                      <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', minHeight: 44, marginTop: -4 }}>
+                        <input
+                          type="checkbox"
+                          checked={rememberMe}
+                          onChange={e => setRememberMe(e.target.checked)}
+                          style={{ width: 16, height: 16, accentColor: GOLD, flexShrink: 0 }}
+                        />
+                        <span style={{ fontSize: 13, color: '#666' }}>Remember me</span>
+                      </label>
+                      {/* Forgot password — own row, full tap target */}
+                      <button type="button" onClick={() => { setShowForgot(true); setForgotEmail(email); setForgotSent(false); }}
+                        style={{ background: "none", border: "none", color: "#777", fontSize: 13, cursor: "pointer", padding: '10px 0', textDecoration: "underline", textAlign: 'left', minHeight: 44, marginTop: -8 }}>
+                        Forgot password?
+                      </button>
                       <button type="submit" disabled={loginLoading} data-testid="button-login"
                         style={{ ...submitStyle(selectedLocation.color), opacity: loginLoading ? 0.7 : 1, marginTop: 4 }}>
                         {loginLoading
