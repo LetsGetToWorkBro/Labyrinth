@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { CLASS_SCHEDULE, CLASS_TYPE_COLORS, DAYS_ORDER } from "@/lib/constants";
 import type { ClassScheduleItem } from "@/lib/constants";
@@ -7,6 +7,9 @@ import { Clock, ChevronRight, X, User, CheckCircle } from "lucide-react";
 import { checkAndUnlockAchievements, ALL_ACHIEVEMENTS } from "@/lib/achievements";
 import { getStreamStatus, getLiveBadgeStyle } from "@/lib/streaming";
 import type { StreamStatus } from "@/lib/streaming";
+
+// Shared check-in dedup state for SchedulePage class cards
+const getScheduleTodayKey = () => 'lbjj_checkins_' + new Date().toISOString().split('T')[0];
 
 // ── Gamification animations ─────────────────────────────────────
 
@@ -165,6 +168,34 @@ export default function SchedulePage() {
   const [classes, setClasses] = useState<ClassScheduleItem[]>(CLASS_SCHEDULE);
   const [stream, setStream] = useState<StreamStatus | null>(null);
 
+  // Dedup: track which classes have been checked into today
+  const [checkedInClasses, setCheckedInClasses] = useState<string[]>(() => {
+    try { return JSON.parse(sessionStorage.getItem(getScheduleTodayKey()) || '[]'); } catch { return []; }
+  });
+
+  // Persist to sessionStorage on change
+  useEffect(() => {
+    try { sessionStorage.setItem(getScheduleTodayKey(), JSON.stringify(checkedInClasses)); } catch {}
+  }, [checkedInClasses]);
+
+  // Pre-populate from GAS on mount
+  useEffect(() => {
+    const profile = (() => { try { return JSON.parse(localStorage.getItem('lbjj_member_profile') || '{}'); } catch { return {}; } })();
+    if (profile.Email) {
+      gasCall('getMemberCheckIns', { email: profile.Email }).then((res: any) => {
+        const today = new Date().toISOString().split('T')[0];
+        const todayNames = (res?.checkIns || [])
+          .filter((c: any) => (c.date || c.timestamp || '').startsWith(today))
+          .map((c: any) => c.className);
+        if (todayNames.length > 0) setCheckedInClasses(prev => [...new Set([...prev, ...todayNames])]);
+      }).catch(() => {});
+    }
+  }, []);
+
+  const markClassCheckedIn = useCallback((className: string) => {
+    setCheckedInClasses(prev => [...new Set([...prev, className])]);
+  }, []);
+
   // 5a: Day pill indicator slide
   const dayRefs = useRef<Record<string, HTMLButtonElement | null>>({});
   const [indicatorStyle, setIndicatorStyle] = useState({ left: 0, width: 0 });
@@ -297,7 +328,7 @@ export default function SchedulePage() {
                 className="stagger-child"
                 style={{ animationDelay: `${index * 30}ms` }}
               >
-                <ClassCard cls={cls} isToday={selectedDay === today} stream={stream} />
+                <ClassCard cls={cls} isToday={selectedDay === today} stream={stream} checkedInClasses={checkedInClasses} markClassCheckedIn={markClassCheckedIn} />
               </div>
             ))}
           </div>
@@ -338,7 +369,7 @@ export default function SchedulePage() {
   );
 }
 
-function ClassCard({ cls, isToday, stream }: { cls: ClassScheduleItem; isToday: boolean; stream: StreamStatus | null }) {
+function ClassCard({ cls, isToday, stream, checkedInClasses, markClassCheckedIn }: { cls: ClassScheduleItem; isToday: boolean; stream: StreamStatus | null; checkedInClasses: string[]; markClassCheckedIn: (name: string) => void }) {
   const isClassLive = stream?.isLive && (stream.className === cls.name || stream.className === (cls as any).title);
   const typeStyle = CLASS_TYPE_COLORS[cls.type] ?? CLASS_TYPE_COLORS.gi;
   const displayTime = formatClassTime(cls.time);
@@ -346,8 +377,11 @@ function ClassCard({ cls, isToday, stream }: { cls: ClassScheduleItem; isToday: 
   const [showDetail, setShowDetail] = useState(false);
   const [checkInDone, setCheckInDone] = useState(false);
   const duration = getDuration(cls.name);
+  const alreadyCheckedIn = checkedInClasses.includes(cls.name || '');
 
   const handleCheckIn = () => {
+    // Dedup: prevent double check-ins
+    if (alreadyCheckedIn || checkInDone) return;
     // Increment local attendance
     try {
       const raw = localStorage.getItem('lbjj_game_stats_v2');
@@ -391,6 +425,11 @@ function ClassCard({ cls, isToday, stream }: { cls: ClassScheduleItem; isToday: 
         day: cls.day || '',
         time: cls.time || '',
       }).then((result: any) => {
+        if (result?.alreadyCheckedIn) {
+          // Already checked in server-side — just update local state
+          markClassCheckedIn(cls.name || '');
+          return;
+        }
         if (result?.pointsAwarded) {
           showPointsToast(result.pointsAwarded);
         }
@@ -400,9 +439,12 @@ function ClassCard({ cls, isToday, stream }: { cls: ClassScheduleItem; isToday: 
         if (result?.streakMilestone) {
           showBadgeUnlock({ key: 'streak', label: `${result.streakMilestone}-Week Streak!`, icon: '\u{1F525}', desc: `${result.streakMilestone} consecutive weeks of training. Consistency is everything.`, color: '#F97316' });
         }
+        // Save successful check-in to dedup state
+        markClassCheckedIn(cls.name || '');
       }).catch(() => {});
     }
 
+    markClassCheckedIn(cls.name || '');
     setCheckInDone(true);
     triggerConfetti();
     setTimeout(() => {
@@ -597,16 +639,20 @@ function ClassCard({ cls, isToday, stream }: { cls: ClassScheduleItem; isToday: 
                 ) : (
                   <button
                     onClick={handleCheckIn}
+                    disabled={alreadyCheckedIn || checkInDone}
                     data-checkin-btn=""
                     style={{
                       display: "flex", alignItems: "center", justifyContent: "center",
                       gap: 8, padding: "14px", borderRadius: 12, width: "100%",
-                      background: "#C8A24C", color: "#0A0A0A",
-                      fontWeight: 700, fontSize: 15, border: "none", cursor: "pointer",
+                      background: alreadyCheckedIn ? 'rgba(200,162,76,0.15)' : "#C8A24C",
+                      color: alreadyCheckedIn ? '#C8A24C' : "#0A0A0A",
+                      fontWeight: 700, fontSize: 15, border: "none",
+                      cursor: alreadyCheckedIn ? "default" : "pointer",
+                      opacity: alreadyCheckedIn ? 0.7 : 1,
                       transition: 'transform 80ms cubic-bezier(0.16, 1, 0.3, 1)',
                     }}
                   >
-                    Check In to Class
+                    {alreadyCheckedIn ? '✓ Checked In' : 'Check In to Class'}
                   </button>
                 )}
               </>

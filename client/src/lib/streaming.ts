@@ -53,8 +53,10 @@ export function clearStreamCache() {
 export async function getStreamArchive(category?: string): Promise<ArchiveEntry[]> {
   try {
     const result = await gasCall('getStreamArchive', category ? { category } : {});
+    console.log('[getStreamArchive] result:', result);
     return (result as any)?.archives || [];
-  } catch {
+  } catch (e) {
+    console.error('[getStreamArchive] failed:', e);
     return [];
   }
 }

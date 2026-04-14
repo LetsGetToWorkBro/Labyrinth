@@ -11,6 +11,8 @@ export default function LivePage() {
   const [archives, setArchives] = useState<ArchiveEntry[]>([]);
   const [activeCategory, setActiveCategory] = useState('');
   const [loading, setLoading] = useState(true);
+  const [archivesLoading, setArchivesLoading] = useState(true);
+  const [archivesError, setArchivesError] = useState(false);
 
   useEffect(() => {
     getStreamStatus().then(setStream).finally(() => setLoading(false));
@@ -21,7 +23,17 @@ export default function LivePage() {
   }, []);
 
   useEffect(() => {
-    getStreamArchive(activeCategory || undefined).then(setArchives);
+    setArchivesLoading(true);
+    setArchivesError(false);
+    getStreamArchive(activeCategory || undefined)
+      .then(data => {
+        setArchives(data);
+        setArchivesLoading(false);
+      })
+      .catch(() => {
+        setArchivesError(true);
+        setArchivesLoading(false);
+      });
   }, [activeCategory]);
 
   if (loading) {
@@ -101,7 +113,15 @@ export default function LivePage() {
           </div>
 
           {/* Archive grid */}
-          {archives.length === 0 ? (
+          {archivesLoading ? (
+            <div style={{ textAlign: 'center', padding: '32px', color: '#555', fontSize: 13 }}>
+              Loading archives...
+            </div>
+          ) : archivesError ? (
+            <div style={{ textAlign: 'center', padding: '32px', color: '#E05555', fontSize: 13 }}>
+              Failed to load archives. Pull down to retry.
+            </div>
+          ) : archives.length === 0 ? (
             <div style={{ textAlign: 'center', padding: '32px', color: '#555', fontSize: 13 }}>
               No recordings yet — past streams will appear here.
             </div>

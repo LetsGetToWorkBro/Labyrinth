@@ -1,6 +1,6 @@
 import { useAuth } from "@/lib/auth-context";
 import type { FamilyMember, PaymentCard } from "@/lib/api";
-import { beltSavePromotion, gasCall } from "@/lib/api";
+import { beltSavePromotion, gasCall, getLeaderboard } from "@/lib/api";
 import { BeltIcon } from "@/components/BeltIcon";
 import { ADULT_BELT_OPTIONS } from "@/components/BeltIcon";
 import { getBeltColor, CLASS_SCHEDULE } from "@/lib/constants";
@@ -195,7 +195,7 @@ function BeltVisual({ belt, size = 'sm' }: { belt: string; size?: 'sm' | 'md' })
 }
 
 export default function HomePage() {
-  const { member, familyMembers, isAuthenticated, logout, switchProfile } = useAuth();
+  const { member, familyMembers, isAuthenticated, logout, switchProfile, setMember, refreshProfile } = useAuth();
 
   const avatarBg = beltColorMap[(member?.belt || 'white').toLowerCase()] || '#C8A24C';
   const avatarFg = ['white', 'yellow', 'grey'].includes((member?.belt || '').toLowerCase()) ? '#0A0A0A' : '#FFFFFF';
@@ -314,6 +314,20 @@ export default function HomePage() {
     if (result.success) setShowFamilySwitcher(false);
     else setSwitchError(result.error || "Failed to switch profile");
   };
+
+  // ─── Leaderboard widget ────────────────────────────────────────────
+  const [leaderboard, setLeaderboard] = useState<any[]>([]);
+
+  useEffect(() => {
+    if (!member) return;
+    getLeaderboard().then(data => {
+      const top5 = (data || []).slice(0, 5).map((e: any) => ({
+        ...e,
+        isMe: e.name === member.name || e.isMe,
+      }));
+      setLeaderboard(top5);
+    }).catch(() => {});
+  }, [member?.email]);
 
   // ─── Personalized greeting ─────────────────────────────────────────
   const getGreeting = () => {
@@ -549,7 +563,13 @@ export default function HomePage() {
     if (beltBadge && (window as any).__showBeltMilestone) {
       setTimeout(() => (window as any).__showBeltMilestone(beltBadge), 600);
     }
-  }, []);
+
+    // Update streak from GAS response so the count-up re-renders
+    if (res?.currentStreak !== undefined && member) {
+      streakAnimated.current = false; // allow re-animation
+      setMember({ ...member, currentStreak: res.currentStreak } as any);
+    }
+  }, [member, setMember]);
 
   // ─── Weekly training dots ─────────────────────────────────────────
   const weeklyTraining = useCallback(() => {
@@ -1040,6 +1060,52 @@ export default function HomePage() {
           </div>
         </div>
       </div>
+
+      {/* Class Leaders Widget */}
+      {leaderboard.length > 0 && (
+        <div className="mx-5 mb-3 stagger-child">
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+            <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#444' }}>
+              Class Leaders
+            </span>
+            <a href="/#/leaderboard" style={{ fontSize: 11, color: '#C8A24C', textDecoration: 'none', fontWeight: 600 }}>
+              View All &rarr;
+            </a>
+          </div>
+          <div style={{ background: '#111', borderRadius: 14, border: '1px solid #1A1A1A', overflow: 'hidden' }}>
+            {leaderboard.map((entry, i) => (
+              <div key={i} style={{
+                display: 'flex', alignItems: 'center', gap: 12,
+                padding: '10px 16px',
+                borderBottom: i < leaderboard.length - 1 ? '1px solid #1A1A1A' : 'none',
+                background: entry.isMe ? 'rgba(200,162,76,0.06)' : 'transparent',
+              }}>
+                <span style={{
+                  width: 22, height: 22, borderRadius: '50%',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontSize: 11, fontWeight: 800,
+                  background: i === 0 ? '#C8A24C' : '#1A1A1A',
+                  color: i === 0 ? '#000' : '#666',
+                  flexShrink: 0,
+                }}>
+                  {i + 1}
+                </span>
+                {/* Belt dot */}
+                <span style={{
+                  width: 8, height: 8, borderRadius: '50%', flexShrink: 0,
+                  background: entry.belt === 'black' ? '#888' : entry.belt === 'brown' ? '#7a3d1e' : entry.belt === 'purple' ? '#7b3fc4' : entry.belt === 'blue' ? '#3a6bc9' : '#e8e8e8',
+                }} />
+                <span style={{ flex: 1, fontSize: 13, fontWeight: entry.isMe ? 700 : 500, color: entry.isMe ? '#C8A24C' : '#CCC' }}>
+                  {entry.isMe ? 'You' : entry.name}
+                </span>
+                <span style={{ fontSize: 12, color: '#666', fontWeight: 600 }}>
+                  {entry.classCount || 0} <span style={{ fontSize: 10, color: '#444' }}>classes</span>
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Tournament Countdown (conditional) */}
       {nextTournament && tournamentDaysUntil <= 60 && (
