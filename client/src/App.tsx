@@ -872,7 +872,7 @@ function AdminShortcut() {
 
 // ─── Auth gate — shows login until authenticated ──────────────────
 
-// ── Face ID / WebAuthn registration helper ────────────────────────
+// ── Biometric / WebAuthn registration helper ──────────────────────
 async function registerPasskeyGlobal(email: string): Promise<boolean> {
   try {
     const challenge = new Uint8Array(32);
@@ -887,6 +887,7 @@ async function registerPasskeyGlobal(email: string): Promise<boolean> {
         authenticatorSelection: {
           authenticatorAttachment: 'platform' as const,
           userVerification: 'required' as const,
+          residentKey: 'preferred' as const,
         },
         timeout: 60000,
       }
@@ -905,7 +906,7 @@ function AppShell() {
   const { isAuthenticated, member } = useAuth();
   const [location] = useHashLoc();
 
-  // ── Global Face ID / Passkey setup prompt ─────────────────────
+  // ── Global Biometric / Passkey setup prompt ───────────────────
   const [showPasskeySetup, setShowPasskeySetup] = useState(false);
   const [passkeyRegistering, setPasskeyRegistering] = useState(false);
   const supportsPasskey = typeof window !== 'undefined' && !!window.PublicKeyCredential;
@@ -949,7 +950,7 @@ function AppShell() {
     <div className="app-shell">
       <AdminShortcut />
 
-      {/* Global Face ID registration prompt overlay */}
+      {/* Global biometric registration prompt overlay */}
       {showPasskeySetup && supportsPasskey && (
         <div style={{
           position: "fixed", inset: 0, background: "rgba(0,0,0,0.7)",
@@ -966,9 +967,9 @@ function AppShell() {
               <path d="M3 21v-2a7 7 0 0 1 7-7h0"/>
               <path d="M16 18l2 2 4-4"/>
             </svg>
-            <h3 style={{ fontSize: 18, fontWeight: 700, color: "#F0F0F0", margin: "0 0 8px" }}>Enable Face ID?</h3>
+            <h3 style={{ fontSize: 18, fontWeight: 700, color: "#F0F0F0", margin: "0 0 8px" }}>Enable Biometrics?</h3>
             <p style={{ fontSize: 13, color: "#888", margin: "0 0 24px", lineHeight: 1.5 }}>
-              Sign in instantly next time with Face ID or biometrics.
+              Sign in instantly next time with biometrics.
             </p>
             <button
               onClick={handlePasskeyRegister}
@@ -981,7 +982,7 @@ function AppShell() {
                 opacity: passkeyRegistering ? 0.7 : 1,
               }}
             >
-              {passkeyRegistering ? "Setting up\u2026" : "Enable Face ID"}
+              {passkeyRegistering ? "Setting up\u2026" : "Enable Biometrics"}
             </button>
             <button
               onClick={() => setShowPasskeySetup(false)}

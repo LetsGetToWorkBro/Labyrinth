@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useAuth } from "@/lib/auth-context";
 import { setActiveLocation, gasCall } from "@/lib/api";
 import { LOCATIONS, getSavedLocationId, type Location } from "@/lib/locations";
-import { Loader2, Eye, EyeOff, ArrowRight, CheckCircle, MapPin, ChevronRight, ScanFace } from "lucide-react";
+import { Loader2, Eye, EyeOff, ArrowRight, CheckCircle, MapPin, ChevronRight, Fingerprint } from "lucide-react";
 import logoMaze from "@assets/maze-gold-md.png";
 
 type Screen = "location" | "login" | "request";
@@ -15,7 +15,7 @@ const requestAccessAttempts: number[] = [];
 const SUSPICIOUS_NAMES = ['test', 'audit', 'demo', 'fake', 'sample', 'trial user', 'test user'];
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-// ── Face ID / WebAuthn helpers ────────────────────────────────────
+// ── Biometric / WebAuthn helpers ──────────────────────────────────
 
 async function registerPasskey(email: string): Promise<boolean> {
   try {
@@ -31,6 +31,7 @@ async function registerPasskey(email: string): Promise<boolean> {
         authenticatorSelection: {
           authenticatorAttachment: 'platform' as const,
           userVerification: 'required' as const,
+          residentKey: 'preferred' as const,
         },
         timeout: 60000,
       }
@@ -104,13 +105,22 @@ export default function LoginPage() {
   const [reqSent, setReqSent]       = useState(false);
   const [honeypot, setHoneypot]     = useState("");
 
-  // Face ID / Passkey state
+  // Biometric / Passkey state
   const supportsPasskey = typeof window !== 'undefined' && !!window.PublicKeyCredential;
   const [hasPasskey] = useState(() => localStorage.getItem('lbjj_passkey_registered') === 'true');
   const [passkeyLoading, setPasskeyLoading] = useState(false);
   const [showPasskeyPrompt, setShowPasskeyPrompt] = useState(false);
   const [passkeyRegistering, setPasskeyRegistering] = useState(false);
   const [showPasswordForm, setShowPasswordForm] = useState(!hasPasskey);
+
+  const [biometricLabel, setBiometricLabel] = useState('Sign in with Biometrics');
+
+  useEffect(() => {
+    const ua = navigator.userAgent;
+    if (/iPhone|iPad|iPod/.test(ua)) setBiometricLabel('Sign in with Face ID / Touch ID');
+    else if (/Android/.test(ua)) setBiometricLabel('Sign in with Fingerprint / Face');
+    else setBiometricLabel('Sign in with Biometrics');
+  }, []);
 
   // Pre-fill saved credentials on mount
   useEffect(() => {
@@ -134,7 +144,7 @@ export default function LoginPage() {
           setEmail(savedEmail);
           setShowPasswordForm(true);
           if (result.error === 'no_saved_password') {
-            setLoginError("Enter your password once with \"Remember me\" checked — Face ID will work automatically after that.");
+            setLoginError("Enter your password once with \"Remember me\" checked — biometrics will work automatically after that.");
           } else {
             setLoginError("Couldn't sign in. Please enter your password.");
           }
@@ -144,7 +154,7 @@ export default function LoginPage() {
         setLoginError("No saved account found. Please sign in with your password first.");
       }
     } else {
-      setLoginError("Face ID authentication failed. Try again or use password.");
+      setLoginError("Biometric authentication failed. Try again or use password.");
     }
     setPasskeyLoading(false);
   };
@@ -155,7 +165,7 @@ export default function LoginPage() {
     setPasskeyRegistering(false);
     setShowPasskeyPrompt(false);
     if (!ok) {
-      // Silently ignore — Face ID is optional
+      // Silently ignore — biometrics is optional
     }
   };
 
@@ -369,7 +379,7 @@ export default function LoginPage() {
                   </p>
                   {loginError && <p style={{ fontSize: 12, color: "#E05555", margin: "-4px 0 0", padding: "8px 12px", background: "rgba(224,85,85,0.07)", borderRadius: 8 }}>{loginError}</p>}
 
-                  {/* Face ID button — shown prominently above the form */}
+                  {/* Biometric button — shown prominently above the form */}
                   {supportsPasskey && hasPasskey && !showPasswordForm && (
                     <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
                       <button
@@ -380,7 +390,7 @@ export default function LoginPage() {
                       >
                         {passkeyLoading
                           ? <><Loader2 size={18} className="animate-spin" /> Verifying…</>
-                          : <><ScanFace size={20} /> Sign in with Face ID</>
+                          : <><Fingerprint size={22} /> {biometricLabel}</>
                         }
                       </button>
 
