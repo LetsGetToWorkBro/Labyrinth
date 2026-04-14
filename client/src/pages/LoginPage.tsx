@@ -208,7 +208,7 @@ export default function LoginPage() {
         localStorage.removeItem('lbjj_saved_pass');
       }
     } else {
-      setLoginError("The email or password you entered is incorrect. Please try again or reset your password.");
+      setLoginError("__CREDENTIAL_ERROR__");
     }
   };
 
@@ -386,7 +386,19 @@ export default function LoginPage() {
                     {' '}and{' '}
                     <a href="https://labyrinth.vision/terms" target="_blank" rel="noopener noreferrer" style={{ color: '#666', textDecoration: 'underline' }}>Terms</a>.
                   </p>
-                  {loginError && <p id="login-error" role="alert" aria-live="polite" data-testid="login-error" style={{ fontSize: 12, color: "#E05555", margin: "-4px 0 0", padding: "8px 12px", background: "rgba(224,85,85,0.07)", borderRadius: 8 }}>{loginError}</p>}
+                  {loginError && (
+                    <p id="login-error" role="alert" aria-live="polite" data-testid="login-error"
+                      style={{ fontSize: 12, color: "#E05555", margin: "-4px 0 0", padding: "8px 12px", background: "rgba(224,85,85,0.07)", borderRadius: 8 }}>
+                      {loginError === '__CREDENTIAL_ERROR__' ? (
+                        <>Incorrect email or password. Try again or{' '}
+                          <button type="button" onClick={() => { setShowForgot(true); setForgotEmail(email); setForgotSent(false); setLoginError(''); }}
+                            style={{ background: 'none', border: 'none', color: '#E05555', textDecoration: 'underline', cursor: 'pointer', fontSize: 'inherit', padding: 0 }}>
+                            reset your password
+                          </button>.
+                        </>
+                      ) : loginError}
+                    </p>
+                  )}
 
                   {/* Biometric button — shown prominently above the form */}
                   {supportsPasskey && hasPasskey && !showPasswordForm && (
@@ -431,17 +443,20 @@ export default function LoginPage() {
                         <input id="login-email" type="email" name="email" value={email} onChange={e => setEmail(e.target.value)}
                           placeholder="your@email.com" autoComplete="email" autoFocus
                           autoCapitalize="none" autoCorrect="off" inputMode="email" spellCheck={false}
-                          enterKeyHint="next"
-                          aria-describedby={loginError ? 'login-error' : undefined}
-                          style={inputStyle} data-testid="input-email" />
+                          enterKeyHint="next" readOnly={loginLoading}
+                          aria-invalid={!!loginError} aria-describedby={loginError ? 'login-error' : undefined}
+                          style={{ ...inputStyle, ...(loginError ? { borderColor: 'rgba(224,85,85,0.5)' } : {}) }}
+                          data-testid="input-email" />
                       </Field>
                       <Field label="Password" htmlFor="login-password">
                         <div style={{ position: "relative" }}>
                           <input id="login-password" type={showPw ? "text" : "password"} name="password" value={password}
                             onChange={e => setPassword(e.target.value)}
                             placeholder="Your password" autoComplete="current-password"
-                            enterKeyHint="go"
-                            style={{ ...inputStyle, paddingRight: 44 }} data-testid="input-password" />
+                            enterKeyHint="go" readOnly={loginLoading}
+                            aria-invalid={!!loginError} aria-describedby={loginError ? 'login-error' : undefined}
+                            style={{ ...inputStyle, paddingRight: 44, ...(loginError ? { borderColor: 'rgba(224,85,85,0.5)' } : {}) }}
+                            data-testid="input-password" />
                           <button type="button" onClick={() => setShowPw(!showPw)}
                             style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", color: "#555", cursor: "pointer", padding: 4 }}>
                             {showPw ? <EyeOff size={17} /> : <Eye size={17} />}
