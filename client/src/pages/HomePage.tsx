@@ -548,12 +548,14 @@ export default function HomePage() {
       stats.classesAttended = (stats.classesAttended || 0) + 1;
       localStorage.setItem('lbjj_game_stats_v2', JSON.stringify(stats));
     } catch {}
+    setTotalClasses(prev => prev + 1);
 
     // Update today's check-in count
     const today = new Date().toISOString().split('T')[0];
     const todayData = (() => { try { return JSON.parse(localStorage.getItem('lbjj_checkins_today') || '{}'); } catch { return {}; } })();
     const newCount = (todayData.date === today ? (todayData.count || 0) : 0) + 1;
     localStorage.setItem('lbjj_checkins_today', JSON.stringify({ date: today, count: newCount }));
+    setClassesToday(newCount);
 
     // Update weekly training
     const weekly = (() => { try { return JSON.parse(localStorage.getItem('lbjj_weekly_training') || '[]'); } catch { return []; } })();
