@@ -13,8 +13,8 @@ export default function CheckInHistoryPage() {
     getMemberCheckIns().then(data => {
       // Sort most recent first
       const sorted = [...data].sort((a, b) => {
-        const da = new Date(a.date || a.checkInDate || a.classDate || 0).getTime();
-        const db = new Date(b.date || b.checkInDate || b.classDate || 0).getTime();
+        const da = new Date(a.timestamp || a.date || a.checkInDate || a.classDate || 0).getTime();
+        const db = new Date(b.timestamp || b.date || b.checkInDate || b.classDate || 0).getTime();
         return db - da;
       });
       setCheckIns(sorted);
@@ -33,12 +33,12 @@ export default function CheckInHistoryPage() {
   const thisMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
 
   const thisWeek = checkIns.filter(c => {
-    const d = new Date(c.date || c.checkInDate || c.classDate || 0);
+    const d = new Date(c.timestamp || c.date || c.checkInDate || c.classDate || 0);
     return d >= thisWeekStart;
   }).length;
 
   const thisMonth = checkIns.filter(c => {
-    const d = new Date(c.date || c.checkInDate || c.classDate || 0);
+    const d = new Date(c.timestamp || c.date || c.checkInDate || c.classDate || 0);
     return d >= thisMonthStart;
   }).length;
 
@@ -119,7 +119,7 @@ export default function CheckInHistoryPage() {
                     {ci.className || ci.class || ci.classType || 'Class'}
                   </div>
                   <div style={{ color: '#666', fontSize: 11, marginTop: 2 }}>
-                    {formatDate(ci.date || ci.checkInDate || ci.classDate)}
+                    {formatDate(ci.timestamp || ci.date || ci.checkInDate || ci.classDate)}
                     {(ci.instructor || ci.coach) && ` · ${ci.instructor || ci.coach}`}
                   </div>
                 </div>

@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { useAuth } from "@/lib/auth-context";
-import { memberSaveWaiver, memberSaveAgreement } from "@/lib/api";
+import { memberSaveWaiver, memberSaveAgreement, getToken } from "@/lib/api";
 import { CheckCircle, Eraser, AlertCircle, Loader2, ArrowLeft } from "lucide-react";
 
 const WAIVER_TEXT = `LABYRINTH BJJ — LIABILITY WAIVER AND RELEASE
@@ -143,6 +143,11 @@ export default function WaiverPage() {
   const handleSign = async () => {
     // All three conditions must be met
     if (!confirmed || !hasDrawn || !signerName || signing) return;
+    const token = getToken();
+    if (!token) {
+      setSignError("Please sign in first before signing the waiver.");
+      return;
+    }
     setSigning(true);
     setSignError("");
     try {

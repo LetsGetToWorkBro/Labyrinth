@@ -52,7 +52,7 @@ export default function AchievementsPage() {
   };
 
   return (
-    <div className="app-content" style={{ background: '#0A0A0A', minHeight: '100dvh' }}>
+    <div className="app-content achievements-page" style={{ background: '#0A0A0A', minHeight: '100dvh' }}>
       {/* Header */}
       <div style={{ padding: '0 20px', paddingTop: 'max(16px, env(safe-area-inset-top, 16px))' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>

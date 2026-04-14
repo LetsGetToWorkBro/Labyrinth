@@ -144,11 +144,8 @@ export default function LoginPage() {
         if (!result.success) {
           setEmail(savedEmail);
           setShowPasswordForm(true);
-          if (result.error === 'no_saved_password') {
-            // Pre-check Remember Me and show a helpful inline tip instead of an error
-            setRememberMe(true);
-            localStorage.setItem('lbjj_remember', 'true');
-            setLoginError('');
+          if (result.error === 'no_saved_token') {
+            setLoginError('Sign in once to enable biometric login — no checkbox needed.');
           } else {
             setLoginError("Couldn't sign in. Please enter your password.");
           }
@@ -441,24 +438,15 @@ export default function LoginPage() {
                         Forgot password?
                       </button>
 
-                      {/* Remember me — pre-checked when coming from biometric setup */}
-                      <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', marginTop: -8,
-                        padding: rememberMe && hasPasskey ? '8px 10px' : '0',
-                        borderRadius: 8,
-                        background: rememberMe && hasPasskey ? 'rgba(200,162,76,0.07)' : 'transparent',
-                        border: rememberMe && hasPasskey ? '1px solid rgba(200,162,76,0.15)' : 'none',
-                      }}>
+                      {/* Remember me — small, below sign in area */}
+                      <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', marginTop: -8 }}>
                         <input
                           type="checkbox"
                           checked={rememberMe}
                           onChange={e => setRememberMe(e.target.checked)}
                           style={{ width: 14, height: 14, accentColor: GOLD, flexShrink: 0 }}
                         />
-                        <span style={{ fontSize: 12, color: rememberMe && hasPasskey ? '#C8A24C' : '#555' }}>
-                          {rememberMe && hasPasskey
-                            ? 'Remember me ✓ — biometrics will work after signing in'
-                            : 'Remember me'}
-                        </span>
+                        <span style={{ fontSize: 11, color: '#555' }}>Remember me</span>
                       </label>
 
                       {/* Sign In button — gold, full width, 48px+ */}

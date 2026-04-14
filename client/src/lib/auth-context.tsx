@@ -33,6 +33,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const result = await apiLogin(email, password);
       if (result.success && result.token && result.member) {
         setToken(result.token);
+        localStorage.setItem('lbjj_session_token', result.token);
         setIsAuthenticated(true);
         setMemberState(result.member);
         setFamilyMembers(result.member.familyMembers || []);
@@ -47,13 +48,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const loginWithPasskey = useCallback(async (email: string) => {
     try {
       setActiveLocation(getSavedLocationId());
-      // Try saved password first (Remember Me)
-      const savedPass = localStorage.getItem('lbjj_saved_pass') || '';
-      if (savedPass) {
-        const result = await apiLogin(email, savedPass);
-        if (result?.success && result?.member) {
-          if (result.token) setToken(result.token);
-          const normalized = { ...result.member, role: result.member?.role || '', isAdmin: ['owner', 'admin', 'coach', 'instructor'].includes((result.member?.role || '').toLowerCase()) };
+      // Try to restore session using saved token
+      const savedToken = localStorage.getItem('lbjj_session_token');
+      if (savedToken) {
+        const result = await gasCall('memberGetProfile', { token: savedToken });
+        if (result?.success !== false && (result?.member || result)) {
+          setToken(savedToken);
+          const raw = result.member || result;
+          const normalized = { ...raw, role: raw?.role || '', isAdmin: ['owner', 'admin', 'coach', 'instructor'].includes((raw?.role || '').toLowerCase()) };
           setIsAuthenticated(true);
           setMemberState(normalized);
           setMemberData(normalized);
@@ -62,8 +64,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           return { success: true };
         }
       }
-      // No saved password — can't authenticate without GAS
-      return { success: false, error: 'no_saved_password' };
+      // No saved token — need password login first
+      return { success: false, error: 'no_saved_token' };
     } catch {
       return { success: false, error: 'Connection error' };
     }
@@ -71,6 +73,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const logout = useCallback(() => {
     clearAuth();
+    localStorage.removeItem('lbjj_session_token');
     setIsAuthenticated(false);
     setMemberState(null);
     setFamilyMembers([]);

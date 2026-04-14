@@ -390,7 +390,31 @@ export default function HomePage() {
   }, []);
 
   const [nextClass, setNextClass] = useState<ReturnType<typeof getNextClass>>(getNextClass);
-  const [checkedInClasses, setCheckedInClasses] = useState<string[]>([]);
+
+  const getTodayKey = () => `lbjj_checkins_${new Date().toISOString().split('T')[0]}`;
+  const [checkedInClasses, setCheckedInClasses] = useState<string[]>(() => {
+    try { return JSON.parse(sessionStorage.getItem(getTodayKey()) || '[]'); } catch { return []; }
+  });
+
+  // Persist checked-in classes to sessionStorage
+  useEffect(() => {
+    try { sessionStorage.setItem(getTodayKey(), JSON.stringify(checkedInClasses)); } catch {}
+  }, [checkedInClasses]);
+
+  // Fetch today's check-ins from GAS on mount
+  useEffect(() => {
+    if (member?.email) {
+      gasCall('getMemberCheckIns', { email: member.email }).then((res: any) => {
+        const today = new Date().toISOString().split('T')[0];
+        const todayClasses = (res?.checkIns || [])
+          .filter((c: any) => (c.date || c.timestamp || '').startsWith(today))
+          .map((c: any) => c.className);
+        if (todayClasses.length > 0) {
+          setCheckedInClasses(prev => [...new Set([...prev, ...todayClasses])]);
+        }
+      }).catch(() => {});
+    }
+  }, [member?.email]);
 
   const handleHomeCheckIn = useCallback(async (cls: any) => {
     // GAS call first to check for dedup

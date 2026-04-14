@@ -328,6 +328,7 @@ export async function memberCreateSetupLink(): Promise<{ url: string }> {
 
 export async function memberSaveWaiver(signerName: string, signatureData: string, participantType: string): Promise<any> {
   const token = getToken();
+  console.log('[memberSaveWaiver] token:', token ? 'present' : 'MISSING');
   if (!token) throw new Error("Not authenticated");
   return gasCall("memberSaveWaiver", { token, signerName, signatureData, documentType: 'waiver', participantType });
 }
