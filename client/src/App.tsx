@@ -946,6 +946,13 @@ function AppShell() {
   const { isAuthenticated, member } = useAuth();
   const [location] = useHashLoc();
 
+  // ── Clear game-active attribute on any route change ──────────
+  useEffect(() => {
+    if (!location.startsWith('/games')) {
+      document.body.removeAttribute('data-game-active');
+    }
+  }, [location]);
+
   // ── Global Biometric / Passkey setup prompt ───────────────────
   const [showPasskeySetup, setShowPasskeySetup] = useState(false);
   const [passkeyRegistering, setPasskeyRegistering] = useState(false);
