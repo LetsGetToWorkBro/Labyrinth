@@ -419,13 +419,14 @@ export default function LoginPage() {
                   {(showPasswordForm || !hasPasskey || !supportsPasskey) && (
                     <form onSubmit={handleLogin} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
                       <Field label="Email" htmlFor="login-email">
-                        <input id="login-email" type="email" value={email} onChange={e => setEmail(e.target.value)}
+                        <input id="login-email" type="email" name="email" value={email} onChange={e => setEmail(e.target.value)}
                           placeholder="your@email.com" autoComplete="email" autoFocus
+                          autoCapitalize="none" autoCorrect="off" inputMode="email" spellCheck={false}
                           style={inputStyle} data-testid="input-email" />
                       </Field>
                       <Field label="Password" htmlFor="login-password">
                         <div style={{ position: "relative" }}>
-                          <input id="login-password" type={showPw ? "text" : "password"} value={password}
+                          <input id="login-password" type={showPw ? "text" : "password"} name="password" value={password}
                             onChange={e => setPassword(e.target.value)}
                             placeholder="Enter password" autoComplete="current-password"
                             style={{ ...inputStyle, paddingRight: 44 }} data-testid="input-password" />
@@ -482,8 +483,8 @@ export default function LoginPage() {
                         Enter your email and we'll send a password reset link.
                       </p>
                       <Field label="Email" htmlFor="forgot-email">
-                        <input id="forgot-email" type="email" value={forgotEmail} onChange={e => setForgotEmail(e.target.value)}
-                          placeholder="your@email.com" autoFocus style={inputStyle} />
+                        <input id="forgot-email" type="email" name="email" value={forgotEmail} onChange={e => setForgotEmail(e.target.value)}
+                          placeholder="your@email.com" autoFocus autoCapitalize="none" autoCorrect="off" inputMode="email" spellCheck={false} style={inputStyle} />
                       </Field>
                       <button onClick={handleForgotPassword} disabled={forgotLoading}
                         style={{ ...submitStyle(selectedLocation.color), opacity: forgotLoading ? 0.7 : 1 }}>
