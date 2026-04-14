@@ -544,6 +544,23 @@ body[data-game-active="true"] .tab-bar {
   line-height: 1.2;
 }
 
+/* ── Accessible focus rings ── */
+:focus-visible {
+  outline: 2px solid #C8A24C;
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+input:focus-visible, textarea:focus-visible, select:focus-visible {
+  outline: 2px solid #C8A24C;
+  outline-offset: 0;
+}
+
+button:focus-visible {
+  outline: 2px solid #C8A24C;
+  outline-offset: 2px;
+}
+
 /* DD-06: Prevent iOS auto-zoom on input focus (must be ≥16px) */
 input,
 textarea,

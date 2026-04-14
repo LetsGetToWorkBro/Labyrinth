@@ -386,7 +386,7 @@ export default function LoginPage() {
                     {' '}and{' '}
                     <a href="https://labyrinth.vision/terms" target="_blank" rel="noopener noreferrer" style={{ color: '#666', textDecoration: 'underline' }}>Terms</a>.
                   </p>
-                  {loginError && <p id="login-error" role="alert" aria-live="polite" style={{ fontSize: 12, color: "#E05555", margin: "-4px 0 0", padding: "8px 12px", background: "rgba(224,85,85,0.07)", borderRadius: 8 }}>{loginError}</p>}
+                  {loginError && <p id="login-error" role="alert" aria-live="polite" data-testid="login-error" style={{ fontSize: 12, color: "#E05555", margin: "-4px 0 0", padding: "8px 12px", background: "rgba(224,85,85,0.07)", borderRadius: 8 }}>{loginError}</p>}
 
                   {/* Biometric button — shown prominently above the form */}
                   {supportsPasskey && hasPasskey && !showPasswordForm && (
