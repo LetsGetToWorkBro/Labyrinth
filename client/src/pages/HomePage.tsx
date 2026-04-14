@@ -16,7 +16,7 @@ import {
   memberAddCard, memberCreateSetupLink,
 } from "@/lib/api";
 import { useState, useEffect, useCallback, useRef } from "react";
-import { getStreamStatus } from "@/lib/streaming";
+import { getStreamStatus, clearStreamCache } from "@/lib/streaming";
 import type { StreamStatus } from "@/lib/streaming";
 
 // ── Badge unlock overlay (shared with SchedulePage pattern) ────
@@ -389,9 +389,33 @@ export default function HomePage() {
     return null;
   }, []);
 
-  const nextClass = getNextClass();
+  const [nextClass, setNextClass] = useState<ReturnType<typeof getNextClass>>(getNextClass);
+  const [checkedInClasses, setCheckedInClasses] = useState<string[]>([]);
 
-  const handleHomeCheckIn = useCallback((cls: any) => {
+  const handleHomeCheckIn = useCallback(async (cls: any) => {
+    // GAS call first to check for dedup
+    const profile = (() => { try { return JSON.parse(localStorage.getItem('lbjj_member_profile') || '{}'); } catch { return {}; } })();
+    if (profile.Email) {
+      try {
+        const res = await gasCall('recordCheckIn', { email: profile.Email, name: profile.Name || '', className: cls.name || '' });
+        if (res?.alreadyCheckedIn) {
+          // Show "already checked in" toast instead of confetti
+          const el = document.createElement('div');
+          el.textContent = 'Already checked in today';
+          el.style.cssText = `
+            position: fixed; bottom: 120px; left: 50%; transform: translateX(-50%);
+            background: rgba(100,100,100,0.95); color: #fff; font-weight: 600; font-size: 14px;
+            padding: 8px 20px; border-radius: 20px; z-index: 9999; pointer-events: none;
+            animation: pointsFloat 2s ease-out forwards;
+          `;
+          document.body.appendChild(el);
+          setTimeout(() => el.remove(), 2100);
+          setCheckedInClasses(prev => [...prev, cls.name || '']);
+          return;
+        }
+      } catch {}
+    }
+
     // Same logic as SchedulePage handleCheckIn
     try {
       const raw = localStorage.getItem('lbjj_game_stats_v2');
@@ -419,11 +443,11 @@ export default function HomePage() {
     // Show success toast
     showPointsToast(10);
 
-    // GAS call fire-and-forget
-    const profile = (() => { try { return JSON.parse(localStorage.getItem('lbjj_member_profile') || '{}'); } catch { return {}; } })();
-    if (profile.Email) {
-      gasCall('recordCheckIn', { email: profile.Email, name: profile.Name || '', className: cls.name || '' }).catch(() => {});
-    }
+    // Mark class as checked in
+    setCheckedInClasses(prev => [...prev, cls.name || '']);
+
+    // Optimistically update capacity
+    setNextClass(prev => prev ? { ...prev, currentCapacity: ((prev as any).currentCapacity || 0) + 1 } as any : prev);
 
     // Check achievements
     const gameStats = (() => { try { return JSON.parse(localStorage.getItem('lbjj_game_stats_v2') || '{}'); } catch { return {}; } })();
@@ -528,6 +552,7 @@ export default function HomePage() {
   // ─── Live stream status (poll every 30s) ───────────────────────────
   const [stream, setStream] = useState<StreamStatus | null>(null);
   useEffect(() => {
+    clearStreamCache();
     getStreamStatus().then(setStream);
     const interval = setInterval(() => {
       getStreamStatus().then(setStream);
@@ -818,22 +843,30 @@ export default function HomePage() {
             </a>
 
             {/* Right: Check In button */}
-            {nextClass.isToday && (
-              <button
-                onClick={() => handleHomeCheckIn(nextClass)}
-                style={{
-                  flexShrink: 0, padding: '10px 14px', borderRadius: 10,
-                  background: '#C8A24C', border: 'none', color: '#000',
-                  fontWeight: 700, fontSize: 13, cursor: 'pointer',
-                  display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2
-                }}
-              >
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                  <polyline points="20 6 9 17 4 12"/>
-                </svg>
-                <span style={{ fontSize: 10 }}>Check In</span>
-              </button>
-            )}
+            {nextClass.isToday && (() => {
+              const alreadyCheckedIn = checkedInClasses.includes(nextClass.name || '');
+              return (
+                <button
+                  onClick={() => !alreadyCheckedIn && handleHomeCheckIn(nextClass)}
+                  disabled={alreadyCheckedIn}
+                  style={{
+                    flexShrink: 0, padding: '10px 14px', borderRadius: 10,
+                    background: alreadyCheckedIn ? '#333' : '#C8A24C',
+                    border: 'none',
+                    color: alreadyCheckedIn ? '#666' : '#000',
+                    fontWeight: 700, fontSize: 13,
+                    cursor: alreadyCheckedIn ? 'default' : 'pointer',
+                    display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2,
+                    opacity: alreadyCheckedIn ? 0.6 : 1,
+                  }}
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                    <polyline points="20 6 9 17 4 12"/>
+                  </svg>
+                  <span style={{ fontSize: 10 }}>{alreadyCheckedIn ? 'Done' : 'Check In'}</span>
+                </button>
+              );
+            })()}
           </div>
         </div>
       )}

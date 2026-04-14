@@ -19,6 +19,9 @@ export default function CheckInHistoryPage() {
       });
       setCheckIns(sorted);
       setLoading(false);
+    }).catch(err => {
+      console.error('[CheckInHistory] Failed to load check-ins:', err);
+      setLoading(false);
     });
   }, []);
 

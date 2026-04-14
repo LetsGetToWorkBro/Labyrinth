@@ -24,7 +24,7 @@ export interface ArchiveEntry {
 }
 
 const STREAM_CACHE_KEY = 'lbjj_stream_status';
-const CACHE_TTL = 30 * 1000; // 30 seconds
+const CACHE_TTL = 15 * 1000; // 15 seconds
 
 export async function getStreamStatus(): Promise<StreamStatus> {
   // Check cache first
@@ -40,9 +40,14 @@ export async function getStreamStatus(): Promise<StreamStatus> {
     const data = result as StreamStatus;
     localStorage.setItem(STREAM_CACHE_KEY, JSON.stringify({ data, fetchedAt: Date.now() }));
     return data;
-  } catch {
+  } catch (err) {
+    console.error('[streaming] getStreamStatus error:', err);
     return { isLive: false, videoId: '', videoUrl: '', className: '', instructor: '', startedAt: '', durationMinutes: 0, thumbnail: '' };
   }
+}
+
+export function clearStreamCache() {
+  localStorage.removeItem(STREAM_CACHE_KEY);
 }
 
 export async function getStreamArchive(category?: string): Promise<ArchiveEntry[]> {

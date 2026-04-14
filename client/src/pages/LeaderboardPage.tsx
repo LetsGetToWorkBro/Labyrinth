@@ -47,8 +47,8 @@ export default function LeaderboardPage() {
       }
       setClassEntries(classes);
       setGameEntries(games);
-    } catch {
-      // silent
+    } catch (err) {
+      console.error('[Leaderboard] Failed to load leaderboard:', err);
     }
     setLoading(false);
     setRefreshing(false);

@@ -733,12 +733,36 @@ function MorePage() {
         <div style={{ marginTop: 20 }}>
           <NavCustomizer />
         </div>
-        <div className="mt-6 p-4 rounded-xl" style={{ backgroundColor: "#111", border: "1px solid #1A1A1A" }}>
-          <h3 className="text-sm font-semibold mb-2" style={{ color: "#F0F0F0" }}>Labyrinth BJJ</h3>
-          <div className="space-y-1.5 text-xs" style={{ color: "#999" }}>
-            <p>Fulshear, TX</p>
-            <a href="https://labyrinth.vision" target="_blank" rel="noopener noreferrer" style={{ color: "#C8A24C" }}>labyrinth.vision</a>
+        <div className="mt-6 p-5 rounded-xl" style={{ backgroundColor: "#111", border: "1px solid #1A1A1A", textAlign: 'center' }}>
+          <div style={{ fontSize: 16, fontWeight: 800, color: '#C8A24C', letterSpacing: '-0.02em', marginBottom: 2 }}>LABYRINTH BJJ</div>
+          <div style={{ fontSize: 11, color: '#555', marginBottom: 16, letterSpacing: '0.08em', textTransform: 'uppercase' }}>Fulshear, Texas</div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 12 }}>
+            <a href="https://maps.google.com/?q=Labyrinth+BJJ+Fulshear+TX" target="_blank" rel="noopener noreferrer"
+              style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, padding: '12px 8px', borderRadius: 10, background: '#161616', border: '1px solid #222', textDecoration: 'none' }}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#C8A24C" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+              <span style={{ fontSize: 11, color: '#888', fontWeight: 500 }}>Directions</span>
+            </a>
+            <a href="https://labyrinth.vision" target="_blank" rel="noopener noreferrer"
+              style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, padding: '12px 8px', borderRadius: 10, background: '#161616', border: '1px solid #222', textDecoration: 'none' }}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#C8A24C" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+              <span style={{ fontSize: 11, color: '#888', fontWeight: 500 }}>Website</span>
+            </a>
+            <a href="tel:+19073789986"
+              style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, padding: '12px 8px', borderRadius: 10, background: '#161616', border: '1px solid #222', textDecoration: 'none' }}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#C8A24C" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.61 3.56C1.56 2.5 2.33 1.56 3.36 1H6.36a2 2 0 0 1 2 1.72c.13 1 .36 1.97.71 2.9a2 2 0 0 1-.45 2.11L7.18 8.72a16 16 0 0 0 6.01 6.01l1.01-1.01a2 2 0 0 1 2.11-.45c.93.35 1.9.58 2.9.71A2 2 0 0 1 21 16.92z"/></svg>
+              <span style={{ fontSize: 11, color: '#888', fontWeight: 500 }}>Call</span>
+            </a>
+            <a href="sms:+19073789986"
+              style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, padding: '12px 8px', borderRadius: 10, background: '#161616', border: '1px solid #222', textDecoration: 'none' }}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#C8A24C" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+              <span style={{ fontSize: 11, color: '#888', fontWeight: 500 }}>Text</span>
+            </a>
           </div>
+          <a href="mailto:info@labyrinth.vision"
+            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '10px', borderRadius: 10, background: '#161616', border: '1px solid #222', textDecoration: 'none', width: '100%' }}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#C8A24C" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+            <span style={{ fontSize: 12, color: '#888', fontWeight: 500 }}>info@labyrinth.vision</span>
+          </a>
         </div>
         <button onClick={logout}
           className="w-full mt-4 py-3 rounded-xl text-sm font-medium transition-all active:scale-[0.98]"

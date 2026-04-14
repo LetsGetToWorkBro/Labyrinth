@@ -620,7 +620,8 @@ function BJJChessGame({ difficulty, rank, wins, onGameEnd, onExit }: BJJChessGam
   return (
     <div style={{
       height: '100dvh',
-      maxWidth: 430,
+      width: '100%',
+      maxWidth: '100vw',
       margin: '0 auto',
       display: 'flex',
       flexDirection: 'column',
@@ -761,6 +762,7 @@ function BJJChessGame({ difficulty, rank, wins, onGameEnd, onExit }: BJJChessGam
       {/* Position Display — fills remaining space */}
       <div style={{
         flex: 1,
+        width: '100%',
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
