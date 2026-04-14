@@ -263,31 +263,12 @@ function AccountPage() {
 
     setWalletLoading(true);
     try {
-      // Use POST /pass/generate with real member data
-      const response = await fetch('https://labyrinth-pass-server-production.up.railway.app/pass/generate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          apiSecret: 'lbjj-pass-secret-2026',
-          memberData: {
-            name,
-            email: member?.email || '',
-            belt,
-            membership: member?.membership || 'Active',
-            plan: member?.plan || '',
-          }
-        })
-      });
-
-      if (!response.ok) throw new Error('Failed to generate pass');
-
-      const blob = await response.blob();
-      const url = URL.createObjectURL(blob);
-
-      // Trigger iOS Wallet prompt
-      window.location.href = url;
-
-    } catch (err) {
+      const encodedName = encodeURIComponent(name);
+      const email = encodeURIComponent(member?.email || '');
+      const cleanBelt = belt.replace(' belt', '').trim();
+      const passUrl = `https://labyrinth-pass-server-production.up.railway.app/pass/generate?name=${encodedName}&email=${email}&belt=${cleanBelt}&apiSecret=lbjj-pass-secret-2026`;
+      window.location.href = passUrl;
+    } catch (e) {
       alert('Could not generate your pass. Please try again or contact info@labyrinth.vision');
     } finally {
       setWalletLoading(false);
@@ -314,7 +295,7 @@ function AccountPage() {
       });
       if (!response.ok) throw new Error('Server error');
       const { saveUrl } = await response.json();
-      window.open(saveUrl, '_blank');
+      window.location.href = saveUrl;
     } catch (e) {
       alert('Could not generate Google Wallet pass. Please try again.');
     } finally {
