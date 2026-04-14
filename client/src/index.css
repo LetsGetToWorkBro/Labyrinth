@@ -955,3 +955,25 @@ a.btn {
 .viewer-count {
   transition: opacity 200ms cubic-bezier(0.16, 1, 0.3, 1);
 }
+
+/* View Transitions API support */
+@view-transition { navigation: auto; }
+
+::view-transition-old(root) {
+  animation: page-slide-out-left 200ms cubic-bezier(0.4, 0, 1, 1) forwards;
+}
+::view-transition-new(root) {
+  animation: page-slide-in-right 300ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+html[data-nav="back"] ::view-transition-old(root) {
+  animation: page-slide-out-right 180ms cubic-bezier(0.4, 0, 1, 1) forwards;
+}
+html[data-nav="back"] ::view-transition-new(root) {
+  animation: page-slide-in-left 280ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+html[data-nav="tab"] ::view-transition-old(root),
+html[data-nav="tab"] ::view-transition-new(root) {
+  animation-duration: 200ms;
+}

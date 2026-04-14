@@ -465,9 +465,10 @@ export default function HomePage() {
   const handleHomeCheckIn = useCallback(async (cls: any) => {
     // GAS call first to check for dedup
     const profile = (() => { try { return JSON.parse(localStorage.getItem('lbjj_member_profile') || '{}'); } catch { return {}; } })();
+    let res: any = null;
     if (profile.Email) {
       try {
-        const res = await gasCall('recordCheckIn', { email: profile.Email, name: profile.Name || '', className: cls.name || '' });
+        res = await gasCall('recordCheckIn', { email: profile.Email, name: profile.Name || '', className: cls.name || '' });
         if (res?.alreadyCheckedIn) {
           // Show "already checked in" toast instead of confetti
           const el = document.createElement('div');
@@ -541,6 +542,13 @@ export default function HomePage() {
     // Check achievements
     const gameStats = (() => { try { return JSON.parse(localStorage.getItem('lbjj_game_stats_v2') || '{}'); } catch { return {}; } })();
     checkAndUnlockAchievements(profile, gameStats);
+
+    // Belt milestone overlay trigger
+    const beltMilestoneKeys = ['mat_warrior', 'mat_legend', 'loyal_1yr', 'loyal_2yr', 'streak_30', 'podium', 'century_club'];
+    const beltBadge = (res?.newBadges || []).find((b: any) => beltMilestoneKeys.includes(b.key));
+    if (beltBadge && (window as any).__showBeltMilestone) {
+      setTimeout(() => (window as any).__showBeltMilestone(beltBadge), 600);
+    }
   }, []);
 
   // ─── Weekly training dots ─────────────────────────────────────────

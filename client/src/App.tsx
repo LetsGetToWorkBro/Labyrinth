@@ -102,6 +102,17 @@ function TabBar() {
 
   const allTabs = tabs; // Admin tools are in the More tab
 
+  // Wrap tab navigation with View Transition
+  const handleTabClick = (e: React.MouseEvent<HTMLAnchorElement>, path: string) => {
+    if (!(document as any).startViewTransition) return; // fallback to CSS class
+    e.preventDefault();
+    document.documentElement.dataset.nav = 'tab';
+    (document as any).startViewTransition(() => {
+      window.location.hash = `#${path}`;
+    });
+    setTimeout(() => delete document.documentElement.dataset.nav, 400);
+  };
+
   return (
     <nav className="tab-bar" data-testid="tab-bar">
       {allTabs.map(tab => {
@@ -113,6 +124,7 @@ function TabBar() {
             href={`/#${tab.path}`}
             className={`tab-item ${isActive ? 'active' : ''}`}
             data-testid={`tab-${tab.label.toLowerCase()}`}
+            onClick={(e) => handleTabClick(e, tab.path)}
           >
             {Icon
               ? <Icon size={22} strokeWidth={isActive ? 2.2 : 1.5} />
@@ -1033,6 +1045,17 @@ function AppShell() {
     };
   }, []);
 
+  // ── Track navigation direction ──────────────────────────────
+  const navDirection = useRef<'forward' | 'back' | 'tab'>('forward');
+
+  useEffect(() => {
+    const handlePopState = () => {
+      navDirection.current = 'back';
+    };
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
+
   // ── Page transition on route change ──────────────────────────
   const prevLocation = useRef(location);
   useEffect(() => {
@@ -1044,7 +1067,12 @@ function AppShell() {
 
     const content = document.querySelector('.app-content');
     if (content) {
-      const cls = isTab ? 'page-enter-tab' : 'page-enter-forward';
+      const dir = navDirection.current;
+      const cls = isTab ? 'page-enter-tab'
+        : dir === 'back' ? 'page-enter-back'
+        : 'page-enter-forward';
+      // Reset direction after use
+      navDirection.current = 'forward';
       content.classList.remove('page-enter-forward', 'page-enter-back', 'page-enter-tab');
       content.classList.add(cls);
       const cleanup = () => content.classList.remove(cls);
