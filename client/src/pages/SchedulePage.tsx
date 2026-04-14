@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { CLASS_SCHEDULE, CLASS_TYPE_COLORS, DAYS_ORDER } from "@/lib/constants";
 import type { ClassScheduleItem } from "@/lib/constants";
@@ -165,6 +165,10 @@ export default function SchedulePage() {
   const [classes, setClasses] = useState<ClassScheduleItem[]>(CLASS_SCHEDULE);
   const [stream, setStream] = useState<StreamStatus | null>(null);
 
+  // 5a: Day pill indicator slide
+  const dayRefs = useRef<Record<string, HTMLButtonElement | null>>({});
+  const [indicatorStyle, setIndicatorStyle] = useState({ left: 0, width: 0 });
+
   useEffect(() => {
     getStreamStatus().then(setStream);
   }, []);
@@ -189,6 +193,14 @@ export default function SchedulePage() {
       setClasses(merged);
     });
   }, []);
+
+  // 5a: Slide indicator to active day
+  useEffect(() => {
+    const el = dayRefs.current[selectedDay];
+    if (el) {
+      setIndicatorStyle({ left: el.offsetLeft, width: el.offsetWidth });
+    }
+  }, [selectedDay]);
 
   const dayClasses = classes.filter(c => {
     if (c.day !== selectedDay) return false;
@@ -230,7 +242,17 @@ export default function SchedulePage() {
 
       {/* Day Selector */}
       <div className="px-5 mb-4 overflow-x-auto" style={{ WebkitOverflowScrolling: "touch", display: 'flex', justifyContent: 'center' }}>
-        <div className="flex gap-2" style={{ minWidth: 'max-content' }}>
+        <div className="flex gap-2" style={{ minWidth: 'max-content', position: 'relative' }}>
+          <div style={{
+            position: 'absolute',
+            bottom: 0,
+            left: indicatorStyle.left,
+            width: indicatorStyle.width,
+            height: 2,
+            background: '#C8A24C',
+            borderRadius: 999,
+            transition: 'left 220ms cubic-bezier(0.4, 0, 0.2, 1), width 220ms cubic-bezier(0.4, 0, 0.2, 1)',
+          }} />
           {DAYS_ORDER.map(day => {
             const isSelected = selectedDay === day;
             const isToday = day === today;
@@ -238,6 +260,7 @@ export default function SchedulePage() {
             return (
               <button
                 key={day}
+                ref={el => { dayRefs.current[day] = el; }}
                 onClick={() => setSelectedDay(day)}
                 className="flex flex-col items-center px-3 py-2 rounded-xl transition-all min-w-[52px]"
                 style={{
@@ -269,8 +292,13 @@ export default function SchedulePage() {
           </div>
         ) : (
           <div className="space-y-2">
-            {dayClasses.map((cls) => (
-              <ClassCard key={`${cls.day}-${cls.time}-${cls.name}`} cls={cls} isToday={selectedDay === today} stream={stream} />
+            {dayClasses.map((cls, index) => (
+              <div key={`${selectedDay}-${cls.day}-${cls.time}-${cls.name}`}
+                className="stagger-child"
+                style={{ animationDelay: `${index * 30}ms` }}
+              >
+                <ClassCard cls={cls} isToday={selectedDay === today} stream={stream} />
+              </div>
             ))}
           </div>
         )}
@@ -569,11 +597,13 @@ function ClassCard({ cls, isToday, stream }: { cls: ClassScheduleItem; isToday: 
                 ) : (
                   <button
                     onClick={handleCheckIn}
+                    data-checkin-btn=""
                     style={{
                       display: "flex", alignItems: "center", justifyContent: "center",
                       gap: 8, padding: "14px", borderRadius: 12, width: "100%",
                       background: "#C8A24C", color: "#0A0A0A",
                       fontWeight: 700, fontSize: 15, border: "none", cursor: "pointer",
+                      transition: 'transform 80ms cubic-bezier(0.16, 1, 0.3, 1)',
                     }}
                   >
                     Check In to Class

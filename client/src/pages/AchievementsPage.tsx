@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useHashLocation } from 'wouter/use-hash-location';
 import { ALL_ACHIEVEMENTS, ACHIEVEMENT_CATEGORIES, checkAndUnlockAchievements } from '@/lib/achievements';
 import type { Achievement } from '@/lib/achievements';
@@ -13,6 +13,14 @@ export default function AchievementsPage() {
   const [earnedKeys, setEarnedKeys] = useState<string[]>([]);
   const [selectedAchievement, setSelectedAchievement] = useState<Achievement | null>(null);
   const [isSelectedEarned, setIsSelectedEarned] = useState(false);
+  const [newBadgeKeys, setNewBadgeKeys] = useState<string[]>([]);
+
+  // 4a: Progress bar animated fill
+  const progressRef = useRef<HTMLDivElement>(null);
+
+  // 4e: Filter tab indicator slide
+  const tabRefs = useRef<Record<string, HTMLButtonElement | null>>({});
+  const indicatorRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     // Run local achievement checks
@@ -36,6 +44,40 @@ export default function AchievementsPage() {
       }).catch(() => {});
     }
   }, [member?.email]);
+
+  // 4a: Animate progress bar fill on mount/change
+  useEffect(() => {
+    if (!progressRef.current) return;
+    const total = ALL_ACHIEVEMENTS.length;
+    const earned = earnedKeys.length;
+    const pct = (earned / total * 100).toFixed(1) + '%';
+    progressRef.current.style.setProperty('--progress', pct);
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        progressRef.current?.classList.add('animate');
+      });
+    });
+  }, [earnedKeys]);
+
+  // 4d: Check for newly unlocked badges this session
+  useEffect(() => {
+    try {
+      const raw = sessionStorage.getItem('lbjj_new_badges');
+      if (raw) {
+        const keys = JSON.parse(raw);
+        if (Array.isArray(keys)) setNewBadgeKeys(keys);
+      }
+    } catch {}
+  }, []);
+
+  // 4e: Move indicator on tab change
+  useEffect(() => {
+    const activeEl = tabRefs.current[activeCategory];
+    const indicator = indicatorRef.current;
+    if (!activeEl || !indicator) return;
+    indicator.style.transform = `translateX(${activeEl.offsetLeft}px)`;
+    indicator.style.width = `${activeEl.offsetWidth}px`;
+  }, [activeCategory]);
 
   const filtered = activeCategory === 'all'
     ? ALL_ACHIEVEMENTS
@@ -82,8 +124,8 @@ export default function AchievementsPage() {
             <span style={{ fontSize: 13, fontWeight: 700, color: '#F0F0F0' }}>Progress</span>
             <span style={{ fontSize: 13, color: '#C8A24C', fontWeight: 700 }}>{earnedCount} / {totalCount}</span>
           </div>
-          <div style={{ height: 6, background: '#1A1A1A', borderRadius: 3, overflow: 'hidden' }}>
-            <div style={{
+          <div className="achievement-progress-bar" ref={progressRef} style={{ height: 6, background: '#1A1A1A', borderRadius: 3, overflow: 'hidden' }}>
+            <div className="achievement-progress-fill" style={{
               height: '100%',
               width: `${totalCount > 0 ? Math.round(earnedCount / totalCount * 100) : 0}%`,
               background: 'linear-gradient(90deg, #C8A24C, #E8C86C)',
@@ -102,8 +144,18 @@ export default function AchievementsPage() {
           WebkitOverflowScrolling: 'touch' as any,
           scrollbarWidth: 'none',
           msOverflowStyle: 'none',
+          position: 'relative',
         }}>
+          <div ref={indicatorRef} style={{
+            position: 'absolute',
+            bottom: 0,
+            height: 2,
+            background: '#C8A24C',
+            borderRadius: 999,
+            transition: 'transform 220ms cubic-bezier(0.4, 0, 0.2, 1), width 220ms cubic-bezier(0.4, 0, 0.2, 1)',
+          }} />
           <button
+            ref={el => { tabRefs.current['all'] = el; }}
             onClick={() => setActiveCategory('all')}
             style={{
               flexShrink: 0,
@@ -123,6 +175,7 @@ export default function AchievementsPage() {
           {ACHIEVEMENT_CATEGORIES.map(cat => (
             <button
               key={cat.key}
+              ref={el => { tabRefs.current[cat.key] = el; }}
               onClick={() => setActiveCategory(cat.key)}
               style={{
                 flexShrink: 0,
@@ -150,14 +203,17 @@ export default function AchievementsPage() {
         gap: 10,
         padding: '0 20px 120px',
       }}>
-        {filtered.map(a => {
+        {filtered.map((a, index) => {
           const isEarned = earnedKeys.includes(a.key);
           const isSecret = !!a.secret && !isEarned;
+          const justUnlocked = newBadgeKeys.includes(a.key);
+          const badgeClass = justUnlocked ? 'badge-unlocking' : isEarned ? 'badge-unlocked' : 'badge-locked';
           return (
             <div
               key={a.key}
+              className={`badge-grid-item ${badgeClass}`}
               onClick={() => { setSelectedAchievement(a); setIsSelectedEarned(isEarned); }}
-              style={{ cursor: 'pointer' }}
+              style={{ cursor: 'pointer', animationDelay: `${index * 40}ms` }}
             >
               {isEarned
                 ? <UnlockedCard achievement={a} />

@@ -52,13 +52,37 @@ export default function ChatPage() {
   const [sendError, setSendError] = useState("");
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({ 'Kids Ranks': true });
   const [showRankLegend, setShowRankLegend] = useState(false);
+  const [isTyping] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const prevMsgCountRef = useRef(0);
+  const initialLoadRef = useRef(true);
+  const initialMsgCountRef = useRef(0);
   const notifPermRef = useRef<NotificationPermission>(
     typeof Notification !== 'undefined' ? Notification.permission : 'denied'
   );
+
+  // 6a: Inject chat motion styles once
+  useEffect(() => {
+    const id = 'chat-motion-styles';
+    if (document.getElementById(id)) return;
+    const style = document.createElement('style');
+    style.id = id;
+    style.textContent = `
+      @keyframes chat-msg-enter {
+        from { opacity: 0; transform: translateY(6px); }
+        to   { opacity: 1; transform: translateY(0); }
+      }
+      @keyframes reaction-pop {
+        from { transform: scale(0); opacity: 0; }
+        60%  { transform: scale(1.15); opacity: 1; }
+        to   { transform: scale(1); opacity: 1; }
+      }
+      .reaction-new { animation: reaction-pop 140ms cubic-bezier(0.34,1.56,0.64,1) both; }
+    `;
+    document.head.appendChild(style);
+  }, []);
 
   // ── Load channel list ─────────────────────────────────────────
   const loadChannels = useCallback(async () => {
@@ -90,6 +114,11 @@ export default function ChatPage() {
       }
     }
     prevMsgCountRef.current = msgs.length;
+    // After first load, record how many messages were in the initial batch
+    if (initialLoadRef.current) {
+      initialMsgCountRef.current = msgs.length;
+      initialLoadRef.current = false;
+    }
   }, []);
 
   useEffect(() => {
@@ -97,6 +126,7 @@ export default function ChatPage() {
       if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null; }
       return;
     }
+    initialLoadRef.current = true;
     loadMessages(activeChannelId);
     inputRef.current?.focus();
     // Poll for new messages
@@ -287,7 +317,27 @@ export default function ChatPage() {
               </p>
             </div>
           ) : (
-            messages.map(msg => <MessageBubble key={msg.id} msg={msg} myName={member?.name || ""} />)
+            messages.map((msg, idx) => {
+              const isNew = !initialLoadRef.current && idx >= initialMsgCountRef.current;
+              return (
+                <div
+                  key={msg.id}
+                  className="chat-message-entry"
+                  style={isNew ? {
+                    animation: 'chat-msg-enter 160ms cubic-bezier(0.16, 1, 0.3, 1) both',
+                  } : undefined}
+                >
+                  <MessageBubble msg={msg} myName={member?.name || ""} />
+                </div>
+              );
+            })
+          )}
+          {isTyping && (
+            <div style={{ display: 'flex', gap: 4, padding: '8px 12px', alignItems: 'center' }}>
+              <span className="typing-dot" />
+              <span className="typing-dot" />
+              <span className="typing-dot" />
+            </div>
           )}
           <div ref={messagesEndRef} />
         </div>
@@ -648,7 +698,17 @@ function ChannelRow({ channel, isRank, onOpen }: { channel: ChatChannel; isRank?
       {channel.accessible && channel.lastTimestamp && (
         <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 4, flexShrink: 0 }}>
           <span style={{ fontSize: 12, color: "#555" }}>{relTime(channel.lastTimestamp)}</span>
-          <div style={{ width: 8, height: 8, borderRadius: "50%", backgroundColor: GOLD }} />
+          {(channel as any).unreadCount > 0 ? (
+            <span className="unread-badge-new" style={{
+              background: '#C8A24C', color: '#000',
+              borderRadius: 999, fontSize: 10, fontWeight: 700,
+              padding: '2px 6px', minWidth: 18, textAlign: 'center' as const,
+            }}>
+              {(channel as any).unreadCount}
+            </span>
+          ) : (
+            <div style={{ width: 8, height: 8, borderRadius: "50%", backgroundColor: GOLD }} />
+          )}
         </div>
       )}
       {channel.accessible && !channel.lastTimestamp && <ChevronRight size={16} style={{ color: "#333", flexShrink: 0 }} />}
