@@ -755,14 +755,40 @@ function MorePage() {
               {section.items.map((item, i) => (
                 <a key={i} href={item.href}
                   className="flex items-center gap-3 p-4 rounded-xl transition-all active:scale-[0.98]"
-                  style={{ backgroundColor: "#111", border: "1px solid #1A1A1A" }}
+                  style={{ backgroundColor: "#111", border: "1px solid #1A1A1A", transition: 'background-color 120ms cubic-bezier(0.16, 1, 0.3, 1)' }}
+                  onMouseDown={e => {
+                    const el = e.currentTarget;
+                    el.style.backgroundColor = 'rgba(255,255,255,0.04)';
+                    const chevron = el.querySelector('svg:last-child') as HTMLElement;
+                    if (chevron) chevron.style.transform = 'translateX(2px)';
+                  }}
+                  onMouseUp={e => {
+                    const el = e.currentTarget;
+                    el.style.backgroundColor = '';
+                    const chevron = el.querySelector('svg:last-child') as HTMLElement;
+                    if (chevron) chevron.style.transform = '';
+                  }}
+                  onTouchStart={e => {
+                    const el = e.currentTarget;
+                    el.style.backgroundColor = 'rgba(255,255,255,0.04)';
+                    const chevron = el.querySelector('svg:last-child') as HTMLElement;
+                    if (chevron) chevron.style.transform = 'translateX(2px)';
+                  }}
+                  onTouchEnd={e => {
+                    const el = e.currentTarget;
+                    setTimeout(() => {
+                      el.style.backgroundColor = '';
+                      const chevron = el.querySelector('svg:last-child') as HTMLElement;
+                      if (chevron) chevron.style.transform = '';
+                    }, 150);
+                  }}
                 >
                   <span className="text-xl" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{item.icon}</span>
                   <div className="flex-1">
                     <p className="text-sm font-medium" style={{ color: "#F0F0F0" }}>{item.label}</p>
                     <p className="text-xs" style={{ color: "#666" }}>{item.desc}</p>
                   </div>
-                  <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                  <svg width="14" height="14" viewBox="0 0 14 14" fill="none" style={{ transition: 'transform 80ms cubic-bezier(0.16, 1, 0.3, 1)' }}>
                     <path d="M5 3l4 4-4 4" stroke="#444" strokeWidth="1.5" strokeLinecap="round" />
                   </svg>
                 </a>
@@ -942,6 +968,48 @@ async function registerPasskeyGlobal(email: string): Promise<boolean> {
   }
 }
 
+const BELT_MILESTONE_KEYS = ['mat_warrior', 'mat_legend', 'loyal_1yr', 'loyal_2yr', 'streak_30', 'podium', 'century_club'];
+
+function BeltMilestoneOverlay({ badge, onDismiss }: { badge: any; onDismiss: () => void }) {
+  const overlayRef = useRef<HTMLDivElement>(null);
+  const sweepRef = useRef<HTMLDivElement>(null);
+  const badgeRef = useRef<HTMLDivElement>(null);
+  const nameRef = useRef<HTMLHeadingElement>(null);
+
+  useEffect(() => {
+    if (!sweepRef.current || !badgeRef.current || !nameRef.current) return;
+
+    sweepRef.current.animate([
+      { clipPath: 'inset(0 100% 0 0)' },
+      { clipPath: 'inset(0 0% 0 0)' }
+    ], { duration: 480, easing: 'cubic-bezier(0.16, 1, 0.3, 1)', fill: 'forwards' });
+
+    badgeRef.current.animate([
+      { transform: 'scale(0.4)', opacity: 0 },
+      { transform: 'scale(1.08)', opacity: 1 },
+      { transform: 'scale(1)', opacity: 1 }
+    ], { duration: 480, delay: 180, easing: 'cubic-bezier(0.34, 1.56, 0.64, 1)', fill: 'forwards' });
+
+    nameRef.current.animate([
+      { opacity: 0, transform: 'translateY(10px)' },
+      { opacity: 1, transform: 'translateY(0)' }
+    ], { duration: 280, delay: 400, easing: 'cubic-bezier(0.16, 1, 0.3, 1)', fill: 'forwards' });
+  }, []);
+
+  return (
+    <div ref={overlayRef} className="belt-milestone-overlay"
+      role="dialog" aria-live="assertive" aria-label={`Achievement unlocked: ${badge.label}`}
+      onClick={onDismiss}
+    >
+      <div ref={sweepRef} className="bm-sweep" style={{ '--belt-color': badge.color } as any} />
+      <div ref={badgeRef} className="bm-badge" style={{ fontSize: 72 }}>{badge.icon}</div>
+      <h2 ref={nameRef} className="bm-name">{badge.label}</h2>
+      <p className="bm-label" style={{ color: '#888', fontSize: 13, letterSpacing: '0.08em', textTransform: 'uppercase' }}>Achievement Unlocked</p>
+      <button className="bm-dismiss" onClick={onDismiss}>Continue</button>
+    </div>
+  );
+}
+
 function AppShell() {
   const { isAuthenticated, member } = useAuth();
   const [location] = useHashLoc();
@@ -952,6 +1020,18 @@ function AppShell() {
       document.body.removeAttribute('data-game-active');
     }
   }, [location]);
+
+  // ── Belt Milestone Overlay ─────────────────────────────────────
+  const [milestoneOverlay, setMilestoneOverlay] = useState<any>(null);
+  const milestoneShownThisSession = useRef(false);
+
+  useEffect(() => {
+    (window as any).__showBeltMilestone = (badge: any) => {
+      if (milestoneShownThisSession.current) return;
+      milestoneShownThisSession.current = true;
+      setMilestoneOverlay(badge);
+    };
+  }, []);
 
   // ── Global Biometric / Passkey setup prompt ───────────────────
   const [showPasskeySetup, setShowPasskeySetup] = useState(false);
@@ -1039,6 +1119,13 @@ function AppShell() {
             </button>
           </div>
         </div>
+      )}
+
+      {milestoneOverlay && (
+        <BeltMilestoneOverlay
+          badge={milestoneOverlay}
+          onDismiss={() => setMilestoneOverlay(null)}
+        />
       )}
 
       <Switch>

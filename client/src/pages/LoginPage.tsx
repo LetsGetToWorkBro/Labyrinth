@@ -138,6 +138,14 @@ export default function LoginPage() {
     setLoginError("");
     const ok = await authenticateWithPasskey();
     if (ok) {
+      const biometricBtn = document.querySelector('[data-testid="button-biometric"]') as HTMLElement;
+      if (biometricBtn) {
+        biometricBtn.animate([
+          { transform: 'scale(1)' },
+          { transform: 'scale(1.03)' },
+          { transform: 'scale(1)' }
+        ], { duration: 120, easing: 'cubic-bezier(0.16, 1, 0.3, 1)' });
+      }
       const savedEmail = localStorage.getItem('lbjj_passkey_email') || '';
       if (savedEmail) {
         const result = await loginWithPasskey(savedEmail);
@@ -206,6 +214,24 @@ export default function LoginPage() {
     const result = await login(email, password);
     setLoginLoading(false);
     if (result.success) {
+      // Button confirmation flash
+      const btn = document.querySelector('[data-testid="button-login"]') as HTMLElement;
+      if (btn) {
+        btn.animate([
+          { transform: 'scale(1)' },
+          { transform: 'scale(1.03)' },
+          { transform: 'scale(1)' }
+        ], { duration: 120, easing: 'cubic-bezier(0.16, 1, 0.3, 1)' });
+      }
+      // Fade out login card before transition
+      const card = document.querySelector('.login-card') as HTMLElement;
+      if (card) {
+        card.animate([
+          { opacity: 1, transform: 'translateY(0)' },
+          { opacity: 0, transform: 'translateY(-8px)' }
+        ], { duration: 200, easing: 'cubic-bezier(0.4, 0, 1, 1)', fill: 'forwards' });
+        await new Promise(r => setTimeout(r, 180));
+      }
       if (rememberMe) {
         localStorage.setItem('lbjj_remember', 'true');
         localStorage.setItem('lbjj_saved_email', email);
@@ -299,7 +325,7 @@ export default function LoginPage() {
       </div>
 
       {/* Card */}
-      <div style={{ width: "100%", maxWidth: 380, backgroundColor: "#111", border: "1px solid #1A1A1A", borderRadius: 20, overflow: "hidden" }}>
+      <div className="login-card" style={{ width: "100%", maxWidth: 380, backgroundColor: "#111", border: "1px solid #1A1A1A", borderRadius: 20, overflow: "hidden" }}>
 
         {/* ── Location Picker ── */}
         {screen === "location" && (
@@ -372,6 +398,7 @@ export default function LoginPage() {
                         type="button"
                         onClick={handlePasskeyLogin}
                         disabled={passkeyLoading}
+                        data-testid="button-biometric"
                         style={{ ...submitStyle(selectedLocation.color), opacity: passkeyLoading ? 0.7 : 1, gap: 10 }}
                       >
                         {passkeyLoading

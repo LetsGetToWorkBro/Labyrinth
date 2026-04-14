@@ -283,7 +283,10 @@ function GamesHub({ stats, rank, nextRank, onPlay, onStartGame, showDifficulty, 
             <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 10 }}>
               <div style={{ width: 42, height: 42, borderRadius: 11, background: 'linear-gradient(135deg, #C8A24C22, #C8A24C44)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, flexShrink: 0 }}>♟️</div>
               <div>
-                <div style={{ color: '#F0F0F0', fontSize: 15, fontWeight: 700 }}>BJJ Position Chess</div>
+                <div style={{ color: '#F0F0F0', fontSize: 15, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 6 }}>
+                  BJJ Position Chess
+                  {stats.streak > 0 && <span className="game-pulse-dot" style={{ marginLeft: 8 }} />}
+                </div>
                 <div style={{ color: '#999', fontSize: 11 }}>Outsmart the AI in 12 rounds</div>
               </div>
             </div>
@@ -1243,8 +1246,28 @@ function GameEndScreen({ result, rank, wins, onPlayAgain, onExit }: GameEndScree
     : 100;
   const winsToNext = nextRankObj ? nextRankObj.minWins - wins : 0;
 
+  const resultRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (resultRef.current) {
+      resultRef.current.animate([
+        { transform: 'scale(0.9)', opacity: 0 },
+        { transform: 'scale(1.05)', opacity: 1 },
+        { transform: 'scale(1)', opacity: 1 }
+      ], { duration: 400, easing: 'cubic-bezier(0.16, 1, 0.3, 1)', fill: 'forwards' });
+
+      // Gold flash on win
+      if (isWin) {
+        document.body.animate([
+          { backgroundColor: 'rgba(201, 162, 39, 0)' },
+          { backgroundColor: 'rgba(201, 162, 39, 0.06)' },
+          { backgroundColor: 'rgba(201, 162, 39, 0)' }
+        ], { duration: 400, easing: 'ease-out' });
+      }
+    }
+  }, []);
+
   return (
-    <div style={{
+    <div ref={resultRef} style={{
       height: '100dvh',
       maxWidth: 430,
       margin: '0 auto',

@@ -46,7 +46,7 @@ export default function LivePage() {
           <div style={{ margin: '0 0 20px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
               <span style={{ ...getLiveBadgeStyle() }}>
-                <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#EF4444', display: 'inline-block', animation: 'livePulse 1.5s ease-in-out infinite' }} />
+                <span className="live-dot" style={{ marginRight: 6 }} />
                 LIVE
               </span>
               <span style={{ fontSize: 14, fontWeight: 700, color: '#F0F0F0' }}>{stream.className}</span>
