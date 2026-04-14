@@ -11,8 +11,18 @@ export default function CheckInHistoryPage() {
 
   useEffect(() => {
     getMemberCheckIns().then(data => {
+      // Deduplicate: same className + same date = keep first occurrence
+      const seen = new Set<string>();
+      const deduped = data.filter((ci: any) => {
+        const dateStr = (ci.timestamp || ci.date || ci.checkInDate || ci.classDate || '').toString();
+        const day = dateStr.split('T')[0] || dateStr.split(' ')[0] || '';
+        const key = (ci.className || ci.class || ci.classType || '') + '|' + day;
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
       // Sort most recent first
-      const sorted = [...data].sort((a, b) => {
+      const sorted = [...deduped].sort((a, b) => {
         const da = new Date(a.timestamp || a.date || a.checkInDate || a.classDate || 0).getTime();
         const db = new Date(b.timestamp || b.date || b.checkInDate || b.classDate || 0).getTime();
         return db - da;

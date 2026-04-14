@@ -289,7 +289,7 @@ export async function memberCompleteSetup(token: string, email: string, password
 }
 
 export async function memberGetProfile(): Promise<MemberProfile> {
-  const token = getToken();
+  const token = getToken() || localStorage.getItem('lbjj_session_token') || '';
   if (!token) throw new Error("Not authenticated");
   const result = await gasCall("memberGetProfile", { token });
   const raw = result.member ?? (result.success !== false ? result : null);
@@ -302,7 +302,7 @@ export async function memberGetProfile(): Promise<MemberProfile> {
 }
 
 export async function memberSwitchProfile(targetRow: number): Promise<MemberProfile> {
-  const token = getToken();
+  const token = getToken() || localStorage.getItem('lbjj_session_token') || '';
   if (!token) throw new Error("Not authenticated");
   const result = await gasCall("memberSwitchProfile", { token, targetRow });
   const raw = result.member ?? (result.success !== false ? result : null);
@@ -315,26 +315,25 @@ export async function memberSwitchProfile(targetRow: number): Promise<MemberProf
 }
 
 export async function memberUpdateProfile(phone: string): Promise<any> {
-  const token = getToken();
+  const token = getToken() || localStorage.getItem('lbjj_session_token') || '';
   if (!token) throw new Error("Not authenticated");
   return gasCall("memberUpdateProfile", { token, phone });
 }
 
 export async function memberCreateSetupLink(): Promise<{ url: string }> {
-  const token = getToken();
+  const token = getToken() || localStorage.getItem('lbjj_session_token') || '';
   if (!token) throw new Error("Not authenticated");
   return gasCall("memberCreateSetupLink", { token });
 }
 
 export async function memberSaveWaiver(signerName: string, signatureData: string, participantType: string): Promise<any> {
-  const token = getToken();
-  console.log('[memberSaveWaiver] token:', token ? 'present' : 'MISSING');
+  const token = getToken() || localStorage.getItem('lbjj_session_token') || '';
   if (!token) throw new Error("Not authenticated");
   return gasCall("memberSaveWaiver", { token, signerName, signatureData, documentType: 'waiver', participantType });
 }
 
 export async function memberSaveAgreement(signerName: string, signatureData: string, planName?: string): Promise<any> {
-  const token = getToken();
+  const token = getToken() || localStorage.getItem('lbjj_session_token') || '';
   if (!token) throw new Error("Not authenticated");
   return gasCall("memberSaveAgreement", { token, signerName, signatureData, planName: planName || "" });
 }
@@ -456,7 +455,7 @@ export async function chatGetMessages(channel: string, limit = 50): Promise<Chat
 }
 
 export async function chatSendMessage(channel: string, text: string): Promise<{ success: boolean; messageId?: string }> {
-  const token = getToken();
+  const token = getToken() || localStorage.getItem('lbjj_session_token') || '';
   if (!token) return { success: false };
   try {
     return await gasCall("chatSendMessage", { channel, text, token });
@@ -493,7 +492,7 @@ export interface BeltPromotion {
 }
 
 export async function beltSavePromotion(data: { belt: string; stripes: number; date: string; note: string }): Promise<{ success: boolean; promotionId?: string }> {
-  const token = getToken();
+  const token = getToken() || localStorage.getItem('lbjj_session_token') || '';
   if (!token) return { success: false };
   try {
     return await gasCall("beltSavePromotion", { ...data, token });
@@ -504,7 +503,7 @@ export async function beltSavePromotion(data: { belt: string; stripes: number; d
 }
 
 export async function beltGetPromotions(): Promise<BeltPromotion[]> {
-  const token = getToken();
+  const token = getToken() || localStorage.getItem('lbjj_session_token') || '';
   if (!token) return [];
   try {
     const result = await gasCall("beltGetPromotions", { token });
@@ -516,7 +515,7 @@ export async function beltGetPromotions(): Promise<BeltPromotion[]> {
 }
 
 export async function beltApprovePromotion(promotionId: string, approved: boolean): Promise<{ success: boolean }> {
-  const token = getToken();
+  const token = getToken() || localStorage.getItem('lbjj_session_token') || '';
   if (!token) return { success: false };
   try {
     return await gasCall("beltApprovePromotion", { promotionId, approved, token });
@@ -531,7 +530,7 @@ export async function beltApprovePromotion(promotionId: string, approved: boolea
 // The token is the member session token; GAS validates role server-side.
 
 export async function adminGetDashboard(): Promise<AdminDashboard | null> {
-  const token = getToken();
+  const token = getToken() || localStorage.getItem('lbjj_session_token') || '';
   if (!token) return null;
   try {
     const result = await gasCall("getDashboard", { token });
@@ -543,7 +542,7 @@ export async function adminGetDashboard(): Promise<AdminDashboard | null> {
 }
 
 export async function adminGetMembers(): Promise<AdminMember[]> {
-  const token = getToken();
+  const token = getToken() || localStorage.getItem('lbjj_session_token') || '';
   if (!token) return [];
   try {
     const result = await gasCall("getMembers", { token });
@@ -555,7 +554,7 @@ export async function adminGetMembers(): Promise<AdminMember[]> {
 }
 
 export async function adminUpdateMember(data: Partial<AdminMember> & { ID: string }): Promise<{ success: boolean; error?: string }> {
-  const token = getToken();
+  const token = getToken() || localStorage.getItem('lbjj_session_token') || '';
   if (!token) return { success: false };
   try {
     return await gasCall("updateMember", { ...data, token });
@@ -566,7 +565,7 @@ export async function adminUpdateMember(data: Partial<AdminMember> & { ID: strin
 }
 
 export async function adminGetMemberComms(memberName: string, memberEmail: string): Promise<MemberComm[]> {
-  const token = getToken();
+  const token = getToken() || localStorage.getItem('lbjj_session_token') || '';
   if (!token) return [];
   try {
     const result = await gasCall("getMemberComms", { memberName, memberEmail, memberPhone: "", token });
@@ -578,7 +577,7 @@ export async function adminGetMemberComms(memberName: string, memberEmail: strin
 }
 
 export async function adminSaveNote(memberName: string, memberEmail: string, note: string): Promise<{ success: boolean }> {
-  const token = getToken();
+  const token = getToken() || localStorage.getItem('lbjj_session_token') || '';
   if (!token) return { success: false };
   try {
     return await gasCall("saveNote", { memberName, memberEmail, note, token });
@@ -589,7 +588,7 @@ export async function adminSaveNote(memberName: string, memberEmail: string, not
 }
 
 export async function adminGetBookings(): Promise<any[]> {
-  const token = getToken();
+  const token = getToken() || localStorage.getItem('lbjj_session_token') || '';
   if (!token) return [];
   try {
     const result = await gasCall("getTrialBookings", { token });
@@ -612,7 +611,7 @@ export interface PaymentCard {
 }
 
 export async function memberGetCards(): Promise<PaymentCard[]> {
-  const token = getToken();
+  const token = getToken() || localStorage.getItem('lbjj_session_token') || '';
   if (!token) return [];
   try {
     const result = await gasCall("memberGetFamilyCards", { token });
@@ -624,7 +623,7 @@ export async function memberGetCards(): Promise<PaymentCard[]> {
 }
 
 export async function memberSetDefaultCard(paymentMethodId: string): Promise<{ success: boolean; error?: string }> {
-  const token = getToken();
+  const token = getToken() || localStorage.getItem('lbjj_session_token') || '';
   if (!token) return { success: false };
   try {
     return await gasCall("memberSetDefaultCard", { token, paymentMethodId });
@@ -635,7 +634,7 @@ export async function memberSetDefaultCard(paymentMethodId: string): Promise<{ s
 }
 
 export async function memberRemoveCard(paymentMethodId: string): Promise<{ success: boolean; error?: string }> {
-  const token = getToken();
+  const token = getToken() || localStorage.getItem('lbjj_session_token') || '';
   if (!token) return { success: false };
   try {
     return await gasCall("memberRemoveCard", { token, paymentMethodId });
@@ -646,7 +645,7 @@ export async function memberRemoveCard(paymentMethodId: string): Promise<{ succe
 }
 
 export async function memberAddCard(): Promise<{ success: boolean; url?: string; error?: string }> {
-  const token = getToken();
+  const token = getToken() || localStorage.getItem('lbjj_session_token') || '';
   if (!token) return { success: false };
   try {
     const result = await gasCall("memberAddCard", {
@@ -671,7 +670,7 @@ export async function adminSendEmail(
   target: MessageTarget,
   scheduledFor?: string // ISO string — GAS needs a scheduleBlast action for deferred sending
 ): Promise<{ success: boolean; sentCount?: number; errors?: string[]; error?: string }> {
-  const token = getToken();
+  const token = getToken() || localStorage.getItem('lbjj_session_token') || '';
   if (!token) return { success: false, error: "Not authenticated" };
   try {
     return await gasCall("sendMassEmail", { subject, htmlBody, target, token, ...(scheduledFor ? { scheduledFor } : {}) });
@@ -686,7 +685,7 @@ export async function adminSendSMS(
   target: MessageTarget,
   scheduledFor?: string // ISO string — GAS needs a scheduleBlast action for deferred sending
 ): Promise<{ success: boolean; sentCount?: number; errors?: string[]; error?: string }> {
-  const token = getToken();
+  const token = getToken() || localStorage.getItem('lbjj_session_token') || '';
   if (!token) return { success: false, error: "Not authenticated" };
   try {
     return await gasCall("sendMassSMS", { message, target, token, ...(scheduledFor ? { scheduledFor } : {}) });
@@ -716,7 +715,7 @@ export async function saveGameScore(data: {
   wins: number; losses: number; streak: number;
   bestStreak: number; topRankName: string;
 }): Promise<{ success: boolean }> {
-  const token = getToken();
+  const token = getToken() || localStorage.getItem('lbjj_session_token') || '';
   if (!token) return { success: false };
   try {
     return await gasCall("saveGameScore", { ...data, token });

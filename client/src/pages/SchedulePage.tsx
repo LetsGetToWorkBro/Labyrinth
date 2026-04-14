@@ -379,12 +379,14 @@ function ClassCard({ cls, isToday, stream, checkedInClasses, markClassCheckedIn 
   const [timePart, ampm] = displayTime.split(" ");
   const [showDetail, setShowDetail] = useState(false);
   const [checkInDone, setCheckInDone] = useState(false);
+  const checkingInRef = useRef(false);
   const duration = getDuration(cls.name);
   const alreadyCheckedIn = checkedInClasses.includes(cls.name || '');
 
   const handleCheckIn = () => {
-    // Dedup: prevent double check-ins
-    if (alreadyCheckedIn || checkInDone) return;
+    // Dedup: prevent double check-ins (ref lock is synchronous — blocks rapid taps)
+    if (alreadyCheckedIn || checkInDone || checkingInRef.current) return;
+    checkingInRef.current = true;
     // Increment local attendance
     try {
       const raw = localStorage.getItem('lbjj_game_stats_v2');

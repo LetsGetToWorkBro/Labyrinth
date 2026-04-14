@@ -508,7 +508,12 @@ export default function HomePage() {
     }
   }, [member?.email]);
 
+  const checkingInRef = useRef(false);
+
   const handleHomeCheckIn = useCallback(async (cls: any) => {
+    // Ref lock: synchronous guard against rapid taps during GAS cold start
+    if (checkingInRef.current) return;
+    checkingInRef.current = true;
     // GAS call first to check for dedup
     const memberProfile = getMemberData();
     const profileEmail = memberProfile?.email || '';
@@ -530,9 +535,10 @@ export default function HomePage() {
           document.body.appendChild(el);
           setTimeout(() => el.remove(), 2100);
           setCheckedInClasses(prev => [...prev, cls.name || '']);
+          checkingInRef.current = false;
           return;
         }
-      } catch {}
+      } catch { checkingInRef.current = false; }
     }
 
     // Same logic as SchedulePage handleCheckIn
@@ -603,6 +609,8 @@ export default function HomePage() {
       streakAnimated.current = false; // allow re-animation
       setMember({ ...member, currentStreak: res.currentStreak } as any);
     }
+
+    checkingInRef.current = false;
   }, [member, setMember]);
 
   // ─── Weekly training dots ─────────────────────────────────────────

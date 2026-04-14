@@ -143,7 +143,7 @@ export default function WaiverPage() {
   const handleSign = async () => {
     // All three conditions must be met
     if (!confirmed || !hasDrawn || !signerName || signing) return;
-    const token = getToken();
+    const token = getToken() || localStorage.getItem('lbjj_session_token') || '';
     if (!token) {
       setSignError("Please sign in first before signing the waiver.");
       return;
