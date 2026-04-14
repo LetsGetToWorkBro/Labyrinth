@@ -133,7 +133,11 @@ export default function LoginPage() {
         if (!result.success) {
           setEmail(savedEmail);
           setShowPasswordForm(true);
-          setLoginError("Couldn't restore session. Please enter your password.");
+          if (result.error === 'no_saved_password') {
+            setLoginError("Enter your password once with \"Remember me\" checked — Face ID will work automatically after that.");
+          } else {
+            setLoginError("Couldn't sign in. Please enter your password.");
+          }
         }
       } else {
         setShowPasswordForm(true);

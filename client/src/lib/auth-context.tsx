@@ -47,18 +47,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const loginWithPasskey = useCallback(async (email: string) => {
     try {
       setActiveLocation(getSavedLocationId());
-      const result = await gasCall('getMemberByEmail', { email });
-      if (result?.success && result?.member) {
-        if (result.token) setToken(result.token);
-        const normalized = { ...result.member, role: result.member?.role || '', isAdmin: ['owner', 'admin', 'coach', 'instructor'].includes((result.member?.role || '').toLowerCase()) };
-        setIsAuthenticated(true);
-        setMemberState(normalized);
-        setMemberData(normalized);
-        if (normalized.familyMembers) setFamilyMembers(normalized.familyMembers);
-        localStorage.setItem('lbjj_member_email', email);
-        return { success: true };
+      // Try saved password first (Remember Me)
+      const savedPass = localStorage.getItem('lbjj_saved_pass') || '';
+      if (savedPass) {
+        const result = await apiLogin(email, savedPass);
+        if (result?.success && result?.member) {
+          if (result.token) setToken(result.token);
+          const normalized = { ...result.member, role: result.member?.role || '', isAdmin: ['owner', 'admin', 'coach', 'instructor'].includes((result.member?.role || '').toLowerCase()) };
+          setIsAuthenticated(true);
+          setMemberState(normalized);
+          setMemberData(normalized);
+          if (normalized.familyMembers) setFamilyMembers(normalized.familyMembers);
+          localStorage.setItem('lbjj_member_email', email);
+          return { success: true };
+        }
       }
-      return { success: false, error: 'Member not found' };
+      // No saved password — can't authenticate without GAS
+      return { success: false, error: 'no_saved_password' };
     } catch {
       return { success: false, error: 'Connection error' };
     }
