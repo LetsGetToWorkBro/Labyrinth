@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useAuth } from "@/lib/auth-context";
 import { setActiveLocation, gasCall } from "@/lib/api";
 import { LOCATIONS, getSavedLocationId, type Location } from "@/lib/locations";
@@ -89,6 +89,7 @@ export default function LoginPage() {
   const [showPw, setShowPw]     = useState(false);
   const [loginError, setLoginError]     = useState("");
   const [loginLoading, setLoginLoading] = useState(false);
+  const emailRef = useRef<HTMLInputElement>(null);
 
   // Forgot password state
   const [showForgot, setShowForgot]     = useState(false);
@@ -186,10 +187,17 @@ export default function LoginPage() {
     setForgotLoading(false);
   };
 
+  const triggerForgotPassword = () => {
+    setShowForgot(true);
+    setForgotEmail(email);
+    setForgotSent(false);
+    setLoginError("");
+  };
+
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email && !password) { setLoginError("Please enter your email and password."); return; }
-    if (!email) { setLoginError("Please enter your email address."); return; }
+    if (!email && !password) { setLoginError("Please enter your email and password."); emailRef.current?.focus(); return; }
+    if (!email) { setLoginError("Please enter your email address."); emailRef.current?.focus(); return; }
     if (!password) { setLoginError("Please enter your password."); return; }
     // Make sure the location is set before logging in
     setActiveLocation(selectedLocationId);
@@ -209,6 +217,7 @@ export default function LoginPage() {
       }
     } else {
       setLoginError("__CREDENTIAL_ERROR__");
+      emailRef.current?.focus();
     }
   };
 
@@ -252,6 +261,8 @@ export default function LoginPage() {
     setReqLoading(false);
   };
 
+  const hasError = !!loginError;
+
   return (
     <div style={{
       position: "fixed", inset: 0, backgroundColor: "#0A0A0A",
@@ -264,7 +275,7 @@ export default function LoginPage() {
       <div style={{ position: "fixed", top: -120, left: "50%", transform: "translateX(-50%)", width: 400, height: 400, borderRadius: "50%", background: "radial-gradient(circle, rgba(200,162,76,0.07) 0%, transparent 70%)", pointerEvents: "none" }} />
       <div style={{ position: "fixed", bottom: -80, right: -80, width: 300, height: 300, borderRadius: "50%", background: "radial-gradient(circle, rgba(200,162,76,0.04) 0%, transparent 70%)", pointerEvents: "none" }} />
 
-      {/* Logo */}
+      {/* Logo + brand ABOVE the card */}
       <div style={{ display: "flex", flexDirection: "column", alignItems: "center", marginBottom: 28 }}>
         <div style={{
           width: 76, height: 76, borderRadius: 20,
@@ -335,8 +346,8 @@ export default function LoginPage() {
           </div>
         )}
 
-        {/* ── Sign In / Request Access ── */}
-        {(screen === "login" || screen === "request") && (
+        {/* ── Sign In (no tabs — clean card) ── */}
+        {screen === "login" && (
           <>
             {/* Location indicator — tap to change */}
             {activeLocations.length > 1 && (
@@ -350,57 +361,11 @@ export default function LoginPage() {
               </button>
             )}
 
-            {/* Mode toggle */}
-            <div style={{ display: "flex", padding: "6px", gap: 4, borderBottom: "1px solid #1A1A1A" }}>
-              {(["login", "request"] as Screen[]).map(s => s !== "location" && (
-                <button key={s} onClick={() => { setScreen(s as Screen); setLoginError(""); setReqError(""); }}
-                  style={{
-                    flex: 1, padding: "9px 0", borderRadius: 12, fontSize: 13, fontWeight: 600,
-                    border: "none", cursor: "pointer", transition: "all 0.15s",
-                    backgroundColor: screen === s ? "#1A1A1A" : "transparent",
-                    color: screen === s ? GOLD : "#555",
-                  }}
-                >
-                  {s === "login" ? "Sign In" : "New Here?"}
-                </button>
-              ))}
-            </div>
-
             <div style={{ padding: "20px" }}>
-              {/* ── Sign In ── */}
-              {screen === "login" && !showForgot && (
+              {/* ── Sign In form ── */}
+              {!showForgot && (
                 <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-                  <p style={{
-                    fontSize: 13,
-                    color: '#666',
-                    textAlign: 'center',
-                    lineHeight: 1.5,
-                    margin: '-4px 0 8px',
-                  }}>
-                    Track your belt journey. Stay connected with your gym.
-                  </p>
-                  {/* Privacy policy notice */}
-                  <p style={{ fontSize: 11, color: '#444', textAlign: 'center', margin: '4px 0 -4px' }}>
-                    By signing in, you agree to our{' '}
-                    <a href="https://labyrinth.vision/privacy" target="_blank" rel="noopener noreferrer" style={{ color: '#666', textDecoration: 'underline' }}>Privacy Policy</a>
-                    {' '}and{' '}
-                    <a href="https://labyrinth.vision/terms" target="_blank" rel="noopener noreferrer" style={{ color: '#666', textDecoration: 'underline' }}>Terms</a>.
-                  </p>
-                  {loginError && (
-                    <p id="login-error" role="alert" aria-live="polite" data-testid="login-error"
-                      style={{ fontSize: 12, color: "#E05555", margin: "-4px 0 0", padding: "8px 12px", background: "rgba(224,85,85,0.07)", borderRadius: 8 }}>
-                      {loginError === '__CREDENTIAL_ERROR__' ? (
-                        <>Incorrect email or password. Try again or{' '}
-                          <button type="button" onClick={() => { setShowForgot(true); setForgotEmail(email); setForgotSent(false); setLoginError(''); }}
-                            style={{ background: 'none', border: 'none', color: '#E05555', textDecoration: 'underline', cursor: 'pointer', fontSize: 'inherit', padding: 0 }}>
-                            reset your password
-                          </button>.
-                        </>
-                      ) : loginError}
-                    </p>
-                  )}
-
-                  {/* Biometric button — shown prominently above the form */}
+                  {/* Biometric button — shown prominently ABOVE email for returning passkey users */}
                   {supportsPasskey && hasPasskey && !showPasswordForm && (
                     <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
                       <button
@@ -440,57 +405,92 @@ export default function LoginPage() {
                   {(showPasswordForm || !hasPasskey || !supportsPasskey) && (
                     <form onSubmit={handleLogin} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
                       <Field label="Email" htmlFor="login-email">
-                        <input id="login-email" type="email" name="email" value={email} onChange={e => setEmail(e.target.value)}
+                        <input id="login-email" ref={emailRef} type="email" name="email" value={email}
+                          onChange={e => { setEmail(e.target.value); if (loginError) setLoginError(""); }}
                           placeholder="your@email.com" autoComplete="email" autoFocus
                           autoCapitalize="none" autoCorrect="off" inputMode="email" spellCheck={false}
                           enterKeyHint="next" readOnly={loginLoading}
-                          aria-invalid={!!loginError} aria-describedby={loginError ? 'login-error' : undefined}
-                          style={{ ...inputStyle, ...(loginError ? { borderColor: 'rgba(224,85,85,0.5)' } : {}) }}
+                          aria-invalid={hasError || undefined}
+                          aria-describedby={loginError ? 'login-error' : undefined}
+                          style={{ ...inputStyle, ...(hasError ? { borderColor: 'rgba(224,85,85,0.5)' } : {}) }}
                           data-testid="input-email" />
                       </Field>
                       <Field label="Password" htmlFor="login-password">
                         <div style={{ position: "relative" }}>
                           <input id="login-password" type={showPw ? "text" : "password"} name="password" value={password}
-                            onChange={e => setPassword(e.target.value)}
+                            onChange={e => { setPassword(e.target.value); if (loginError) setLoginError(""); }}
                             placeholder="Your password" autoComplete="current-password"
                             enterKeyHint="go" readOnly={loginLoading}
-                            aria-invalid={!!loginError} aria-describedby={loginError ? 'login-error' : undefined}
-                            style={{ ...inputStyle, paddingRight: 44, ...(loginError ? { borderColor: 'rgba(224,85,85,0.5)' } : {}) }}
+                            aria-invalid={hasError || undefined}
+                            aria-describedby={loginError ? 'login-error' : undefined}
+                            style={{ ...inputStyle, paddingRight: 44, ...(hasError ? { borderColor: 'rgba(224,85,85,0.5)' } : {}) }}
                             data-testid="input-password" />
-                          <button type="button" onClick={() => setShowPw(!showPw)}
+                          <button type="button" onClick={() => setShowPw(!showPw)} aria-label={showPw ? "Hide password" : "Show password"}
                             style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", color: "#555", cursor: "pointer", padding: 4 }}>
                             {showPw ? <EyeOff size={17} /> : <Eye size={17} />}
                           </button>
                         </div>
                       </Field>
-                      {/* Remember me — full row for easy tapping */}
-                      <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', minHeight: 44, marginTop: -4 }}>
+
+                      {/* Forgot password — directly below password field, left-aligned */}
+                      <button type="button" onClick={triggerForgotPassword}
+                        style={{ background: "none", border: "none", color: "#666", fontSize: 12, cursor: "pointer", padding: '10px 0', textDecoration: "underline", textAlign: 'left', minHeight: 44, marginTop: -8 }}>
+                        Forgot password?
+                      </button>
+
+                      {/* Remember me — subtle, small, below forgot password */}
+                      <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', marginTop: -8 }}>
                         <input
                           type="checkbox"
                           checked={rememberMe}
                           onChange={e => setRememberMe(e.target.checked)}
-                          style={{ width: 16, height: 16, accentColor: GOLD, flexShrink: 0 }}
+                          style={{ width: 14, height: 14, accentColor: GOLD, flexShrink: 0 }}
                         />
-                        <span style={{ fontSize: 13, color: '#666' }}>Remember me</span>
+                        <span style={{ fontSize: 12, color: '#555' }}>Remember me</span>
                       </label>
-                      {/* Forgot password — own row, full tap target */}
-                      <button type="button" onClick={() => { setShowForgot(true); setForgotEmail(email); setForgotSent(false); }}
-                        style={{ background: "none", border: "none", color: "#777", fontSize: 13, cursor: "pointer", padding: '10px 0', textDecoration: "underline", textAlign: 'left', minHeight: 44, marginTop: -8 }}>
-                        Forgot password?
-                      </button>
+
+                      {/* Sign In button — gold, full width, 48px+ */}
                       <button type="submit" disabled={loginLoading} data-testid="button-login"
                         style={{ ...submitStyle(selectedLocation.color), opacity: loginLoading ? 0.7 : 1, marginTop: 4 }}>
                         {loginLoading
                           ? <><Loader2 size={16} className="animate-spin" style={{ marginRight: 8 }} /> Signing in…</>
                           : <><span>Sign In</span><ArrowRight size={16} style={{ marginLeft: 8 }} /></>}
                       </button>
+
+                      {/* Error banner — below Sign In button */}
+                      {loginError && (
+                        <div id="login-error" role="alert" aria-live="polite" data-testid="login-error"
+                          style={{ fontSize: 12, color: "#E05555", margin: 0, padding: "10px 12px", background: "rgba(224,85,85,0.07)", borderRadius: 8, lineHeight: 1.5 }}>
+                          {loginError === '__CREDENTIAL_ERROR__' ? (
+                            <>Incorrect email or password. Try again or{' '}
+                              <button type="button" onClick={triggerForgotPassword}
+                                style={{ background: 'none', border: 'none', color: '#E05555', textDecoration: 'underline', cursor: 'pointer', fontSize: 'inherit', padding: 0, fontFamily: 'inherit' }}>
+                                reset your password
+                              </button>.
+                            </>
+                          ) : loginError}
+                        </div>
+                      )}
                     </form>
                   )}
+
+                  {/* Trust signals: location + privacy at bottom of card */}
+                  <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 6, marginTop: 8, paddingTop: 12, borderTop: "1px solid #1A1A1A" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                      <MapPin size={10} style={{ color: "#555" }} />
+                      <span style={{ fontSize: 11, color: "#444", letterSpacing: "0.06em" }}>{selectedLocation.city}, TX</span>
+                    </div>
+                    <p style={{ fontSize: 11, color: '#444', textAlign: 'center', margin: 0 }}>
+                      <a href="https://labyrinth.vision/privacy" target="_blank" rel="noopener noreferrer" style={{ color: '#555', textDecoration: 'underline' }}>Privacy Policy</a>
+                      {' · '}
+                      <a href="https://labyrinth.vision/terms" target="_blank" rel="noopener noreferrer" style={{ color: '#555', textDecoration: 'underline' }}>Terms</a>
+                    </p>
+                  </div>
                 </div>
               )}
 
-              {/* ── Forgot Password ── */}
-              {screen === "login" && showForgot && (
+              {/* ── Forgot Password (replaces card content) ── */}
+              {showForgot && (
                 <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
                   {forgotSent ? (
                     <div style={{ display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center", gap: 10, padding: "8px 0" }}>
@@ -529,9 +529,27 @@ export default function LoginPage() {
                   )}
                 </div>
               )}
+            </div>
+          </>
+        )}
 
-              {/* ── Request Access ── */}
-              {screen === "request" && !reqSent && (
+        {/* ── Request Access (shown in card when "New here?" is clicked) ── */}
+        {screen === "request" && (
+          <>
+            {/* Location indicator — tap to change */}
+            {activeLocations.length > 1 && (
+              <button
+                onClick={() => setScreen("location")}
+                style={{ display: "flex", alignItems: "center", gap: 8, width: "100%", padding: "10px 16px", background: "none", border: "none", borderBottom: "1px solid #1A1A1A", cursor: "pointer", textAlign: "left" }}
+              >
+                <div style={{ width: 8, height: 8, borderRadius: "50%", backgroundColor: selectedLocation.color, flexShrink: 0 }} />
+                <span style={{ fontSize: 12, color: "#888", flex: 1 }}>{selectedLocation.name}</span>
+                <span style={{ fontSize: 12, color: "#555" }}>Change</span>
+              </button>
+            )}
+
+            <div style={{ padding: "20px" }}>
+              {!reqSent && (
                 <form onSubmit={handleRequest} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
                   {/* Honeypot — hidden from humans, bots fill it */}
                   <input
@@ -543,7 +561,8 @@ export default function LoginPage() {
                     tabIndex={-1}
                     autoComplete="off"
                   />
-                  <p style={{ fontSize: 13, color: "#888", margin: "0 0 4px", lineHeight: 1.5 }}>
+                  <h2 style={{ fontSize: 15, fontWeight: 700, color: "#F0F0F0", margin: 0 }}>Request Access</h2>
+                  <p style={{ fontSize: 13, color: "#888", margin: "-4px 0 4px", lineHeight: 1.5 }}>
                     Train with us at {selectedLocation.short}? Request portal access and we'll get you set up.
                   </p>
                   <Field label="Full Name" htmlFor="req-name">
@@ -568,11 +587,17 @@ export default function LoginPage() {
                       ? <><Loader2 size={16} className="animate-spin" style={{ marginRight: 8 }} /> Sending…</>
                       : <><span>Send Request</span><ArrowRight size={16} style={{ marginLeft: 8 }} /></>}
                   </button>
+                  <div style={{ textAlign: "center" }}>
+                    <button type="button" onClick={() => { setScreen("login"); setReqError(""); }}
+                      style={{ background: "none", border: "none", color: "#666", fontSize: 12, cursor: "pointer", textDecoration: "underline" }}>
+                      Back to sign in
+                    </button>
+                  </div>
                 </form>
               )}
 
               {/* ── Request sent ── */}
-              {screen === "request" && reqSent && (
+              {reqSent && (
                 <div style={{ display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center", gap: 10, padding: "8px 0" }}>
                   <CheckCircle size={40} style={{ color: "#4CAF80" }} />
                   <h3 style={{ fontSize: 16, fontWeight: 700, color: "#F0F0F0", margin: 0 }}>Request sent!</h3>
@@ -591,11 +616,34 @@ export default function LoginPage() {
         )}
       </div>
 
-      {/* Location footer */}
-      <p style={{ marginTop: 20, fontSize: 12, color: "#444", letterSpacing: "0.06em", display: "flex", alignItems: "center", gap: 4 }}>
-        <MapPin size={10} style={{ color: "#555" }} />
-        {screen !== "location" ? `${selectedLocation.city}, TX` : "LABYRINTH BJJ"}
-      </p>
+      {/* "New here? Request portal access →" link BELOW the card */}
+      {screen === "login" && !showForgot && (
+        <button
+          type="button"
+          onClick={() => { setScreen("request"); setLoginError(""); }}
+          style={{
+            background: "none", border: "none", cursor: "pointer",
+            marginTop: 20, padding: "10px 16px", minHeight: 44,
+            fontSize: 13, color: "#666", fontFamily: "inherit",
+          }}
+        >
+          New here? <span style={{ color: "#888", textDecoration: "underline" }}>Request portal access</span> <span style={{ color: "#888" }}>&rarr;</span>
+        </button>
+      )}
+
+      {/* Location footer — shown on location picker and request screens */}
+      {screen === "location" && (
+        <p style={{ marginTop: 20, fontSize: 12, color: "#444", letterSpacing: "0.06em", display: "flex", alignItems: "center", gap: 4 }}>
+          <MapPin size={10} style={{ color: "#555" }} />
+          LABYRINTH BJJ
+        </p>
+      )}
+      {screen === "request" && (
+        <p style={{ marginTop: 20, fontSize: 12, color: "#444", letterSpacing: "0.06em", display: "flex", alignItems: "center", gap: 4 }}>
+          <MapPin size={10} style={{ color: "#555" }} />
+          {selectedLocation.city}, TX
+        </p>
+      )}
 
     </div>
   );
@@ -621,4 +669,5 @@ const submitStyle = (color: string = GOLD): React.CSSProperties => ({
   padding: "13px 20px", borderRadius: 12, fontSize: 14, fontWeight: 700,
   backgroundColor: color, color: "#0A0A0A", border: "none",
   cursor: "pointer", width: "100%", transition: "opacity 0.15s",
+  minHeight: 48,
 });
