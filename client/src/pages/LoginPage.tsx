@@ -206,7 +206,7 @@ export default function LoginPage() {
         localStorage.removeItem('lbjj_saved_pass');
       }
     } else {
-      setLoginError(result.error || "Invalid email or password");
+      setLoginError("The email or password you entered is incorrect. Please try again or reset your password.");
     }
   };
 
