@@ -188,7 +188,9 @@ export default function LoginPage() {
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email || !password) { setLoginError("Please enter email and password"); return; }
+    if (!email && !password) { setLoginError("Please enter your email and password."); return; }
+    if (!email) { setLoginError("Please enter your email address."); return; }
+    if (!password) { setLoginError("Please enter your password."); return; }
     // Make sure the location is set before logging in
     setActiveLocation(selectedLocationId);
     setLoginLoading(true);
@@ -359,7 +361,7 @@ export default function LoginPage() {
                     color: screen === s ? GOLD : "#555",
                   }}
                 >
-                  {s === "login" ? "Sign In" : "Request Access"}
+                  {s === "login" ? "Sign In" : "New Here?"}
                 </button>
               ))}
             </div>
@@ -436,7 +438,7 @@ export default function LoginPage() {
                         <div style={{ position: "relative" }}>
                           <input id="login-password" type={showPw ? "text" : "password"} name="password" value={password}
                             onChange={e => setPassword(e.target.value)}
-                            placeholder="Enter password" autoComplete="current-password"
+                            placeholder="Your password" autoComplete="current-password"
                             style={{ ...inputStyle, paddingRight: 44 }} data-testid="input-password" />
                           <button type="button" onClick={() => setShowPw(!showPw)}
                             style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", color: "#555", cursor: "pointer", padding: 4 }}>
@@ -525,7 +527,7 @@ export default function LoginPage() {
                     autoComplete="off"
                   />
                   <p style={{ fontSize: 13, color: "#888", margin: "0 0 4px", lineHeight: 1.5 }}>
-                    Already a member at {selectedLocation.short}? Submit your info and we'll connect your account.
+                    Train with us at {selectedLocation.short}? Request portal access and we'll get you set up.
                   </p>
                   <Field label="Full Name" htmlFor="req-name">
                     <input id="req-name" type="text" value={reqName} onChange={e => setReqName(e.target.value)}
