@@ -342,10 +342,11 @@ export async function memberSaveAgreement(signerName: string, signatureData: str
 // ─── Check-in History ────────────────────────────────────────────
 
 export async function getMemberCheckIns(): Promise<any[]> {
-  const token = localStorage.getItem('lbjj_session_token') || '';
-  const profile = JSON.parse(localStorage.getItem('lbjj_member_profile') || '{}');
+  const token = getToken() || '';
+  const member = getMemberData();
+  const email = member?.email || localStorage.getItem('lbjj_member_email') || '';
   try {
-    const result = await gasCall('getMemberCheckIns', { token, email: profile.Email || profile.email });
+    const result = await gasCall('getMemberCheckIns', { token, email });
     return result?.checkIns || result?.bookings || [];
   } catch { return []; }
 }
