@@ -835,7 +835,7 @@ function ResetPasswordPage() {
     if (!token) { setError('Invalid reset link'); return; }
     setLoading(true); setError('');
     try {
-      const GAS_URL = 'https://script.google.com/macros/s/AKfycbwkxkV6XlqKy3DDot_MTfb40WeAfd6KMgBwgcrCNStEFM5vcAQNYG9eR2OOFpCwJ3AJ/exec';
+      const GAS_URL = 'https://script.google.com/macros/s/AKfycbzRTADVL6-N5M6WQBySa0Gh53DEtMOlceaHyoOx9HfKIKOSEznNdcb5BWXlTFcbztLw/exec';
       const payload = JSON.stringify({ action: 'memberConfirmReset', token, newPassword: password });
       const url = GAS_URL + '?action=memberConfirmReset&payload=' + encodeURIComponent(payload);
       const res = await fetch(url, { redirect: 'follow' });

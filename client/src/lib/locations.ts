@@ -30,7 +30,7 @@ export const LOCATIONS: Location[] = [
     city:   "Fulshear",
     state:  "TX",
     color:  "#C8A24C",
-    gasUrl: "https://script.google.com/macros/s/AKfycbwkxkV6XlqKy3DDot_MTfb40WeAfd6KMgBwgcrCNStEFM5vcAQNYG9eR2OOFpCwJ3AJ/exec",
+    gasUrl: "https://script.google.com/macros/s/AKfycbzRTADVL6-N5M6WQBySa0Gh53DEtMOlceaHyoOx9HfKIKOSEznNdcb5BWXlTFcbztLw/exec",
     status: "active",
   },
   {
