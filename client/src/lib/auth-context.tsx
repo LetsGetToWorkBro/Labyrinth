@@ -1,6 +1,6 @@
 import { createContext, useContext, useState, useCallback } from "react";
 import type { MemberProfile, FamilyMember } from "./api";
-import { setToken, setMemberData, clearAuth, memberLogin as apiLogin, memberGetProfile, memberSwitchProfile as apiSwitchProfile, setActiveLocation } from "./api";
+import { setToken, setMemberData, clearAuth, memberLogin as apiLogin, memberGetProfile, memberSwitchProfile as apiSwitchProfile, setActiveLocation, gasCall } from "./api";
 import { getSavedLocationId } from "./locations";
 
 interface AuthContextType {
@@ -9,6 +9,7 @@ interface AuthContextType {
   member: MemberProfile | null;
   familyMembers: FamilyMember[];
   login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
+  loginWithPasskey: (email: string) => Promise<{ success: boolean; error?: string }>;
   logout: () => void;
   refreshProfile: () => Promise<void>;
   setMember: (member: MemberProfile) => void;
@@ -40,6 +41,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return { success: false, error: result.error || "Invalid credentials" };
     } catch (err: any) {
       return { success: false, error: err.message || "Login failed" };
+    }
+  }, []);
+
+  const loginWithPasskey = useCallback(async (email: string) => {
+    try {
+      setActiveLocation(getSavedLocationId());
+      const result = await gasCall('getMemberByEmail', { email });
+      if (result?.success && result?.member) {
+        if (result.token) setToken(result.token);
+        const normalized = { ...result.member, role: result.member?.role || '', isAdmin: ['owner', 'admin', 'coach', 'instructor'].includes((result.member?.role || '').toLowerCase()) };
+        setIsAuthenticated(true);
+        setMemberState(normalized);
+        setMemberData(normalized);
+        if (normalized.familyMembers) setFamilyMembers(normalized.familyMembers);
+        localStorage.setItem('lbjj_member_email', email);
+        return { success: true };
+      }
+      return { success: false, error: 'Member not found' };
+    } catch {
+      return { success: false, error: 'Connection error' };
     }
   }, []);
 
@@ -80,7 +101,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   return (
-    <AuthContext.Provider value={{ isAuthenticated, isAdmin, member, familyMembers, login, logout, refreshProfile, setMember, switchProfile }}>
+    <AuthContext.Provider value={{ isAuthenticated, isAdmin, member, familyMembers, login, loginWithPasskey, logout, refreshProfile, setMember, switchProfile }}>
       {children}
     </AuthContext.Provider>
   );

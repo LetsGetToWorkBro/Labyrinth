@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useAuth } from "@/lib/auth-context";
 import { setActiveLocation, gasCall } from "@/lib/api";
 import { LOCATIONS, getSavedLocationId, type Location } from "@/lib/locations";
-import { Loader2, Eye, EyeOff, ArrowRight, CheckCircle, MapPin, ChevronRight } from "lucide-react";
+import { Loader2, Eye, EyeOff, ArrowRight, CheckCircle, MapPin, ChevronRight, ScanFace } from "lucide-react";
 import logoMaze from "@assets/maze-gold-md.png";
 
 type Screen = "location" | "login" | "request";
@@ -64,7 +64,7 @@ async function authenticateWithPasskey(): Promise<boolean> {
 }
 
 export default function LoginPage() {
-  const { login } = useAuth();
+  const { login, loginWithPasskey } = useAuth();
 
   const [visible, setVisible] = useState(false);
   useEffect(() => { const t = setTimeout(() => setVisible(true), 40); return () => clearTimeout(t); }, []);
@@ -78,6 +78,9 @@ export default function LoginPage() {
   );
 
   const selectedLocation = LOCATIONS.find(l => l.id === selectedLocationId) || LOCATIONS[0];
+
+  // Remember me state
+  const [rememberMe, setRememberMe] = useState(() => localStorage.getItem('lbjj_remember') === 'true');
 
   // Login state
   const [email, setEmail]       = useState("");
@@ -107,6 +110,17 @@ export default function LoginPage() {
   const [passkeyLoading, setPasskeyLoading] = useState(false);
   const [showPasskeyPrompt, setShowPasskeyPrompt] = useState(false);
   const [passkeyRegistering, setPasskeyRegistering] = useState(false);
+  const [showPasswordForm, setShowPasswordForm] = useState(!hasPasskey);
+
+  // Pre-fill saved credentials on mount
+  useEffect(() => {
+    if (localStorage.getItem('lbjj_remember') === 'true') {
+      const savedEmail = localStorage.getItem('lbjj_saved_email') || '';
+      const savedPass = localStorage.getItem('lbjj_saved_pass') || '';
+      if (savedEmail) setEmail(savedEmail);
+      if (savedPass) setPassword(savedPass);
+    }
+  }, []);
 
   const handlePasskeyLogin = async () => {
     setPasskeyLoading(true);
@@ -115,12 +129,15 @@ export default function LoginPage() {
     if (ok) {
       const savedEmail = localStorage.getItem('lbjj_passkey_email') || '';
       if (savedEmail) {
-        const result = await login(savedEmail, '__passkey__');
+        const result = await loginWithPasskey(savedEmail);
         if (!result.success) {
-          // Passkey verified but session expired — ask for password
           setEmail(savedEmail);
-          setLoginError("Session expired. Please enter your password.");
+          setShowPasswordForm(true);
+          setLoginError("Couldn't restore session. Please enter your password.");
         }
+      } else {
+        setShowPasswordForm(true);
+        setLoginError("No saved account found. Please sign in with your password first.");
       }
     } else {
       setLoginError("Face ID authentication failed. Try again or use password.");
@@ -164,7 +181,17 @@ export default function LoginPage() {
     setLoginError("");
     const result = await login(email, password);
     setLoginLoading(false);
-    if (!result.success) {
+    if (result.success) {
+      if (rememberMe) {
+        localStorage.setItem('lbjj_remember', 'true');
+        localStorage.setItem('lbjj_saved_email', email);
+        localStorage.setItem('lbjj_saved_pass', password);
+      } else {
+        localStorage.removeItem('lbjj_remember');
+        localStorage.removeItem('lbjj_saved_email');
+        localStorage.removeItem('lbjj_saved_pass');
+      }
+    } else {
       setLoginError(result.error || "Invalid email or password");
     }
   };
@@ -326,75 +353,98 @@ export default function LoginPage() {
             <div style={{ padding: "20px" }}>
               {/* ── Sign In ── */}
               {screen === "login" && !showForgot && (
-                <form onSubmit={handleLogin} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+                <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
                   <p style={{
                     fontSize: 13,
                     color: '#666',
                     textAlign: 'center',
-                    marginBottom: 24,
                     lineHeight: 1.5,
                     margin: '-4px 0 8px',
                   }}>
                     Track your belt journey. Stay connected with your gym.
                   </p>
-                  <Field label="Email" htmlFor="login-email">
-                    <input id="login-email" type="email" value={email} onChange={e => setEmail(e.target.value)}
-                      placeholder="your@email.com" autoComplete="email" autoFocus
-                      style={inputStyle} data-testid="input-email" />
-                  </Field>
-                  <Field label="Password" htmlFor="login-password">
-                    <div style={{ position: "relative" }}>
-                      <input id="login-password" type={showPw ? "text" : "password"} value={password}
-                        onChange={e => setPassword(e.target.value)}
-                        placeholder="Enter password" autoComplete="current-password"
-                        style={{ ...inputStyle, paddingRight: 44 }} data-testid="input-password" />
-                      <button type="button" onClick={() => setShowPw(!showPw)}
-                        style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", color: "#555", cursor: "pointer", padding: 4 }}>
-                        {showPw ? <EyeOff size={17} /> : <Eye size={17} />}
+                  {loginError && <p style={{ fontSize: 12, color: "#E05555", margin: "-4px 0 0", padding: "8px 12px", background: "rgba(224,85,85,0.07)", borderRadius: 8 }}>{loginError}</p>}
+
+                  {/* Face ID button — shown prominently above the form */}
+                  {supportsPasskey && hasPasskey && !showPasswordForm && (
+                    <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+                      <button
+                        type="button"
+                        onClick={handlePasskeyLogin}
+                        disabled={passkeyLoading}
+                        style={{ ...submitStyle(selectedLocation.color), opacity: passkeyLoading ? 0.7 : 1, gap: 10 }}
+                      >
+                        {passkeyLoading
+                          ? <><Loader2 size={18} className="animate-spin" /> Verifying…</>
+                          : <><ScanFace size={20} /> Sign in with Face ID</>
+                        }
+                      </button>
+
+                      {/* Divider */}
+                      <div style={{ display: "flex", alignItems: "center", gap: 12, margin: "4px 0" }}>
+                        <div style={{ flex: 1, height: 1, backgroundColor: "#222" }} />
+                        <span style={{ fontSize: 12, color: "#555", whiteSpace: "nowrap" }}>or sign in with password</span>
+                        <div style={{ flex: 1, height: 1, backgroundColor: "#222" }} />
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => setShowPasswordForm(true)}
+                        style={{
+                          background: "none", border: "none", color: "#888", fontSize: 13,
+                          cursor: "pointer", padding: "4px 0", textDecoration: "underline",
+                          textAlign: "center",
+                        }}
+                      >
+                        Use email & password instead
                       </button>
                     </div>
-                  </Field>
-                  <div style={{ textAlign: "right", marginTop: -6 }}>
-                    <button type="button" onClick={() => { setShowForgot(true); setForgotEmail(email); setForgotSent(false); }}
-                      style={{ background: "none", border: "none", color: "#777", fontSize: 12, cursor: "pointer", padding: 0, textDecoration: "underline" }}>
-                      Forgot password?
-                    </button>
-                  </div>
-                  {loginError && <p style={{ fontSize: 12, color: "#E05555", margin: "-4px 0 0", padding: "8px 12px", background: "rgba(224,85,85,0.07)", borderRadius: 8 }}>{loginError}</p>}
-                  <button type="submit" disabled={loginLoading} data-testid="button-login"
-                    style={{ ...submitStyle(selectedLocation.color), opacity: loginLoading ? 0.7 : 1, marginTop: 4 }}>
-                    {loginLoading
-                      ? <><Loader2 size={16} className="animate-spin" style={{ marginRight: 8 }} /> Signing in…</>
-                      : <><span>Sign In</span><ArrowRight size={16} style={{ marginLeft: 8 }} /></>}
-                  </button>
-                  {/* Face ID button */}
-                  {supportsPasskey && hasPasskey && (
-                    <button
-                      type="button"
-                      onClick={handlePasskeyLogin}
-                      disabled={passkeyLoading}
-                      style={{
-                        display: "flex", alignItems: "center", justifyContent: "center",
-                        gap: 10, padding: "13px 20px", borderRadius: 12, fontSize: 14, fontWeight: 600,
-                        backgroundColor: "transparent", color: GOLD, border: `1px solid ${GOLD}44`,
-                        cursor: "pointer", width: "100%", transition: "opacity 0.15s",
-                        opacity: passkeyLoading ? 0.6 : 1, marginTop: 4,
-                      }}
-                    >
-                      {passkeyLoading
-                        ? <><Loader2 size={16} className="animate-spin" /> Verifying…</>
-                        : <>
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={GOLD} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                              <circle cx="12" cy="8" r="5"/>
-                              <path d="M3 21v-2a7 7 0 0 1 7-7h0"/>
-                              <path d="M16 18l2 2 4-4"/>
-                            </svg>
-                            Sign in with Face ID
-                          </>
-                      }
-                    </button>
                   )}
-                </form>
+
+                  {/* Password form — shown by default when no passkey, or when user clicks through */}
+                  {(showPasswordForm || !hasPasskey || !supportsPasskey) && (
+                    <form onSubmit={handleLogin} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+                      <Field label="Email" htmlFor="login-email">
+                        <input id="login-email" type="email" value={email} onChange={e => setEmail(e.target.value)}
+                          placeholder="your@email.com" autoComplete="email" autoFocus
+                          style={inputStyle} data-testid="input-email" />
+                      </Field>
+                      <Field label="Password" htmlFor="login-password">
+                        <div style={{ position: "relative" }}>
+                          <input id="login-password" type={showPw ? "text" : "password"} value={password}
+                            onChange={e => setPassword(e.target.value)}
+                            placeholder="Enter password" autoComplete="current-password"
+                            style={{ ...inputStyle, paddingRight: 44 }} data-testid="input-password" />
+                          <button type="button" onClick={() => setShowPw(!showPw)}
+                            style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", color: "#555", cursor: "pointer", padding: 4 }}>
+                            {showPw ? <EyeOff size={17} /> : <Eye size={17} />}
+                          </button>
+                        </div>
+                      </Field>
+                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: -6 }}>
+                        <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
+                          <input
+                            type="checkbox"
+                            checked={rememberMe}
+                            onChange={e => setRememberMe(e.target.checked)}
+                            style={{ width: 16, height: 16, accentColor: GOLD }}
+                          />
+                          <span style={{ fontSize: 13, color: '#666' }}>Remember me</span>
+                        </label>
+                        <button type="button" onClick={() => { setShowForgot(true); setForgotEmail(email); setForgotSent(false); }}
+                          style={{ background: "none", border: "none", color: "#777", fontSize: 12, cursor: "pointer", padding: 0, textDecoration: "underline" }}>
+                          Forgot password?
+                        </button>
+                      </div>
+                      <button type="submit" disabled={loginLoading} data-testid="button-login"
+                        style={{ ...submitStyle(selectedLocation.color), opacity: loginLoading ? 0.7 : 1, marginTop: 4 }}>
+                        {loginLoading
+                          ? <><Loader2 size={16} className="animate-spin" style={{ marginRight: 8 }} /> Signing in…</>
+                          : <><span>Sign In</span><ArrowRight size={16} style={{ marginLeft: 8 }} /></>}
+                      </button>
+                    </form>
+                  )}
+                </div>
               )}
 
               {/* ── Forgot Password ── */}
