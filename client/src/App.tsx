@@ -650,10 +650,10 @@ function AccountPage() {
 
         {/* Always show Achievements section */}
         <div style={{ marginTop: 24 }}>
-          <div onClick={() => navigate('/achievements')} style={{ cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+          <button type="button" onClick={() => navigate('/achievements')} style={{ background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left', width: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, padding: 0 }}>
             <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#444' }}>Achievements</div>
             <div style={{ fontSize: 11, color: '#C8A24C' }}>View All →</div>
-          </div>
+          </button>
 
           {badges.length > 0 ? (
             <div style={{ display: 'flex', gap: 10, overflowX: 'auto', paddingBottom: 4 }}>
@@ -713,6 +713,11 @@ function AccountPage() {
 
 function MorePage() {
   const { logout, isAdmin } = useAuth();
+  const morePanelRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    setTimeout(() => morePanelRef.current?.focus(), 50);
+  }, []);
 
   const sections: { label: string; items: { href: string; icon: React.ReactNode; label: string; desc: string }[] }[] = [
     {
@@ -757,7 +762,7 @@ function MorePage() {
   ];
 
   return (
-    <div className="app-content">
+    <div className="app-content" ref={morePanelRef} tabIndex={-1} role="dialog" aria-label="More options" style={{ outline: 'none' }}>
       <div className="px-5 pt-4 pb-3" style={{ paddingTop: "max(16px, env(safe-area-inset-top, 16px))" }}>
         <h1 className="text-xl font-bold tracking-tight" style={{ color: "#F0F0F0" }}>More</h1>
       </div>

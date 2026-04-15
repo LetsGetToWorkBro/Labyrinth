@@ -490,8 +490,8 @@ export default function LoginPage() {
                             style={{ ...inputStyle, paddingRight: 44, ...(hasError ? { borderColor: 'rgba(224,85,85,0.5)' } : {}) }}
                             data-testid="input-password" />
                           <button type="button" onClick={() => setShowPw(!showPw)} aria-label={showPw ? "Hide password" : "Show password"}
-                            style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", color: "#555", cursor: "pointer", padding: 4 }}>
-                            {showPw ? <EyeOff size={17} /> : <Eye size={17} />}
+                            style={{ position: "absolute", right: 0, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", color: "#555", cursor: "pointer", padding: 0, width: 44, height: 44, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                            {showPw ? <EyeOff size={18} /> : <Eye size={18} />}
                           </button>
                         </div>
                       </Field>
@@ -598,7 +598,7 @@ export default function LoginPage() {
                       </button>
                       <div style={{ textAlign: "center" }}>
                         <button type="button" onClick={() => { setShowForgot(false); setForgotSent(false); }}
-                          style={{ background: "none", border: "none", color: "#666", fontSize: 12, cursor: "pointer", textDecoration: "underline" }}>
+                          style={{ background: "none", border: "none", color: "#666", fontSize: 12, cursor: "pointer", textDecoration: "underline", minHeight: 44, display: 'flex', alignItems: 'center' }}>
                           Back to sign in
                         </button>
                       </div>
@@ -668,7 +668,7 @@ export default function LoginPage() {
                   </button>
                   <div style={{ textAlign: "center" }}>
                     <button type="button" onClick={() => { setScreen("login"); setReqError(""); }}
-                      style={{ background: "none", border: "none", color: "#666", fontSize: 12, cursor: "pointer", textDecoration: "underline" }}>
+                      style={{ background: "none", border: "none", color: "#666", fontSize: 12, cursor: "pointer", textDecoration: "underline", minHeight: 44, display: 'flex', alignItems: 'center' }}>
                       Back to sign in
                     </button>
                   </div>
