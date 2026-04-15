@@ -324,10 +324,10 @@ function AccountPage() {
 
     setWalletLoading(true);
     try {
-      const encodedName = encodeURIComponent(name);
-      const email = encodeURIComponent(member?.email || '');
-      const cleanBelt = belt.replace(' belt', '').trim();
-      const passUrl = `https://labyrinth-pass-server-production.up.railway.app/pass/generate?name=${encodedName}&email=${email}&belt=${cleanBelt}&apiSecret=${import.meta.env.VITE_PASS_API_SECRET}`;
+      const { getToken } = await import("@/lib/api");
+      const token = getToken() || localStorage.getItem('lbjj_session_token') || '';
+      if (!token) { alert('Please sign in again.'); return; }
+      const passUrl = `https://labyrinth-pass-server-production.up.railway.app/pass/generate?memberToken=${encodeURIComponent(token)}`;
       window.location.href = passUrl;
     } catch (e) {
       alert('Could not generate your pass. Please try again or contact info@labyrinth.vision');
@@ -344,19 +344,13 @@ function AccountPage() {
     if (googleWalletLoading) return;
     setGoogleWalletLoading(true);
     try {
+      const { getToken } = await import("@/lib/api");
+      const token = getToken() || localStorage.getItem('lbjj_session_token') || '';
+      if (!token) { alert('Please sign in again.'); return; }
       const response = await fetch('https://labyrinth-pass-server-production.up.railway.app/pass/google', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          apiSecret: import.meta.env.VITE_PASS_API_SECRET,
-          memberData: {
-            name: member?.name || 'Member',
-            email: member?.email || '',
-            belt: (member?.belt || 'white').toLowerCase(),
-            membership: member?.membership || 'Active',
-            plan: member?.plan || '',
-          }
-        })
+        body: JSON.stringify({ memberToken: token }),
       });
       if (!response.ok) throw new Error('Server error');
       const { saveUrl } = await response.json();
@@ -970,8 +964,18 @@ function ResetPasswordPage() {
 
 // ─── Admin wrappers ───────────────────────────────────────────────
 
-function AdminPageWrapper() {
+function AdminGuard() {
+  const { isAuthenticated, member } = useAuth();
   const [, navigate] = useHashLoc();
+
+  const isAdmin = isAuthenticated && !!(member?.isAdmin ||
+    ['owner', 'admin', 'coach', 'instructor'].includes((member?.role || '').toLowerCase()));
+
+  if (!isAuthenticated || !isAdmin) {
+    navigate('/');
+    return null;
+  }
+
   return <AdminPage onBack={() => navigate("/")} />;
 }
 
@@ -1267,7 +1271,7 @@ function AppShell() {
             <Route path="/more"      component={MorePage} />
             <Route path="/account"    component={AccountPage} />
             <Route path="/messages"  component={MessagesPage} />
-            <Route path="/admin"     component={AdminPageWrapper} />
+            <Route path="/admin"     component={AdminGuard} />
             <Route path="/reset"     component={ResetPasswordPage} />
             <Route path="/academy-stats"><Redirect to="/stats" /></Route>
             <Route component={NotFound} />
