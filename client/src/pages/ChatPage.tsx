@@ -15,7 +15,8 @@ import { BeltIcon } from "@/components/BeltIcon";
 import { ProfileRing } from "@/components/ProfileRing";
 import { getRingTier, getActualLevel } from "@/lib/xp";
 import { useAuth } from "@/lib/auth-context";
-import { chatGetMessages, chatSendMessage, chatGetChannels, type ChatMessage, type ChatChannel } from "@/lib/api";
+import { chatGetMessages, chatSendMessage, chatGetChannels, chatGetChannelMembers, type ChatMessage, type ChatChannel, type ChannelMember } from "@/lib/api";
+import { XPBar } from "@/components/XPBar";
 import { getRankProfile } from "@/lib/chat-data";
 import logoMaze from "@assets/maze-gold-md.png";
 import {
@@ -138,6 +139,10 @@ export default function ChatPage() {
   const [sendError, setSendError] = useState("");
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({ 'Kids Ranks': true });
   const [showRankLegend, setShowRankLegend] = useState(false);
+  const [showMembers, setShowMembers] = useState(false);
+  const [channelMembers, setChannelMembers] = useState<ChannelMember[]>([]);
+  const [membersLoading, setMembersLoading] = useState(false);
+  const [selectedMember, setSelectedMember] = useState<ChannelMember | null>(null);
   const [isTyping] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -198,6 +203,14 @@ export default function ChatPage() {
   }, []);
 
   useEffect(() => { loadChannels(); }, [loadChannels]);
+
+  // ── Load members when panel opens ──────────────────────────────
+  const loadChannelMembers = useCallback(async (channelId: string) => {
+    setMembersLoading(true);
+    const members = await chatGetChannelMembers(channelId);
+    setChannelMembers(members);
+    setMembersLoading(false);
+  }, []);
 
   // ── Load messages for active channel ─────────────────────────
   const loadMessages = useCallback(async (channelId: string) => {
@@ -324,6 +337,22 @@ export default function ChatPage() {
               </button>
             )}
           </div>
+          <button
+            onClick={() => { setShowMembers(true); loadChannelMembers(activeChannel.id); }}
+            style={{
+              display: 'flex', alignItems: 'center', gap: 4,
+              background: 'none', border: 'none', cursor: 'pointer',
+              color: '#666', padding: '4px 8px', borderRadius: 8,
+            }}
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+              <circle cx="9" cy="7" r="4"/>
+              <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+              <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+            </svg>
+            <span style={{ fontSize: 11, fontWeight: 600 }}>Members</span>
+          </button>
           <button onClick={() => loadMessages(activeChannel.id)} style={{ color: "#555", background: "none", border: "none", cursor: "pointer", padding: 4 }}>
             <RefreshCw size={15} />
           </button>
@@ -387,6 +416,119 @@ export default function ChatPage() {
                   );
                 })}
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* Members slide-up sheet */}
+        {showMembers && (
+          <div style={{ position: 'fixed', inset: 0, zIndex: 200, display: 'flex', alignItems: 'flex-end' }}
+            onClick={() => setShowMembers(false)}>
+            <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)' }}/>
+            <div onClick={e => e.stopPropagation()} style={{
+              position: 'relative', width: '100%', background: '#111',
+              borderRadius: '20px 20px 0 0', padding: '20px 16px',
+              borderTop: '1px solid #1A1A1A',
+              maxHeight: '75vh', overflowY: 'auto',
+              paddingBottom: 'max(20px, calc(env(safe-area-inset-bottom) + 80px))',
+            }}>
+              <div style={{ width: 36, height: 4, borderRadius: 2, background: '#2A2A2A', margin: '0 auto 16px' }}/>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+                <h3 style={{ fontSize: 15, fontWeight: 700, color: '#F0F0F0', margin: 0 }}>
+                  {activeChannel?.name} · {channelMembers.length} members
+                </h3>
+                <button onClick={() => setShowMembers(false)} style={{ background: 'none', border: 'none', color: '#555', cursor: 'pointer' }}>
+                  <X size={18}/>
+                </button>
+              </div>
+
+              {membersLoading ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  {[1,2,3].map(i => <div key={i} style={{ height: 52, borderRadius: 12, background: '#1A1A1A', animation: 'shimmer 1.5s ease-in-out infinite' }}/>)}
+                </div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  {channelMembers.map(m => {
+                    const now = Date.now();
+                    const lastSeenMs = m.lastSeen ? new Date(m.lastSeen).getTime() : 0;
+                    const minsAgo = lastSeenMs ? Math.floor((now - lastSeenMs) / 60000) : null;
+                    const isOnline = minsAgo !== null && minsAgo < 5;
+                    const isRecent = minsAgo !== null && minsAgo < 30;
+                    const statusColor = isOnline ? '#4CAF80' : isRecent ? '#C8A24C' : '#555';
+                    const statusLabel = isOnline ? 'Online' : minsAgo !== null ? (minsAgo < 60 ? `${minsAgo}m ago` : minsAgo < 1440 ? `${Math.floor(minsAgo/60)}h ago` : `${Math.floor(minsAgo/1440)}d ago`) : 'Offline';
+
+                    return (
+                      <button key={m.email} onClick={() => setSelectedMember(m)}
+                        style={{
+                          display: 'flex', alignItems: 'center', gap: 12,
+                          padding: '10px 12px', borderRadius: 12, background: '#0D0D0D',
+                          border: '1px solid #1A1A1A', cursor: 'pointer', textAlign: 'left',
+                          width: '100%',
+                        }}>
+                        {/* Belt icon */}
+                        <div style={{ position: 'relative', flexShrink: 0 }}>
+                          <BeltIcon belt={m.belt || 'white'} width={36}/>
+                          <div style={{
+                            position: 'absolute', bottom: -2, right: -2,
+                            width: 10, height: 10, borderRadius: '50%',
+                            background: statusColor, border: '2px solid #0D0D0D',
+                          }}/>
+                        </div>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontSize: 13, fontWeight: 600, color: '#F0F0F0', marginBottom: 2 }}>{m.name}</div>
+                          <div style={{ fontSize: 11, color: statusColor }}>{statusLabel}</div>
+                        </div>
+                        <ChevronRight size={14} color="#333"/>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Member profile modal */}
+        {selectedMember && (
+          <div style={{ position: 'fixed', inset: 0, zIndex: 300, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 20px' }}
+            onClick={() => setSelectedMember(null)}>
+            <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(6px)' }}/>
+            <div onClick={e => e.stopPropagation()} style={{
+              position: 'relative', width: '100%', maxWidth: 340,
+              background: '#111', borderRadius: 20, padding: '24px 20px',
+              border: '1px solid #1A1A1A',
+            }}>
+              {/* Close */}
+              <button onClick={() => setSelectedMember(null)} style={{ position: 'absolute', top: 12, right: 12, background: 'none', border: 'none', color: '#555', cursor: 'pointer' }}>
+                <X size={18}/>
+              </button>
+
+              {/* Belt + name */}
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: 16 }}>
+                <BeltIcon belt={selectedMember.belt || 'white'} width={80} style={{ marginBottom: 10 }}/>
+                <div style={{ fontSize: 17, fontWeight: 700, color: '#F0F0F0', marginBottom: 4 }}>{selectedMember.name}</div>
+                <div style={{ fontSize: 12, color: getBeltColor(selectedMember.belt || 'white'), fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase' }}>
+                  {getRankProfile(selectedMember.belt || 'white').title}
+                </div>
+              </div>
+
+              {/* Stats row */}
+              <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
+                {[
+                  { label: 'Level', value: selectedMember.totalPoints ? getActualLevel(selectedMember.totalPoints) : '\u2014' },
+                  { label: 'Badges', value: selectedMember.badgeCount ?? '\u2014' },
+                ].map(stat => (
+                  <div key={stat.label} style={{ flex: 1, background: '#0D0D0D', borderRadius: 10, padding: '10px', textAlign: 'center', border: '1px solid #1A1A1A' }}>
+                    <div style={{ fontSize: 18, fontWeight: 700, color: '#F0F0F0' }}>{String(stat.value)}</div>
+                    <div style={{ fontSize: 10, color: '#555', marginTop: 2 }}>{stat.label}</div>
+                  </div>
+                ))}
+              </div>
+
+              {/* XP bar compact */}
+              {(selectedMember.totalPoints || 0) > 0 && (
+                <XPBar xp={selectedMember.totalPoints || 0} compact/>
+              )}
             </div>
           </div>
         )}

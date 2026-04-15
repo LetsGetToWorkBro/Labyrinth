@@ -845,3 +845,42 @@ export async function getLeaderboard(): Promise<LeaderboardEntry[]> {
     return [];
   }
 }
+
+// ─── Presence ────────────────────────────────────────────────────
+
+// Presence heartbeat — call every 60s while app is active
+export async function updatePresence(): Promise<void> {
+  const token = getToken() || localStorage.getItem('lbjj_session_token') || '';
+  if (!token) return;
+  try {
+    await gasCall('updatePresence', { token });
+  } catch {}
+}
+
+// ─── Channel Members ─────────────────────────────────────────────
+
+export interface ChannelMember {
+  name: string;
+  email: string;
+  belt: string;
+  role: string;
+  totalPoints?: number;
+  lastSeen?: string; // ISO timestamp
+  badgeCount?: number;
+}
+
+export async function chatGetChannelMembers(channelId: string): Promise<ChannelMember[]> {
+  const token = getToken() || localStorage.getItem('lbjj_session_token') || '';
+  try {
+    const cacheKey = `lbjj_ch_members_${channelId}`;
+    const cached = sessionStorage.getItem(cacheKey);
+    if (cached) {
+      const { data, ts } = JSON.parse(cached);
+      if (Date.now() - ts < 120_000) return data; // 2 min cache
+    }
+    const result = await gasCall('chatGetChannelMembers', { token, channelId });
+    const members = result?.members || [];
+    try { sessionStorage.setItem(cacheKey, JSON.stringify({ data: members, ts: Date.now() })); } catch {}
+    return members;
+  } catch { return []; }
+}

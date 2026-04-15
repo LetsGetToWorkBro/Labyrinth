@@ -41,7 +41,7 @@ import type { LucideIcon } from "lucide-react";
 import { useEffect, useCallback, useState, useRef } from "react";
 import { useHashLocation as useHashLoc } from "wouter/use-hash-location";
 import { Redirect } from "wouter";
-import { gasCall, cachedGasCall, beltSavePromotion } from "@/lib/api";
+import { gasCall, cachedGasCall, beltSavePromotion, updatePresence } from "@/lib/api";
 import { ProfileRing } from "@/components/ProfileRing";
 import { getRingTier, getActualLevel } from "@/lib/xp";
 import { XPBar } from "@/components/XPBar";
@@ -1208,6 +1208,14 @@ function AppShell() {
       }
     }).catch(() => {});
   }, []);
+
+  // ── Presence heartbeat — ping GAS every 60s while authenticated ─
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    updatePresence();
+    const interval = setInterval(updatePresence, 60_000);
+    return () => clearInterval(interval);
+  }, [isAuthenticated]);
 
   // ── Belt Milestone Overlay ─────────────────────────────────────
   const [milestoneOverlay, setMilestoneOverlay] = useState<any>(null);
