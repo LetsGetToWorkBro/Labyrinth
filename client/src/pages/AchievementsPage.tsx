@@ -193,6 +193,23 @@ export default function AchievementsPage() {
               {cat.label}
             </button>
           ))}
+          <button
+            onClick={() => navigate('/belt')}
+            style={{
+              padding: '6px 14px',
+              borderRadius: 20,
+              border: '1px solid #C8A24C40',
+              background: 'transparent',
+              color: '#C8A24C',
+              fontSize: 12,
+              fontWeight: 600,
+              cursor: 'pointer',
+              whiteSpace: 'nowrap' as const,
+              letterSpacing: '0.03em',
+            }}
+          >
+            Belt Journey
+          </button>
         </div>
       </div>
 
