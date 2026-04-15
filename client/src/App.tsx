@@ -1268,6 +1268,54 @@ function App() {
     };
   }, []);
 
+  // Deep link + background resume handler (Capacitor native only)
+  useEffect(() => {
+    let appUrlListener: any = null;
+    let appStateListener: any = null;
+
+    const setupCapacitorListeners = async () => {
+      try {
+        const { App: CapApp } = await import('@capacitor/app');
+
+        // Deep link handler — open the app at the correct route
+        appUrlListener = await CapApp.addListener('appUrlOpen', ({ url }) => {
+          const slug = url.split('labyrinth://').pop() || url.split('vision.labyrinth.app').pop();
+          if (slug && slug !== '/') {
+            window.location.hash = slug.startsWith('/') ? '#' + slug : '#/' + slug;
+          }
+        });
+
+        // Background resume — validate session when app comes to foreground
+        appStateListener = await CapApp.addListener('appStateChange', async ({ isActive }) => {
+          if (isActive) {
+            const token = localStorage.getItem('lbjj_session_token');
+            if (token) {
+              try {
+                const { gasCall } = await import('@/lib/api');
+                const res = await gasCall('validateSession', { token });
+                if (!res?.valid && !res?.success) {
+                  localStorage.removeItem('lbjj_session_token');
+                  window.location.hash = '#/login';
+                }
+              } catch {
+                // Network error — leave session intact, will retry on next action
+              }
+            }
+          }
+        });
+      } catch {
+        // Not running in Capacitor — ignore
+      }
+    };
+
+    setupCapacitorListeners();
+
+    return () => {
+      appUrlListener?.remove?.();
+      appStateListener?.remove?.();
+    };
+  }, []);
+
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
