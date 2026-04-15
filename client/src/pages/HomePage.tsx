@@ -694,6 +694,18 @@ export default function HomePage() {
     // Show success toast
     showPointsToast(10);
 
+    // Show XP gain floating toast
+    const xpEl = document.createElement('div');
+    xpEl.textContent = '+10 XP';
+    xpEl.style.cssText = `
+      position: fixed; bottom: 140px; left: 50%; transform: translateX(-50%);
+      background: rgba(200,162,76,0.95); color: #000; font-weight: 800; font-size: 16px;
+      padding: 8px 20px; border-radius: 20px; z-index: 9999; pointer-events: none;
+      animation: pointsFloat 1.5s ease-out forwards;
+    `;
+    document.body.appendChild(xpEl);
+    setTimeout(() => xpEl.remove(), 1500);
+
     // Ring pulse on check-in button
     const btn = document.querySelector('[data-checkin-btn]');
     if (btn) {
@@ -1324,10 +1336,10 @@ export default function HomePage() {
         </a>
       </div>
 
-      {/* XP Progress Bar */}
-      {(member as any)?.totalPoints > 0 && (
+      {/* XP / Level bar — always show for authenticated members */}
+      {member && (
         <div className="mx-5 mb-3 stagger-child">
-          <XPBar xp={(member as any).totalPoints} compact />
+          <XPBar xp={(member as any)?.totalPoints || 0} compact />
         </div>
       )}
 
