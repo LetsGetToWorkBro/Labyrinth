@@ -63,6 +63,11 @@ export async function getStreamArchive(category?: string): Promise<ArchiveEntry[
 
 export function getEmbedUrl(videoId: string): string {
   if (!videoId) return '';
+  // YouTube video IDs are exactly 11 characters: letters, digits, hyphens, underscores
+  if (!/^[A-Za-z0-9_-]{11}$/.test(videoId)) {
+    console.warn('[streaming] Invalid video ID rejected:', videoId);
+    return '';
+  }
   return `https://www.youtube.com/embed/${videoId}?rel=0&modestbranding=1&playsinline=1`;
 }
 
