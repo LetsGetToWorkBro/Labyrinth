@@ -23,6 +23,7 @@ export default function LeaderboardPage() {
   const [gameEntries, setGameEntries] = useState<LeaderboardEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [showMyTier, setShowMyTier] = useState(false);
 
   const load = useCallback(async (showRefresh = false) => {
     if (showRefresh) setRefreshing(true);
@@ -58,6 +59,11 @@ export default function LeaderboardPage() {
 
   const entries = tab === 'classes' ? classEntries : gameEntries;
 
+  const myBelt = (member?.belt || 'white').toLowerCase();
+  const filteredEntries = showMyTier
+    ? entries.filter(e => (e.belt || 'white').toLowerCase() === myBelt)
+    : entries;
+
   const beltDotColor = (belt?: string) => {
     if (!belt) return '#666';
     return BELT_DOT_COLORS[belt.toLowerCase()] || '#666';
@@ -79,7 +85,7 @@ export default function LeaderboardPage() {
       />
 
       {/* Classes / Games tabs */}
-      <div style={{ display: 'flex', margin: '0 20px 12px', gap: 4, padding: 4, backgroundColor: '#111', borderRadius: 12, border: '1px solid #1A1A1A' }}>
+      <div style={{ display: 'flex', margin: '0 20px 12px', gap: 4, padding: 4, backgroundColor: '#111', borderRadius: 12, border: '1px solid #1A1A1A', alignItems: 'center' }}>
         {([
           { key: 'classes' as Tab, label: 'Classes', icon: '📅' },
           { key: 'games' as Tab, label: 'Games', icon: '🎮' },
@@ -96,6 +102,18 @@ export default function LeaderboardPage() {
             <span style={{ fontSize: 14 }}>{t.icon}</span> {t.label}
           </button>
         ))}
+        <button
+          onClick={() => setShowMyTier(v => !v)}
+          style={{
+            padding: '5px 12px', borderRadius: 20, fontSize: 11, fontWeight: 600,
+            background: showMyTier ? 'rgba(200,162,76,0.15)' : 'rgba(255,255,255,0.04)',
+            border: `1px solid ${showMyTier ? 'rgba(200,162,76,0.4)' : '#222'}`,
+            color: showMyTier ? '#C8A24C' : '#666',
+            cursor: 'pointer',
+          }}
+        >
+          My Belt Tier
+        </button>
       </div>
 
       {/* Period tabs */}
@@ -126,7 +144,7 @@ export default function LeaderboardPage() {
               <div key={i} style={{ height: 60, borderRadius: 12, backgroundColor: '#111', border: '1px solid #1A1A1A', opacity: 1 - i * 0.12 }} />
             ))}
           </div>
-        ) : entries.length === 0 ? (
+        ) : filteredEntries.length === 0 ? (
           <div style={{ background: '#111', borderRadius: 12, padding: '40px 20px', textAlign: 'center', border: '1px solid #1A1A1A' }}>
             <div style={{ fontSize: 40, marginBottom: 12 }}>{tab === 'classes' ? '📅' : '🎮'}</div>
             <div style={{ color: '#888', fontSize: 14, fontWeight: 600, marginBottom: 6 }}>No entries yet</div>
@@ -138,7 +156,12 @@ export default function LeaderboardPage() {
           </div>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-            {entries.map((entry, i) => {
+            {showMyTier && (
+              <div style={{ color: '#888', fontSize: 12, fontWeight: 600, marginBottom: 4 }}>
+                {filteredEntries.length} {myBelt} belt{filteredEntries.length !== 1 ? 's' : ''}
+              </div>
+            )}
+            {filteredEntries.map((entry, i) => {
               const medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : null;
               const isTop3 = i < 3;
               const isMe = entry.isMe || (member && entry.name === member.name);

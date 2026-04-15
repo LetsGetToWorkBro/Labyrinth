@@ -183,6 +183,23 @@ interface GamesHubProps {
 function GamesHub({ stats, rank, nextRank, onPlay, onStartGame, showDifficulty, onBack }: GamesHubProps) {
   const [quoteIdx, setQuoteIdx] = useState(0);
   const [hubTab, setHubTab]     = useState<'play' | 'leaderboard'>('play');
+
+  // Game ideas to vote on
+  const [votes, setVotes] = useState<Record<string, boolean>>(() => {
+    try { return JSON.parse(localStorage.getItem('lbjj_game_votes') || '{}'); } catch { return {}; }
+  });
+
+  const gameIdeas = [
+    { key: 'submission_quiz', label: 'Submission Chain Quiz', desc: 'Name the counter to every submission' },
+    { key: 'position_trivia', label: 'Position Trivia', desc: 'Daily BJJ knowledge challenge' },
+    { key: 'bracket_predictor', label: 'Tournament Bracket', desc: 'Predict tournament outcomes' },
+  ];
+
+  const vote = (key: string) => {
+    const updated = { ...votes, [key]: !votes[key] };
+    setVotes(updated);
+    try { localStorage.setItem('lbjj_game_votes', JSON.stringify(updated)); } catch {}
+  };
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
   const [lbLoading, setLbLoading]     = useState(false);
   const [lbLoaded, setLbLoaded]       = useState(false);
@@ -360,6 +377,38 @@ function GamesHub({ stats, rank, nextRank, onPlay, onStartGame, showDifficulty, 
                 ))}
               </div>
             )}
+          </div>
+
+          {/* Voting card for upcoming games */}
+          <div style={{ margin: '16px 20px', background: '#111', borderRadius: 16, border: '1px solid #1A1A1A', padding: 16 }}>
+            <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.1em', color: '#555', textTransform: 'uppercase', marginBottom: 12 }}>
+              More Games Coming — Vote for What's Next
+            </div>
+            {gameIdeas.map(g => (
+              <button
+                key={g.key}
+                onClick={() => vote(g.key)}
+                style={{
+                  display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                  width: '100%', background: 'none', border: 'none', cursor: 'pointer',
+                  padding: '10px 0', borderBottom: '1px solid #1A1A1A', textAlign: 'left',
+                }}
+              >
+                <div>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: votes[g.key] ? '#C8A24C' : '#D0D0D0' }}>{g.label}</div>
+                  <div style={{ fontSize: 11, color: '#555', marginTop: 2 }}>{g.desc}</div>
+                </div>
+                <div style={{
+                  width: 28, height: 28, borderRadius: '50%', flexShrink: 0,
+                  background: votes[g.key] ? 'rgba(200,162,76,0.15)' : '#1A1A1A',
+                  border: `1px solid ${votes[g.key] ? '#C8A24C' : '#333'}`,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontSize: 14,
+                }}>
+                  {votes[g.key] ? '✓' : '↑'}
+                </div>
+              </button>
+            ))}
           </div>
         </>
       )}

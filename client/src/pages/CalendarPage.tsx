@@ -224,21 +224,27 @@ export default function CalendarPage() {
         </div>
       )}
 
-      {/* Next Houston Event Countdown */}
+      {/* Next Houston Tournament Countdown */}
       {nextHouston && (
-        <div className="mx-5 mb-4 p-4 rounded-xl" style={{ backgroundColor: "rgba(200, 162, 76, 0.08)", border: "1px solid rgba(200, 162, 76, 0.2)" }}>
-          <div className="flex items-center gap-2 mb-1">
-            <Star size={14} style={{ color: "#C8A24C" }} fill="#C8A24C" />
-            <span className="text-xs font-medium uppercase tracking-wider" style={{ color: "#C8A24C" }}>Next Houston Event</span>
+        <div style={{ margin: '0 20px 16px', padding: '14px 16px', borderRadius: 16, background: '#111', border: '1px solid #1A1A1A' }}>
+          <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', color: '#C8A24C', textTransform: 'uppercase', marginBottom: 6 }}>
+            Next Houston Tournament
           </div>
-          <p className="text-sm font-semibold" style={{ color: "#F0F0F0" }}>{nextHouston.name}</p>
-          <p className="text-xs mt-0.5" style={{ color: "#999" }}>
-            {new Date(nextHouston.date).toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" })}
-            {" · "}
-            <span style={{ color: "#C8A24C", fontWeight: 600 }}>
-              {daysUntil(nextHouston.date)} {daysUntil(nextHouston.date) === 1 ? 'day' : 'days'} away
-            </span>
-          </p>
+          <div style={{ fontSize: 16, fontWeight: 700, color: '#F0F0F0', marginBottom: 4 }}>{nextHouston.name}</div>
+          <div style={{ fontSize: 13, color: '#888' }}>
+            {daysUntil(nextHouston.date) === 0 ? 'Today!'
+              : daysUntil(nextHouston.date) === 1 ? 'Tomorrow'
+              : `${daysUntil(nextHouston.date)} days away`}
+          </div>
+          {nextHouston.location && (
+            <div style={{ fontSize: 12, color: '#555', marginTop: 4 }}>{nextHouston.location}</div>
+          )}
+          {nextHouston.link && (
+            <a href={nextHouston.link} target="_blank" rel="noopener noreferrer"
+              style={{ display: 'inline-block', marginTop: 8, fontSize: 11, fontWeight: 600, color: '#C8A24C', textDecoration: 'none' }}>
+              Register →
+            </a>
+          )}
         </div>
       )}
 
