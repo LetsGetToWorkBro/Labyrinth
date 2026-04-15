@@ -291,18 +291,17 @@ export default function ChatPage() {
               <button
                 onClick={() => setShowRankLegend(true)}
                 style={{
-                  display: "inline-flex", alignItems: "center", gap: 5,
-                  padding: "4px 10px 4px 6px", borderRadius: 20,
-                  background: "rgba(255,255,255,0.05)",
-                  border: "1px solid rgba(255,255,255,0.1)",
-                  backdropFilter: "blur(8px)",
-                  cursor: "pointer", fontSize: 10, fontWeight: 600,
-                  color: "#CCC",
+                  display: 'flex', alignItems: 'center', gap: 6,
+                  padding: '4px 10px 4px 6px', borderRadius: 20,
+                  backgroundColor: `${getBeltColor(myBelt)}15`,
+                  border: `1px solid ${getBeltColor(myBelt)}30`,
+                  cursor: 'pointer',
                 }}
               >
-                <BeltIcon belt={myBelt} width={18} />
-                <span>{(myBelt === 'black' ? 'Grandmaster' : userRank.title)}</span>
-                <ChevronRight size={10} style={{ color: '#555' }} />
+                <BeltIcon belt={myBelt} width={24} />
+                <span style={{ fontSize: 11, fontWeight: 700, color: getBeltColor(myBelt), letterSpacing: '0.05em', textTransform: 'uppercase' }}>
+                  {userRank.title}
+                </span>
               </button>
             )}
           </div>
@@ -355,13 +354,12 @@ export default function ChatPage() {
                           <div style={{ flex: 1, height: 1, background: '#1A1A1A' }} />
                         </div>
                       )}
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 14px', borderRadius: 10, background: '#0D0D0D', border: '1px solid #1A1A1A' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 14px', borderRadius: 10, background: '#0D0D0D', border: '1px solid #1A1A1A', borderLeft: `3px solid ${r.belt === 'black' ? '#C8A24C' : r.beltColor}` }}>
                         <div style={{ flexShrink: 0 }}>
-                          <RankOrb belt={r.belt} size={32} />
+                          <BeltIcon belt={r.belt} width={48} />
                         </div>
                         <div style={{ flex: 1 }}>
                           <div style={{ fontSize: 14, fontWeight: 700, color: nameColor, textTransform: 'capitalize' }}>{r.belt} Belt</div>
-                          <div style={{ fontSize: 11, color: '#666', marginTop: 1 }}>{r.title}</div>
                         </div>
                         <span style={{ fontSize: 9, fontWeight: 700, padding: '2px 8px', borderRadius: 10, background: `${r.beltColor}15`, color: nameColor, border: `1px solid ${r.beltColor}25`, letterSpacing: '0.06em', textTransform: 'uppercase', flexShrink: 0 }}>{r.smallLabel}</span>
                       </div>
@@ -491,19 +489,17 @@ export default function ChatPage() {
             <button
               onClick={() => setShowRankLegend(true)}
               style={{
-                display: "flex", alignItems: "center", gap: 6,
-                padding: "5px 12px 5px 8px", borderRadius: 20,
-                background: "rgba(255,255,255,0.05)",
-                border: "1px solid rgba(255,255,255,0.1)",
-                backdropFilter: "blur(8px)",
-                cursor: "pointer",
+                display: 'flex', alignItems: 'center', gap: 6,
+                padding: '4px 10px 4px 6px', borderRadius: 20,
+                backgroundColor: `${getBeltColor(myBelt)}15`,
+                border: `1px solid ${getBeltColor(myBelt)}30`,
+                cursor: 'pointer',
               }}
             >
-              <BeltIcon belt={myBelt} width={22} />
-              <span style={{ fontSize: 11, fontWeight: 700, color: '#CCC', letterSpacing: '0.03em' }}>
-                {myBelt === 'black' ? 'Grandmaster' : userRank.title}
+              <BeltIcon belt={myBelt} width={24} />
+              <span style={{ fontSize: 11, fontWeight: 700, color: getBeltColor(myBelt), letterSpacing: '0.05em', textTransform: 'uppercase' }}>
+                {userRank.title}
               </span>
-              <ChevronRight size={12} style={{ color: '#555' }} />
             </button>
           )}
         </div>
@@ -605,13 +601,12 @@ export default function ChatPage() {
                         <div style={{ flex: 1, height: 1, background: '#1A1A1A' }} />
                       </div>
                     )}
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 14px', borderRadius: 10, background: '#0D0D0D', border: '1px solid #1A1A1A' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 14px', borderRadius: 10, background: '#0D0D0D', border: '1px solid #1A1A1A', borderLeft: `3px solid ${r.belt === 'black' ? '#C8A24C' : r.beltColor}` }}>
                       <div style={{ flexShrink: 0 }}>
-                        <RankOrb belt={r.belt} size={32} />
+                        <BeltIcon belt={r.belt} width={48} />
                       </div>
                       <div style={{ flex: 1 }}>
                         <div style={{ fontSize: 14, fontWeight: 700, color: nameColor, textTransform: 'capitalize' }}>{r.belt} Belt</div>
-                        <div style={{ fontSize: 11, color: '#666', marginTop: 1 }}>{r.title}</div>
                       </div>
                       <span style={{ fontSize: 9, fontWeight: 700, padding: '2px 8px', borderRadius: 10, background: `${r.beltColor}15`, color: nameColor, border: `1px solid ${r.beltColor}25`, letterSpacing: '0.06em', textTransform: 'uppercase', flexShrink: 0 }}>{r.smallLabel}</span>
                     </div>
@@ -766,8 +761,8 @@ function ChannelRow({ channel, isRank, onOpen }: { channel: ChatChannel; isRank?
       }}
     >
       {isRank ? (
-        <div style={{ width: 42, height: 42, borderRadius: "50%", backgroundColor: `${beltColor}18`, border: `1.5px solid ${beltColor}40`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-          <div style={{ width: 14, height: 14, borderRadius: "50%", backgroundColor: beltColor }} />
+        <div style={{ width: 42, height: 42, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+          <RankOrb belt={beltKey} size={40} />
         </div>
       ) : (
         <div style={{ width: 42, height: 42, borderRadius: 11, backgroundColor: channel.accessible ? "#1A1A1A" : "transparent", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
@@ -779,11 +774,6 @@ function ChannelRow({ channel, isRank, onOpen }: { channel: ChatChannel; isRank?
           <span style={{ fontSize: 15, fontWeight: 600, color: channel.accessible ? "#F0F0F0" : "#666" }}>{channel.name}</span>
           {!channel.accessible && <Lock size={12} style={{ color: "#555" }} />}
         </div>
-        {channel.accessible && (
-          <p style={{ fontSize: 12, color: channel.lastMessage ? "#666" : "#555", margin: "2px 0 0", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontStyle: channel.lastMessage ? "normal" : "italic" }}>
-            {channel.lastMessage || CHANNEL_DESCRIPTIONS[channel.id] || "No messages yet"}
-          </p>
-        )}
       </div>
       {channel.accessible && channel.lastTimestamp && (
         <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 4, flexShrink: 0 }}>
