@@ -259,6 +259,7 @@ function AccountPage() {
     } catch {}
     return "";
   });
+  const [beltChangeRequest, setBeltChangeRequest] = useState('');
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState("");
@@ -370,9 +371,19 @@ function AccountPage() {
           localStorage.setItem("lbjj_member_profile", JSON.stringify(profile));
         } catch { /* ignore parse error */ }
       }
+      // Submit belt change request if selected
+      if (beltChangeRequest && beltChangeRequest !== member?.belt) {
+        await beltSavePromotion({
+          belt: beltChangeRequest,
+          stripes: 0,
+          date: new Date().toISOString().split('T')[0],
+          note: 'Requested via profile edit',
+        }).catch(() => {});
+      }
       await refreshProfile();
       setSaved(true);
       setEditing(false);
+      setBeltChangeRequest('');
       setTimeout(() => setSaved(false), 2000);
     } catch (e: any) {
       setError(e.message || "Failed to save");
@@ -483,11 +494,31 @@ function AccountPage() {
               />
             </div>
 
+            {/* Belt Change Request */}
+            <div style={{ backgroundColor: "#111", border: "1px solid #1A1A1A", borderRadius: 12, padding: "12px 16px" }}>
+              <label style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: "#555", display: "block", marginBottom: 6 }}>
+                Request Belt Change
+              </label>
+              <select
+                value={beltChangeRequest}
+                onChange={e => setBeltChangeRequest(e.target.value)}
+                style={{ width: "100%", padding: "10px 12px", borderRadius: 10, background: "#0D0D0D", border: "1px solid #222", color: "#F0F0F0", fontSize: 14 }}
+              >
+                <option value="">No change</option>
+                <option value="white">White Belt</option>
+                <option value="blue">Blue Belt</option>
+                <option value="purple">Purple Belt</option>
+                <option value="brown">Brown Belt</option>
+                <option value="black">Black Belt</option>
+              </select>
+              <p style={{ fontSize: 11, color: "#555", marginTop: 4 }}>Selecting a belt sends a promotion request to your coach for approval.</p>
+            </div>
+
             {error && <p style={{ fontSize: 13, color: "#E05555", textAlign: "center" }}>{error}</p>}
 
             <div style={{ display: "flex", gap: 10 }}>
               <button
-                onClick={() => { setEditing(false); setEditName(member?.name || ""); setPhone(member?.phone || ""); setError(""); }}
+                onClick={() => { setEditing(false); setEditName(member?.name || ""); setPhone(member?.phone || ""); setBeltChangeRequest(''); setError(""); }}
                 style={{ flex: 1, padding: 14, borderRadius: 12, background: "#1A1A1A", color: "#999", fontWeight: 600, fontSize: 14, border: "none", cursor: "pointer" }}
               >
                 Cancel
@@ -511,7 +542,7 @@ function AccountPage() {
           <>
             {/* Read-only fields — tap to edit */}
             <div
-              onClick={() => { setEditing(true); setEditName(member?.name || ""); setPhone(member?.phone || ""); }}
+              onClick={() => { setEditing(true); setEditName(member?.name || ""); setPhone(member?.phone || ""); setBeltChangeRequest(''); }}
               style={{ cursor: "pointer", position: "relative" }}
             >
               {/* Pencil hint */}
@@ -550,7 +581,7 @@ function AccountPage() {
             )}
 
             <button
-              onClick={() => { setEditing(true); setEditName(member?.name || ""); setPhone(member?.phone || ""); }}
+              onClick={() => { setEditing(true); setEditName(member?.name || ""); setPhone(member?.phone || ""); setBeltChangeRequest(''); }}
               style={{
                 width: "100%", padding: 14, borderRadius: 12,
                 background: "#C8A24C", color: "#0A0A0A", fontWeight: 700, fontSize: 15,

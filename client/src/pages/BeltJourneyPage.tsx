@@ -3,7 +3,7 @@ import { ScreenHeader } from "@/components/ScreenHeader";
 import { BeltIcon, ADULT_BELT_OPTIONS, KIDS_BELT_OPTIONS, BELT_DISPLAY_NAMES } from "@/components/BeltIcon";
 import { getBeltColor, getBeltTextColor } from "@/lib/constants";
 import { useAuth } from "@/lib/auth-context";
-import { beltGetPromotions, beltSavePromotion } from "@/lib/api";
+import { beltGetPromotions, beltSavePromotion, beltDeletePromotion, beltUpdatePromotion } from "@/lib/api";
 import { Plus, X, Trophy, Clock, ChevronDown, Sparkles, Calendar, Edit3, Check, Trash2, Loader2 } from "lucide-react";
 
 interface BeltPromotion {
@@ -187,8 +187,9 @@ export default function BeltJourneyPage() {
     resetForm();
   };
 
-  // Edit + delete remain local-only (no GAS edit/delete endpoint exists yet)
   const updatePromotion = (id: string) => {
+    // Fire-and-forget GAS sync
+    beltUpdatePromotion({ promotionId: id, belt: newBelt, stripes: newStripes, date: newDate, note: newNote }).catch(() => {});
     const updated = promotions.map(p =>
       p.id === id ? { ...p, belt: newBelt, stripes: newStripes, date: newDate, note: newNote } : p
     ).sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
@@ -197,8 +198,11 @@ export default function BeltJourneyPage() {
     resetForm();
   };
 
-  const deletePromotion = (id: string) => {
-    setPromotions(promotions.filter(p => p.id !== id));
+  const deletePromotion = async (id: string) => {
+    try {
+      await beltDeletePromotion(id);
+    } catch {}
+    setPromotions(prev => prev.filter(p => p.id !== id));
     setEditingId(null);
   };
 

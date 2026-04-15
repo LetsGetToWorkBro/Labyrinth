@@ -169,6 +169,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     localStorage.removeItem('lbjj_checkins_today');
     localStorage.removeItem('lbjj_weekly_training');
     localStorage.removeItem('lbjj_saved_pass');
+    localStorage.removeItem('lbjj_home_cache');
     setIsAuthenticated(false);
     setMemberState(null);
     setFamilyMembers([]);

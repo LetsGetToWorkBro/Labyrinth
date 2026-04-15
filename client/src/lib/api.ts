@@ -484,9 +484,22 @@ export interface ChatChannel {
 
 export async function chatGetMessages(channel: string, limit = 50): Promise<ChatMessage[]> {
   const token = getToken();
+  const cacheKey = `lbjj_chat_msgs_${channel}`;
+  const MSG_TTL = 30_000;
+
+  try {
+    const cached = sessionStorage.getItem(cacheKey);
+    if (cached) {
+      const { data, ts } = JSON.parse(cached);
+      if (Date.now() - ts < MSG_TTL) return data;
+    }
+  } catch {}
+
   try {
     const result = await gasCall("chatGetMessages", { channel, limit, token: token || "" });
-    return result.messages || [];
+    const messages = result.messages || [];
+    try { sessionStorage.setItem(cacheKey, JSON.stringify({ data: messages, ts: Date.now() })); } catch {}
+    return messages;
   } catch (err) {
     console.error("chatGetMessages failed:", err);
     return [];
@@ -497,18 +510,34 @@ export async function chatSendMessage(channel: string, text: string): Promise<{ 
   const token = getToken() || localStorage.getItem('lbjj_session_token') || '';
   if (!token) return { success: false };
   try {
-    return await gasCall("chatSendMessage", { channel, text, token });
+    const result = await gasCall("chatSendMessage", { channel, text, token });
+    try { sessionStorage.removeItem(`lbjj_chat_msgs_${channel}`); } catch {}
+    return result;
   } catch (err) {
     console.error("chatSendMessage failed:", err);
     return { success: false };
   }
 }
 
+const CHANNEL_CACHE_KEY = 'lbjj_chat_channels';
+const CHANNEL_CACHE_TTL = 60_000;
+
 export async function chatGetChannels(): Promise<ChatChannel[]> {
   const token = getToken();
+
+  try {
+    const cached = sessionStorage.getItem(CHANNEL_CACHE_KEY);
+    if (cached) {
+      const { data, ts } = JSON.parse(cached);
+      if (Date.now() - ts < CHANNEL_CACHE_TTL) return data;
+    }
+  } catch {}
+
   try {
     const result = await gasCall("chatGetChannels", { token: token || "" });
-    return result.channels || [];
+    const channels = result.channels || [];
+    try { sessionStorage.setItem(CHANNEL_CACHE_KEY, JSON.stringify({ data: channels, ts: Date.now() })); } catch {}
+    return channels;
   } catch (err) {
     console.error("chatGetChannels failed:", err);
     return [];
@@ -551,6 +580,17 @@ export async function beltGetPromotions(): Promise<BeltPromotion[]> {
     console.error("beltGetPromotions failed:", err);
     return [];
   }
+}
+
+export async function beltDeletePromotion(promotionId: string): Promise<{ success: boolean }> {
+  const token = getToken() || localStorage.getItem('lbjj_session_token') || '';
+  if (!token) throw new Error("Not authenticated");
+  return gasCall('beltDeletePromotion', { token, promotionId });
+}
+
+export async function beltUpdatePromotion(data: { promotionId: string; belt: string; stripes: number; date: string; note: string }): Promise<{ success: boolean }> {
+  const token = getToken() || localStorage.getItem('lbjj_session_token') || '';
+  return gasCall('beltUpdatePromotion', { token, ...data });
 }
 
 export async function beltApprovePromotion(promotionId: string, approved: boolean): Promise<{ success: boolean }> {

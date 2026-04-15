@@ -231,6 +231,28 @@ export default function HomePage() {
   const [homeLoading, setHomeLoading] = useState(true);
   const [homeLoadSlow, setHomeLoadSlow] = useState(false);
 
+  // ─── Stale-while-revalidate home cache ─────────────────────────
+  const HOME_CACHE_KEY = 'lbjj_home_cache';
+  const HOME_CACHE_TTL = 5 * 60 * 1000;
+
+  useEffect(() => {
+    try {
+      const cached = localStorage.getItem(HOME_CACHE_KEY);
+      if (cached) {
+        const { data, ts } = JSON.parse(cached);
+        if (Date.now() - ts < HOME_CACHE_TTL) {
+          if (data.totalClasses) setTotalClasses(data.totalClasses);
+          if (data.classesToday !== undefined) setClassesToday(data.classesToday);
+          if (data.weeklyTraining) {
+            localStorage.setItem('lbjj_weekly_training', JSON.stringify(data.weeklyTraining));
+          }
+          if (data.checkedInClasses?.length) setCheckedInClasses(data.checkedInClasses);
+          setHomeLoading(false);
+        }
+      }
+    } catch {}
+  }, []);
+
   useEffect(() => {
     if (!homeLoading) return;
     const t = setTimeout(() => setHomeLoadSlow(true), 8000);
@@ -462,6 +484,11 @@ export default function HomePage() {
       if (recentDays.length > 0) {
         localStorage.setItem('lbjj_weekly_training', JSON.stringify(recentDays));
       }
+      // Update home SWR cache
+      try {
+        const cacheData = { totalClasses: realTotal, classesToday: todayClasses.length, weeklyTraining: recentDays, checkedInClasses: todayClasses };
+        localStorage.setItem(HOME_CACHE_KEY, JSON.stringify({ data: cacheData, ts: Date.now() }));
+      } catch {}
       setHomeLoading(false);
     }).catch(() => { setHomeLoading(false); });
   }, [member?.email, getCheckInsOnce]);
