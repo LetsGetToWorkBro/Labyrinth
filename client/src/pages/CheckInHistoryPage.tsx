@@ -5,9 +5,12 @@ import { Loader2, CalendarDays } from 'lucide-react';
 
 const GOLD = '#C8A24C';
 
+const VISIBLE_COUNT = 20;
+
 export default function CheckInHistoryPage() {
   const [checkIns, setCheckIns] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [showAll, setShowAll] = useState(false);
 
   useEffect(() => {
     getMemberCheckIns().then(data => {
@@ -113,7 +116,7 @@ export default function CheckInHistoryPage() {
           </div>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-            {checkIns.map((ci, i) => (
+            {(showAll ? checkIns : checkIns.slice(0, VISIBLE_COUNT)).map((ci, i) => (
               <div key={i} style={{
                 background: '#111', borderRadius: 12, padding: '12px 14px',
                 border: '1px solid #1A1A1A', display: 'flex', alignItems: 'center', gap: 12,
@@ -135,6 +138,18 @@ export default function CheckInHistoryPage() {
                 </div>
               </div>
             ))}
+            {!showAll && checkIns.length > VISIBLE_COUNT && (
+              <button
+                onClick={() => setShowAll(true)}
+                style={{
+                  display: 'block', width: '100%', padding: '12px',
+                  textAlign: 'center', color: '#C8A24C', fontSize: 13,
+                  fontWeight: 600, background: 'none', border: 'none', cursor: 'pointer'
+                }}
+              >
+                Show all {checkIns.length} check-ins
+              </button>
+            )}
           </div>
         )}
       </div>

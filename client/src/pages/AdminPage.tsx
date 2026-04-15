@@ -14,6 +14,7 @@
  */
 
 import { useState, useEffect, useCallback, useRef } from "react";
+import { ListSkeleton } from "@/components/LoadingSkeleton";
 import { useAuth } from "@/lib/auth-context";
 import {
   adminGetDashboard,
@@ -252,7 +253,7 @@ function MembersTab() {
     }
   };
 
-  if (loading) return <LoadingState rows={6} />;
+  if (loading) return <ListSkeleton count={8} />;
   if (error && members.length === 0) return <ErrorState message={error} onRetry={load} />;
 
   const activeCount = members.filter(m => m.StripeSubscriptionID && m.StripeSubscriptionID.trim() !== '').length;

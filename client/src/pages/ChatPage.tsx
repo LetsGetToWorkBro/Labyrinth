@@ -9,6 +9,7 @@
  */
 
 import { useState, useRef, useEffect, useCallback } from "react";
+import { ListSkeleton } from "@/components/LoadingSkeleton";
 import { getBeltColor } from "@/lib/constants";
 import { BeltIcon } from "@/components/BeltIcon";
 import { useAuth } from "@/lib/auth-context";
@@ -142,9 +143,19 @@ export default function ChatPage() {
   const prevMsgCountRef = useRef(0);
   const initialLoadRef = useRef(true);
   const initialMsgCountRef = useRef(0);
+  const messagesContainerRef = useRef<HTMLDivElement>(null);
   const notifPermRef = useRef<NotificationPermission>(
     typeof Notification !== 'undefined' ? Notification.permission : 'denied'
   );
+
+  // ── GAS timeout messaging for channel list ─────────────────────
+  const [channelLoadSlow, setChannelLoadSlow] = useState(false);
+
+  useEffect(() => {
+    if (!loadingChannels) { setChannelLoadSlow(false); return; }
+    const t = setTimeout(() => setChannelLoadSlow(true), 8000);
+    return () => clearTimeout(t);
+  }, [loadingChannels]);
 
   // 6a: Inject chat motion styles once
   useEffect(() => {
@@ -217,9 +228,14 @@ export default function ChatPage() {
     return () => { if (pollRef.current) clearInterval(pollRef.current); };
   }, [activeChannelId, loadMessages]);
 
-  // Auto-scroll to bottom
+  // Auto-scroll to bottom (only if near bottom or initial load)
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    const container = messagesContainerRef.current;
+    if (!container) return;
+    const isNearBottom = container.scrollHeight - container.scrollTop - container.clientHeight < 150;
+    if (isNearBottom || initialLoadRef.current) {
+      messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    }
   }, [messages.length]);
 
   // ── Send ──────────────────────────────────────────────────────
@@ -357,11 +373,9 @@ export default function ChatPage() {
         )}
 
         {/* Messages */}
-        <div style={{ flex: 1, overflowY: "auto", padding: "12px 16px", display: "flex", flexDirection: "column", gap: 4 }}>
+        <div ref={messagesContainerRef} style={{ flex: 1, overflowY: "auto", padding: "12px 16px", display: "flex", flexDirection: "column", gap: 4 }}>
           {loadingMsgs && messages.length === 0 ? (
-            <div style={{ display: "flex", justifyContent: "center", alignItems: "center", height: "100%", color: "#555" }}>
-              <Loader2 size={20} className="animate-spin" />
-            </div>
+            <ListSkeleton count={6} />
           ) : messages.length === 0 ? (
             <div style={{
               flex: 1,
@@ -498,6 +512,11 @@ export default function ChatPage() {
         {loadingChannels ? (
           <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 8 }}>
             {[1, 2, 3, 4].map(i => <div key={i} style={{ height: 60, borderRadius: 14, backgroundColor: "#111", border: "1px solid #1A1A1A", opacity: 1 - i * 0.15 }} />)}
+            {channelLoadSlow && (
+              <p style={{ textAlign: 'center', color: '#666', fontSize: 12, padding: 16 }}>
+                Taking longer than usual…
+              </p>
+            )}
           </div>
         ) : channels.length === 0 ? (
           <div style={{ padding: '32px 20px', textAlign: 'center' }}>

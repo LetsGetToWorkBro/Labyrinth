@@ -16,6 +16,7 @@ import {
   memberAddCard, memberCreateSetupLink,
 } from "@/lib/api";
 import { useState, useEffect, useCallback, useRef } from "react";
+import { StatSkeleton, ListSkeleton } from "@/components/LoadingSkeleton";
 import { getStreamStatus, clearStreamCache } from "@/lib/streaming";
 import type { StreamStatus } from "@/lib/streaming";
 
@@ -209,6 +210,16 @@ export default function HomePage() {
   const [rankSubmitting, setRankSubmitting] = useState(false);
   const [rankSent, setRankSent] = useState(false);
   const [profileExpanded, setProfileExpanded] = useState(false);
+
+  // ─── Home loading skeleton state ─────────────────────────────────
+  const [homeLoading, setHomeLoading] = useState(true);
+  const [homeLoadSlow, setHomeLoadSlow] = useState(false);
+
+  useEffect(() => {
+    if (!homeLoading) return;
+    const t = setTimeout(() => setHomeLoadSlow(true), 8000);
+    return () => clearTimeout(t);
+  }, [homeLoading]);
 
   // Profile photo state
   const [profilePic, setProfilePic] = useState<string | null>(() => {
@@ -433,7 +444,8 @@ export default function HomePage() {
       if (recentDays.length > 0) {
         localStorage.setItem('lbjj_weekly_training', JSON.stringify(recentDays));
       }
-    }).catch(() => {});
+      setHomeLoading(false);
+    }).catch(() => { setHomeLoading(false); });
   }, [member?.email, getCheckInsOnce]);
 
   // ─── Total classes count-up animation effect ──────────────────────
@@ -1067,6 +1079,21 @@ export default function HomePage() {
         </div>
       )}
 
+      {homeLoading ? (
+        <div className="px-5 space-y-3 mt-4">
+          <div style={{ display: 'flex', gap: 12 }}>
+            <StatSkeleton />
+            <StatSkeleton />
+          </div>
+          <ListSkeleton count={3} />
+          {homeLoadSlow && (
+            <p style={{ textAlign: 'center', color: '#666', fontSize: 12, marginTop: 8 }}>
+              Still loading your dashboard…
+            </p>
+          )}
+        </div>
+      ) : (
+      <>
       {/* Weekly Training Progress */}
       <div className="mx-5 mb-3 stagger-child">
         <div style={{ display: 'flex', justifyContent: 'center', gap: 8 }}>
@@ -1213,6 +1240,8 @@ export default function HomePage() {
             })}
           </div>
         </div>
+      )}
+      </>
       )}
 
       {/* Tournament Countdown (conditional) */}
