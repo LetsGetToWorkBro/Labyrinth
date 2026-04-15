@@ -311,26 +311,15 @@ function AccountPage() {
     }
     if (walletLoading) return;
 
-    // Only works on iOS Safari
-    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
-    const belt = (member?.belt || 'white').toLowerCase();
-    const name = member?.name || 'Member';
-
-    if (!isIOS) {
-      // Non-iOS: open test pass URL directly
-      window.open(`https://labyrinth-pass-server-production.up.railway.app/pass/test/${encodeURIComponent(belt)}/${encodeURIComponent(name)}`, '_blank');
-      return;
-    }
-
     setWalletLoading(true);
     try {
       const { getToken } = await import("@/lib/api");
       const token = getToken() || localStorage.getItem('lbjj_session_token') || '';
-      if (!token) { alert('Please sign in again.'); return; }
+      if (!token) { alert('Please sign in again.'); setWalletLoading(false); return; }
       const passUrl = `https://labyrinth-pass-server-production.up.railway.app/pass/generate?memberToken=${encodeURIComponent(token)}`;
       window.location.href = passUrl;
     } catch (e) {
-      alert('Could not generate your pass. Please try again or contact info@labyrinth.vision');
+      alert('Could not generate pass. Please try again.');
     } finally {
       setWalletLoading(false);
     }
@@ -906,7 +895,7 @@ function ResetPasswordPage() {
 
   const submit = async () => {
     if (!password || password !== confirm) { setError('Passwords do not match'); return; }
-    if (password.length < 6) { setError('Password must be at least 6 characters'); return; }
+    if (password.length < 8) { setError('Password must be at least 8 characters'); return; }
     if (!token) { setError('Invalid reset link'); return; }
     setLoading(true); setError('');
     try {
@@ -941,7 +930,7 @@ function ResetPasswordPage() {
             {error && <p style={{ color: '#E05555', fontSize: 13, marginBottom: 12 }}>{error}</p>}
             <div style={{ marginBottom: 12 }}>
               <label style={{ color: '#999', fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', display: 'block', marginBottom: 6 }}>New Password</label>
-              <input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="At least 6 characters"
+              <input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="At least 8 characters"
                 style={{ width: '100%', background: '#0D0D0D', border: '1px solid #222', borderRadius: 10, padding: '12px 14px', color: '#F0F0F0', fontSize: 14, outline: 'none', boxSizing: 'border-box' }} />
             </div>
             <div style={{ marginBottom: 20 }}>
