@@ -330,7 +330,8 @@ export default function LoginPage() {
     <div style={{
       position: "fixed", inset: 0, backgroundColor: "#0A0A0A",
       display: "flex", flexDirection: "column", alignItems: "center",
-      justifyContent: "center", padding: "24px 20px", overflowY: "auto",
+      justifyContent: "flex-start",
+      padding: "24px 20px", paddingTop: "max(60px, env(safe-area-inset-top, 60px))", overflowY: "auto",
       opacity: visible ? 1 : 0, transform: visible ? "none" : "translateY(16px)",
       transition: "opacity 0.35s ease, transform 0.35s ease",
     }}>
@@ -481,13 +482,13 @@ export default function LoginPage() {
                       </Field>
                       <Field label="Password" htmlFor="login-password">
                         <div style={{ position: "relative" }}>
-                          <input id="login-password" type={showPw ? "text" : "password"} name="password" value={password}
+                          <input id="login-password" type="password" name="password" value={password}
                             onChange={e => { setPassword(e.target.value); if (loginError) setLoginError(""); }}
                             placeholder="Your password" autoComplete="current-password"
                             enterKeyHint="go" readOnly={loginLoading}
                             aria-invalid={hasError || undefined}
                             aria-describedby={loginError ? 'login-error' : undefined}
-                            style={{ ...inputStyle, paddingRight: 44, ...(hasError ? { borderColor: 'rgba(224,85,85,0.5)' } : {}) }}
+                            style={{ ...inputStyle, paddingRight: 44, WebkitTextSecurity: showPw ? 'none' : undefined, ...(hasError ? { borderColor: 'rgba(224,85,85,0.5)' } : {}) } as React.CSSProperties}
                             data-testid="input-password" />
                           <button type="button" onClick={() => setShowPw(!showPw)} aria-label={showPw ? "Hide password" : "Show password"}
                             style={{ position: "absolute", right: 0, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", color: "#555", cursor: "pointer", padding: 0, width: 44, height: 44, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
@@ -586,16 +587,18 @@ export default function LoginPage() {
                       <p style={{ fontSize: 13, color: "#888", margin: "0 0 4px", lineHeight: 1.5 }}>
                         Enter your email and we'll send a password reset link.
                       </p>
-                      <Field label="Email" htmlFor="forgot-email">
-                        <input id="forgot-email" type="email" name="email" value={forgotEmail} onChange={e => setForgotEmail(e.target.value)}
-                          placeholder="your@email.com" autoFocus autoCapitalize="none" autoCorrect="off" inputMode="email" spellCheck={false} style={inputStyle} />
-                      </Field>
-                      <button onClick={handleForgotPassword} disabled={forgotLoading}
-                        style={{ ...submitStyle(selectedLocation.color), opacity: forgotLoading ? 0.7 : 1 }}>
-                        {forgotLoading
-                          ? <><Loader2 size={16} className="animate-spin" style={{ marginRight: 8 }} /> Sending…</>
-                          : <><span>Send Reset Link</span><ArrowRight size={16} style={{ marginLeft: 8 }} /></>}
-                      </button>
+                      <form onSubmit={(e) => { e.preventDefault(); handleForgotPassword(); }}>
+                        <Field label="Email" htmlFor="forgot-email">
+                          <input id="forgot-email" type="email" name="email" value={forgotEmail} onChange={e => setForgotEmail(e.target.value)}
+                            placeholder="your@email.com" autoFocus autoCapitalize="none" autoCorrect="off" inputMode="email" spellCheck={false} enterKeyHint="send" style={inputStyle} />
+                        </Field>
+                        <button type="submit" disabled={forgotLoading}
+                          style={{ ...submitStyle(selectedLocation.color), opacity: forgotLoading ? 0.7 : 1, marginTop: 14 }}>
+                          {forgotLoading
+                            ? <><Loader2 size={16} className="animate-spin" style={{ marginRight: 8 }} /> Sending…</>
+                            : <><span>Send Reset Link</span><ArrowRight size={16} style={{ marginLeft: 8 }} /></>}
+                        </button>
+                      </form>
                       <div style={{ textAlign: "center" }}>
                         <button type="button" onClick={() => { setShowForgot(false); setForgotSent(false); }}
                           style={{ background: "none", border: "none", color: "#888", fontSize: 12, cursor: "pointer", textDecoration: "underline", minHeight: 44, display: 'flex', alignItems: 'center' }}>
@@ -681,8 +684,9 @@ export default function LoginPage() {
                   <CheckCircle size={40} style={{ color: "#4CAF80" }} />
                   <h3 style={{ fontSize: 16, fontWeight: 700, color: "#F0F0F0", margin: 0 }}>Request sent!</h3>
                   <p style={{ fontSize: 13, color: "#888", margin: 0, lineHeight: 1.5 }}>
-                    We'll review it and send a setup link to <strong style={{ color: "#F0F0F0" }}>{reqEmail}</strong>.
-                    If your email matches a member account it will connect automatically.
+                    We'll review your request within 1–2 business days and send a setup link to{" "}
+                    <strong style={{ color: "#F0F0F0" }}>{reqEmail}</strong>.
+                    {" "}If your email matches a member account it will connect automatically.
                   </p>
                   <button onClick={() => { setScreen("login"); setReqSent(false); setReqName(""); setReqEmail(""); setReqNote(""); }}
                     style={{ ...submitStyle(selectedLocation.color), marginTop: 8 }}>
