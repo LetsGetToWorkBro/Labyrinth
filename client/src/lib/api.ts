@@ -605,6 +605,21 @@ export async function beltApprovePromotion(promotionId: string, approved: boolea
   }
 }
 
+// ─── Coach Notes ─────────────────────────────────────────────────
+
+export async function saveCoachNote(data: { memberEmail: string; note: string; date: string }): Promise<{ success: boolean }> {
+  const token = getToken() || localStorage.getItem('lbjj_session_token') || '';
+  return gasCall('saveCoachNote', { token, ...data });
+}
+
+export async function getCoachNotes(memberEmail: string): Promise<Array<{ date: string; note: string; coach: string }>> {
+  const token = getToken() || localStorage.getItem('lbjj_session_token') || '';
+  try {
+    const result = await gasCall('getCoachNotes', { token, memberEmail });
+    return result?.notes || [];
+  } catch { return []; }
+}
+
 // ─── Admin endpoints ──────────────────────────────────────────────
 // These call the same GAS backend as admin.labyrinth.vision.
 // The token is the member session token; GAS validates role server-side.

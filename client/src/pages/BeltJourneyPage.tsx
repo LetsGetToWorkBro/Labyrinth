@@ -3,7 +3,7 @@ import { ScreenHeader } from "@/components/ScreenHeader";
 import { BeltIcon, ADULT_BELT_OPTIONS, KIDS_BELT_OPTIONS, BELT_DISPLAY_NAMES } from "@/components/BeltIcon";
 import { getBeltColor, getBeltTextColor } from "@/lib/constants";
 import { useAuth } from "@/lib/auth-context";
-import { beltGetPromotions, beltSavePromotion, beltDeletePromotion, beltUpdatePromotion } from "@/lib/api";
+import { beltGetPromotions, beltSavePromotion, beltDeletePromotion, beltUpdatePromotion, getCoachNotes } from "@/lib/api";
 import { Plus, X, Trophy, Clock, ChevronDown, Sparkles, Calendar, Edit3, Check, Trash2, Loader2 } from "lucide-react";
 
 interface BeltPromotion {
@@ -133,6 +133,7 @@ export default function BeltJourneyPage() {
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState("");
   const [quote] = useState(getRandomQuote);
+  const [coachNotes, setCoachNotes] = useState<Array<{date: string; note: string; coach: string}>>([]);
   const timelineRef = useRef<HTMLDivElement>(null);
 
   const beltOptions = showYouth ? YOUTH_BELT_ORDER : BELT_ORDER;
@@ -156,6 +157,13 @@ export default function BeltJourneyPage() {
       setLoadingPromotions(false);
     });
   }, [isAuthenticated]);
+
+  // Load coach notes
+  useEffect(() => {
+    if (member?.email) {
+      getCoachNotes(member.email).then(setCoachNotes).catch(() => {});
+    }
+  }, [member?.email]);
 
   // Submit to GAS + notify admin via CRM dashboard widget
   const addPromotion = async () => {
@@ -426,6 +434,21 @@ export default function BeltJourneyPage() {
               })}
             </div>
           </div>
+        </div>
+      )}
+
+      {/* Coach Feedback */}
+      {coachNotes.length > 0 && (
+        <div className="mx-5 mb-4" style={{ marginTop: 24, paddingTop: 20, borderTop: '1px solid #1A1A1A' }}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: '#666', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 12 }}>
+            Coach Feedback
+          </div>
+          {coachNotes.map((n, i) => (
+            <div key={i} style={{ padding: '12px 14px', background: '#0D0D0D', borderRadius: 12, border: '1px solid #1A1A1A', borderLeft: '3px solid #C8A24C', marginBottom: 8 }}>
+              <div style={{ fontSize: 11, color: '#555', marginBottom: 4 }}>{n.date}{n.coach ? ` · ${n.coach}` : ''}</div>
+              <div style={{ fontSize: 13, color: '#D0D0D0', lineHeight: 1.5 }}>{n.note}</div>
+            </div>
+          ))}
         </div>
       )}
 

@@ -24,6 +24,8 @@ import {
   adminSaveNote,
   adminGetBookings,
   beltSavePromotion,
+  gasCall,
+  getToken,
   type AdminMember,
   type AdminDashboard,
   type MemberComm,
@@ -204,6 +206,26 @@ function MembersTab() {
   const [editData, setEditData] = useState<Partial<AdminMember>>({});
   const [saving, setSaving] = useState(false);
   const [saveMsg, setSaveMsg] = useState("");
+  const [coachNoteText, setCoachNoteText] = useState('');
+  const [coachNoteSaving, setCoachNoteSaving] = useState(false);
+  const [coachNoteSaved, setCoachNoteSaved] = useState(false);
+
+  const saveCoachNote = async (memberEmail: string) => {
+    if (!coachNoteText.trim()) return;
+    setCoachNoteSaving(true);
+    try {
+      await gasCall('saveCoachNote', {
+        token: getToken() || localStorage.getItem('lbjj_session_token') || '',
+        memberEmail,
+        note: coachNoteText.trim(),
+        date: new Date().toISOString().split('T')[0],
+      });
+      setCoachNoteText('');
+      setCoachNoteSaved(true);
+      setTimeout(() => setCoachNoteSaved(false), 2000);
+    } catch {}
+    setCoachNoteSaving(false);
+  };
 
   const load = useCallback(async () => {
     setLoading(true); setError("");
@@ -376,6 +398,39 @@ function MembersTab() {
                         style={{ width: "100%", marginTop: 4, backgroundColor: "#0D0D0D", border: "1px solid #222", borderRadius: 8, padding: "8px 10px", fontSize: 12, color: "#F0F0F0", outline: "none", resize: "none", boxSizing: "border-box" }}
                       />
                     </div>
+                    {/* Coach Note */}
+                    <div style={{ marginTop: 12, borderTop: '1px solid #1A1A1A', paddingTop: 12 }}>
+                      <div style={{ fontSize: 11, fontWeight: 700, color: '#666', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 8 }}>
+                        Coach Note
+                      </div>
+                      <textarea
+                        value={coachNoteText}
+                        onChange={e => setCoachNoteText(e.target.value)}
+                        placeholder="e.g. Good guard retention today. Consider entering next local tournament."
+                        rows={2}
+                        style={{
+                          width: '100%', background: '#111', border: '1px solid #222', borderRadius: 8,
+                          color: '#F0F0F0', fontSize: 13, padding: '8px 10px', resize: 'none',
+                          fontFamily: 'inherit', boxSizing: 'border-box',
+                        }}
+                      />
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 6 }}>
+                        <button
+                          onClick={() => saveCoachNote(m.Email)}
+                          disabled={coachNoteSaving || !coachNoteText.trim()}
+                          style={{
+                            padding: '8px 16px', borderRadius: 8,
+                            background: '#C8A24C', color: '#000', fontWeight: 700, fontSize: 12,
+                            border: 'none', cursor: coachNoteText.trim() ? 'pointer' : 'default',
+                            opacity: coachNoteText.trim() ? 1 : 0.4,
+                          }}
+                        >
+                          {coachNoteSaving ? 'Saving…' : 'Save Note'}
+                        </button>
+                        {coachNoteSaved && <span style={{ fontSize: 12, color: '#4CAF80' }}>Saved</span>}
+                      </div>
+                    </div>
+
                     <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 8, marginTop: 10 }}>
                       {saveMsg && <span style={{ fontSize: 12, color: saveMsg === "Saved" ? "#4CAF80" : "#E05555" }}>{saveMsg}</span>}
                       <button
