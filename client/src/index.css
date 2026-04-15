@@ -10,6 +10,8 @@
    ═══════════════════════════════════════════════ */
 
 :root {
+  font-size: 16px;
+
   /* Labyrinth gold palette */
   --color-gold:           #c9a227;
   --color-gold-bright:    #e8b84b;
@@ -263,12 +265,12 @@
   clip-path: inset(0 100% 0 0);
 }
 .bm-badge {
-  font-size: 72px;
+  font-size: 4.5rem;
   transform: scale(0.4);
   opacity: 0;
 }
 .bm-name {
-  font-size: 22px;
+  font-size: 1.375rem;
   font-weight: 800;
   color: var(--color-gold);
   opacity: 0;
@@ -276,7 +278,7 @@
   text-align: center;
 }
 .bm-label {
-  font-size: 13px;
+  font-size: 0.8125rem;
   color: #888;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -290,7 +292,7 @@
   font-weight: 700;
   border: none;
   cursor: pointer;
-  font-size: 15px;
+  font-size: 0.9375rem;
 }
 
 /* ── Day pill slide (schedule) ── */
@@ -543,7 +545,7 @@
   cursor: pointer;
   transition: all 0.2s ease;
   color: #666;
-  font-size: 12px;
+  font-size: 0.75rem;
   font-weight: 500;
   letter-spacing: 0.02em;
   text-decoration: none;
@@ -577,7 +579,7 @@
   align-items: center;
   padding: 2px 10px;
   border-radius: 12px;
-  font-size: 11px;
+  font-size: 0.6875rem;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.05em;
@@ -595,7 +597,7 @@
   text-align: center;
   padding: 12px;
   color: #666;
-  font-size: 12px;
+  font-size: 0.75rem;
 }
 
 /* Animated counter */
@@ -867,7 +869,7 @@ body[data-game-active="true"] .app-content:has(.achievements-page) ~ .tab-bar {
 
 /* DD-03: Minimum 12px font size — especially nav labels */
 .tab-item span {
-  font-size: 12px !important;
+  font-size: 0.75rem !important;
   line-height: 1.2;
 }
 
@@ -892,7 +894,7 @@ button:focus-visible {
 input,
 textarea,
 select {
-  font-size: 16px !important;
+  font-size: 1rem !important;
 }
 
 /* Override for cases where visual 14px is needed — use transform instead */
