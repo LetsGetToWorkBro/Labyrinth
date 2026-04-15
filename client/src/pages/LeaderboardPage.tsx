@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { getLeaderboard, type LeaderboardEntry } from '@/lib/api';
 import { useAuth } from '@/lib/auth-context';
 import { ScreenHeader } from '@/components/ScreenHeader';
-import { Loader2, RefreshCw } from 'lucide-react';
+import { RefreshCw } from 'lucide-react';
 
 const GOLD = '#C8A24C';
 
@@ -23,7 +23,7 @@ export default function LeaderboardPage() {
   const [gameEntries, setGameEntries] = useState<LeaderboardEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [showMyTier, setShowMyTier] = useState(false);
+  const [selectedBelt, setSelectedBelt] = useState<string | null>(null);
 
   const load = useCallback(async (showRefresh = false) => {
     if (showRefresh) setRefreshing(true);
@@ -59,9 +59,23 @@ export default function LeaderboardPage() {
 
   const entries = tab === 'classes' ? classEntries : gameEntries;
 
-  const myBelt = (member?.belt || 'white').toLowerCase();
-  const filteredEntries = showMyTier
-    ? entries.filter(e => (e.belt || 'white').toLowerCase() === myBelt)
+  const BELT_GROUPS: Record<string, string[]> = {
+    white:  ['white'],
+    blue:   ['blue'],
+    purple: ['purple'],
+    brown:  ['brown'],
+    black:  ['black'],
+    grey:   ['grey', 'gray'],
+    yellow: ['yellow'],
+    orange: ['orange'],
+    green:  ['green'],
+  };
+
+  const filteredEntries = selectedBelt
+    ? entries.filter(e => {
+        const b = (e.belt || 'white').toLowerCase();
+        return (BELT_GROUPS[selectedBelt] || [selectedBelt]).includes(b);
+      })
     : entries;
 
   const beltDotColor = (belt?: string) => {
@@ -102,18 +116,42 @@ export default function LeaderboardPage() {
             <span style={{ fontSize: 14 }}>{t.icon}</span> {t.label}
           </button>
         ))}
-        <button
-          onClick={() => setShowMyTier(v => !v)}
-          style={{
-            padding: '5px 12px', borderRadius: 20, fontSize: 11, fontWeight: 600,
-            background: showMyTier ? 'rgba(200,162,76,0.15)' : 'rgba(255,255,255,0.04)',
-            border: `1px solid ${showMyTier ? 'rgba(200,162,76,0.4)' : '#222'}`,
-            color: showMyTier ? '#C8A24C' : '#666',
-            cursor: 'pointer',
-          }}
-        >
-          My Belt Tier
-        </button>
+      </div>
+
+      {/* Belt filter pills */}
+      <div style={{ margin: '0 20px 12px', display: 'flex', gap: 6, overflowX: 'auto', paddingBottom: 2, WebkitOverflowScrolling: 'touch' as any }}>
+        {([
+          { key: null,     label: 'All',    color: '#888' },
+          { key: 'white',  label: 'White',  color: '#E5E5E5' },
+          { key: 'blue',   label: 'Blue',   color: '#1A5DAB' },
+          { key: 'purple', label: 'Purple', color: '#7E3AF2' },
+          { key: 'brown',  label: 'Brown',  color: '#92400E' },
+          { key: 'black',  label: 'Black',  color: '#C8A24C' },
+          { key: 'grey',   label: 'Grey',   color: '#6B6B6B' },
+          { key: 'yellow', label: 'Yellow', color: '#C49B1A' },
+          { key: 'orange', label: 'Orange', color: '#C4641A' },
+          { key: 'green',  label: 'Green',  color: '#2D8040' },
+        ] as { key: string | null; label: string; color: string }[]).map(pill => {
+          const isActive = selectedBelt === pill.key;
+          return (
+            <button
+              key={String(pill.key)}
+              onClick={() => setSelectedBelt(pill.key)}
+              style={{
+                flexShrink: 0,
+                padding: '5px 12px', borderRadius: 20,
+                background: isActive ? `${pill.color}22` : 'rgba(255,255,255,0.03)',
+                border: `1px solid ${isActive ? pill.color + '60' : '#1A1A1A'}`,
+                color: isActive ? pill.color : '#555',
+                fontSize: 11, fontWeight: 600, cursor: 'pointer',
+                transition: 'all 0.15s ease',
+                whiteSpace: 'nowrap' as const,
+              }}
+            >
+              {pill.label}
+            </button>
+          );
+        })}
       </div>
 
       {/* Period tabs */}
@@ -156,11 +194,6 @@ export default function LeaderboardPage() {
           </div>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-            {showMyTier && (
-              <div style={{ color: '#888', fontSize: 12, fontWeight: 600, marginBottom: 4 }}>
-                {filteredEntries.length} {myBelt} belt{filteredEntries.length !== 1 ? 's' : ''}
-              </div>
-            )}
             {filteredEntries.map((entry, i) => {
               const medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : null;
               const isTop3 = i < 3;
