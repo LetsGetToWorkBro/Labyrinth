@@ -1199,6 +1199,16 @@ function AppShell() {
     }
   }, []);
 
+  // ── Cache geo-lock config on mount ─────────────────────────────
+  useEffect(() => {
+    // TODO: GAS action needed — getGeoConfig
+    gasCall('getGeoConfig', {}).then((res: any) => {
+      if (res?.config) {
+        try { localStorage.setItem('lbjj_geo_config', JSON.stringify(res.config)); } catch {}
+      }
+    }).catch(() => {});
+  }, []);
+
   // ── Belt Milestone Overlay ─────────────────────────────────────
   const [milestoneOverlay, setMilestoneOverlay] = useState<any>(null);
   const milestoneShownThisSession = useRef(false);

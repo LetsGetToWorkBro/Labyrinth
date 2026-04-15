@@ -26,13 +26,14 @@ import {
   beltSavePromotion,
   gasCall,
   getToken,
+  cachedGasCall,
   type AdminMember,
   type AdminDashboard,
   type MemberComm,
 } from "@/lib/api";
 import { getBeltColor } from "@/lib/constants";
 import {
-  LayoutDashboard, Users, CalendarDays, MessageSquare,
+  LayoutDashboard, Users, CalendarDays, MessageSquare, Settings,
   RefreshCw, Search, ChevronDown, ChevronRight, Check,
   X, Loader2, Save, AlertCircle, ArrowLeft,
 } from "lucide-react";
@@ -40,7 +41,7 @@ import {
 const GOLD = "#C8A24C";
 const BELT_OPTIONS = ["White", "Blue", "Purple", "Brown", "Black", "Grey", "Yellow", "Orange", "Green"];
 const STATUS_OPTIONS = ["Active", "Trial", "Paused", "Failed", "Cancelled"];
-type AdminTab = "dashboard" | "members" | "trials" | "notes";
+type AdminTab = "dashboard" | "members" | "trials" | "notes" | "settings";
 
 // ─── Root ──────────────────────────────────────────────────────────
 
@@ -82,6 +83,7 @@ export default function AdminPage({ onBack }: { onBack: () => void }) {
           { id: "members",   label: "Members",   icon: <Users size={14} /> },
           { id: "trials",    label: "Trials",    icon: <CalendarDays size={14} /> },
           { id: "notes",     label: "Notes",     icon: <MessageSquare size={14} /> },
+          { id: "settings",  label: "Settings",  icon: <Settings size={14} /> },
         ] as { id: AdminTab; label: string; icon: React.ReactNode }[]).map(t => (
           <button
             key={t.id}
@@ -105,6 +107,7 @@ export default function AdminPage({ onBack }: { onBack: () => void }) {
         {tab === "members"   && <MembersTab />}
         {tab === "trials"    && <TrialsTab />}
         {tab === "notes"     && <NotesTab />}
+        {tab === "settings"  && <SettingsTab />}
       </div>
     </div>
   );
@@ -653,6 +656,141 @@ function NotesTab() {
           ))}
         </div>
       )}
+    </div>
+  );
+}
+
+// ─── Settings Tab ────────────────────────────────────────────
+
+function SettingsTab() {
+  const [geoEnabled, setGeoEnabled] = useState(false);
+  const [gymLat, setGymLat] = useState('');
+  const [gymLng, setGymLng] = useState('');
+  const [radiusYards, setRadiusYards] = useState('500');
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const [detecting, setDetecting] = useState(false);
+
+  // Load existing config on mount
+  useEffect(() => {
+    // TODO: GAS action needed — getGeoConfig
+    cachedGasCall('getGeoConfig', {}, 60_000).then((res: any) => {
+      if (res?.config) {
+        setGeoEnabled(res.config.enabled === true || res.config.enabled === 'true');
+        setGymLat(res.config.lat || '');
+        setGymLng(res.config.lng || '');
+        setRadiusYards(res.config.radiusYards || '500');
+      }
+    }).catch(() => {});
+  }, []);
+
+  const yardsToMiles = (y: number) => (y / 1760).toFixed(2);
+  const yards = parseFloat(radiusYards) || 0;
+
+  const detectLocation = () => {
+    setDetecting(true);
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        setGymLat(pos.coords.latitude.toFixed(6));
+        setGymLng(pos.coords.longitude.toFixed(6));
+        setDetecting(false);
+      },
+      () => { setDetecting(false); alert('Could not get location. Enter manually.'); },
+      { enableHighAccuracy: true, timeout: 10000 }
+    );
+  };
+
+  const save = async () => {
+    setSaving(true);
+    const token = localStorage.getItem('lbjj_session_token') || '';
+    try {
+      // TODO: GAS action needed — saveGeoConfig
+      await gasCall('saveGeoConfig', {
+        token,
+        enabled: geoEnabled,
+        lat: parseFloat(gymLat) || 0,
+        lng: parseFloat(gymLng) || 0,
+        radiusYards: parseInt(radiusYards) || 500,
+      });
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2000);
+    } catch { alert('Failed to save. Try again.'); }
+    setSaving(false);
+  };
+
+  return (
+    <div style={{ padding: '16px 20px' }}>
+      <div style={{ marginBottom: 24 }}>
+        <div style={{ fontSize: 14, fontWeight: 700, color: '#F0F0F0', marginBottom: 4 }}>Check-In Geo Lock</div>
+        <div style={{ fontSize: 12, color: '#666', marginBottom: 16 }}>
+          Require members to be physically at the gym to check into class.
+        </div>
+
+        {/* Toggle */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 14px', background: '#111', borderRadius: 10, border: '1px solid #1A1A1A', marginBottom: 12 }}>
+          <div>
+            <div style={{ fontSize: 13, fontWeight: 600, color: '#F0F0F0' }}>Enable Geo Lock</div>
+            <div style={{ fontSize: 11, color: '#555' }}>Members must share location to check in</div>
+          </div>
+          <button
+            onClick={() => setGeoEnabled(v => !v)}
+            style={{
+              width: 44, height: 24, borderRadius: 12, border: 'none', cursor: 'pointer',
+              background: geoEnabled ? '#C8A24C' : '#333',
+              position: 'relative', transition: 'background 0.2s',
+            }}
+          >
+            <div style={{
+              width: 18, height: 18, borderRadius: '50%', background: '#FFF',
+              position: 'absolute', top: 3,
+              left: geoEnabled ? 23 : 3,
+              transition: 'left 0.2s',
+            }}/>
+          </button>
+        </div>
+
+        {/* Coordinates */}
+        <div style={{ opacity: geoEnabled ? 1 : 0.4, transition: 'opacity 0.2s' }}>
+          <button
+            onClick={detectLocation}
+            disabled={!geoEnabled || detecting}
+            style={{
+              width: '100%', padding: '10px', borderRadius: 8, marginBottom: 10,
+              background: 'rgba(200,162,76,0.1)', border: '1px solid rgba(200,162,76,0.3)',
+              color: '#C8A24C', fontWeight: 600, fontSize: 12, cursor: 'pointer',
+            }}
+          >
+            {detecting ? 'Detecting\u2026' : '\uD83D\uDCCD Use My Current Location as Gym'}
+          </button>
+
+          <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
+            <div style={{ flex: 1 }}>
+              <label style={{ fontSize: 10, color: '#666', display: 'block', marginBottom: 4 }}>LATITUDE</label>
+              <input value={gymLat} onChange={e => setGymLat(e.target.value)} disabled={!geoEnabled}
+                placeholder="29.694..." style={{ width: '100%', background: '#111', border: '1px solid #222', borderRadius: 8, color: '#F0F0F0', padding: '8px 10px', fontSize: 13, boxSizing: 'border-box' }}/>
+            </div>
+            <div style={{ flex: 1 }}>
+              <label style={{ fontSize: 10, color: '#666', display: 'block', marginBottom: 4 }}>LONGITUDE</label>
+              <input value={gymLng} onChange={e => setGymLng(e.target.value)} disabled={!geoEnabled}
+                placeholder="-95.771..." style={{ width: '100%', background: '#111', border: '1px solid #222', borderRadius: 8, color: '#F0F0F0', padding: '8px 10px', fontSize: 13, boxSizing: 'border-box' }}/>
+            </div>
+          </div>
+
+          <div>
+            <label style={{ fontSize: 10, color: '#666', display: 'block', marginBottom: 4 }}>RADIUS</label>
+            <input type="number" value={radiusYards} onChange={e => setRadiusYards(e.target.value)} disabled={!geoEnabled}
+              placeholder="500" style={{ width: '100%', background: '#111', border: '1px solid #222', borderRadius: 8, color: '#F0F0F0', padding: '8px 10px', fontSize: 13, boxSizing: 'border-box' }}/>
+            <div style={{ fontSize: 11, color: '#555', marginTop: 4 }}>
+              {yards} yards &middot; {yardsToMiles(yards)} miles
+            </div>
+          </div>
+        </div>
+
+        <button onClick={save} disabled={saving}
+          style={{ marginTop: 16, width: '100%', padding: '12px', borderRadius: 10, background: '#C8A24C', color: '#000', fontWeight: 700, fontSize: 13, border: 'none', cursor: 'pointer' }}>
+          {saving ? 'Saving\u2026' : saved ? 'Saved \u2713' : 'Save Settings'}
+        </button>
+      </div>
     </div>
   );
 }

@@ -5,6 +5,7 @@ import type { ClassScheduleItem } from "@/lib/constants";
 import { getScheduleClasses, gasCall, getMemberData } from "@/lib/api";
 import { Clock, ChevronRight, X, User, CheckCircle } from "lucide-react";
 import { checkAndUnlockAchievements, ALL_ACHIEVEMENTS } from "@/lib/achievements";
+import { validateGeoIfRequired } from "@/lib/geo";
 import { getStreamStatus, getLiveBadgeStyle } from "@/lib/streaming";
 import type { StreamStatus } from "@/lib/streaming";
 
@@ -400,9 +401,15 @@ function ClassCard({ cls, isToday, stream, checkedInClasses, markClassCheckedIn 
   const duration = getDuration(cls.name);
   const alreadyCheckedIn = checkedInClasses.includes(cls.name || '');
 
-  const handleCheckIn = () => {
+  const handleCheckIn = async () => {
     if (!navigator.onLine) {
       alert('No internet connection. Please connect and try again.');
+      return;
+    }
+    // Geo-lock validation
+    const geo = await validateGeoIfRequired();
+    if (!geo.allowed) {
+      alert(geo.error || 'Location check failed. Please try again.');
       return;
     }
     // Dedup: prevent double check-ins (ref lock is synchronous — blocks rapid taps)

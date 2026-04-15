@@ -7,6 +7,7 @@ import { getBeltColor, CLASS_SCHEDULE } from "@/lib/constants";
 import { chatGetChannels, fetchCSV, parseCSV, CSV_ENDPOINTS } from "@/lib/api";
 import { ALL_ACHIEVEMENTS, checkAndUnlockAchievements } from "@/lib/achievements";
 import { ScreenHeader } from "@/components/ScreenHeader";
+import { validateGeoIfRequired } from "@/lib/geo";
 import { XPBar } from "@/components/XPBar";
 import {
   CreditCard, FileText, ChevronRight, ChevronDown, LogOut,
@@ -626,6 +627,12 @@ export default function HomePage() {
   const handleHomeCheckIn = useCallback(async (cls: any) => {
     if (!navigator.onLine) {
       alert('No internet connection. Please connect and try again.');
+      return;
+    }
+    // Geo-lock validation
+    const geo = await validateGeoIfRequired();
+    if (!geo.allowed) {
+      alert(geo.error || 'Location check failed. Please try again.');
       return;
     }
     // Ref lock: synchronous guard against rapid taps during GAS cold start
