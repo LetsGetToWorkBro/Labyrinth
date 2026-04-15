@@ -278,7 +278,7 @@ export default function BookingPage() {
           </div>
 
           {error && (
-            <div className="text-sm px-3 py-2 rounded-lg mb-3" style={{ backgroundColor: "rgba(224, 85, 85, 0.1)", color: "#E05555" }}>
+            <div role="alert" aria-live="polite" className="text-sm px-3 py-2 rounded-lg mb-3" style={{ backgroundColor: "rgba(224, 85, 85, 0.1)", color: "#E05555" }}>
               {error}
             </div>
           )}

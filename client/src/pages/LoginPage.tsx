@@ -515,7 +515,7 @@ export default function LoginPage() {
 
                       {/* Lockout countdown */}
                       {lockedUntil && Date.now() < lockedUntil && (
-                        <p style={{ color: '#E05555', fontSize: 12, textAlign: 'center', margin: 0 }}>
+                        <p role="alert" aria-live="polite" style={{ color: '#E05555', fontSize: 12, textAlign: 'center', margin: 0 }}>
                           Too many attempts — try again in {Math.ceil((lockedUntil - Date.now()) / 1000)}s
                         </p>
                       )}
@@ -657,7 +657,9 @@ export default function LoginPage() {
                       placeholder="e.g. I train Tuesday evenings…" rows={2} enterKeyHint="send"
                       style={{ ...inputStyle, resize: 'vertical', lineHeight: 1.5, minHeight: 44 }} />
                   </Field>
-                  {reqError && <p style={{ fontSize: 12, color: "#E05555", margin: "-4px 0 0", padding: "8px 12px", background: "rgba(224,85,85,0.07)", borderRadius: 8 }}>{reqError}</p>}
+                  {reqError && (
+                    <p role="alert" aria-live="polite" style={{ fontSize: 12, color: "#E05555", margin: "-4px 0 0", padding: "8px 12px", background: "rgba(224,85,85,0.07)", borderRadius: 8 }}>{reqError}</p>
+                  )}
                   <button type="submit" disabled={reqLoading}
                     style={{ ...submitStyle(selectedLocation.color), opacity: reqLoading ? 0.7 : 1, marginTop: 4 }}>
                     {reqLoading

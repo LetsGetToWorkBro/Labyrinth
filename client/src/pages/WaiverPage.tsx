@@ -289,7 +289,7 @@ export default function WaiverPage() {
           {/* Error + submit */}
           <div className="mx-5 pb-8">
             {signError && (
-              <div className="flex items-start gap-2 mb-3 p-3 rounded-xl" style={{ backgroundColor: "rgba(224,85,85,0.08)", border: "1px solid rgba(224,85,85,0.2)" }}>
+              <div role="alert" aria-live="polite" className="flex items-start gap-2 mb-3 p-3 rounded-xl" style={{ backgroundColor: "rgba(224,85,85,0.08)", border: "1px solid rgba(224,85,85,0.2)" }}>
                 <AlertCircle size={15} style={{ color: "#E05555", flexShrink: 0, marginTop: 1 }} />
                 <p className="text-xs" style={{ color: "#E05555" }}>{signError}</p>
               </div>

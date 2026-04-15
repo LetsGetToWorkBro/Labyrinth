@@ -1015,7 +1015,7 @@ function BeltMilestoneOverlay({ badge, onDismiss }: { badge: any; onDismiss: () 
 
   return (
     <div ref={overlayRef} className="belt-milestone-overlay"
-      role="dialog" aria-live="assertive" aria-label={`Achievement unlocked: ${badge.label}`}
+      role="status" aria-live="polite" aria-atomic="true" aria-label={`Achievement unlocked: ${badge.label}`}
       onClick={onDismiss}
     >
       <div ref={sweepRef} className="bm-sweep" style={{ '--belt-color': badge.color } as any} />
