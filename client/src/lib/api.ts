@@ -401,10 +401,7 @@ export async function bookTrialClass(data: {
   name: string; email: string; phone: string;
   className: string; classDay: string; classTime: string; classDate: string;
 }): Promise<any> {
-  const encodedPayload = encodeURIComponent(JSON.stringify(data));
-  const url = `${_gasEndpoint}?payload=${encodedPayload}`;
-  const response = await fetch(url, { method: "GET", redirect: "follow" });
-  return response.json();
+  return gasCall('bookTrialClass', data);
 }
 
 // ─── CSV helpers ──────────────────────────────────────────────────
