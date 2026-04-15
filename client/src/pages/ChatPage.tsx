@@ -25,17 +25,100 @@ const POLL_INTERVAL_MS = 20_000; // refresh messages every 20 s
 
 const RANK_LEGEND = [
   // Adult belts
-  { belt: 'white',  title: 'Beginner',    color: '#E5E5E5', emoji: '⚪', tier: 'Foundation', desc: 'The journey begins. Every legend started here.' },
-  { belt: 'blue',   title: 'Warrior',     color: '#1A5DAB', emoji: '🔵', tier: 'Student',    desc: 'Building the fundamentals. The hardest belt to earn.' },
-  { belt: 'purple', title: 'Elite',       color: '#7E3AF2', emoji: '🟣', tier: 'Skilled',    desc: 'Deep understanding of position and submission.' },
-  { belt: 'brown',  title: 'Master',      color: '#92400E', emoji: '🟤', tier: 'Advanced',   desc: 'Refining every detail. Black belt is within reach.' },
-  { belt: 'black',  title: 'Grandmaster', color: '#1A1A1A', emoji: '⬛', tier: 'Legend',     desc: 'A lifetime of dedication. The art lives in you.', border: '#C8A24C' },
+  { belt: 'white',  title: 'Beginner',    beltColor: '#E5E5E5', tier: 'Foundation', smallLabel: 'Adult I' },
+  { belt: 'blue',   title: 'Warrior',     beltColor: '#1A5DAB', tier: 'Student',    smallLabel: 'Adult II' },
+  { belt: 'purple', title: 'Elite',       beltColor: '#7E3AF2', tier: 'Skilled',    smallLabel: 'Adult III' },
+  { belt: 'brown',  title: 'Master',      beltColor: '#92400E', tier: 'Advanced',   smallLabel: 'Adult IV' },
+  { belt: 'black',  title: 'Grandmaster', beltColor: '#1A1A1A', tier: 'Legend',     smallLabel: 'Adult V', border: '#C8A24C' },
   // Kids belts
-  { belt: 'grey',   title: 'Initiate',    color: '#6B6B6B', emoji: '🛡️', tier: 'Kids I',    desc: 'First steps on the mat. Every champion starts here.' },
-  { belt: 'yellow', title: 'Striker',     color: '#C49B1A', emoji: '⭐', tier: 'Kids II',   desc: 'Developing technique and heart.' },
-  { belt: 'orange', title: 'Challenger',  color: '#C4641A', emoji: '🔥', tier: 'Kids III',  desc: 'Pushing limits and competing with confidence.' },
-  { belt: 'green',  title: 'Champion',    color: '#2D8040', emoji: '🏆', tier: 'Kids IV',   desc: 'Top of the kids program. Just as hard as any adult belt.' },
+  { belt: 'grey',   title: 'Initiate',    beltColor: '#6B6B6B', tier: 'Kids I',     smallLabel: 'Kids I' },
+  { belt: 'yellow', title: 'Striker',     beltColor: '#C49B1A', tier: 'Kids II',    smallLabel: 'Kids II' },
+  { belt: 'orange', title: 'Challenger',  beltColor: '#C4641A', tier: 'Kids III',   smallLabel: 'Kids III' },
+  { belt: 'green',  title: 'Champion',    beltColor: '#2D8040', tier: 'Kids IV',    smallLabel: 'Kids IV' },
 ] as const;
+
+// ── RankOrb: celestial orb/gemstone SVG per belt ──
+const RankOrb = ({ belt, size = 32 }: { belt: string; size?: number }) => {
+  const id = `orb-${belt}-${size}`;
+  const orbs: Record<string, JSX.Element> = {
+    white: (
+      <svg width={size} height={size} viewBox="0 0 32 32">
+        <defs><radialGradient id={`${id}-g`} cx="40%" cy="35%"><stop offset="0%" stopColor="#FFFFFF"/><stop offset="100%" stopColor="#AAAAAA"/></radialGradient></defs>
+        <circle cx="16" cy="16" r="13" fill={`url(#${id}-g)`} opacity="0.9"/>
+        <circle cx="11" cy="11" r="3" fill="white" opacity="0.6"/>
+      </svg>
+    ),
+    blue: (
+      <svg width={size} height={size} viewBox="0 0 32 32">
+        <defs><radialGradient id={`${id}-g`} cx="40%" cy="35%"><stop offset="0%" stopColor="#60A5FA"/><stop offset="100%" stopColor="#1A5DAB"/></radialGradient></defs>
+        <circle cx="16" cy="16" r="13" fill={`url(#${id}-g)`}/>
+        <circle cx="11" cy="11" r="3" fill="white" opacity="0.4"/>
+        <circle cx="16" cy="16" r="13" fill="none" stroke="#3B82F6" strokeWidth="1" opacity="0.5"/>
+      </svg>
+    ),
+    purple: (
+      <svg width={size} height={size} viewBox="0 0 32 32">
+        <defs><radialGradient id={`${id}-g`} cx="40%" cy="35%"><stop offset="0%" stopColor="#C084FC"/><stop offset="100%" stopColor="#7E3AF2"/></radialGradient></defs>
+        <circle cx="16" cy="16" r="13" fill={`url(#${id}-g)`}/>
+        <circle cx="11" cy="11" r="3" fill="white" opacity="0.35"/>
+        <ellipse cx="16" cy="16" rx="13" ry="13" fill="none" stroke="#A855F7" strokeWidth="1.5" strokeDasharray="3 3" opacity="0.6"/>
+      </svg>
+    ),
+    brown: (
+      <svg width={size} height={size} viewBox="0 0 32 32">
+        <defs><radialGradient id={`${id}-g`} cx="40%" cy="35%"><stop offset="0%" stopColor="#D4845A"/><stop offset="100%" stopColor="#7C3D0D"/></radialGradient></defs>
+        <circle cx="16" cy="16" r="13" fill={`url(#${id}-g)`}/>
+        <circle cx="11" cy="11" r="2.5" fill="white" opacity="0.3"/>
+        <path d="M16 4 L24 12 L24 20 L16 28 L8 20 L8 12 Z" fill="none" stroke="#C4894A" strokeWidth="1" opacity="0.5"/>
+      </svg>
+    ),
+    black: (
+      <svg width={size} height={size} viewBox="0 0 32 32">
+        <defs><radialGradient id={`${id}-g`} cx="40%" cy="35%"><stop offset="0%" stopColor="#555"/><stop offset="100%" stopColor="#111"/></radialGradient></defs>
+        <circle cx="16" cy="16" r="13" fill={`url(#${id}-g)`}/>
+        <circle cx="16" cy="16" r="13" fill="none" stroke="#C8A24C" strokeWidth="1.5"/>
+        <circle cx="11" cy="11" r="2" fill="#C8A24C" opacity="0.5"/>
+        {[0,45,90,135,180,225,270,315].map((deg, i) => (
+          <line key={i} x1="16" y1="16" x2={16 + Math.cos(deg*Math.PI/180)*11} y2={16 + Math.sin(deg*Math.PI/180)*11} stroke="#C8A24C" strokeWidth="0.5" opacity="0.3"/>
+        ))}
+      </svg>
+    ),
+    grey: (
+      <svg width={size} height={size} viewBox="0 0 32 32">
+        <defs><radialGradient id={`${id}-g`} cx="40%" cy="35%"><stop offset="0%" stopColor="#CCCCCC"/><stop offset="100%" stopColor="#555"/></radialGradient></defs>
+        <circle cx="16" cy="16" r="13" fill={`url(#${id}-g)`} opacity="0.8"/>
+        <polygon points="16,5 20,13 29,13 22,19 25,28 16,22 7,28 10,19 3,13 12,13" fill="none" stroke="#AAA" strokeWidth="1" opacity="0.5"/>
+      </svg>
+    ),
+    yellow: (
+      <svg width={size} height={size} viewBox="0 0 32 32">
+        <defs><radialGradient id={`${id}-g`} cx="40%" cy="35%"><stop offset="0%" stopColor="#FDE68A"/><stop offset="100%" stopColor="#C49B1A"/></radialGradient></defs>
+        <circle cx="16" cy="16" r="13" fill={`url(#${id}-g)`}/>
+        <circle cx="11" cy="11" r="2.5" fill="white" opacity="0.4"/>
+        {[0,60,120,180,240,300].map((deg,i)=>(
+          <circle key={i} cx={16+Math.cos(deg*Math.PI/180)*9} cy={16+Math.sin(deg*Math.PI/180)*9} r="1.5" fill="#FDE68A" opacity="0.6"/>
+        ))}
+      </svg>
+    ),
+    orange: (
+      <svg width={size} height={size} viewBox="0 0 32 32">
+        <defs><radialGradient id={`${id}-g`} cx="40%" cy="35%"><stop offset="0%" stopColor="#FDBA74"/><stop offset="100%" stopColor="#C4641A"/></radialGradient></defs>
+        <circle cx="16" cy="16" r="13" fill={`url(#${id}-g)`}/>
+        <circle cx="11" cy="11" r="2.5" fill="white" opacity="0.35"/>
+        <path d="M16 5 Q22 11 22 16 Q22 24 16 27 Q10 24 10 16 Q10 11 16 5Z" fill="none" stroke="#FDBA74" strokeWidth="1" opacity="0.5"/>
+      </svg>
+    ),
+    green: (
+      <svg width={size} height={size} viewBox="0 0 32 32">
+        <defs><radialGradient id={`${id}-g`} cx="40%" cy="35%"><stop offset="0%" stopColor="#6EE7B7"/><stop offset="100%" stopColor="#2D8040"/></radialGradient></defs>
+        <circle cx="16" cy="16" r="13" fill={`url(#${id}-g)`}/>
+        <circle cx="11" cy="11" r="2.5" fill="white" opacity="0.35"/>
+        <path d="M16 4 L28 16 L16 28 L4 16 Z" fill="none" stroke="#6EE7B7" strokeWidth="1.2" opacity="0.5"/>
+      </svg>
+    ),
+  };
+  return orbs[belt] || orbs.white;
+};
 
 // ─── Root ──────────────────────────────────────────────────────────
 
@@ -191,16 +274,18 @@ export default function ChatPage() {
               <button
                 onClick={() => setShowRankLegend(true)}
                 style={{
-                  display: "inline-flex", alignItems: "center", gap: 4,
-                  padding: "2px 8px 2px 4px", borderRadius: 12,
-                  backgroundColor: `${getBeltColor(myBelt)}15`,
-                  border: `1px solid ${getBeltColor(myBelt)}30`,
+                  display: "inline-flex", alignItems: "center", gap: 5,
+                  padding: "4px 10px 4px 6px", borderRadius: 20,
+                  background: "rgba(255,255,255,0.05)",
+                  border: "1px solid rgba(255,255,255,0.1)",
+                  backdropFilter: "blur(8px)",
                   cursor: "pointer", fontSize: 10, fontWeight: 600,
-                  color: getBeltColor(myBelt),
+                  color: "#CCC",
                 }}
               >
                 <BeltIcon belt={myBelt} width={18} />
-                {(myBelt === 'black' ? 'GRANDMASTER' : userRank.title).toUpperCase()}
+                <span>{(myBelt === 'black' ? 'Grandmaster' : userRank.title)}</span>
+                <ChevronRight size={10} style={{ color: '#555' }} />
               </button>
             )}
           </div>
@@ -241,40 +326,27 @@ export default function ChatPage() {
                   <X size={18} style={{ color: "#555" }} />
                 </button>
               </div>
-              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                {RANK_LEGEND.map((r, i) => {
-                  const titleColor = r.belt === 'black' ? '#C8A24C'
-                    : r.belt === 'grey' || r.belt === 'gray' ? '#AAAAAA'
-                    : r.belt === 'white' ? '#BBBBBB'
-                    : r.color;
-                  const patchColor = r.belt === 'black' ? '#CC0000' : '#000';
-                  const showPatch = r.belt !== 'white';
+              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                {RANK_LEGEND.map((r) => {
+                  const nameColor = r.belt === 'black' ? '#C8A24C' : (r.beltColor as string) === '#1A1A1A' ? '#BBBBBB' : r.beltColor;
                   return (
                     <div key={r.belt}>
                       {r.belt === 'grey' && (
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, margin: '4px 0 14px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, margin: '4px 0 10px' }}>
                           <div style={{ flex: 1, height: 1, background: '#1A1A1A' }} />
                           <span style={{ fontSize: 10, color: '#444', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase' }}>Kids Program</span>
                           <div style={{ flex: 1, height: 1, background: '#1A1A1A' }} />
                         </div>
                       )}
-                      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, padding: '12px', borderRadius: 10, background: '#0D0D0D', border: '1px solid #1A1A1A', borderLeft: `3px solid ${r.color}` }}>
-                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, flexShrink: 0, paddingTop: 2 }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 1, height: 10 }}>
-                            <div style={{ width: 20, height: 10, background: r.color, borderRadius: '2px 0 0 2px' }} />
-                            {showPatch && <div style={{ width: r.belt === 'black' ? 10 : 6, height: 10, background: patchColor, borderRadius: 1 }} />}
-                            <div style={{ width: 20, height: 10, background: r.color, borderRadius: '0 2px 2px 0' }} />
-                          </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 14px', borderRadius: 10, background: '#0D0D0D', border: '1px solid #1A1A1A' }}>
+                        <div style={{ flexShrink: 0 }}>
+                          <RankOrb belt={r.belt} size={32} />
                         </div>
                         <div style={{ flex: 1 }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 3 }}>
-                            <span style={{ fontSize: 16 }}>{r.emoji}</span>
-                            <span style={{ fontSize: 14, fontWeight: 700, color: titleColor }}>{r.title}</span>
-                            <span style={{ fontSize: 9, fontWeight: 700, padding: '1px 6px', borderRadius: 4, background: `${r.color}20`, color: titleColor, border: `1px solid ${r.color}30`, letterSpacing: '0.06em', textTransform: 'uppercase' }}>{r.tier}</span>
-                          </div>
-                          <div style={{ fontSize: 11, color: '#555', textTransform: 'capitalize' }}>{r.belt} Belt</div>
-                          <div style={{ fontSize: 11, color: '#444', marginTop: 3, lineHeight: 1.4 }}>{r.desc}</div>
+                          <div style={{ fontSize: 14, fontWeight: 700, color: nameColor, textTransform: 'capitalize' }}>{r.belt} Belt</div>
+                          <div style={{ fontSize: 11, color: '#666', marginTop: 1 }}>{r.title}</div>
                         </div>
+                        <span style={{ fontSize: 9, fontWeight: 700, padding: '2px 8px', borderRadius: 10, background: `${r.beltColor}15`, color: nameColor, border: `1px solid ${r.beltColor}25`, letterSpacing: '0.06em', textTransform: 'uppercase', flexShrink: 0 }}>{r.smallLabel}</span>
                       </div>
                     </div>
                   );
@@ -347,6 +419,9 @@ export default function ChatPage() {
           <div style={{ padding: "8px 12px", borderTop: "1px solid #1A1A1A", backgroundColor: "#0A0A0A", flexShrink: 0, paddingBottom: "max(8px, env(safe-area-inset-bottom, 8px))" }}>
             {sendError && <p style={{ fontSize: 12, color: "#E05555", margin: "0 0 6px 4px" }}>{sendError}</p>}
             <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+              {member && (
+                <BeltIcon belt={myBelt} width={18} style={{ flexShrink: 0 }} />
+              )}
               <input
                 ref={inputRef}
                 type="text"
@@ -400,12 +475,20 @@ export default function ChatPage() {
           {member && (
             <button
               onClick={() => setShowRankLegend(true)}
-              style={{ display: "flex", alignItems: "center", gap: 6, padding: "5px 12px 5px 8px", borderRadius: 20, backgroundColor: `${getBeltColor(myBelt)}10`, border: `1px solid ${getBeltColor(myBelt)}25`, cursor: "pointer" }}
+              style={{
+                display: "flex", alignItems: "center", gap: 6,
+                padding: "5px 12px 5px 8px", borderRadius: 20,
+                background: "rgba(255,255,255,0.05)",
+                border: "1px solid rgba(255,255,255,0.1)",
+                backdropFilter: "blur(8px)",
+                cursor: "pointer",
+              }}
             >
               <BeltIcon belt={myBelt} width={22} />
-              <span style={{ fontSize: 11, fontWeight: 700, color: getBeltColor(myBelt), letterSpacing: '0.05em' }}>
-                {(myBelt === 'black' ? 'GRANDMASTER' : userRank.title).toUpperCase()}
+              <span style={{ fontSize: 11, fontWeight: 700, color: '#CCC', letterSpacing: '0.03em' }}>
+                {myBelt === 'black' ? 'Grandmaster' : userRank.title}
               </span>
+              <ChevronRight size={12} style={{ color: '#555' }} />
             </button>
           )}
         </div>
@@ -490,40 +573,27 @@ export default function ChatPage() {
                 <X size={18} style={{ color: "#555" }} />
               </button>
             </div>
-            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-              {RANK_LEGEND.map((r, i) => {
-                const titleColor = r.belt === 'black' ? '#C8A24C'
-                  : r.belt === 'grey' || r.belt === 'gray' ? '#AAAAAA'
-                  : r.belt === 'white' ? '#BBBBBB'
-                  : r.color;
-                const patchColor = r.belt === 'black' ? '#CC0000' : '#000';
-                const showPatch = r.belt !== 'white';
+            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+              {RANK_LEGEND.map((r) => {
+                const nameColor = r.belt === 'black' ? '#C8A24C' : (r.beltColor as string) === '#1A1A1A' ? '#BBBBBB' : r.beltColor;
                 return (
                   <div key={r.belt}>
                     {r.belt === 'grey' && (
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, margin: '4px 0 14px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, margin: '4px 0 10px' }}>
                         <div style={{ flex: 1, height: 1, background: '#1A1A1A' }} />
                         <span style={{ fontSize: 10, color: '#444', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase' }}>Kids Program</span>
                         <div style={{ flex: 1, height: 1, background: '#1A1A1A' }} />
                       </div>
                     )}
-                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, padding: '12px', borderRadius: 10, background: '#0D0D0D', border: '1px solid #1A1A1A', borderLeft: `3px solid ${r.color}` }}>
-                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, flexShrink: 0, paddingTop: 2 }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 1, height: 10 }}>
-                          <div style={{ width: 20, height: 10, background: r.color, borderRadius: '2px 0 0 2px' }} />
-                          {showPatch && <div style={{ width: r.belt === 'black' ? 10 : 6, height: 10, background: patchColor, borderRadius: 1 }} />}
-                          <div style={{ width: 20, height: 10, background: r.color, borderRadius: '0 2px 2px 0' }} />
-                        </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 14px', borderRadius: 10, background: '#0D0D0D', border: '1px solid #1A1A1A' }}>
+                      <div style={{ flexShrink: 0 }}>
+                        <RankOrb belt={r.belt} size={32} />
                       </div>
                       <div style={{ flex: 1 }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 3 }}>
-                          <span style={{ fontSize: 16 }}>{r.emoji}</span>
-                          <span style={{ fontSize: 14, fontWeight: 700, color: titleColor }}>{r.title}</span>
-                          <span style={{ fontSize: 9, fontWeight: 700, padding: '1px 6px', borderRadius: 4, background: `${r.color}20`, color: titleColor, border: `1px solid ${r.color}30`, letterSpacing: '0.06em', textTransform: 'uppercase' }}>{r.tier}</span>
-                        </div>
-                        <div style={{ fontSize: 11, color: '#555', textTransform: 'capitalize' }}>{r.belt} Belt</div>
-                        <div style={{ fontSize: 11, color: '#444', marginTop: 3, lineHeight: 1.4 }}>{r.desc}</div>
+                        <div style={{ fontSize: 14, fontWeight: 700, color: nameColor, textTransform: 'capitalize' }}>{r.belt} Belt</div>
+                        <div style={{ fontSize: 11, color: '#666', marginTop: 1 }}>{r.title}</div>
                       </div>
+                      <span style={{ fontSize: 9, fontWeight: 700, padding: '2px 8px', borderRadius: 10, background: `${r.beltColor}15`, color: nameColor, border: `1px solid ${r.beltColor}25`, letterSpacing: '0.06em', textTransform: 'uppercase', flexShrink: 0 }}>{r.smallLabel}</span>
                     </div>
                   </div>
                 );

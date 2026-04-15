@@ -17,7 +17,7 @@ export const RANK_PROFILES: Record<string, RankProfile> = {
   // Adult ranks
   white: {
     title: "Beginner",
-    color: "#EEEEEE",
+    color: "#D0D0D0",
     glow: "none",
     badge: "🤍",
     tier: 0,
@@ -25,11 +25,11 @@ export const RANK_PROFILES: Record<string, RankProfile> = {
   },
   blue: {
     title: "Warrior",
-    color: "#1A5DAB",
-    glow: "0 0 8px rgba(26,93,171,0.4)",
+    color: "#3B82F6",
+    glow: "0 0 8px rgba(59,130,246,0.4)",
     badge: "\u2694\uFE0F",
     tier: 1,
-    borderColor: "#1A5DAB",
+    borderColor: "#3B82F6",
   },
   purple: {
     title: "Elite",
@@ -41,8 +41,8 @@ export const RANK_PROFILES: Record<string, RankProfile> = {
   },
   brown: {
     title: "Master",
-    color: "#6D4C2A",
-    glow: "0 0 14px rgba(109,76,42,0.5)",
+    color: "#C4894A",
+    glow: "0 0 14px rgba(196,137,74,0.5)",
     badge: "\uD83D\uDD25",
     tier: 3,
     borderColor: "#C8A24C",
@@ -58,19 +58,19 @@ export const RANK_PROFILES: Record<string, RankProfile> = {
   // Kids ranks — same prestige system
   grey: {
     title: "Initiate",
-    color: "#6B6B6B",
-    glow: "0 0 6px rgba(107,107,107,0.3)",
+    color: "#AAAAAA",
+    glow: "0 0 6px rgba(170,170,170,0.3)",
     badge: "\uD83D\uDEE1\uFE0F",
     tier: 1,
-    borderColor: "#6B6B6B",
+    borderColor: "#AAAAAA",
   },
   gray: {
     title: "Initiate",
-    color: "#6B6B6B",
-    glow: "0 0 6px rgba(107,107,107,0.3)",
+    color: "#AAAAAA",
+    glow: "0 0 6px rgba(170,170,170,0.3)",
     badge: "\uD83D\uDEE1\uFE0F",
     tier: 1,
-    borderColor: "#6B6B6B",
+    borderColor: "#AAAAAA",
   },
   yellow: {
     title: "Striker",

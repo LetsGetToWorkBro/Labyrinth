@@ -669,26 +669,42 @@ export default function HomePage() {
           name: e.Name || e.name || '',
           location: e.Location || e.location || '',
           link: e.Link || e.link || '',
+          priority: e.Priority || e.priority || '',
         }));
         try { localStorage.setItem(CACHE_KEY, JSON.stringify({ data: events, ts: Date.now() })); } catch {}
         findNext(events);
       } catch {}
     }
 
-    function findNext(events: { date: string; name: string; location?: string; link?: string }[]) {
+    function findNext(events: { date: string; name: string; location?: string; link?: string; priority?: string }[]) {
       const now = new Date();
       now.setHours(0, 0, 0, 0);
-      let best: { name: string; date: string; days: number; location?: string; link?: string } | null = null;
-      for (const ev of events) {
-        if (!ev.date) continue;
-        const d = new Date(ev.date);
-        if (isNaN(d.getTime())) continue;
-        d.setHours(0, 0, 0, 0);
-        const diff = Math.round((d.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
-        if (diff >= 0 && diff <= 60 && (!best || diff < best.days)) {
-          best = { name: ev.name, date: ev.date, days: diff, location: ev.location, link: ev.link };
+
+      type Candidate = { name: string; date: string; days: number; location?: string; link?: string };
+
+      function findBest(filter: (ev: typeof events[number], diff: number) => boolean): Candidate | null {
+        let best: Candidate | null = null;
+        for (const ev of events) {
+          if (!ev.date) continue;
+          const d = new Date(ev.date);
+          if (isNaN(d.getTime())) continue;
+          d.setHours(0, 0, 0, 0);
+          const diff = Math.round((d.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+          if (diff >= 0 && filter(ev, diff) && (!best || diff < best.days)) {
+            best = { name: ev.name, date: ev.date, days: diff, location: ev.location, link: ev.link };
+          }
         }
+        return best;
       }
+
+      // 1. Priority=TRUE + Houston within 90 days
+      const best =
+        findBest((ev, diff) => diff <= 90 && (ev.priority || '').toUpperCase() === 'TRUE' && (ev.location || '').toLowerCase().includes('houston')) ||
+        // 2. Any Priority=TRUE within 60 days
+        findBest((ev, diff) => diff <= 60 && (ev.priority || '').toUpperCase() === 'TRUE') ||
+        // 3. Any upcoming within 60 days (existing behavior)
+        findBest((_ev, diff) => diff <= 60);
+
       if (best) {
         setNextTournament({ name: best.name, date: best.date, location: best.location, link: best.link });
         setTournamentDaysUntil(best.days);
@@ -1079,10 +1095,14 @@ export default function HomePage() {
           className="active:scale-[0.95]"
         >
           <span className="streak-icon" style={{
-            fontSize: 24,
-            display: 'inline-block',
+            display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+            color: '#C8A24C',
             ...(streakCount > 0 ? { animation: 'flamePulse 2s ease-in-out infinite' } : {}),
-          }}>🔥</span>
+          }}>
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="#C8A24C" stroke="none">
+              <path d="M12 2c0 0-5 5.5-5 10a5 5 0 0 0 10 0C17 7.5 12 2 12 2zm0 15a3 3 0 0 1-3-3c0-2.5 3-6 3-6s3 3.5 3 6a3 3 0 0 1-3 3z"/>
+            </svg>
+          </span>
           <div style={{ flex: 1 }}>
             <div style={{ fontSize: 20, fontWeight: 700, color: '#C8A24C', lineHeight: 1 }}>
               {displayStreak}
@@ -1106,12 +1126,21 @@ export default function HomePage() {
         }}
           className="active:scale-[0.95]"
         >
-          <span style={{ fontSize: 24 }}>{classesToday > 0 ? '✅' : '📅'}</span>
+          {classesToday > 0 ? (
+            <span style={{ fontSize: 24 }}>✅</span>
+          ) : (
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: '#E0E0E0', width: 24, height: 24 }}>
+              <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
+            </svg>
+          )}
           <div style={{ flex: 1 }}>
             <div style={{ fontSize: 20, fontWeight: 700, color: classesToday > 0 ? '#4CAF80' : '#E0E0E0', lineHeight: 1 }}>
               {displayTotalClasses}
             </div>
-            <div style={{ fontSize: 11, color: '#666', marginTop: 2 }}>Total classes{classesToday > 0 ? ` · ${classesToday} today` : ''}</div>
+            <div style={{ fontSize: 11, color: '#666', marginTop: 2 }}>Total classes</div>
+            {classesToday > 0 && (
+              <div style={{ fontSize: 11, color: '#888', marginTop: 1 }}>{classesToday} today</div>
+            )}
           </div>
           <ChevronRight size={14} color="#555" strokeWidth={2} />
         </a>
@@ -1129,36 +1158,41 @@ export default function HomePage() {
             </a>
           </div>
           <div style={{ background: '#111', borderRadius: 14, border: '1px solid #1A1A1A', overflow: 'hidden' }}>
-            {leaderboard.map((entry, i) => (
-              <div key={i} style={{
-                display: 'flex', alignItems: 'center', gap: 12,
-                padding: '10px 16px',
-                borderBottom: i < leaderboard.length - 1 ? '1px solid #1A1A1A' : 'none',
-                background: entry.isMe ? 'rgba(200,162,76,0.06)' : 'transparent',
-              }}>
-                <span style={{
-                  width: 22, height: 22, borderRadius: '50%',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  fontSize: 11, fontWeight: 800,
-                  background: i === 0 ? '#C8A24C' : '#1A1A1A',
-                  color: i === 0 ? '#000' : '#666',
-                  flexShrink: 0,
+            {leaderboard.map((entry, i) => {
+              const medalColors = ['#FFD700', '#C0C0C0', '#CD7F32'];
+              return (
+                <div key={i} style={{
+                  display: 'flex', alignItems: 'center', gap: 12,
+                  padding: '10px 16px',
+                  borderBottom: i < leaderboard.length - 1 ? '1px solid #1A1A1A' : 'none',
+                  background: entry.isMe ? 'rgba(200,162,76,0.06)' : 'transparent',
                 }}>
-                  {i + 1}
-                </span>
-                {/* Belt dot */}
-                <span style={{
-                  width: 8, height: 8, borderRadius: '50%', flexShrink: 0,
-                  background: entry.belt === 'black' ? '#888' : entry.belt === 'brown' ? '#7a3d1e' : entry.belt === 'purple' ? '#7b3fc4' : entry.belt === 'blue' ? '#3a6bc9' : '#e8e8e8',
-                }} />
-                <span style={{ flex: 1, fontSize: 13, fontWeight: entry.isMe ? 700 : 500, color: entry.isMe ? '#C8A24C' : '#CCC' }}>
-                  {entry.isMe ? 'You' : entry.name}
-                </span>
-                <span style={{ fontSize: 12, color: '#666', fontWeight: 600 }}>
-                  {entry.classCount || 0} <span style={{ fontSize: 10, color: '#444' }}>classes</span>
-                </span>
-              </div>
-            ))}
+                  {i < 3 ? (
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" style={{ flexShrink: 0 }}>
+                      <circle cx="12" cy="14" r="7" fill={medalColors[i]} opacity="0.15" stroke={medalColors[i]} strokeWidth="1.5"/>
+                      <text x="12" y="18" textAnchor="middle" fontSize="9" fontWeight="800" fill={medalColors[i]}>{i + 1}</text>
+                      <path d="M9 7l-2-5h10l-2 5" fill={medalColors[i]} opacity="0.6"/>
+                    </svg>
+                  ) : (
+                    <span style={{
+                      width: 22, height: 22, borderRadius: '50%',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      fontSize: 11, fontWeight: 800,
+                      background: '#1A1A1A', color: '#666', flexShrink: 0,
+                    }}>
+                      {i + 1}
+                    </span>
+                  )}
+                  <BeltIcon belt={entry.belt || 'white'} width={20} style={{ flexShrink: 0 }} />
+                  <span style={{ flex: 1, fontSize: 13, fontWeight: entry.isMe ? 700 : 500, color: entry.isMe ? '#C8A24C' : '#CCC' }}>
+                    {entry.isMe ? 'You' : entry.name}
+                  </span>
+                  <span style={{ fontSize: 12, color: '#666', fontWeight: 600 }}>
+                    {entry.classCount || 0} <span style={{ fontSize: 10, color: '#444' }}>classes</span>
+                  </span>
+                </div>
+              );
+            })}
           </div>
         </div>
       )}
