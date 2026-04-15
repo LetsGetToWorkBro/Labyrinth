@@ -721,7 +721,7 @@ function AccountPage() {
 
 
 function MorePage() {
-  const { logout, isAdmin } = useAuth();
+  const { logout, isAdmin, member } = useAuth();
   const morePanelRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -860,6 +860,30 @@ function MorePage() {
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#C8A24C" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
             <span style={{ fontSize: 12, color: '#888', fontWeight: 500 }}>info@labyrinth.vision</span>
           </a>
+        </div>
+        <div style={{ marginTop: 24, paddingTop: 16, borderTop: '1px solid #1A1A1A' }}>
+          <button
+            type="button"
+            onClick={() => {
+              const email = member?.email || '';
+              window.open(
+                `mailto:info@labyrinth.vision?subject=Account%20Deletion%20Request&body=Please%20delete%20my%20account%20associated%20with%3A%20${encodeURIComponent(email)}`,
+                '_blank'
+              );
+            }}
+            style={{
+              background: 'none',
+              border: 'none',
+              color: '#E05555',
+              fontSize: 13,
+              cursor: 'pointer',
+              padding: '8px 0',
+              textAlign: 'left' as const,
+              width: '100%',
+            }}
+          >
+            Request Account Deletion
+          </button>
         </div>
         <button onClick={logout}
           className="w-full mt-4 py-3 rounded-xl text-sm font-medium transition-all active:scale-[0.98]"
