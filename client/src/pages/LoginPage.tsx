@@ -370,7 +370,7 @@ export default function LoginPage() {
             <p style={{ fontSize: 13, fontWeight: 600, color: "#F0F0F0", margin: "0 0 4px" }}>
               Select Your Location
             </p>
-            <p style={{ fontSize: 12, color: "#666", margin: "0 0 16px" }}>
+            <p style={{ fontSize: 12, color: "#888", margin: "0 0 16px" }}>
               Which Labyrinth BJJ are you a member of?
             </p>
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
@@ -396,9 +396,9 @@ export default function LoginPage() {
                       <p style={{ fontSize: 14, fontWeight: 600, color: "#F0F0F0", margin: 0 }}>
                         {loc.short}
                       </p>
-                      <p style={{ fontSize: 12, color: "#666", margin: "2px 0 0" }}>
+                      <p style={{ fontSize: 12, color: "#888", margin: "2px 0 0" }}>
                         {loc.city}, {loc.state}
-                        {!isActive && <span style={{ color: "#444" }}> · Coming soon</span>}
+                        {!isActive && <span style={{ color: "#666" }}> · Coming soon</span>}
                       </p>
                     </div>
                     {isActive && <ChevronRight size={15} style={{ color: "#444", flexShrink: 0 }} />}
@@ -498,7 +498,7 @@ export default function LoginPage() {
 
                       {/* Forgot password — directly below password field, left-aligned */}
                       <button type="button" onClick={triggerForgotPassword}
-                        style={{ background: "none", border: "none", color: "#666", fontSize: 12, cursor: "pointer", padding: '10px 0', textDecoration: "underline", textAlign: 'left', minHeight: 44, marginTop: -8 }}>
+                        style={{ background: "none", border: "none", color: "#888", fontSize: 12, cursor: "pointer", padding: '10px 0', textDecoration: "underline", textAlign: 'left', minHeight: 44, marginTop: -8 }}>
                         Forgot password?
                       </button>
 
@@ -529,7 +529,7 @@ export default function LoginPage() {
                       </button>
 
                       {loginLoading && loginSlow && (
-                        <p style={{ fontSize: 11, color: '#666', textAlign: 'center', margin: '8px 0 0' }}>
+                        <p style={{ fontSize: 11, color: '#888', textAlign: 'center', margin: '8px 0 0' }}>
                           This is taking longer than usual. Still trying…
                         </p>
                       )}
@@ -555,9 +555,9 @@ export default function LoginPage() {
                   <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 6, marginTop: 8, paddingTop: 12, borderTop: "1px solid #1A1A1A" }}>
                     <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
                       <MapPin size={10} style={{ color: "#555" }} />
-                      <span style={{ fontSize: 11, color: "#444", letterSpacing: "0.06em" }}>{selectedLocation.city}, TX</span>
+                      <span style={{ fontSize: 11, color: "#666", letterSpacing: "0.06em" }}>{selectedLocation.city}, TX</span>
                     </div>
-                    <p style={{ fontSize: 11, color: '#444', textAlign: 'center', margin: 0 }}>
+                    <p style={{ fontSize: 11, color: '#666', textAlign: 'center', margin: 0 }}>
                       <a href="https://labyrinth.vision/privacy" target="_blank" rel="noopener noreferrer" style={{ color: '#555', textDecoration: 'underline' }}>Privacy Policy</a>
                       {' · '}
                       <a href="https://labyrinth.vision/terms" target="_blank" rel="noopener noreferrer" style={{ color: '#555', textDecoration: 'underline' }}>Terms</a>
@@ -598,7 +598,7 @@ export default function LoginPage() {
                       </button>
                       <div style={{ textAlign: "center" }}>
                         <button type="button" onClick={() => { setShowForgot(false); setForgotSent(false); }}
-                          style={{ background: "none", border: "none", color: "#666", fontSize: 12, cursor: "pointer", textDecoration: "underline", minHeight: 44, display: 'flex', alignItems: 'center' }}>
+                          style={{ background: "none", border: "none", color: "#888", fontSize: 12, cursor: "pointer", textDecoration: "underline", minHeight: 44, display: 'flex', alignItems: 'center' }}>
                           Back to sign in
                         </button>
                       </div>
@@ -668,7 +668,7 @@ export default function LoginPage() {
                   </button>
                   <div style={{ textAlign: "center" }}>
                     <button type="button" onClick={() => { setScreen("login"); setReqError(""); }}
-                      style={{ background: "none", border: "none", color: "#666", fontSize: 12, cursor: "pointer", textDecoration: "underline", minHeight: 44, display: 'flex', alignItems: 'center' }}>
+                      style={{ background: "none", border: "none", color: "#888", fontSize: 12, cursor: "pointer", textDecoration: "underline", minHeight: 44, display: 'flex', alignItems: 'center' }}>
                       Back to sign in
                     </button>
                   </div>
@@ -703,7 +703,7 @@ export default function LoginPage() {
           style={{
             background: "none", border: "none", cursor: "pointer",
             marginTop: 20, padding: "10px 16px", minHeight: 44,
-            fontSize: 13, color: "#666", fontFamily: "inherit",
+            fontSize: 13, color: "#888", fontFamily: "inherit",
           }}
         >
           New here? <span style={{ color: "#888", textDecoration: "underline" }}>Request portal access</span> <span style={{ color: "#888" }}>&rarr;</span>
@@ -712,13 +712,13 @@ export default function LoginPage() {
 
       {/* Location footer — shown on location picker and request screens */}
       {screen === "location" && (
-        <p style={{ marginTop: 20, fontSize: 12, color: "#444", letterSpacing: "0.06em", display: "flex", alignItems: "center", gap: 4 }}>
+        <p style={{ marginTop: 20, fontSize: 12, color: "#666", letterSpacing: "0.06em", display: "flex", alignItems: "center", gap: 4 }}>
           <MapPin size={10} style={{ color: "#555" }} />
           LABYRINTH BJJ
         </p>
       )}
       {screen === "request" && (
-        <p style={{ marginTop: 20, fontSize: 12, color: "#444", letterSpacing: "0.06em", display: "flex", alignItems: "center", gap: 4 }}>
+        <p style={{ marginTop: 20, fontSize: 12, color: "#666", letterSpacing: "0.06em", display: "flex", alignItems: "center", gap: 4 }}>
           <MapPin size={10} style={{ color: "#555" }} />
           {selectedLocation.city}, TX
         </p>
@@ -731,7 +731,7 @@ export default function LoginPage() {
 function Field({ label, htmlFor, children }: { label: React.ReactNode; htmlFor?: string; children: React.ReactNode }) {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-      <label htmlFor={htmlFor} style={{ fontSize: 12, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.06em", color: "#666" }}>{label}</label>
+      <label htmlFor={htmlFor} style={{ fontSize: 12, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.06em", color: "#888" }}>{label}</label>
       {children}
     </div>
   );

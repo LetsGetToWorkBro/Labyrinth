@@ -175,7 +175,7 @@ function NavCustomizer() {
         </span>
         <div className="flex-1 text-left">
           <p className="text-sm font-medium" style={{ color: '#F0F0F0' }}>Customize Nav</p>
-          <p className="text-xs" style={{ color: '#666' }}>Choose what appears in the bottom bar</p>
+          <p className="text-xs" style={{ color: '#888' }}>Choose what appears in the bottom bar</p>
         </div>
       </button>
 
@@ -235,7 +235,7 @@ function NavCustomizer() {
             );
           })}
           <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
-            <button onClick={() => setSlots([...DEFAULT_NAV_PATHS])} style={{ flex: 1, padding: '8px', background: 'transparent', border: '1px solid #333', borderRadius: 8, color: '#666', fontSize: 12, cursor: 'pointer' }}>Reset</button>
+            <button onClick={() => setSlots([...DEFAULT_NAV_PATHS])} style={{ flex: 1, padding: '8px', background: 'transparent', border: '1px solid #333', borderRadius: 8, color: '#888', fontSize: 12, cursor: 'pointer' }}>Reset</button>
             <button onClick={apply} style={{ flex: 2, padding: '8px', background: '#C8A24C', border: 'none', borderRadius: 8, color: '#0A0A0A', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>Apply</button>
           </div>
         </div>
@@ -471,14 +471,14 @@ function AccountPage() {
 
             {/* Email (read-only) */}
             <div style={{ backgroundColor: "#111", border: "1px solid #1A1A1A", borderRadius: 12, padding: "12px 16px" }}>
-              <p style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: "#555", margin: "0 0 4px" }}>Email <span style={{ color: "#444", fontSize: 9, fontWeight: 400 }}>(cannot be changed)</span></p>
+              <p style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: "#555", margin: "0 0 4px" }}>Email <span style={{ color: "#666", fontSize: 9, fontWeight: 400 }}>(cannot be changed)</span></p>
               <p style={{ fontSize: 15, color: "#999", margin: 0 }}>{member?.email || "\u2014"}</p>
             </div>
 
             {/* Secondary Email */}
             <div style={{ backgroundColor: "#111", border: "1px solid #1A1A1A", borderRadius: 12, padding: "12px 16px" }}>
               <label style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: "#555", display: "block", marginBottom: 6 }}>
-                Secondary Email <span style={{ color: "#444", fontSize: 9, fontWeight: 400 }}>(optional)</span>
+                Secondary Email <span style={{ color: "#666", fontSize: 9, fontWeight: 400 }}>(optional)</span>
               </label>
               <input
                 type="email"
@@ -526,7 +526,7 @@ function AccountPage() {
                   <path d="M17 3a2.83 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/>
                   <path d="m15 5 4 4"/>
                 </svg>
-                <span style={{ fontSize: 11, color: "#666" }}>Tap to edit</span>
+                <span style={{ fontSize: 11, color: "#888" }}>Tap to edit</span>
               </div>
               <div className="space-y-4">
                 {[
@@ -643,7 +643,7 @@ function AccountPage() {
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#C8A24C" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
           <div style={{ flex: 1 }}>
             <div style={{ fontSize: 14, fontWeight: 600, color: '#F0F0F0' }}>Class History</div>
-            <div style={{ fontSize: 11, color: '#666' }}>View your attendance record</div>
+            <div style={{ fontSize: 11, color: '#888' }}>View your attendance record</div>
           </div>
           <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M5 3l4 4-4 4" stroke="#444" strokeWidth="1.5" strokeLinecap="round" /></svg>
         </a>
@@ -651,7 +651,7 @@ function AccountPage() {
         {/* Always show Achievements section */}
         <div style={{ marginTop: 24 }}>
           <button type="button" onClick={() => navigate('/achievements')} style={{ background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left', width: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, padding: 0 }}>
-            <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#444' }}>Achievements</div>
+            <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#666' }}>Achievements</div>
             <div style={{ fontSize: 11, color: '#C8A24C' }}>View All →</div>
           </button>
 
@@ -769,7 +769,7 @@ function MorePage() {
       <div className="px-5 pb-6">
         {sections.map((section, si) => (
           <div key={section.label}>
-            <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#444', padding: '20px 0 8px', paddingTop: si === 0 ? '4px' : '20px' }}>
+            <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#666', padding: '20px 0 8px', paddingTop: si === 0 ? '4px' : '20px' }}>
               {section.label}
             </div>
             <div className="space-y-2">
@@ -807,7 +807,7 @@ function MorePage() {
                   <span className="text-xl" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{item.icon}</span>
                   <div className="flex-1">
                     <p className="text-sm font-medium" style={{ color: "#F0F0F0" }}>{item.label}</p>
-                    <p className="text-xs" style={{ color: "#666" }}>{item.desc}</p>
+                    <p className="text-xs" style={{ color: "#888" }}>{item.desc}</p>
                   </div>
                   <svg width="14" height="14" viewBox="0 0 14 14" fill="none" style={{ transition: 'transform 80ms cubic-bezier(0.16, 1, 0.3, 1)' }}>
                     <path d="M5 3l4 4-4 4" stroke="#444" strokeWidth="1.5" strokeLinecap="round" />
@@ -838,7 +838,7 @@ function MorePage() {
               style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, padding: '12px 8px', borderRadius: 10, background: '#161616', border: '1px solid #222', textDecoration: 'none' }}>
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#C8A24C" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.61 3.56C1.56 2.5 2.33 1.56 3.36 1H6.36a2 2 0 0 1 2 1.72c.13 1 .36 1.97.71 2.9a2 2 0 0 1-.45 2.11L7.18 8.72a16 16 0 0 0 6.01 6.01l1.01-1.01a2 2 0 0 1 2.11-.45c.93.35 1.9.58 2.9.71A2 2 0 0 1 21 16.92z"/></svg>
               <span style={{ fontSize: 11, color: '#888', fontWeight: 500 }}>Call</span>
-              <span style={{ fontSize: 10, color: '#666', marginTop: -2 }}>281-393-7983</span>
+              <span style={{ fontSize: 10, color: '#888', marginTop: -2 }}>281-393-7983</span>
             </a>
             <a href="sms:+12813937983"
               style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, padding: '12px 8px', borderRadius: 10, background: '#161616', border: '1px solid #222', textDecoration: 'none' }}>
@@ -926,7 +926,7 @@ function ResetPasswordPage() {
               {loading ? 'Updating…' : 'Set New Password'}
             </button>
             <div style={{ textAlign: 'center', marginTop: 12 }}>
-              <a href="/#/" style={{ color: '#666', fontSize: 12 }}>Back to sign in</a>
+              <a href="/#/" style={{ color: '#888', fontSize: 12 }}>Back to sign in</a>
             </div>
           </>
         )}
@@ -1194,7 +1194,7 @@ function AppShell() {
             </button>
             <button
               onClick={() => setShowPasskeySetup(false)}
-              style={{ background: "none", border: "none", color: "#666", fontSize: 13, cursor: "pointer", padding: "8px" }}
+              style={{ background: "none", border: "none", color: "#888", fontSize: 13, cursor: "pointer", padding: "8px" }}
             >
               Not now
             </button>
