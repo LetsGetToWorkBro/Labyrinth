@@ -1,6 +1,6 @@
 import { useAuth } from "@/lib/auth-context";
 import type { FamilyMember, PaymentCard } from "@/lib/api";
-import { beltSavePromotion, gasCall, getLeaderboard, getMemberData } from "@/lib/api";
+import { beltSavePromotion, gasCall, getLeaderboard, getMemberData, cachedGasCall } from "@/lib/api";
 import { BeltIcon } from "@/components/BeltIcon";
 import { ADULT_BELT_OPTIONS } from "@/components/BeltIcon";
 import { getBeltColor, CLASS_SCHEDULE } from "@/lib/constants";
@@ -215,6 +215,18 @@ export default function HomePage() {
     try { return localStorage.getItem('lbjj_profile_picture'); } catch { return null; }
   });
   const avatarFileRef = useRef<HTMLInputElement>(null);
+
+  // ─── Deduplicated getMemberCheckIns (fires once per mount) ────
+  const checkInsCache = useRef<any[] | null>(null);
+
+  const getCheckInsOnce = useCallback(async (email: string): Promise<any[]> => {
+    if (checkInsCache.current !== null) return checkInsCache.current;
+    const res = await cachedGasCall('getMemberCheckIns', { email }, 120_000); // 2 min TTL
+    const checkIns = res?.checkIns || [];
+    checkInsCache.current = checkIns;
+    return checkIns;
+  }, []);
+
   const handleAvatarPhoto = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -318,17 +330,6 @@ export default function HomePage() {
   // ─── Leaderboard widget ────────────────────────────────────────────
   const [leaderboard, setLeaderboard] = useState<any[]>([]);
 
-  useEffect(() => {
-    if (!member) return;
-    getLeaderboard().then(data => {
-      const top5 = (data || []).slice(0, 5).map((e: any) => ({
-        ...e,
-        isMe: e.name === member.name || e.isMe,
-      }));
-      setLeaderboard(top5);
-    }).catch(() => {});
-  }, [member?.email]);
-
   // ─── Personalized greeting ─────────────────────────────────────────
   const getGreeting = () => {
     const hour = new Date().getHours();
@@ -396,35 +397,44 @@ export default function HomePage() {
     };
   }, [readClassesToday]);
 
-  // Hydrate totalClasses, classesToday, and weekly training from GAS on login
+  // Hydrate totalClasses, classesToday, weekly training, AND today's dedup — single GAS call
   useEffect(() => {
-    const email = getMemberData()?.email || member?.email || '';
-    if (!email) return;
-    gasCall('getMemberCheckIns', { email }).then((res: any) => {
-      const checkIns = res?.checkIns || [];
-      const today = new Date().toISOString().split('T')[0];
-      const todayCount = checkIns.filter((c: any) => (c.date || c.timestamp || '').startsWith(today)).length;
-      const total = checkIns.length;
-      if (total > 0) {
-        setTotalClasses(total);
-        localStorage.setItem('lbjj_game_stats_v2', JSON.stringify({ classesAttended: total }));
+    if (!member?.email) return;
+    getCheckInsOnce(member.email).then((allCheckIns: any[]) => {
+      // Total count
+      const realTotal = allCheckIns.length;
+      if (realTotal > 0) {
+        setTotalClasses(realTotal);
+        try {
+          const stats = JSON.parse(localStorage.getItem('lbjj_game_stats_v2') || '{}');
+          stats.classesAttended = realTotal;
+          localStorage.setItem('lbjj_game_stats_v2', JSON.stringify(stats));
+        } catch {}
       }
-      if (todayCount > 0) {
-        setClassesToday(todayCount);
-        localStorage.setItem('lbjj_checkins_today', JSON.stringify({ date: today, count: todayCount }));
+      // Today's count + dedup
+      const today = new Date().toISOString().split('T')[0];
+      const todayCheckIns = allCheckIns.filter((c: any) => (c.date || c.timestamp || '').startsWith(today));
+      if (todayCheckIns.length > 0) {
+        setClassesToday(todayCheckIns.length);
+        localStorage.setItem('lbjj_checkins_today', JSON.stringify({ date: today, count: todayCheckIns.length }));
+      }
+      // Today's class dedup for check-in buttons
+      const todayClasses = todayCheckIns.map((c: any) => c.className);
+      if (todayClasses.length > 0) {
+        setCheckedInClasses((prev: string[]) => Array.from(new Set([...prev, ...todayClasses])));
       }
       // Hydrate weekly training days from GAS check-in dates
       const cutoff = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
-      const recentDays = [...new Set(
-        checkIns
+      const recentDays = Array.from(new Set(
+        allCheckIns
           .map((c: any) => (c.date || c.timestamp || '').split('T')[0])
           .filter((d: string) => d >= cutoff)
-      )];
+      ));
       if (recentDays.length > 0) {
         localStorage.setItem('lbjj_weekly_training', JSON.stringify(recentDays));
       }
     }).catch(() => {});
-  }, [member?.email]);
+  }, [member?.email, getCheckInsOnce]);
 
   // ─── Total classes count-up animation effect ──────────────────────
   useEffect(() => {
@@ -492,21 +502,6 @@ export default function HomePage() {
     const email = getMemberData()?.email || '';
     try { localStorage.setItem(getTodayKey(email), JSON.stringify(checkedInClasses)); } catch {}
   }, [checkedInClasses]);
-
-  // Fetch today's check-ins from GAS on mount
-  useEffect(() => {
-    if (member?.email) {
-      gasCall('getMemberCheckIns', { email: member.email }).then((res: any) => {
-        const today = new Date().toISOString().split('T')[0];
-        const todayClasses = (res?.checkIns || [])
-          .filter((c: any) => (c.date || c.timestamp || '').startsWith(today))
-          .map((c: any) => c.className);
-        if (todayClasses.length > 0) {
-          setCheckedInClasses(prev => [...new Set([...prev, ...todayClasses])]);
-        }
-      }).catch(() => {});
-    }
-  }, [member?.email]);
 
   const checkingInRef = useRef(false);
 
@@ -717,14 +712,37 @@ export default function HomePage() {
   // ─── Announcement preview ─────────────────────────────────────────
   const [announcementPreview, setAnnouncementPreview] = useState<string | null>(null);
 
+  // ─── Deferred non-critical data (leaderboard + announcements) ────
   useEffect(() => {
-    chatGetChannels().then(channels => {
-      const ann = channels.find(ch => ch.id === 'announcements');
-      if (ann?.lastMessage) {
-        setAnnouncementPreview(ann.lastMessage);
+    const load = () => {
+      // leaderboard
+      if (member) {
+        getLeaderboard().then(data => {
+          const top5 = (data || []).slice(0, 5).map((e: any) => ({
+            ...e,
+            isMe: e.name === member.name || e.isMe,
+          }));
+          setLeaderboard(top5);
+        }).catch(() => {});
       }
-    }).catch(() => {});
-  }, []);
+
+      // announcements
+      chatGetChannels().then(channels => {
+        const ann = channels.find(ch => ch.id === 'announcements');
+        if (ann?.lastMessage) {
+          setAnnouncementPreview(ann.lastMessage);
+        }
+      }).catch(() => {});
+    };
+
+    if ('requestIdleCallback' in window) {
+      const id = (window as any).requestIdleCallback(load, { timeout: 3000 });
+      return () => (window as any).cancelIdleCallback(id);
+    } else {
+      const t = setTimeout(load, 1500);
+      return () => clearTimeout(t);
+    }
+  }, [member?.email]);
 
   // ─── Live stream status (poll every 30s) ───────────────────────────
   const [stream, setStream] = useState<StreamStatus | null>(null);

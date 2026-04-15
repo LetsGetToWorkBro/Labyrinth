@@ -264,6 +264,27 @@ export async function gasCall(action: string, payload: Record<string, any> = {},
   }
 }
 
+// sessionStorage cache for read-only GAS calls
+export async function cachedGasCall(
+  action: string,
+  payload: Record<string, any> = {},
+  ttlMs: number = 60_000
+): Promise<any> {
+  const key = `gas_${action}_${JSON.stringify(payload)}`;
+  try {
+    const cached = sessionStorage.getItem(key);
+    if (cached) {
+      const { data, ts } = JSON.parse(cached);
+      if (Date.now() - ts < ttlMs) return data;
+    }
+  } catch {}
+  const result = await gasCall(action, payload);
+  try {
+    sessionStorage.setItem(key, JSON.stringify({ data: result, ts: Date.now() }));
+  } catch {}
+  return result;
+}
+
 // ─── Auth ─────────────────────────────────────────────────────────
 
 /** Derive isAdmin from the role field returned by GAS */
