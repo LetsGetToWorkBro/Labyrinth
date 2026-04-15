@@ -89,6 +89,7 @@ export default function LoginPage() {
   const [showPw, setShowPw]     = useState(false);
   const [loginError, setLoginError]     = useState("");
   const [loginLoading, setLoginLoading] = useState(false);
+  const [loginSlow, setLoginSlow]       = useState(false);
   const emailRef = useRef<HTMLInputElement>(null);
 
   // Forgot password state
@@ -122,6 +123,13 @@ export default function LoginPage() {
     else if (/Android/.test(ua)) setBiometricLabel('Sign in with Fingerprint / Face');
     else setBiometricLabel('Sign in with Biometrics');
   }, []);
+
+  // Detect slow login (> 8s)
+  useEffect(() => {
+    if (!loginLoading) { setLoginSlow(false); return; }
+    const t = setTimeout(() => setLoginSlow(true), 8000);
+    return () => clearTimeout(t);
+  }, [loginLoading]);
 
   // Pre-fill saved credentials on mount
   useEffect(() => {
@@ -483,6 +491,12 @@ export default function LoginPage() {
                           ? <><Loader2 size={16} className="animate-spin" style={{ marginRight: 8 }} /> Signing in…</>
                           : <><span>Sign In</span><ArrowRight size={16} style={{ marginLeft: 8 }} /></>}
                       </button>
+
+                      {loginLoading && loginSlow && (
+                        <p style={{ fontSize: 11, color: '#666', textAlign: 'center', margin: '8px 0 0' }}>
+                          This is taking longer than usual. Still trying…
+                        </p>
+                      )}
 
                       {/* Error banner — below Sign In button */}
                       {loginError && (

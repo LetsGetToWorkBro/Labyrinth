@@ -1,10 +1,11 @@
-import { createContext, useContext, useState, useCallback } from "react";
+import { createContext, useContext, useState, useCallback, useEffect } from "react";
 import type { MemberProfile, FamilyMember } from "./api";
 import { setToken, setMemberData, clearAuth, memberLogin as apiLogin, memberGetProfile, memberSwitchProfile as apiSwitchProfile, setActiveLocation, gasCall } from "./api";
 import { getSavedLocationId } from "./locations";
 
 interface AuthContextType {
   isAuthenticated: boolean;
+  isLoading: boolean;
   isAdmin: boolean;
   member: MemberProfile | null;
   familyMembers: FamilyMember[];
@@ -20,11 +21,60 @@ const AuthContext = createContext<AuthContextType | null>(null);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [member, setMemberState] = useState<MemberProfile | null>(null);
   const [familyMembers, setFamilyMembers] = useState<FamilyMember[]>([]);
 
   // Derived — true when role is owner / admin / coach / instructor
   const isAdmin = !!(member?.isAdmin);
+
+  // Optimistic session restore from localStorage on mount
+  useEffect(() => {
+    const savedToken = localStorage.getItem('lbjj_session_token');
+    const savedProfileRaw = localStorage.getItem('lbjj_member_profile');
+
+    if (savedToken && savedProfileRaw) {
+      try {
+        const savedProfile = JSON.parse(savedProfileRaw);
+        // Optimistically authenticate — show home screen immediately
+        setToken(savedToken);
+        setMemberData(savedProfile);
+        setMemberState(savedProfile);
+        setIsAuthenticated(true);
+        if (savedProfile.familyMembers) setFamilyMembers(savedProfile.familyMembers);
+        setIsLoading(false);
+
+        // Background validation — if invalid, log out silently
+        gasCall('memberGetProfile', { token: savedToken }).then((res: any) => {
+          if (res?.success === false && !res?.member) {
+            // Session invalid — log out
+            clearAuth();
+            localStorage.removeItem('lbjj_session_token');
+            localStorage.removeItem('lbjj_member_profile');
+            setIsAuthenticated(false);
+            setMemberState(null);
+            setFamilyMembers([]);
+          } else {
+            // Refresh member data from server
+            const raw = res?.member || res;
+            if (raw) {
+              const normalized = { ...raw, role: raw?.role || '', isAdmin: ['owner', 'admin', 'coach', 'instructor'].includes((raw?.role || '').toLowerCase()) };
+              setMemberState(normalized);
+              setMemberData(normalized);
+              localStorage.setItem('lbjj_member_profile', JSON.stringify(normalized));
+              if (normalized.familyMembers) setFamilyMembers(normalized.familyMembers);
+            }
+          }
+        }).catch(() => {
+          // Network error during validation — keep optimistic state (user may be offline)
+        });
+        return;
+      } catch {}
+    }
+
+    // No saved session — show login screen
+    setIsLoading(false);
+  }, []);
 
   const login = useCallback(async (email: string, password: string) => {
     try {
@@ -117,7 +167,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   return (
-    <AuthContext.Provider value={{ isAuthenticated, isAdmin, member, familyMembers, login, loginWithPasskey, logout, refreshProfile, setMember, switchProfile }}>
+    <AuthContext.Provider value={{ isAuthenticated, isLoading, isAdmin, member, familyMembers, login, loginWithPasskey, logout, refreshProfile, setMember, switchProfile }}>
       {children}
     </AuthContext.Provider>
   );
