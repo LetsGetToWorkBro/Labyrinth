@@ -729,6 +729,35 @@ function AccountPage() {
           )}
         </div>
 
+        {/* Sauna Sessions */}
+        {(() => {
+          const saunaStats = (() => {
+            try {
+              const sessions = JSON.parse(localStorage.getItem('lbjj_sauna_sessions') || '[]');
+              return {
+                total: sessions.length,
+                recent: sessions.slice(-3).reverse(),
+              };
+            } catch { return { total: 0, recent: [] as any[] }; }
+          })();
+          return saunaStats.total > 0 ? (
+            <div style={{ borderTop: '1px solid #1A1A1A', paddingTop: 16, marginTop: 16 }}>
+              <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.1em', color: '#666', textTransform: 'uppercase', marginBottom: 10 }}>
+                Sauna Sessions
+              </div>
+              <div style={{ display: 'flex', gap: 12 }}>
+                <div style={{ background: '#0D0D0D', border: '1px solid #1A1A1A', borderRadius: 12, padding: '12px 16px', flex: 1 }}>
+                  <div style={{ fontSize: 22, fontWeight: 700, color: '#F0F0F0' }}>{saunaStats.total}</div>
+                  <div style={{ fontSize: 11, color: '#666' }}>Total sessions</div>
+                </div>
+              </div>
+              <a href="/#/sauna" style={{ display: 'block', marginTop: 8, fontSize: 11, color: '#C8A24C', textDecoration: 'none' }}>
+                View sauna dashboard →
+              </a>
+            </div>
+          ) : null;
+        })()}
+
         <div style={{ borderTop: "1px solid #1A1A1A", paddingTop: 16, marginTop: 8 }}>
           <button
             onClick={logout}
@@ -885,6 +914,13 @@ function MorePage() {
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#C8A24C" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
             <span style={{ fontSize: 12, color: '#888', fontWeight: 500 }}>info@labyrinth.vision</span>
           </a>
+          <div style={{ marginTop: 8, padding: '8px 12px', background: '#0D0D0D', borderRadius: 10, border: '1px solid #1A1A1A', whiteSpace: 'pre-line' }}>
+            <div style={{ fontSize: 10, color: '#555', lineHeight: 1.6 }}>
+              <div><span style={{ color: '#888' }}>Billing & memberships:</span> Text or email info@labyrinth.vision</div>
+              <div><span style={{ color: '#888' }}>Class questions:</span> Text 281-393-7983</div>
+              <div><span style={{ color: '#888' }}>Hours:</span> Check the schedule tab for class times</div>
+            </div>
+          </div>
         </div>
         <div style={{ marginTop: 24, paddingTop: 16, borderTop: '1px solid #1A1A1A' }}>
           <button
