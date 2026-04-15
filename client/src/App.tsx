@@ -322,7 +322,7 @@ function AccountPage() {
       const encodedName = encodeURIComponent(name);
       const email = encodeURIComponent(member?.email || '');
       const cleanBelt = belt.replace(' belt', '').trim();
-      const passUrl = `https://labyrinth-pass-server-production.up.railway.app/pass/generate?name=${encodedName}&email=${email}&belt=${cleanBelt}&apiSecret=lbjj-pass-secret-2026`;
+      const passUrl = `https://labyrinth-pass-server-production.up.railway.app/pass/generate?name=${encodedName}&email=${email}&belt=${cleanBelt}&apiSecret=${import.meta.env.VITE_PASS_API_SECRET}`;
       window.location.href = passUrl;
     } catch (e) {
       alert('Could not generate your pass. Please try again or contact info@labyrinth.vision');
@@ -339,7 +339,7 @@ function AccountPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          apiSecret: 'lbjj-pass-secret-2026',
+          apiSecret: import.meta.env.VITE_PASS_API_SECRET,
           memberData: {
             name: member?.name || 'Member',
             email: member?.email || '',
