@@ -40,7 +40,7 @@ import type { LucideIcon } from "lucide-react";
 import { useEffect, useCallback, useState, useRef } from "react";
 import { useHashLocation as useHashLoc } from "wouter/use-hash-location";
 import { Redirect } from "wouter";
-import { gasCall } from "@/lib/api";
+import { gasCall, cachedGasCall } from "@/lib/api";
 
 // ─── Nav config ───────────────────────────────────────────────────
 
@@ -274,11 +274,13 @@ function AccountPage() {
 
   // Badge showcase state
   const [badges, setBadges] = useState<Array<{key: string; label: string; icon: string; color: string; earnedAt: string}>>([]);
+  const [badgesLoading, setBadgesLoading] = useState(true);
   useEffect(() => {
     if (member?.email) {
-      gasCall('getMemberBadges', { email: member.email }).then((res: any) => {
+      setBadgesLoading(true);
+      cachedGasCall('getMemberBadges', { email: member.email }, 120_000).then((res: any) => {
         if (res?.badges) setBadges(res.badges);
-      }).catch(() => {});
+      }).catch(() => {}).finally(() => setBadgesLoading(false));
     }
   }, [member?.email]);
 
@@ -647,7 +649,13 @@ function AccountPage() {
             <div style={{ fontSize: 11, color: '#C8A24C' }}>View All →</div>
           </button>
 
-          {badges.length > 0 ? (
+          {badgesLoading ? (
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              {[1,2,3].map(i => (
+                <div key={i} style={{ width: 48, height: 48, borderRadius: 12, background: '#1A1A1A', animation: 'shimmer 1.5s ease-in-out infinite' }} />
+              ))}
+            </div>
+          ) : badges.length > 0 ? (
             <div style={{ display: 'flex', gap: 10, overflowX: 'auto', paddingBottom: 4 }}>
               {badges.map(b => (
                 <div key={b.key} style={{
