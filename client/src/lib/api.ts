@@ -2,6 +2,7 @@
 // All API calls go through a single Google Apps Script endpoint
 // The endpoint is dynamic — set per selected location at login
 
+import * as Sentry from "@sentry/react";
 import { getActiveGasUrl, getSavedLocationId, saveLocationId } from "./locations";
 
 // GAS cold-starts take ~22s — timeout must clear that
@@ -259,6 +260,10 @@ export async function gasCall(action: string, payload: Record<string, any> = {},
       console.warn(`gasCall ${action} retry ${retryCount + 1}/${GAS_MAX_RETRIES}`);
       return gasCall(action, payload, retryCount + 1);
     }
+    Sentry.captureException(err, {
+      tags: { action, layer: 'gas' },
+      extra: { retryCount, payloadKeys: Object.keys(payload || {}) },
+    });
     console.error(`gasCall ${action} failed:`, err);
     throw err;
   }
