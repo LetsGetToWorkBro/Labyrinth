@@ -733,7 +733,7 @@ function MorePage() {
     {
       label: 'Manage',
       items: [
-        { href: '/#/sauna',    icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#C8A24C" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 12c.553-1.333 2-2 3-2s2.447.667 3 2"/><path d="M3 12c1.333-4 5-6 9-6s7.667 2 9 6"/><path d="M6 20c1-2.667 3.333-4 6-4s5 1.333 6 4"/><line x1="12" y1="2" x2="12" y2="4"/></svg>, label: 'Sauna Dashboard', desc: 'Check in/out, active sessions' },
+        { href: '/#/sauna',    icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#C8A24C" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 14.76V3.5a2.5 2.5 0 0 0-5 0v11.26a4.5 4.5 0 1 0 5 0z"/></svg>, label: 'Sauna Dashboard', desc: 'Check in/out, active sessions' },
         { href: '/#/stats',    icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#C8A24C" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20V10"/><path d="M18 20V4"/><path d="M6 20v-4"/></svg>, label: 'Academy Stats', desc: 'Rankings, athletes, jits.gg' },
         { href: '/#/calendar', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#C8A24C" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></svg>, label: 'Tournament Calendar', desc: 'Events and registrations' },
       ]
@@ -856,14 +856,17 @@ function MorePage() {
               );
             }}
             style={{
-              background: 'none',
-              border: 'none',
+              background: 'rgba(224,85,85,0.06)',
+              border: '1px solid rgba(224,85,85,0.2)',
+              borderRadius: 12,
               color: '#E05555',
               fontSize: 13,
+              fontWeight: 600,
               cursor: 'pointer',
-              padding: '8px 0',
-              textAlign: 'left' as const,
+              padding: '11px 16px',
+              textAlign: 'center' as const,
               width: '100%',
+              display: 'block',
             }}
           >
             Request Account Deletion

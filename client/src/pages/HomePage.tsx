@@ -1093,14 +1093,14 @@ export default function HomePage() {
                     color: alreadyCheckedIn ? '#666' : '#000',
                     fontWeight: 700, fontSize: 13,
                     cursor: alreadyCheckedIn ? 'default' : 'pointer',
-                    display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2,
+                    display: 'flex', flexDirection: 'row', alignItems: 'center', gap: 5,
                     opacity: alreadyCheckedIn ? 0.6 : 1,
                   }}
                 >
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                     <polyline points="20 6 9 17 4 12"/>
                   </svg>
-                  <span style={{ fontSize: 10 }}>{alreadyCheckedIn ? 'Done' : 'Check In'}</span>
+                  <span style={{ fontSize: 12, fontWeight: 700 }}>{alreadyCheckedIn ? 'Done' : 'Check In'}</span>
                 </button>
               );
             })()}
@@ -1201,7 +1201,10 @@ export default function HomePage() {
           className="active:scale-[0.95]"
         >
           {classesToday > 0 ? (
-            <span style={{ fontSize: 24 }}>✅</span>
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+              <circle cx="12" cy="12" r="11" fill="rgba(76,175,128,0.15)" stroke="#4CAF80" strokeWidth="1.5"/>
+              <polyline points="7 12 10.5 15.5 17 9" stroke="#4CAF80" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
           ) : (
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: '#E0E0E0', width: 24, height: 24 }}>
               <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>

@@ -291,7 +291,8 @@ export default function SchedulePage() {
       </div>
 
       {/* Day Selector */}
-      <div className="px-5 mb-4 overflow-x-auto" style={{ WebkitOverflowScrolling: "touch", display: 'flex', justifyContent: 'center' }}>
+      <div className="px-5 mb-4" style={{ overflow: 'hidden' }}>
+        <div className="overflow-x-auto" style={{ WebkitOverflowScrolling: "touch", display: 'flex', justifyContent: 'center' }}>
         <div className="flex gap-2" style={{ minWidth: 'max-content', position: 'relative' }}>
           <div style={{
             position: 'absolute',
@@ -328,6 +329,7 @@ export default function SchedulePage() {
               </button>
             );
           })}
+        </div>
         </div>
       </div>
 
