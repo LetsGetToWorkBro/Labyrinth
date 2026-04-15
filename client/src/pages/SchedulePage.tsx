@@ -400,6 +400,10 @@ function ClassCard({ cls, isToday, stream, checkedInClasses, markClassCheckedIn 
   const alreadyCheckedIn = checkedInClasses.includes(cls.name || '');
 
   const handleCheckIn = () => {
+    if (!navigator.onLine) {
+      alert('No internet connection. Please connect and try again.');
+      return;
+    }
     // Dedup: prevent double check-ins (ref lock is synchronous — blocks rapid taps)
     if (alreadyCheckedIn || checkInDone || checkingInRef.current) return;
     checkingInRef.current = true;

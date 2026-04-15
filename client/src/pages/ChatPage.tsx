@@ -241,6 +241,7 @@ export default function ChatPage() {
   // ── Send ──────────────────────────────────────────────────────
   const sendMessage = useCallback(async () => {
     if (!inputText.trim() || !activeChannelId) return;
+    if (!navigator.onLine) { setSendError("No internet connection. Please connect and try again."); return; }
     if (!isAuthenticated) { setSendError("Sign in to send messages."); return; }
     setSending(true); setSendError("");
     const result = await chatSendMessage(activeChannelId, inputText.trim());

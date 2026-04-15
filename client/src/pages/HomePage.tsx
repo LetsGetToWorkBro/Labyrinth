@@ -534,6 +534,10 @@ export default function HomePage() {
   const checkingInRef = useRef(false);
 
   const handleHomeCheckIn = useCallback(async (cls: any) => {
+    if (!navigator.onLine) {
+      alert('No internet connection. Please connect and try again.');
+      return;
+    }
     // Ref lock: synchronous guard against rapid taps during GAS cold start
     if (checkingInRef.current) return;
     checkingInRef.current = true;

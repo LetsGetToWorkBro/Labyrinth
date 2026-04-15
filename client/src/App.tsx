@@ -304,6 +304,10 @@ function AccountPage() {
   };
 
   const handleAddToWallet = async () => {
+    if (!navigator.onLine) {
+      alert('No internet connection. Please connect to generate your pass.');
+      return;
+    }
     if (walletLoading) return;
 
     // Only works on iOS Safari
@@ -332,6 +336,10 @@ function AccountPage() {
   };
 
   const handleAddToGoogleWallet = async () => {
+    if (!navigator.onLine) {
+      alert('No internet connection. Please connect to generate your pass.');
+      return;
+    }
     if (googleWalletLoading) return;
     setGoogleWalletLoading(true);
     try {
