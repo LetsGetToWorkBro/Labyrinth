@@ -8,25 +8,29 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider, useAuth } from "@/lib/auth-context";
 import { GuestProfileProvider } from "@/lib/guest-profile";
 import { GameRecordProvider } from "@/lib/game-records";
+import { lazy, Suspense } from "react";
+
+// Eager — needed on first render
 import LoginPage from "@/pages/LoginPage";
 import HomePage from "@/pages/HomePage";
-import CalendarPage from "@/pages/CalendarPage";
-import StatsPage from "@/pages/StatsPage";
-import SchedulePage from "@/pages/SchedulePage";
-import SaunaPage from "@/pages/SaunaPage";
-import WaiverPage from "@/pages/WaiverPage";
-import BookingPage from "@/pages/BookingPage";
-import BeltJourneyPage from "@/pages/BeltJourneyPage";
-import ChatPage from "@/pages/ChatPage";
-import GamesPage from "@/pages/GamesPage";
-import LeaderboardPage from "@/pages/LeaderboardPage";
-import AdminPage from "@/pages/AdminPage";
-import MessagesPage from "@/pages/MessagesPage";
-import AchievementsPage from "@/pages/AchievementsPage";
-import LivePage from "@/pages/LivePage";
-import CheckInHistoryPage from "@/pages/CheckInHistoryPage";
 
-import NotFound from "@/pages/not-found";
+// Lazy-loaded pages
+const CalendarPage       = lazy(() => import("@/pages/CalendarPage"));
+const StatsPage          = lazy(() => import("@/pages/StatsPage"));
+const SchedulePage       = lazy(() => import("@/pages/SchedulePage"));
+const SaunaPage          = lazy(() => import("@/pages/SaunaPage"));
+const WaiverPage         = lazy(() => import("@/pages/WaiverPage"));
+const BookingPage        = lazy(() => import("@/pages/BookingPage"));
+const BeltJourneyPage    = lazy(() => import("@/pages/BeltJourneyPage"));
+const ChatPage           = lazy(() => import("@/pages/ChatPage"));
+const GamesPage          = lazy(() => import("@/pages/GamesPage"));
+const LeaderboardPage    = lazy(() => import("@/pages/LeaderboardPage"));
+const AdminPage          = lazy(() => import("@/pages/AdminPage"));
+const MessagesPage       = lazy(() => import("@/pages/MessagesPage"));
+const AchievementsPage   = lazy(() => import("@/pages/AchievementsPage"));
+const LivePage           = lazy(() => import("@/pages/LivePage"));
+const CheckInHistoryPage = lazy(() => import("@/pages/CheckInHistoryPage"));
+const NotFound           = lazy(() => import("@/pages/not-found"));
 import {
   Home, MessageCircle, CalendarDays, MoreHorizontal,
   Gamepad2, BarChart2, Trophy, Thermometer,
@@ -1034,6 +1038,20 @@ function AppShell() {
     }
   }, [location]);
 
+  // ── Idle-prefetch top routes ──────────────────────────────────
+  useEffect(() => {
+    const prefetch = () => {
+      import("@/pages/SchedulePage");
+      import("@/pages/ChatPage");
+      import("@/pages/AchievementsPage");
+    };
+    if ("requestIdleCallback" in window) {
+      (window as any).requestIdleCallback(prefetch, { timeout: 2000 });
+    } else {
+      setTimeout(prefetch, 1500);
+    }
+  }, []);
+
   // ── Belt Milestone Overlay ─────────────────────────────────────
   const [milestoneOverlay, setMilestoneOverlay] = useState<any>(null);
   const milestoneShownThisSession = useRef(false);
@@ -1179,30 +1197,36 @@ function AppShell() {
       )}
 
       <div className="app-content">
-        <Switch>
-          <Route path="/"          component={HomePage} />
+        <Suspense fallback={
+          <div className="flex items-center justify-center h-screen" style={{ background: '#0A0A0A' }}>
+            <div className="w-8 h-8 border-[3px] border-[#1A1A1A] border-t-[#C8A24C] rounded-full animate-spin" />
+          </div>
+        }>
+          <Switch>
+            <Route path="/"          component={HomePage} />
 
-          <Route path="/calendar"  component={CalendarPage} />
-          <Route path="/stats"     component={StatsPage} />
-          <Route path="/belt"      component={BeltJourneyPage} />
-          <Route path="/chat"      component={ChatPage} />
-          <Route path="/schedule"  component={SchedulePage} />
-          <Route path="/sauna"     component={SaunaPage} />
-          <Route path="/waiver"    component={WaiverPage} />
-          <Route path="/book"      component={BookingPage} />
-          <Route path="/games"     component={GamesPage} />
-          <Route path="/leaderboard" component={LeaderboardPage} />
-          <Route path="/achievements" component={AchievementsPage} />
-          <Route path="/live"      component={LivePage} />
-          <Route path="/history"   component={CheckInHistoryPage} />
-          <Route path="/more"      component={MorePage} />
-          <Route path="/account"    component={AccountPage} />
-          <Route path="/messages"  component={MessagesPage} />
-          <Route path="/admin"     component={AdminPageWrapper} />
-          <Route path="/reset"     component={ResetPasswordPage} />
-          <Route path="/academy-stats"><Redirect to="/stats" /></Route>
-          <Route component={NotFound} />
-        </Switch>
+            <Route path="/calendar"  component={CalendarPage} />
+            <Route path="/stats"     component={StatsPage} />
+            <Route path="/belt"      component={BeltJourneyPage} />
+            <Route path="/chat"      component={ChatPage} />
+            <Route path="/schedule"  component={SchedulePage} />
+            <Route path="/sauna"     component={SaunaPage} />
+            <Route path="/waiver"    component={WaiverPage} />
+            <Route path="/book"      component={BookingPage} />
+            <Route path="/games"     component={GamesPage} />
+            <Route path="/leaderboard" component={LeaderboardPage} />
+            <Route path="/achievements" component={AchievementsPage} />
+            <Route path="/live"      component={LivePage} />
+            <Route path="/history"   component={CheckInHistoryPage} />
+            <Route path="/more"      component={MorePage} />
+            <Route path="/account"    component={AccountPage} />
+            <Route path="/messages"  component={MessagesPage} />
+            <Route path="/admin"     component={AdminPageWrapper} />
+            <Route path="/reset"     component={ResetPasswordPage} />
+            <Route path="/academy-stats"><Redirect to="/stats" /></Route>
+            <Route component={NotFound} />
+          </Switch>
+        </Suspense>
       </div>
       <TabBar />
     </div>

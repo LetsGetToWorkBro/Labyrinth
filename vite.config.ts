@@ -26,7 +26,6 @@ export default defineConfig({
           "vendor-react": ["react", "react-dom"],
           "vendor-router": ["wouter"],
           "vendor-query": ["@tanstack/react-query"],
-          "vendor-framer": ["framer-motion"],
         },
       },
     },
