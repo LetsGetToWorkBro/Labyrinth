@@ -14,6 +14,7 @@ import { lazy, Suspense } from "react";
 // Eager — needed on first render
 import LoginPage from "@/pages/LoginPage";
 import HomePage from "@/pages/HomePage";
+import OnboardingPage from "@/pages/OnboardingPage";
 
 // Lazy-loaded pages
 const CalendarPage       = lazy(() => import("@/pages/CalendarPage"));
@@ -1224,8 +1225,12 @@ function AppShell() {
 
   const GOLD = "#C8A24C";
 
+  // ── Onboarding overlay for first-time users ──────────────────
+  const onboardingDone = !!(() => { try { return localStorage.getItem('lbjj_onboarding_done'); } catch { return null; } })();
+
   return (
     <div className="app-shell">
+      {!onboardingDone && <OnboardingPage />}
       <AdminShortcut />
 
       {/* Global biometric registration prompt overlay */}

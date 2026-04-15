@@ -395,12 +395,34 @@ export default function HomePage() {
   const rawStreak = (member as any)?.currentStreak || 0;
   const streakCount = rawStreak > 0 ? rawStreak : cachedStreak;
 
+  // ─── Streak freeze mechanic ─────────────────────────────────────
+  const [freezeAvailable, setFreezeAvailable] = useState(false);
+  const [freezeUsed, setFreezeUsed] = useState(false);
+
+  useEffect(() => {
+    const lastFreeze = localStorage.getItem('lbjj_streak_freeze_used');
+    const thisMonth = new Date().toISOString().slice(0, 7);
+    const usedThisMonth = lastFreeze === thisMonth;
+    setFreezeAvailable(streakCount >= 4 && !usedThisMonth);
+    setFreezeUsed(usedThisMonth);
+  }, [streakCount]);
+
+  // ─── Streak freeze protection (client-side): show 1 instead of 0 ──
+  const streakFreezeActive = (() => {
+    try {
+      const lastFreeze = localStorage.getItem('lbjj_streak_freeze_used');
+      const thisMonth = new Date().toISOString().slice(0, 7);
+      return lastFreeze === thisMonth && streakCount === 0;
+    } catch { return false; }
+  })();
+  const effectiveStreak = streakFreezeActive ? 1 : streakCount;
+
   // ─── Streak count-up animation ────────────────────────────────
   const [displayStreak, setDisplayStreak] = useState(0);
   const streakAnimated = useRef(false);
 
   useEffect(() => {
-    const streak = member?.currentStreak || 0;
+    const streak = streakFreezeActive ? 1 : (member?.currentStreak || 0);
     if (streakAnimated.current || streak === 0) {
       setDisplayStreak(streak);
       return;
@@ -547,6 +569,44 @@ export default function HomePage() {
   }, []);
 
   const [nextClass, setNextClass] = useState<ReturnType<typeof getNextClass>>(getNextClass);
+
+  // ─── Next class countdown clock ─────────────────────────────────
+  const [timeUntilClass, setTimeUntilClass] = useState('');
+
+  useEffect(() => {
+    if (!nextClass || !nextClass.isToday) { setTimeUntilClass(''); return; }
+
+    const compute = () => {
+      const now = new Date();
+      const [time, meridiem] = (nextClass.time || '').split(' ');
+      const [hoursStr, minsStr] = (time || '').split(':');
+      let hours = parseInt(hoursStr) || 0;
+      const mins = parseInt(minsStr) || 0;
+      if (meridiem?.toUpperCase() === 'PM' && hours !== 12) hours += 12;
+      if (meridiem?.toUpperCase() === 'AM' && hours === 12) hours = 0;
+
+      const classToday = new Date();
+      classToday.setHours(hours, mins, 0, 0);
+
+      const diff = classToday.getTime() - now.getTime();
+      if (diff <= 0) { setTimeUntilClass(''); return; }
+
+      const diffHours = Math.floor(diff / (1000 * 60 * 60));
+      const diffMins = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+
+      if (diffHours > 0) {
+        setTimeUntilClass(`Starts in ${diffHours}h ${diffMins}m`);
+      } else if (diffMins > 0) {
+        setTimeUntilClass(`Starts in ${diffMins}m`);
+      } else {
+        setTimeUntilClass('Starting now');
+      }
+    };
+
+    compute();
+    const interval = setInterval(compute, 30_000);
+    return () => clearInterval(interval);
+  }, [nextClass]);
 
   const getTodayKey = (email?: string) => `lbjj_checkins_${new Date().toISOString().split('T')[0]}${email ? '_' + email : ''}`;
   const homeDedupEmail = getMemberData()?.email || '';
@@ -1103,6 +1163,11 @@ export default function HomePage() {
               <div style={{ fontSize: 16, fontWeight: 700, color: '#F0F0F0', marginBottom: 2 }}>{nextClass.name}</div>
               <div style={{ fontSize: 12, color: '#666' }}>{nextClass.dayLabel} · {formatClassTime(nextClass.time)}</div>
               {nextClass.instructor && <div style={{ fontSize: 11, color: '#555', marginTop: 1 }}>w/ {nextClass.instructor}</div>}
+              {timeUntilClass && (
+                <div style={{ fontSize: 12, fontWeight: 600, color: '#C8A24C', marginTop: 3 }}>
+                  {'\u23F1'} {timeUntilClass}
+                </div>
+              )}
             </a>
 
             {/* Right: Check In button */}
@@ -1205,8 +1270,9 @@ export default function HomePage() {
             </svg>
           </span>
           <div style={{ flex: 1 }}>
-            <div style={{ fontSize: 20, fontWeight: 700, color: '#C8A24C', lineHeight: 1 }}>
+            <div style={{ fontSize: 20, fontWeight: 700, color: '#C8A24C', lineHeight: 1, display: 'flex', alignItems: 'center', gap: 4 }}>
               {displayStreak}
+              {streakFreezeActive && <span style={{ fontSize: 14 }}>{'\uD83D\uDEE1\uFE0F'}</span>}
             </div>
             <div style={{ fontSize: 11, color: '#666', marginTop: 2 }}>Class streak</div>
           </div>
@@ -1249,6 +1315,35 @@ export default function HomePage() {
           <ChevronRight size={14} color="#555" strokeWidth={2} />
         </a>
       </div>
+
+      {/* Streak freeze controls */}
+      {freezeAvailable && (
+        <div className="mx-5 mb-2" style={{ display: 'flex', justifyContent: 'center' }}>
+          <button
+            onClick={() => {
+              const thisMonth = new Date().toISOString().slice(0, 7);
+              localStorage.setItem('lbjj_streak_freeze_used', thisMonth);
+              setFreezeAvailable(false);
+              setFreezeUsed(true);
+            }}
+            style={{
+              display: 'flex', alignItems: 'center', gap: 6,
+              padding: '6px 12px', borderRadius: 20,
+              background: 'rgba(200,162,76,0.08)',
+              border: '1px solid rgba(200,162,76,0.2)',
+              color: '#C8A24C', fontSize: 11, fontWeight: 600,
+              cursor: 'pointer',
+            }}
+          >
+            {'\uD83D\uDEE1\uFE0F'} Freeze Streak (1 available this month)
+          </button>
+        </div>
+      )}
+      {freezeUsed && (
+        <div className="mx-5 mb-2" style={{ textAlign: 'center', fontSize: 10, color: '#555' }}>
+          Streak freeze used this month
+        </div>
+      )}
 
       {/* Class Leaders Widget */}
       {leaderboard.length > 0 && (
