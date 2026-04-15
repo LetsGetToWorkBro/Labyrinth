@@ -907,6 +907,81 @@ export function AchievementIcon_secret_1({ size = 48, unlocked = true }: BadgeIc
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
+// LEVEL — crest/shield frame (4 icons)
+// ═══════════════════════════════════════════════════════════════════════════
+
+function CrestFrame({ gold, bg, children }: { gold: string; bg: string; children: React.ReactNode }) {
+  return (
+    <>
+      <path d="M24 3L42 12V28C42 36 34 43 24 46C14 43 6 36 6 28V12L24 3Z"
+        fill={bg} stroke={gold} strokeWidth="1.5" strokeLinejoin="round" />
+      {children}
+    </>
+  );
+}
+
+export function AchievementIcon_level_5({ size = 48, unlocked = true }: BadgeIconProps) {
+  const c = colors(unlocked);
+  return (
+    <BadgeSvg size={size} unlocked={unlocked}>
+      <CrestFrame gold={c.gold} bg={c.bg}>
+        {/* Rising star */}
+        <path d="M24 13l2.4 7.4H34l-6.2 4.5 2.4 7.4L24 28l-6.2 4.3 2.4-7.4L14 20.4h7.6z"
+          fill={c.gold} opacity={c.accent} />
+      </CrestFrame>
+    </BadgeSvg>
+  );
+}
+
+export function AchievementIcon_level_10({ size = 48, unlocked = true }: BadgeIconProps) {
+  const c = colors(unlocked);
+  const accent = unlocked ? '#FFD700' : '#444';
+  return (
+    <BadgeSvg size={size} unlocked={unlocked}>
+      <CrestFrame gold={c.gold} bg={c.bg}>
+        {/* Clock/dedication symbol */}
+        <circle cx="24" cy="24" r="9" stroke={accent} strokeWidth="2" fill="none" opacity={c.accent} />
+        <path d="M24 18v6l3 3" stroke={accent} strokeWidth="2" strokeLinecap="round" opacity={c.accent} />
+        {/* Small star at top */}
+        <circle cx="24" cy="11" r="2" fill={c.gold} opacity={c.sub} />
+      </CrestFrame>
+    </BadgeSvg>
+  );
+}
+
+export function AchievementIcon_level_20({ size = 48, unlocked = true }: BadgeIconProps) {
+  const c = colors(unlocked);
+  const accent = unlocked ? '#4FC3F7' : '#444';
+  return (
+    <BadgeSvg size={size} unlocked={unlocked}>
+      <CrestFrame gold={accent} bg={c.bg}>
+        {/* Star outline with inner glow */}
+        <path d="M24 11L27.09 17.26L34 18.27L29 23.14L30.18 30.02L24 26.77L17.82 30.02L19 23.14L14 18.27L20.91 17.26L24 11Z"
+          fill={accent} opacity="0.3" stroke={accent} strokeWidth="1.5" />
+        {/* Inner dot */}
+        <circle cx="24" cy="22" r="2.5" fill={accent} opacity={c.accent} />
+      </CrestFrame>
+    </BadgeSvg>
+  );
+}
+
+export function AchievementIcon_level_30({ size = 48, unlocked = true }: BadgeIconProps) {
+  const c = colors(unlocked);
+  const purple = unlocked ? '#C084FC' : '#444';
+  const goldAccent = unlocked ? '#FFD700' : '#333';
+  return (
+    <BadgeSvg size={size} unlocked={unlocked}>
+      <CrestFrame gold={purple} bg={c.bg}>
+        {/* Multi-pointed star with gem */}
+        <path d="M24 10l3 6 7 1-5 5 1 7-6-3-6 3 1-7-5-5 7-1z"
+          fill={purple} stroke={goldAccent} strokeWidth="1" opacity={c.accent} />
+        <circle cx="24" cy="23" r="3" fill={goldAccent} opacity="0.8" />
+      </CrestFrame>
+    </BadgeSvg>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
 // Default fallback
 // ═══════════════════════════════════════════════════════════════════════════
 
@@ -977,6 +1052,11 @@ export const ACHIEVEMENT_ICONS: Record<string, React.FC<BadgeIconProps>> = {
   birthday_warrior: AchievementIcon_birthday_warrior,
   holiday_warrior: AchievementIcon_holiday_warrior,
   secret_1: AchievementIcon_secret_1,
+  // Level (4)
+  level_5: AchievementIcon_level_5,
+  level_10: AchievementIcon_level_10,
+  level_20: AchievementIcon_level_20,
+  level_30: AchievementIcon_level_30,
 };
 
 export function AchievementBadge({ achievementKey, size = 48, unlocked = true }: { achievementKey: string; size?: number; unlocked?: boolean }) {

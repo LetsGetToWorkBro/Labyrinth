@@ -1,9 +1,11 @@
+import { getActualLevel } from '@/lib/xp';
+
 export interface Achievement {
   key: string;
   label: string;
   desc: string;
   icon: string;       // emoji
-  category: 'attendance' | 'streak' | 'competition' | 'belt' | 'app' | 'games' | 'special';
+  category: 'attendance' | 'streak' | 'competition' | 'belt' | 'app' | 'games' | 'special' | 'level';
   secret?: boolean;   // hidden until unlocked
   color: string;      // accent color for the card
 }
@@ -68,6 +70,12 @@ export const ALL_ACHIEVEMENTS: Achievement[] = [
   { key: 'birthday_warrior',  label: 'Birthday Warrior',  icon: '🎂', color: '#EC4899', category: 'special', desc: 'Train on your birthday.' },
   { key: 'holiday_warrior',   label: 'Holiday Warrior',   icon: '🎄', color: '#10B981', category: 'special', desc: 'Train on a holiday.' },
   { key: 'secret_1',          label: '???',               icon: '🤫', color: '#374151', category: 'special', secret: true, desc: 'A secret achievement. Keep training to discover it.' },
+
+  // ── LEVEL / XP ───────────────────────────────────────────────────
+  { key: 'level_5',   label: 'Rising Star',         icon: '⭐', color: '#C8A24C', category: 'level', desc: 'Reach Level 5.' },
+  { key: 'level_10',  label: 'Seasoned Warrior',    icon: '🕐', color: '#FFD700', category: 'level', desc: 'Reach Level 10.' },
+  { key: 'level_20',  label: 'Labyrinth Veteran',   icon: '🌟', color: '#4FC3F7', category: 'level', desc: 'Reach Level 20.' },
+  { key: 'level_30',  label: 'Legend of the Mat',    icon: '💎', color: '#C084FC', category: 'level', desc: 'Reach Level 30 — a legend.' },
 ];
 
 export const ACHIEVEMENT_CATEGORIES = [
@@ -78,6 +86,7 @@ export const ACHIEVEMENT_CATEGORIES = [
   { key: 'games',       label: '♟️ BJJ Chess',      color: '#6366F1' },
   { key: 'app',         label: '📱 App',            color: '#3B82F6' },
   { key: 'special',     label: '✨ Special',        color: '#EC4899' },
+  { key: 'level',       label: '⚔️ Level',          color: '#C8A24C' },
 ];
 
 export function checkAndUnlockAchievements(profile: any, stats: any): string[] {
@@ -132,6 +141,16 @@ export function checkAndUnlockAchievements(profile: any, stats: any): string[] {
 
   // Face ID = app engagement
   if (localStorage.getItem('lbjj_passkey_registered')) unlock('app_day1');
+
+  // Level / XP
+  const totalPoints = profile.totalPoints || profile.TotalPoints || 0;
+  if (totalPoints > 0) {
+    const level = getActualLevel(totalPoints);
+    if (level >= 5)  unlock('level_5');
+    if (level >= 10) unlock('level_10');
+    if (level >= 20) unlock('level_20');
+    if (level >= 30) unlock('level_30');
+  }
 
   localStorage.setItem('lbjj_achievements', JSON.stringify(earned));
   return newlyEarned;

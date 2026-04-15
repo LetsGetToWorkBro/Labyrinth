@@ -89,6 +89,7 @@ export interface MemberProfile {
   row?: number;
   isPrimary?: boolean;
   familyMembers?: FamilyMember[];
+  totalPoints?: number; // XP from GAS TotalPoints column
   // Admin role fields — set from the Members sheet "Role" column
   role?: string;       // 'owner' | 'admin' | 'coach' | 'instructor' | ''
   isAdmin?: boolean;   // true when role is owner/admin/coach

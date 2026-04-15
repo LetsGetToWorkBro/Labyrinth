@@ -42,6 +42,9 @@ import { useEffect, useCallback, useState, useRef } from "react";
 import { useHashLocation as useHashLoc } from "wouter/use-hash-location";
 import { Redirect } from "wouter";
 import { gasCall, cachedGasCall, beltSavePromotion } from "@/lib/api";
+import { ProfileRing } from "@/components/ProfileRing";
+import { getRingTier, getActualLevel } from "@/lib/xp";
+import { XPBar } from "@/components/XPBar";
 
 // ─── Nav config ───────────────────────────────────────────────────
 
@@ -410,25 +413,34 @@ function AccountPage() {
       </div>
 
       <div className="px-5 pb-6 space-y-4">
-        {/* Avatar with photo support */}
+        {/* Avatar with photo support + ProfileRing */}
         <div style={{ display: "flex", flexDirection: "column", alignItems: "center", paddingTop: 8, paddingBottom: 4 }}>
-          <div
-            onClick={() => fileInputRef.current?.click()}
-            style={{
-              width: 88, height: 88, borderRadius: "50%", overflow: "hidden",
-              background: profilePic ? "none" : beltColor,
-              color: ["white","yellow","grey"].includes((member?.belt||"").toLowerCase()) ? "#0A0A0A" : "#fff",
-              fontSize: 30, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center",
-              boxShadow: `0 0 0 4px ${beltColor}30, 0 0 30px ${beltColor}20`,
-              position: "relative", cursor: "pointer",
-            }}
-          >
-            {profilePic ? (
-              <img src={profilePic} alt="Profile" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-            ) : (
-              initials
-            )}
-          </div>
+          {(() => {
+            const memberXP = member?.totalPoints || (member as any)?.totalPoints || 0;
+            const memberLevel = getActualLevel(memberXP);
+            const ringTier = getRingTier(memberLevel);
+            return (
+              <ProfileRing tier={ringTier} size={88} level={memberLevel > 1 ? memberLevel : undefined}>
+                <div
+                  onClick={() => fileInputRef.current?.click()}
+                  style={{
+                    width: 88, height: 88, borderRadius: "50%", overflow: "hidden",
+                    background: profilePic ? "none" : beltColor,
+                    color: ["white","yellow","grey"].includes((member?.belt||"").toLowerCase()) ? "#0A0A0A" : "#fff",
+                    fontSize: 30, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center",
+                    boxShadow: `0 0 0 4px ${beltColor}30, 0 0 30px ${beltColor}20`,
+                    position: "relative", cursor: "pointer",
+                  }}
+                >
+                  {profilePic ? (
+                    <img src={profilePic} alt="Profile" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                  ) : (
+                    initials
+                  )}
+                </div>
+              </ProfileRing>
+            );
+          })()}
           {/* Change Photo button */}
           <button
             onClick={() => fileInputRef.current?.click()}
@@ -445,6 +457,13 @@ function AccountPage() {
             style={{ display: "none" }}
           />
         </div>
+
+        {/* XP Progress Bar */}
+        {(member?.totalPoints || (member as any)?.totalPoints || 0) > 0 && (
+          <div style={{ marginTop: 12 }}>
+            <XPBar xp={member?.totalPoints || (member as any)?.totalPoints || 0} />
+          </div>
+        )}
 
         {editing ? (
           <>

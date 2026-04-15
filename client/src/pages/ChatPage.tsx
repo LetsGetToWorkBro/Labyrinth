@@ -12,6 +12,8 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { ListSkeleton } from "@/components/LoadingSkeleton";
 import { getBeltColor } from "@/lib/constants";
 import { BeltIcon } from "@/components/BeltIcon";
+import { ProfileRing } from "@/components/ProfileRing";
+import { getRingTier, getActualLevel } from "@/lib/xp";
 import { useAuth } from "@/lib/auth-context";
 import { chatGetMessages, chatSendMessage, chatGetChannels, type ChatMessage, type ChatChannel } from "@/lib/api";
 import { getRankProfile } from "@/lib/chat-data";
@@ -450,9 +452,18 @@ export default function ChatPage() {
           <div style={{ padding: "8px 12px", borderTop: "1px solid #1A1A1A", backgroundColor: "#0A0A0A", flexShrink: 0, paddingBottom: "max(8px, env(safe-area-inset-bottom, 8px))" }}>
             {sendError && <p style={{ fontSize: 12, color: "#E05555", margin: "0 0 6px 4px" }}>{sendError}</p>}
             <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-              {member && (
-                <BeltIcon belt={myBelt} width={18} style={{ flexShrink: 0 }} />
-              )}
+              {member && (() => {
+                const chatXP = member?.totalPoints || (member as any)?.totalPoints || 0;
+                const chatLevel = getActualLevel(chatXP);
+                const chatRingTier = getRingTier(chatLevel);
+                return chatXP > 0 ? (
+                  <ProfileRing tier={chatRingTier} size={24}>
+                    <BeltIcon belt={myBelt} width={18} style={{ flexShrink: 0 }} />
+                  </ProfileRing>
+                ) : (
+                  <BeltIcon belt={myBelt} width={18} style={{ flexShrink: 0 }} />
+                );
+              })()}
               <input
                 ref={inputRef}
                 type="text"

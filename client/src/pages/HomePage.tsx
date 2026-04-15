@@ -7,6 +7,7 @@ import { getBeltColor, CLASS_SCHEDULE } from "@/lib/constants";
 import { chatGetChannels, fetchCSV, parseCSV, CSV_ENDPOINTS } from "@/lib/api";
 import { ALL_ACHIEVEMENTS, checkAndUnlockAchievements } from "@/lib/achievements";
 import { ScreenHeader } from "@/components/ScreenHeader";
+import { XPBar } from "@/components/XPBar";
 import {
   CreditCard, FileText, ChevronRight, ChevronDown, LogOut,
   Users, Check, Loader2, Plus, Trash2, Star, CheckCircle,
@@ -1315,6 +1316,13 @@ export default function HomePage() {
           <ChevronRight size={14} color="#555" strokeWidth={2} />
         </a>
       </div>
+
+      {/* XP Progress Bar */}
+      {(member as any)?.totalPoints > 0 && (
+        <div className="mx-5 mb-3 stagger-child">
+          <XPBar xp={(member as any).totalPoints} compact />
+        </div>
+      )}
 
       {/* Streak freeze controls */}
       {freezeAvailable && (
