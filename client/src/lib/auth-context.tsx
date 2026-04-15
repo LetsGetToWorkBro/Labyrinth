@@ -43,6 +43,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const savedToken = localStorage.getItem('lbjj_session_token');
     const savedProfileRaw = localStorage.getItem('lbjj_member_profile');
 
+    // Token max-age check — force re-auth after 30 days
+    const tokenCreated = parseInt(localStorage.getItem('lbjj_token_created') || '0');
+    const TOKEN_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
+    if (tokenCreated && Date.now() - tokenCreated > TOKEN_MAX_AGE_MS) {
+      localStorage.removeItem('lbjj_session_token');
+      localStorage.removeItem('lbjj_token_created');
+      localStorage.removeItem('lbjj_member_profile');
+      setIsLoading(false);
+      return;
+    }
+
     if (savedToken && savedProfileRaw) {
       try {
         const savedProfile = JSON.parse(savedProfileRaw);
@@ -108,6 +119,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (result.success && result.token && result.member) {
         setToken(result.token);
         localStorage.setItem('lbjj_session_token', result.token);
+        localStorage.setItem('lbjj_token_created', Date.now().toString());
         setIsAuthenticated(true);
         setMemberState(result.member);
         setMemberData(result.member);
@@ -141,7 +153,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
       }
       // No saved token — need password login first
-      return { success: false, error: 'no_saved_token' };
+      return { success: false, error: 'Biometric login unavailable — please sign in with password' };
     } catch {
       return { success: false, error: 'Connection error' };
     }
@@ -150,6 +162,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const logout = useCallback(() => {
     clearAuth();
     localStorage.removeItem('lbjj_session_token');
+    localStorage.removeItem('lbjj_token_created');
     localStorage.removeItem('lbjj_member_profile');
     localStorage.removeItem('lbjj_member_email');
     localStorage.removeItem('lbjj_game_stats_v2');

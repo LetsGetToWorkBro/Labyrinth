@@ -12,7 +12,7 @@ const GOLD = "#C8A24C";
 // Rate-limit tracking for Request Access submissions (module-level, persists across re-renders)
 const requestAccessAttempts: number[] = [];
 
-const SUSPICIOUS_NAMES = ['test', 'audit', 'demo', 'fake', 'sample', 'trial user', 'test user'];
+const SUSPICIOUS_NAMES = ['test', 'demo', 'fake', 'sample', 'trial user', 'test user'];
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 // ── Biometric / WebAuthn helpers ──────────────────────────────────
@@ -174,8 +174,8 @@ export default function LoginPage() {
         if (!result.success) {
           setEmail(savedEmail);
           setShowPasswordForm(true);
-          if (result.error === 'no_saved_token') {
-            setLoginError('Sign in once to enable biometric login — no checkbox needed.');
+          if (result.error) {
+            setLoginError(result.error);
           } else {
             setLoginError("Couldn't sign in. Please enter your password.");
           }
@@ -559,9 +559,9 @@ export default function LoginPage() {
                       <span style={{ fontSize: 11, color: "#666", letterSpacing: "0.06em" }}>{selectedLocation.city}, TX</span>
                     </div>
                     <p style={{ fontSize: 11, color: '#666', textAlign: 'center', margin: 0 }}>
-                      <a href="https://labyrinth.vision/privacy" target="_blank" rel="noopener noreferrer" style={{ color: '#555', textDecoration: 'underline' }}>Privacy Policy</a>
+                      <a href="https://app.labyrinth.vision/privacy" target="_blank" rel="noopener noreferrer" style={{ color: '#555', textDecoration: 'underline' }}>Privacy Policy</a>
                       {' · '}
-                      <a href="https://labyrinth.vision/terms" target="_blank" rel="noopener noreferrer" style={{ color: '#555', textDecoration: 'underline' }}>Terms</a>
+                      <a href="https://app.labyrinth.vision/terms" target="_blank" rel="noopener noreferrer" style={{ color: '#555', textDecoration: 'underline' }}>Terms of Service</a>
                     </p>
                   </div>
                 </div>
