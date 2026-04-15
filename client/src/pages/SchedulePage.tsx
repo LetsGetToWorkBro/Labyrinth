@@ -92,19 +92,35 @@ function showBadgeUnlock(badge: { key: string; label: string; icon: string; desc
     display: flex; align-items: center; justify-content: center;
     z-index: 10000; animation: fadeInOverlay 0.3s ease-out forwards;
   `;
-  overlay.innerHTML = `
-    <div style="text-align:center;padding:40px;max-width:300px;animation:slideUpCard 0.4s cubic-bezier(0.34,1.56,0.64,1) forwards;">
-      <div style="font-size:14px;letter-spacing:3px;text-transform:uppercase;color:#888;margin-bottom:16px;">New Badge Unlocked</div>
-      <div style="width:100px;height:100px;border-radius:50%;background:${color}22;border:3px solid ${color};
-        display:flex;align-items:center;justify-content:center;margin:0 auto 20px;
-        font-size:48px;box-shadow:0 0 30px ${color}66;animation:badgePulse 1s ease-in-out infinite alternate;">
-        ${badge.icon}
-      </div>
-      <div style="font-size:22px;font-weight:800;color:#fff;margin-bottom:8px;">${badge.label}</div>
-      <div style="font-size:14px;color:#888;line-height:1.5;">${badge.desc}</div>
-      <div style="margin-top:24px;font-size:12px;color:#555;">Tap to dismiss</div>
-    </div>
-  `;
+  const card = document.createElement('div');
+  card.style.cssText = 'text-align:center;padding:40px;max-width:300px;animation:slideUpCard 0.4s cubic-bezier(0.34,1.56,0.64,1) forwards;';
+
+  const heading = document.createElement('div');
+  heading.style.cssText = 'font-size:14px;letter-spacing:3px;text-transform:uppercase;color:#888;margin-bottom:16px;';
+  heading.textContent = 'New Badge Unlocked';
+
+  const iconCircle = document.createElement('div');
+  iconCircle.style.cssText = `width:100px;height:100px;border-radius:50%;background:${color}22;border:3px solid ${color};display:flex;align-items:center;justify-content:center;margin:0 auto 20px;font-size:48px;box-shadow:0 0 30px ${color}66;animation:badgePulse 1s ease-in-out infinite alternate;`;
+  iconCircle.textContent = badge.icon;
+
+  const labelEl = document.createElement('div');
+  labelEl.style.cssText = 'font-size:22px;font-weight:800;color:#fff;margin-bottom:8px;';
+  labelEl.textContent = badge.label;
+
+  const descEl = document.createElement('div');
+  descEl.style.cssText = 'font-size:14px;color:#888;line-height:1.5;';
+  descEl.textContent = badge.desc;
+
+  const dismissHint = document.createElement('div');
+  dismissHint.style.cssText = 'margin-top:24px;font-size:12px;color:#555;';
+  dismissHint.textContent = 'Tap to dismiss';
+
+  card.appendChild(heading);
+  card.appendChild(iconCircle);
+  card.appendChild(labelEl);
+  card.appendChild(descEl);
+  card.appendChild(dismissHint);
+  overlay.appendChild(card);
 
   const style = document.createElement('style');
   style.textContent = `

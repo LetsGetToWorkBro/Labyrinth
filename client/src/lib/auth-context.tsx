@@ -3,6 +3,16 @@ import type { MemberProfile, FamilyMember } from "./api";
 import { setToken, setMemberData, clearAuth, memberLogin as apiLogin, memberGetProfile, memberSwitchProfile as apiSwitchProfile, setActiveLocation, gasCall } from "./api";
 import { getSavedLocationId } from "./locations";
 
+function sanitizeProfileForStorage(profile: any) {
+  if (!profile) return profile;
+  const sanitized = { ...profile };
+  // Remove payment card details — not needed client-side beyond display
+  delete sanitized.StripeCustomerID;
+  delete sanitized.StripeSubscriptionID;
+  // Keep cardLast4, cardBrand, cardExpiration for display purposes
+  return sanitized;
+}
+
 interface AuthContextType {
   isAuthenticated: boolean;
   isLoading: boolean;
@@ -44,6 +54,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (savedProfile.familyMembers) setFamilyMembers(savedProfile.familyMembers);
         setIsLoading(false);
 
+        // If cached profile claims isAdmin, re-verify with server in background
+        if (savedProfile?.isAdmin) {
+          memberGetProfile().then((freshProfile: any) => {
+            if (!freshProfile?.isAdmin) {
+              // Cached profile was stale/tampered — update profile but don't log out
+              setMemberData({ ...savedProfile, isAdmin: false });
+              setMemberState({ ...savedProfile, isAdmin: false });
+              localStorage.setItem('lbjj_member_profile', JSON.stringify(sanitizeProfileForStorage({ ...savedProfile, isAdmin: false })));
+            }
+          }).catch(() => {
+            // Network error — keep cached profile, will retry on next load
+          });
+        }
+
         // Background validation — if invalid, log out silently
         gasCall('memberGetProfile', { token: savedToken }).then((res: any) => {
           if (res?.success === false && !res?.member) {
@@ -61,7 +85,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               const normalized = { ...raw, role: raw?.role || '', isAdmin: ['owner', 'admin', 'coach', 'instructor'].includes((raw?.role || '').toLowerCase()) };
               setMemberState(normalized);
               setMemberData(normalized);
-              localStorage.setItem('lbjj_member_profile', JSON.stringify(normalized));
+              localStorage.setItem('lbjj_member_profile', JSON.stringify(sanitizeProfileForStorage(normalized)));
               if (normalized.familyMembers) setFamilyMembers(normalized.familyMembers);
             }
           }
@@ -87,7 +111,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setIsAuthenticated(true);
         setMemberState(result.member);
         setMemberData(result.member);
-        localStorage.setItem('lbjj_member_profile', JSON.stringify(result.member));
+        localStorage.setItem('lbjj_member_profile', JSON.stringify(sanitizeProfileForStorage(result.member)));
         setFamilyMembers(result.member.familyMembers || []);
         return { success: true };
       }
@@ -111,9 +135,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setIsAuthenticated(true);
           setMemberState(normalized);
           setMemberData(normalized);
-          localStorage.setItem('lbjj_member_profile', JSON.stringify(normalized));
+          localStorage.setItem('lbjj_member_profile', JSON.stringify(sanitizeProfileForStorage(normalized)));
           if (normalized.familyMembers) setFamilyMembers(normalized.familyMembers);
-          localStorage.setItem('lbjj_member_email', email);
           return { success: true };
         }
       }
@@ -128,6 +151,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     clearAuth();
     localStorage.removeItem('lbjj_session_token');
     localStorage.removeItem('lbjj_member_profile');
+    localStorage.removeItem('lbjj_member_email');
     localStorage.removeItem('lbjj_game_stats_v2');
     localStorage.removeItem('lbjj_checkins_today');
     localStorage.removeItem('lbjj_weekly_training');
@@ -142,7 +166,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const profile = await memberGetProfile();
       setMemberState(profile);
       setMemberData(profile);
-      localStorage.setItem('lbjj_member_profile', JSON.stringify(profile));
+      localStorage.setItem('lbjj_member_profile', JSON.stringify(sanitizeProfileForStorage(profile)));
       if (profile.familyMembers) setFamilyMembers(profile.familyMembers);
     } catch (err) {
       console.error("Failed to refresh profile:", err);

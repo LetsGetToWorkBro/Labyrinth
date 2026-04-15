@@ -364,7 +364,7 @@ export async function memberSaveAgreement(signerName: string, signatureData: str
 export async function getMemberCheckIns(): Promise<any[]> {
   const token = getToken() || '';
   const member = getMemberData();
-  const email = member?.email || localStorage.getItem('lbjj_member_email') || '';
+  const email = member?.email || '';
   try {
     const result = await gasCall('getMemberCheckIns', { token, email });
     return result?.checkIns || result?.bookings || [];
