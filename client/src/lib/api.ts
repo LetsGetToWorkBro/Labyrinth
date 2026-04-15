@@ -296,7 +296,23 @@ export async function cachedGasCall(
 function normalizeAdminRole(profile: any): MemberProfile {
   const role = (profile?.role || "").toLowerCase();
   const isAdmin = role === "owner" || role === "admin" || role === "coach" || role === "instructor";
-  return { ...profile, role: profile?.role || "", isAdmin };
+
+  // Coerce Google Sheets string booleans to real booleans
+  // GAS returns "TRUE"/"FALSE" strings from sheet cells
+  const coerceBool = (val: any): boolean => {
+    if (typeof val === 'boolean') return val;
+    if (typeof val === 'string') return val.toUpperCase() === 'TRUE';
+    return !!val;
+  };
+
+  return {
+    ...profile,
+    role: profile?.role || "",
+    isAdmin,
+    waiverSigned: coerceBool(profile?.waiverSigned),
+    agreementSigned: coerceBool(profile?.agreementSigned),
+    isPrimary: coerceBool(profile?.isPrimary),
+  };
 }
 
 export async function memberLogin(email: string, password: string): Promise<LoginResponse> {
