@@ -90,6 +90,8 @@ export default function LoginPage() {
   const [loginError, setLoginError]     = useState("");
   const [loginLoading, setLoginLoading] = useState(false);
   const [loginSlow, setLoginSlow]       = useState(false);
+  const [loginAttempts, setLoginAttempts] = useState(0);
+  const [lockedUntil, setLockedUntil]   = useState<number | null>(null);
   const emailRef = useRef<HTMLInputElement>(null);
 
   // Forgot password state
@@ -131,13 +133,25 @@ export default function LoginPage() {
     return () => clearTimeout(t);
   }, [loginLoading]);
 
-  // Pre-fill saved credentials on mount
+  // Countdown re-render while locked out
+  const [, setTick] = useState(0);
+  useEffect(() => {
+    if (!lockedUntil) return;
+    const id = setInterval(() => {
+      if (Date.now() >= lockedUntil) {
+        setLockedUntil(null);
+        setLoginError("");
+      }
+      setTick(t => t + 1);
+    }, 1000);
+    return () => clearInterval(id);
+  }, [lockedUntil]);
+
+  // Pre-fill saved email on mount
   useEffect(() => {
     if (localStorage.getItem('lbjj_remember') === 'true') {
       const savedEmail = localStorage.getItem('lbjj_saved_email') || '';
-      const savedPass = localStorage.getItem('lbjj_saved_pass') || '';
       if (savedEmail) setEmail(savedEmail);
-      if (savedPass) setPassword(savedPass);
     }
   }, []);
 
@@ -212,6 +226,12 @@ export default function LoginPage() {
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    // Brute-force lockout check
+    if (lockedUntil && Date.now() < lockedUntil) {
+      const secsLeft = Math.ceil((lockedUntil - Date.now()) / 1000);
+      setLoginError(`Too many failed attempts. Try again in ${secsLeft}s`);
+      return;
+    }
     if (!email && !password) { setLoginError("Please enter your email and password."); emailRef.current?.focus(); return; }
     if (!email) { setLoginError("Please enter your email address."); emailRef.current?.focus(); return; }
     if (!password) { setLoginError("Please enter your password."); return; }
@@ -222,6 +242,9 @@ export default function LoginPage() {
     const result = await login(email, password);
     setLoginLoading(false);
     if (result.success) {
+      // Reset throttle on success
+      setLoginAttempts(0);
+      setLockedUntil(null);
       // Button confirmation flash
       const btn = document.querySelector('[data-testid="button-login"]') as HTMLElement;
       if (btn) {
@@ -243,14 +266,20 @@ export default function LoginPage() {
       if (rememberMe) {
         localStorage.setItem('lbjj_remember', 'true');
         localStorage.setItem('lbjj_saved_email', email);
-        localStorage.setItem('lbjj_saved_pass', password);
       } else {
         localStorage.removeItem('lbjj_remember');
         localStorage.removeItem('lbjj_saved_email');
-        localStorage.removeItem('lbjj_saved_pass');
       }
     } else {
-      setLoginError("__CREDENTIAL_ERROR__");
+      const newAttempts = loginAttempts + 1;
+      setLoginAttempts(newAttempts);
+      if (newAttempts >= 5) {
+        setLockedUntil(Date.now() + 30_000);
+        setLoginAttempts(0);
+        setLoginError('Too many failed attempts. Please wait 30 seconds before trying again.');
+      } else {
+        setLoginError("__CREDENTIAL_ERROR__");
+      }
       emailRef.current?.focus();
     }
   };
@@ -484,9 +513,16 @@ export default function LoginPage() {
                         <span style={{ fontSize: 11, color: '#555' }}>Remember me</span>
                       </label>
 
+                      {/* Lockout countdown */}
+                      {lockedUntil && Date.now() < lockedUntil && (
+                        <p style={{ color: '#E05555', fontSize: 12, textAlign: 'center', margin: 0 }}>
+                          Too many attempts — try again in {Math.ceil((lockedUntil - Date.now()) / 1000)}s
+                        </p>
+                      )}
+
                       {/* Sign In button — gold, full width, 48px+ */}
-                      <button type="submit" disabled={loginLoading} data-testid="button-login"
-                        style={{ ...submitStyle(selectedLocation.color), opacity: loginLoading ? 0.7 : 1, marginTop: 4 }}>
+                      <button type="submit" disabled={loginLoading || (lockedUntil !== null && Date.now() < lockedUntil)} data-testid="button-login"
+                        style={{ ...submitStyle(selectedLocation.color), opacity: (loginLoading || (lockedUntil !== null && Date.now() < lockedUntil)) ? 0.7 : 1, marginTop: 4 }}>
                         {loginLoading
                           ? <><Loader2 size={16} className="animate-spin" style={{ marginRight: 8 }} /> Signing in…</>
                           : <><span>Sign In</span><ArrowRight size={16} style={{ marginLeft: 8 }} /></>}
