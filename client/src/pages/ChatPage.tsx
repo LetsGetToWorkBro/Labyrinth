@@ -361,7 +361,7 @@ export default function ChatPage() {
                         <div style={{ flex: 1 }}>
                           <div style={{ fontSize: 14, fontWeight: 700, color: nameColor, textTransform: 'capitalize' }}>{r.belt} Belt</div>
                         </div>
-                        <span style={{ fontSize: 9, fontWeight: 700, padding: '2px 8px', borderRadius: 10, background: `${r.beltColor}15`, color: nameColor, border: `1px solid ${r.beltColor}25`, letterSpacing: '0.06em', textTransform: 'uppercase', flexShrink: 0 }}>{r.smallLabel}</span>
+                        <span style={{ fontSize: 9, fontWeight: 700, padding: '2px 8px', borderRadius: 10, background: `${r.beltColor}15`, color: nameColor, border: `1px solid ${r.beltColor}25`, letterSpacing: '0.06em', textTransform: 'uppercase', flexShrink: 0 }}>{r.title}</span>
                       </div>
                     </div>
                   );
@@ -608,7 +608,7 @@ export default function ChatPage() {
                       <div style={{ flex: 1 }}>
                         <div style={{ fontSize: 14, fontWeight: 700, color: nameColor, textTransform: 'capitalize' }}>{r.belt} Belt</div>
                       </div>
-                      <span style={{ fontSize: 9, fontWeight: 700, padding: '2px 8px', borderRadius: 10, background: `${r.beltColor}15`, color: nameColor, border: `1px solid ${r.beltColor}25`, letterSpacing: '0.06em', textTransform: 'uppercase', flexShrink: 0 }}>{r.smallLabel}</span>
+                      <span style={{ fontSize: 9, fontWeight: 700, padding: '2px 8px', borderRadius: 10, background: `${r.beltColor}15`, color: nameColor, border: `1px solid ${r.beltColor}25`, letterSpacing: '0.06em', textTransform: 'uppercase', flexShrink: 0 }}>{r.title}</span>
                     </div>
                   </div>
                 );
@@ -774,6 +774,11 @@ function ChannelRow({ channel, isRank, onOpen }: { channel: ChatChannel; isRank?
           <span style={{ fontSize: 15, fontWeight: 600, color: channel.accessible ? "#F0F0F0" : "#666" }}>{channel.name}</span>
           {!channel.accessible && <Lock size={12} style={{ color: "#555" }} />}
         </div>
+        {channel.accessible && (
+          <p style={{ fontSize: 12, color: channel.lastMessage ? "#666" : "#555", margin: "2px 0 0", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontStyle: channel.lastMessage ? "normal" : "italic" }}>
+            {channel.lastMessage || CHANNEL_DESCRIPTIONS[channel.id] || "No messages yet"}
+          </p>
+        )}
       </div>
       {channel.accessible && channel.lastTimestamp && (
         <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 4, flexShrink: 0 }}>
