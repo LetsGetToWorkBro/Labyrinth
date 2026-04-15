@@ -369,7 +369,9 @@ export default function HomePage() {
     return `${timeOfDay}, ${firstName} 👋`;
   };
 
-  const streakCount = (member as any)?.currentStreak || 0;
+  const cachedStreak = (() => { try { return parseInt(localStorage.getItem('lbjj_streak_cache') || '0'); } catch { return 0; } })();
+  const rawStreak = (member as any)?.currentStreak || 0;
+  const streakCount = rawStreak > 0 ? rawStreak : cachedStreak;
 
   // ─── Streak count-up animation ────────────────────────────────
   const [displayStreak, setDisplayStreak] = useState(0);
@@ -637,6 +639,13 @@ export default function HomePage() {
     if (res?.currentStreak !== undefined && member) {
       streakAnimated.current = false; // allow re-animation
       setMember({ ...member, currentStreak: res.currentStreak } as any);
+      // Persist streak to localStorage so it survives session restores
+      try {
+        const stored = JSON.parse(localStorage.getItem('lbjj_member_profile') || '{}');
+        stored.currentStreak = res.currentStreak;
+        localStorage.setItem('lbjj_member_profile', JSON.stringify(stored));
+      } catch {}
+      try { localStorage.setItem('lbjj_streak_cache', String(res.currentStreak)); } catch {}
     }
 
     checkingInRef.current = false;
@@ -1008,7 +1017,7 @@ export default function HomePage() {
                   {member.waiverSigned ? "Waiver signed" : "Sign waiver"}
                 </span>
               </a>
-              <a href="/#/waiver?tab=agreement" className="flex items-center gap-1.5 flex-1 text-xs" style={{ textDecoration: "none" }}>
+              <a href="/#/waiver" className="flex items-center gap-1.5 flex-1 text-xs" style={{ textDecoration: "none" }}>
                 {member.agreementSigned
                   ? <CheckCircle size={13} style={{ color: "#4CAF80", flexShrink: 0 }} />
                   : <FileText size={13} style={{ color: "#E08228", flexShrink: 0 }} />}
@@ -1033,7 +1042,7 @@ export default function HomePage() {
       {hasWarnings && (
         <div className="mx-5 mb-4 space-y-2">
           {!member.waiverSigned && <WarningBanner text="Liability waiver not signed" action="Sign Now" href="/#/waiver" />}
-          {!member.agreementSigned && <WarningBanner text="Membership agreement not signed" action="Sign Now" href="/#/waiver?tab=agreement" />}
+          {!member.agreementSigned && <WarningBanner text="Membership agreement not signed" action="Sign Now" href="/#/waiver" />}
         </div>
       )}
 

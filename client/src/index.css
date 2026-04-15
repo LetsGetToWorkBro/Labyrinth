@@ -958,7 +958,7 @@ a.btn {
   transition: opacity 200ms cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-/* View Transitions API support */
+/* View Transitions API support — DISABLED: causes browser loading bar on every navigation
 @view-transition { navigation: auto; }
 
 ::view-transition-old(root) {
@@ -979,3 +979,4 @@ html[data-nav="tab"] ::view-transition-old(root),
 html[data-nav="tab"] ::view-transition-new(root) {
   animation-duration: 200ms;
 }
+*/

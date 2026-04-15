@@ -291,15 +291,22 @@ export default function ChatPage() {
               <button
                 onClick={() => setShowRankLegend(true)}
                 style={{
-                  display: 'flex', alignItems: 'center', gap: 6,
-                  padding: '4px 10px 4px 6px', borderRadius: 20,
-                  backgroundColor: `${getBeltColor(myBelt)}15`,
-                  border: `1px solid ${getBeltColor(myBelt)}30`,
+                  display: 'inline-flex', alignItems: 'center', gap: 6,
+                  padding: '5px 12px 5px 6px',
+                  borderRadius: 20,
+                  background: `${getBeltColor(myBelt)}18`,
+                  border: `1.5px solid ${getBeltColor(myBelt)}50`,
                   cursor: 'pointer',
+                  transition: 'opacity 0.15s',
                 }}
               >
-                <BeltIcon belt={myBelt} width={24} />
-                <span style={{ fontSize: 11, fontWeight: 700, color: getBeltColor(myBelt), letterSpacing: '0.05em', textTransform: 'uppercase' }}>
+                <BeltIcon belt={myBelt} width={28} style={{ flexShrink: 0 }} />
+                <span style={{
+                  fontSize: 11, fontWeight: 700,
+                  color: getBeltColor(myBelt),
+                  letterSpacing: '0.08em',
+                  textTransform: 'uppercase' as const,
+                }}>
                   {userRank.title}
                 </span>
               </button>
@@ -332,7 +339,7 @@ export default function ChatPage() {
                 background: "#111", borderRadius: "20px 20px 0 0",
                 padding: "24px 20px", borderTop: "1px solid #1A1A1A",
                 paddingBottom: "max(24px, calc(env(safe-area-inset-bottom, 0px) + 24px))",
-                maxHeight: '80vh', overflowY: 'auto',
+                maxHeight: '80vh', overflowY: 'auto', WebkitOverflowScrolling: 'touch',
               }}
             >
               <div style={{ width: 36, height: 4, borderRadius: 2, background: "#2A2A2A", margin: "0 auto 16px" }} />
@@ -356,7 +363,7 @@ export default function ChatPage() {
                       )}
                       <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 14px', borderRadius: 10, background: '#0D0D0D', border: '1px solid #1A1A1A', borderLeft: `3px solid ${r.belt === 'black' ? '#C8A24C' : r.beltColor}` }}>
                         <div style={{ flexShrink: 0 }}>
-                          <BeltIcon belt={r.belt} width={48} />
+                          <BeltIcon belt={r.belt} width={36} />
                         </div>
                         <div style={{ flex: 1 }}>
                           <div style={{ fontSize: 14, fontWeight: 700, color: nameColor, textTransform: 'capitalize' }}>{r.belt} Belt</div>
@@ -489,15 +496,22 @@ export default function ChatPage() {
             <button
               onClick={() => setShowRankLegend(true)}
               style={{
-                display: 'flex', alignItems: 'center', gap: 6,
-                padding: '4px 10px 4px 6px', borderRadius: 20,
-                backgroundColor: `${getBeltColor(myBelt)}15`,
-                border: `1px solid ${getBeltColor(myBelt)}30`,
+                display: 'inline-flex', alignItems: 'center', gap: 6,
+                padding: '5px 12px 5px 6px',
+                borderRadius: 20,
+                background: `${getBeltColor(myBelt)}18`,
+                border: `1.5px solid ${getBeltColor(myBelt)}50`,
                 cursor: 'pointer',
+                transition: 'opacity 0.15s',
               }}
             >
-              <BeltIcon belt={myBelt} width={24} />
-              <span style={{ fontSize: 11, fontWeight: 700, color: getBeltColor(myBelt), letterSpacing: '0.05em', textTransform: 'uppercase' }}>
+              <BeltIcon belt={myBelt} width={28} style={{ flexShrink: 0 }} />
+              <span style={{
+                fontSize: 11, fontWeight: 700,
+                color: getBeltColor(myBelt),
+                letterSpacing: '0.08em',
+                textTransform: 'uppercase' as const,
+              }}>
                 {userRank.title}
               </span>
             </button>
@@ -579,7 +593,7 @@ export default function ChatPage() {
               background: "#111", borderRadius: "20px 20px 0 0",
               padding: "24px 20px", borderTop: "1px solid #1A1A1A",
               paddingBottom: "max(24px, calc(env(safe-area-inset-bottom, 0px) + 24px))",
-              maxHeight: '80vh', overflowY: 'auto',
+              maxHeight: '80vh', overflowY: 'auto', WebkitOverflowScrolling: 'touch',
             }}
           >
             <div style={{ width: 36, height: 4, borderRadius: 2, background: "#2A2A2A", margin: "0 auto 16px" }} />
@@ -603,7 +617,7 @@ export default function ChatPage() {
                     )}
                     <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 14px', borderRadius: 10, background: '#0D0D0D', border: '1px solid #1A1A1A', borderLeft: `3px solid ${r.belt === 'black' ? '#C8A24C' : r.beltColor}` }}>
                       <div style={{ flexShrink: 0 }}>
-                        <BeltIcon belt={r.belt} width={48} />
+                        <BeltIcon belt={r.belt} width={36} />
                       </div>
                       <div style={{ flex: 1 }}>
                         <div style={{ fontSize: 14, fontWeight: 700, color: nameColor, textTransform: 'capitalize' }}>{r.belt} Belt</div>

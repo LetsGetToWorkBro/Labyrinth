@@ -54,7 +54,11 @@ export default function WaiverPage() {
   // Read initial tab from URL hash: /#/waiver?tab=agreement
   const initialTab = (): "waiver" | "agreement" => {
     try {
-      const search = window.location.hash.split("?")[1] || "";
+      const hash = window.location.hash || "";
+      // Support both /#/waiver?tab=agreement and /#/waiver&tab=agreement
+      const qIdx = hash.indexOf("?");
+      const ampIdx = hash.indexOf("&");
+      const search = qIdx !== -1 ? hash.slice(qIdx + 1) : ampIdx !== -1 ? hash.slice(ampIdx + 1) : "";
       return new URLSearchParams(search).get("tab") === "agreement" ? "agreement" : "waiver";
     } catch { return "waiver"; }
   };
