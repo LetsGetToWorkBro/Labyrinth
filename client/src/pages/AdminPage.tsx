@@ -23,6 +23,7 @@ import {
   adminGetMemberComms,
   adminSaveNote,
   adminGetBookings,
+  beltSavePromotion,
   type AdminMember,
   type AdminDashboard,
   type MemberComm,
@@ -245,6 +246,15 @@ function MembersTab() {
     const result = await adminUpdateMember({ ID: id, _row: m._row, ...editData });
     setSaving(false);
     if (result.success) {
+      // Auto-write Belt Journey entry when admin changes a member's belt
+      if (editData.Belt && editData.Belt !== m.Belt) {
+        beltSavePromotion({
+          belt: editData.Belt,
+          stripes: 0,
+          date: new Date().toISOString().split('T')[0],
+          note: 'Approved by coach',
+        }).catch(() => {});
+      }
       setMembers(prev => prev.map(x => (x.ID === m.ID || x._row === m._row) ? { ...x, ...editData } : x));
       setSaveMsg("Saved");
       setTimeout(() => { setEditingId(null); setSaveMsg(""); }, 1000);

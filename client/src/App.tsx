@@ -41,7 +41,7 @@ import type { LucideIcon } from "lucide-react";
 import { useEffect, useCallback, useState, useRef } from "react";
 import { useHashLocation as useHashLoc } from "wouter/use-hash-location";
 import { Redirect } from "wouter";
-import { gasCall, cachedGasCall } from "@/lib/api";
+import { gasCall, cachedGasCall, beltSavePromotion } from "@/lib/api";
 
 // ─── Nav config ───────────────────────────────────────────────────
 
@@ -1100,6 +1100,7 @@ async function registerPasskeyGlobal(email: string): Promise<boolean> {
 const BELT_MILESTONE_KEYS = ['mat_warrior', 'mat_legend', 'loyal_1yr', 'loyal_2yr', 'streak_30', 'podium', 'century_club'];
 
 function BeltMilestoneOverlay({ badge, onDismiss }: { badge: any; onDismiss: () => void }) {
+  const [, navigate] = useHashLoc();
   const overlayRef = useRef<HTMLDivElement>(null);
   const sweepRef = useRef<HTMLDivElement>(null);
   const badgeRef = useRef<HTMLDivElement>(null);
@@ -1134,6 +1135,21 @@ function BeltMilestoneOverlay({ badge, onDismiss }: { badge: any; onDismiss: () 
       <div ref={badgeRef} className="bm-badge" style={{ fontSize: 72 }}>{badge.icon}</div>
       <h2 ref={nameRef} className="bm-name">{badge.label}</h2>
       <p className="bm-label" style={{ color: '#888', fontSize: 13, letterSpacing: '0.08em', textTransform: 'uppercase' }}>Achievement Unlocked</p>
+      <button
+        onClick={() => {
+          const msg = `Just unlocked: ${badge.label} ${badge.icon}`;
+          localStorage.setItem('lbjj_chat_prefill', msg);
+          navigate('/chat');
+          onDismiss();
+        }}
+        style={{
+          marginTop: 12, padding: '10px 20px', borderRadius: 20,
+          background: 'rgba(200,162,76,0.15)', border: '1px solid rgba(200,162,76,0.3)',
+          color: '#C8A24C', fontSize: 13, fontWeight: 600, cursor: 'pointer',
+        }}
+      >
+        🎉 Share to Community
+      </button>
       <button className="bm-dismiss" onClick={onDismiss}>Continue</button>
     </div>
   );

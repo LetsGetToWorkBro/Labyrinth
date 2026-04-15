@@ -157,6 +157,15 @@ export default function ChatPage() {
     return () => clearTimeout(t);
   }, [loadingChannels]);
 
+  // Chat prefill from badge share or other sources
+  useEffect(() => {
+    const prefill = localStorage.getItem('lbjj_chat_prefill');
+    if (prefill) {
+      setInputText(prefill);
+      localStorage.removeItem('lbjj_chat_prefill');
+    }
+  }, []);
+
   // 6a: Inject chat motion styles once
   useEffect(() => {
     const id = 'chat-motion-styles';
