@@ -837,6 +837,7 @@ function MorePage() {
               style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, padding: '12px 8px', borderRadius: 10, background: '#161616', border: '1px solid #222', textDecoration: 'none' }}>
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#C8A24C" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
               <span style={{ fontSize: 11, color: '#888', fontWeight: 500 }}>Text Us</span>
+              <span style={{ fontSize: 10, color: '#888', marginTop: -2 }}>281-393-7983</span>
             </a>
           </div>
           <a href="mailto:info@labyrinth.vision"

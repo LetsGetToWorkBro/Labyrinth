@@ -291,9 +291,8 @@ export default function SchedulePage() {
       </div>
 
       {/* Day Selector */}
-      <div className="px-5 mb-4" style={{ overflow: 'hidden' }}>
-        <div className="overflow-x-auto" style={{ WebkitOverflowScrolling: "touch", display: 'flex', justifyContent: 'center' }}>
-        <div className="flex gap-2" style={{ minWidth: 'max-content', position: 'relative' }}>
+      <div className="px-5 mb-4">
+        <div style={{ display: 'flex', gap: 4, justifyContent: 'space-between', position: 'relative' }}>
           <div style={{
             position: 'absolute',
             bottom: 0,
@@ -313,10 +312,11 @@ export default function SchedulePage() {
                 key={day}
                 ref={el => { dayRefs.current[day] = el; }}
                 onClick={() => setSelectedDay(day)}
-                className="flex flex-col items-center px-3 py-2 rounded-xl transition-all min-w-[52px]"
+                className="flex flex-col items-center py-2 rounded-xl transition-all"
                 style={{
                   backgroundColor: isSelected ? "rgba(200, 162, 76, 0.12)" : "#111",
                   border: `1px solid ${isSelected ? "rgba(200, 162, 76, 0.3)" : "#1A1A1A"}`,
+                  flex: 1, minWidth: 0,
                 }}
                 data-testid={`button-day-${day}`}
               >
@@ -329,7 +329,6 @@ export default function SchedulePage() {
               </button>
             );
           })}
-        </div>
         </div>
       </div>
 

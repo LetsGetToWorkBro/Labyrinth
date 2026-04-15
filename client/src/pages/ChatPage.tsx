@@ -272,6 +272,7 @@ export default function ChatPage() {
   // ─── Shared rank info ──────────────────────────────────────────
   const myBelt = (member?.belt || "white").toLowerCase();
   const userRank = getRankProfile(myBelt);
+  const triggerColor = myBelt === 'black' ? '#C8A24C' : getBeltColor(myBelt);
 
   // ─── Channel Room ─────────────────────────────────────────────
   const activeChannel = channels.find(c => c.id === activeChannelId);
@@ -294,8 +295,8 @@ export default function ChatPage() {
                   display: 'inline-flex', alignItems: 'center', gap: 6,
                   padding: '5px 12px 5px 6px',
                   borderRadius: 20,
-                  background: `${getBeltColor(myBelt)}18`,
-                  border: `1.5px solid ${getBeltColor(myBelt)}50`,
+                  background: `${triggerColor}18`,
+                  border: `1.5px solid ${triggerColor}50`,
                   cursor: 'pointer',
                   transition: 'opacity 0.15s',
                 }}
@@ -303,7 +304,7 @@ export default function ChatPage() {
                 <BeltIcon belt={myBelt} width={28} style={{ flexShrink: 0 }} />
                 <span style={{
                   fontSize: 11, fontWeight: 700,
-                  color: getBeltColor(myBelt),
+                  color: triggerColor,
                   letterSpacing: '0.08em',
                   textTransform: 'uppercase' as const,
                 }}>
@@ -338,8 +339,8 @@ export default function ChatPage() {
                 position: "relative", width: "100%",
                 background: "#111", borderRadius: "20px 20px 0 0",
                 padding: "24px 20px", borderTop: "1px solid #1A1A1A",
-                paddingBottom: "max(24px, calc(env(safe-area-inset-bottom, 0px) + 24px))",
-                maxHeight: '80vh', overflowY: 'auto', WebkitOverflowScrolling: 'touch',
+                paddingBottom: "max(100px, calc(env(safe-area-inset-bottom, 0px) + 100px))",
+                maxHeight: 'calc(85vh - 80px)', overflowY: 'auto', WebkitOverflowScrolling: 'touch',
               }}
             >
               <div style={{ width: 36, height: 4, borderRadius: 2, background: "#2A2A2A", margin: "0 auto 16px" }} />
@@ -352,6 +353,7 @@ export default function ChatPage() {
               <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                 {RANK_LEGEND.map((r) => {
                   const nameColor = r.belt === 'black' ? '#C8A24C' : (r.beltColor as string) === '#1A1A1A' ? '#BBBBBB' : r.beltColor;
+                  const pillColor = r.belt === 'black' ? '#C8A24C' : r.beltColor;
                   return (
                     <div key={r.belt}>
                       {r.belt === 'grey' && (
@@ -368,7 +370,7 @@ export default function ChatPage() {
                         <div style={{ flex: 1 }}>
                           <div style={{ fontSize: 14, fontWeight: 700, color: nameColor, textTransform: 'capitalize' }}>{r.belt} Belt</div>
                         </div>
-                        <span style={{ fontSize: 9, fontWeight: 700, padding: '2px 8px', borderRadius: 10, background: `${r.beltColor}15`, color: nameColor, border: `1px solid ${r.beltColor}25`, letterSpacing: '0.06em', textTransform: 'uppercase', flexShrink: 0 }}>{r.title}</span>
+                        <span style={{ fontSize: 9, fontWeight: 700, padding: '2px 8px', borderRadius: 10, background: `${pillColor}20`, color: r.belt === 'black' ? '#C8A24C' : nameColor, border: `1px solid ${pillColor}40`, letterSpacing: '0.06em', textTransform: 'uppercase', flexShrink: 0 }}>{r.title}</span>
                       </div>
                     </div>
                   );
@@ -499,8 +501,8 @@ export default function ChatPage() {
                 display: 'inline-flex', alignItems: 'center', gap: 6,
                 padding: '5px 12px 5px 6px',
                 borderRadius: 20,
-                background: `${getBeltColor(myBelt)}18`,
-                border: `1.5px solid ${getBeltColor(myBelt)}50`,
+                background: `${triggerColor}18`,
+                border: `1.5px solid ${triggerColor}50`,
                 cursor: 'pointer',
                 transition: 'opacity 0.15s',
               }}
@@ -508,7 +510,7 @@ export default function ChatPage() {
               <BeltIcon belt={myBelt} width={28} style={{ flexShrink: 0 }} />
               <span style={{
                 fontSize: 11, fontWeight: 700,
-                color: getBeltColor(myBelt),
+                color: triggerColor,
                 letterSpacing: '0.08em',
                 textTransform: 'uppercase' as const,
               }}>
@@ -592,8 +594,8 @@ export default function ChatPage() {
               position: "relative", width: "100%",
               background: "#111", borderRadius: "20px 20px 0 0",
               padding: "24px 20px", borderTop: "1px solid #1A1A1A",
-              paddingBottom: "max(24px, calc(env(safe-area-inset-bottom, 0px) + 24px))",
-              maxHeight: '80vh', overflowY: 'auto', WebkitOverflowScrolling: 'touch',
+              paddingBottom: "max(100px, calc(env(safe-area-inset-bottom, 0px) + 100px))",
+              maxHeight: 'calc(85vh - 80px)', overflowY: 'auto', WebkitOverflowScrolling: 'touch',
             }}
           >
             <div style={{ width: 36, height: 4, borderRadius: 2, background: "#2A2A2A", margin: "0 auto 16px" }} />
@@ -606,6 +608,7 @@ export default function ChatPage() {
             <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
               {RANK_LEGEND.map((r) => {
                 const nameColor = r.belt === 'black' ? '#C8A24C' : (r.beltColor as string) === '#1A1A1A' ? '#BBBBBB' : r.beltColor;
+                const pillColor = r.belt === 'black' ? '#C8A24C' : r.beltColor;
                 return (
                   <div key={r.belt}>
                     {r.belt === 'grey' && (
@@ -622,7 +625,7 @@ export default function ChatPage() {
                       <div style={{ flex: 1 }}>
                         <div style={{ fontSize: 14, fontWeight: 700, color: nameColor, textTransform: 'capitalize' }}>{r.belt} Belt</div>
                       </div>
-                      <span style={{ fontSize: 9, fontWeight: 700, padding: '2px 8px', borderRadius: 10, background: `${r.beltColor}15`, color: nameColor, border: `1px solid ${r.beltColor}25`, letterSpacing: '0.06em', textTransform: 'uppercase', flexShrink: 0 }}>{r.title}</span>
+                      <span style={{ fontSize: 9, fontWeight: 700, padding: '2px 8px', borderRadius: 10, background: `${pillColor}20`, color: r.belt === 'black' ? '#C8A24C' : nameColor, border: `1px solid ${pillColor}40`, letterSpacing: '0.06em', textTransform: 'uppercase', flexShrink: 0 }}>{r.title}</span>
                     </div>
                   </div>
                 );
