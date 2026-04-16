@@ -128,16 +128,26 @@ function TabBar() {
     setTimeout(() => delete document.documentElement.dataset.nav, 400);
   };
 
+  // Map path → data-tab slug for per-tab CSS animations
+  const pathToTabSlug = (path: string): string => {
+    if (path === '/') return 'home';
+    return path.replace(/^\//, '').split('/')[0] || 'home';
+  };
+
+  const beltColor = getBeltColor(member?.belt || 'white');
+
   return (
     <nav className="tab-bar" data-testid="tab-bar">
       {allTabs.map(tab => {
         const isActive = tab.path === '/' ? location === '/' : location.startsWith(tab.path);
         const Icon = tab.Icon;
+        const tabSlug = pathToTabSlug(tab.path);
         return (
           <a
             key={tab.path + tab.label}
             href={`/#${tab.path}`}
             className={`tab-item ${isActive ? 'active' : ''}`}
+            data-tab={tabSlug}
             data-testid={`tab-${tab.label.toLowerCase()}`}
             onClick={(e) => handleTabClick(e, tab.path)}
             style={{ position: 'relative' }}
@@ -147,10 +157,12 @@ function TabBar() {
                 src={logoMaze}
                 alt="More"
                 style={{
-                  width: 22, height: 22,
+                  width: 24, height: 24,
                   objectFit: 'contain',
-                  filter: isActive ? 'brightness(1.2) sepia(1) saturate(5) hue-rotate(5deg)' : 'invert(1) brightness(0.5)',
-                  transition: 'filter 200ms var(--ease-out)',
+                  filter: isActive
+                    ? 'brightness(1.3) sepia(1) saturate(6) hue-rotate(3deg) drop-shadow(0 0 4px rgba(200,162,76,0.6))'
+                    : 'invert(1) brightness(0.45)',
+                  transition: 'filter 250ms ease',
                 }}
               />
             ) : Icon ? (
@@ -158,16 +170,25 @@ function TabBar() {
             ) : (
               <span style={{ fontSize: 20, lineHeight: 1 }}>{tab.emoji}</span>
             )}
+            {/* Mat burn smear — belt-colored painterly blur under active icon */}
             {isActive && (
-              <div style={{
-                position: 'absolute', bottom: 0, left: '50%',
-                transform: 'translateX(-50%)',
-                width: '80%', height: 2,
-                background: `radial-gradient(ellipse at center, ${getBeltColor(member?.belt || 'white')} 0%, transparent 80%)`,
-                borderRadius: '50%',
-                filter: 'blur(1px)',
-                pointerEvents: 'none',
-              }}/>
+              <div
+                aria-hidden="true"
+                style={{
+                  position: 'absolute',
+                  bottom: -2,
+                  left: '50%',
+                  transform: 'translateX(-50%)',
+                  width: 44,
+                  height: 10,
+                  background: beltColor,
+                  borderRadius: '50%',
+                  filter: 'blur(7px)',
+                  opacity: 0.55,
+                  pointerEvents: 'none',
+                  animation: 'matBurnIn 300ms ease-out forwards',
+                }}
+              />
             )}
             <span style={{ fontSize: 12, lineHeight: '1.2' }}>{tab.label}</span>
           </a>
