@@ -10,6 +10,7 @@ import { AuthProvider, useAuth } from "@/lib/auth-context";
 import { GuestProfileProvider } from "@/lib/guest-profile";
 import { GameRecordProvider } from "@/lib/game-records";
 import { lazy, Suspense } from "react";
+import { LevelUpOverlay } from "@/components/LevelUpOverlay";
 
 // Eager — needed on first render
 import LoginPage from "@/pages/LoginPage";
@@ -1177,6 +1178,10 @@ function BeltMilestoneOverlay({ badge, onDismiss }: { badge: any; onDismiss: () 
 function AppShell() {
   const { isAuthenticated, isLoading, member } = useAuth();
   const [location] = useHashLoc();
+  const [levelUpState, setLevelUpState] = useState<{ newLevel: number; prevLevel: number } | null>(null);
+  const handleLevelUp = useCallback((newLevel: number, prevLevel: number) => {
+    setLevelUpState({ newLevel, prevLevel });
+  }, []);
 
   // ── Clear game-active attribute on any route change ──────────
   useEffect(() => {
@@ -1406,6 +1411,16 @@ function AppShell() {
         </Suspense>
       </div>
       <TabBar />
+      {/* Global level-up overlay */}
+      {levelUpState && (
+        <LevelUpOverlay
+          newLevel={levelUpState.newLevel}
+          prevLevel={levelUpState.prevLevel}
+          beltColor={member?.belt === 'black' ? '#C8A24C' : member?.belt === 'blue' ? '#1A5DAB' : member?.belt === 'purple' ? '#7E3AF2' : member?.belt === 'brown' ? '#92400E' : '#C8A24C'}
+          memberName={member?.name}
+          onDismiss={() => setLevelUpState(null)}
+        />
+      )}
     </div>
   );
 }

@@ -3,46 +3,67 @@ import { getLevelFromXP, getActualLevel } from '@/lib/xp';
 
 interface XPBarProps {
   xp: number;
-  prevXp?: number; // animate from this value
+  prevXp?: number;
+  deltaXp?: number;       // points just earned — triggers float-up
   compact?: boolean;
-  onLevelUp?: (newLevel: number) => void;
+  onLevelUp?: (newLevel: number, prevLevel: number) => void;
 }
 
-export function XPBar({ xp, prevXp, compact = false, onLevelUp }: XPBarProps) {
+export function XPBar({ xp, prevXp, deltaXp, compact = false, onLevelUp }: XPBarProps) {
   const { title, xpForLevel, xpForNext, progress } = getLevelFromXP(xp);
   const actualLevel = getActualLevel(xp);
   const prevLevelRef = useRef(actualLevel);
   const [animProgress, setAnimProgress] = useState(0);
   const [levelUpFlash, setLevelUpFlash] = useState(false);
+  const [floatingDelta, setFloatingDelta] = useState<{ value: number; id: number } | null>(null);
   const isNearLevelUp = progress > 0.85;
 
-  // Animate bar fill — start from prevXp progress if provided
+  // RAF-driven animation
+  const animFrameRef = useRef<number>();
+  const startTimeRef = useRef<number | undefined>(undefined);
+  const DURATION = 900;
+  const easeOutCubic = (t: number) => 1 - Math.pow(1 - t, 3);
+
   useEffect(() => {
-    if (prevXp !== undefined && prevXp < xp) {
-      const prevProgress = getLevelFromXP(prevXp).progress;
-      setAnimProgress(prevProgress);
-      const timer = setTimeout(() => setAnimProgress(progress), 150);
-      return () => clearTimeout(timer);
-    }
-    const timer = setTimeout(() => setAnimProgress(progress), 100);
-    return () => clearTimeout(timer);
-  }, [progress, prevXp, xp]);
+    const targetProgress = progress;
+    const fromProgress = prevXp !== undefined ? getLevelFromXP(prevXp).progress : 0;
+    setAnimProgress(fromProgress);
+    if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
+    startTimeRef.current = undefined;
+    const tick = (now: number) => {
+      if (!startTimeRef.current) startTimeRef.current = now;
+      const t = Math.min((now - startTimeRef.current) / DURATION, 1);
+      setAnimProgress(fromProgress + (targetProgress - fromProgress) * easeOutCubic(t));
+      if (t < 1) animFrameRef.current = requestAnimationFrame(tick);
+    };
+    setTimeout(() => { animFrameRef.current = requestAnimationFrame(tick); }, 16);
+    return () => { if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current); };
+  }, [xp]);
 
   // Level up detection
   useEffect(() => {
     if (prevLevelRef.current > 0 && actualLevel > prevLevelRef.current) {
       setLevelUpFlash(true);
-      onLevelUp?.(actualLevel);
+      onLevelUp?.(actualLevel, prevLevelRef.current);
       setTimeout(() => setLevelUpFlash(false), 1500);
     }
     prevLevelRef.current = actualLevel;
   }, [actualLevel]);
 
+  // Floating delta "+N XP"
+  useEffect(() => {
+    if (deltaXp && deltaXp > 0) {
+      setFloatingDelta({ value: deltaXp, id: Date.now() });
+      const t = setTimeout(() => setFloatingDelta(null), 1200);
+      return () => clearTimeout(t);
+    }
+  }, [deltaXp]);
+
   const xpEarned = xp - xpForLevel;
   const xpNeeded = xpForNext - xpForLevel;
+  const clampedProg = Math.min(1, Math.max(0, animProgress));
 
   if (compact) {
-    // Compact version for home screen — still impactful
     return (
       <div style={{ padding: '10px 14px', background: 'rgba(200,162,76,0.06)', borderRadius: 14, border: '1px solid rgba(200,162,76,0.12)' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
@@ -67,21 +88,21 @@ export function XPBar({ xp, prevXp, compact = false, onLevelUp }: XPBarProps) {
           </div>
           <div style={{ fontSize: 10, color: '#666' }}>{xpEarned}/{xpNeeded} XP</div>
         </div>
-        {/* Bar */}
+        {/* Bar — scaleX for GPU-composited animation */}
         <div style={{ height: 8, borderRadius: 4, background: '#111', overflow: 'hidden', position: 'relative' }}>
           <div style={{
             height: '100%',
-            width: `${animProgress * 100}%`,
+            width: '100%',
+            transformOrigin: 'left center',
+            transform: `scaleX(${clampedProg})`,
             borderRadius: 4,
             background: isNearLevelUp
               ? 'linear-gradient(90deg, #C8A24C, #FFD700, #FFFFFF, #FFD700, #C8A24C)'
               : 'linear-gradient(90deg, #C8A24C 0%, #FFD700 100%)',
-            backgroundSize: isNearLevelUp ? '300% 100%' : '100% 100%',
-            transition: 'width 1s cubic-bezier(0.4,0,0.2,1)',
+            backgroundSize: '300% 100%',
             animation: isNearLevelUp ? 'xp-shimmer 1.5s linear infinite' : undefined,
             boxShadow: `0 0 ${isNearLevelUp ? '8' : '4'}px rgba(200,162,76,${isNearLevelUp ? '0.8' : '0.4'})`,
           }}/>
-          {/* Shine sweep */}
           <div style={{
             position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
             background: 'linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.15) 50%, transparent 100%)',
@@ -89,42 +110,45 @@ export function XPBar({ xp, prevXp, compact = false, onLevelUp }: XPBarProps) {
             animation: 'xp-shine 3s ease-in-out infinite',
             borderRadius: 4,
           }}/>
+          {/* Floating delta */}
+          {floatingDelta && (
+            <div key={floatingDelta.id} style={{
+              position: 'absolute', right: 8, top: -28,
+              fontSize: 15, fontWeight: 900, color: '#FFD700',
+              textShadow: '0 0 12px rgba(255,215,0,0.8)',
+              pointerEvents: 'none',
+              animation: 'xp-float-up 1.1s cubic-bezier(0.16,1,0.3,1) forwards',
+            }}>
+              +{floatingDelta.value} XP
+            </div>
+          )}
         </div>
       </div>
     );
   }
 
-  // Full version for account page — dramatic Diablo-style design
+  // Full version
   return (
     <div style={{
       background: levelUpFlash ? 'rgba(200,162,76,0.15)' : '#0D0D0D',
-      borderRadius: 16, padding: '16px', border: `1px solid ${levelUpFlash ? 'rgba(200,162,76,0.5)' : '#1A1A1A'}`,
-      transition: 'all 0.3s ease',
+      borderRadius: 16, padding: '16px',
+      border: `1px solid ${levelUpFlash ? 'rgba(200,162,76,0.5)' : '#1A1A1A'}`,
+      transition: 'border-color 0.3s ease, background 0.3s ease',
       boxShadow: levelUpFlash ? '0 0 20px rgba(200,162,76,0.3)' : 'none',
     }}>
-      {/* Shimmer + pulse keyframes */}
       <style>{`
-        @keyframes xp-shimmer-full {
-          0% { background-position: 200% 0; }
-          100% { background-position: -200% 0; }
-        }
-        @keyframes xp-almost-pulse {
-          0%, 100% { filter: brightness(1); }
-          50% { filter: brightness(1.4); }
-        }
-        @keyframes xp-almost-blink {
-          0%, 100% { opacity: 1; }
-          50% { opacity: 0.3; }
-        }
+        @keyframes xp-shimmer-full { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+        @keyframes xp-almost-pulse { 0%, 100% { filter: brightness(1); } 50% { filter: brightness(1.4); } }
+        @keyframes xp-almost-blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
       `}</style>
 
       {levelUpFlash && (
-        <div style={{ textAlign: 'center', fontSize: 16, fontWeight: 700, color: '#FFD700', marginBottom: 8, animation: 'xp-pulse 0.5s ease-in-out' }}>
+        <div style={{ textAlign: 'center', fontSize: 16, fontWeight: 700, color: '#FFD700', marginBottom: 8 }}>
           ⬆️ LEVEL UP! Welcome to Level {actualLevel}
         </div>
       )}
+
       <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 12 }}>
-        {/* Level number — large and gold with glow */}
         <div style={{
           width: 56, height: 56, borderRadius: '50%', flexShrink: 0,
           background: 'radial-gradient(circle at 35% 35%, #FFD700, #C8A24C 50%, #8B6914)',
@@ -132,7 +156,6 @@ export function XPBar({ xp, prevXp, compact = false, onLevelUp }: XPBarProps) {
           fontSize: 24, fontWeight: 900, color: '#000',
           boxShadow: '0 0 20px rgba(200,162,76,0.6), inset 0 1px 0 rgba(255,255,255,0.3)',
           border: '2px solid rgba(200,162,76,0.4)',
-          textShadow: '0 0 6px rgba(255,215,0,0.5)',
         }}>
           {actualLevel}
         </div>
@@ -142,52 +165,49 @@ export function XPBar({ xp, prevXp, compact = false, onLevelUp }: XPBarProps) {
         </div>
       </div>
 
-      {/* Bar — thick 12px with inner glow and segment markers */}
-      <div style={{
-        height: 12, borderRadius: 6, background: '#111', overflow: 'hidden', position: 'relative', marginBottom: 6,
-        boxShadow: 'inset 0 0 0 1px rgba(255,255,255,0.1)',
-      }}>
-        {/* Fill bar — molten gold */}
+      {/* Bar — scaleX, GPU-composited */}
+      <div style={{ height: 12, borderRadius: 6, background: '#111', overflow: 'hidden', position: 'relative', marginBottom: 6, boxShadow: 'inset 0 0 0 1px rgba(255,255,255,0.1)' }}>
         <div style={{
-          height: '100%',
-          width: `${animProgress * 100}%`,
+          height: '100%', width: '100%',
+          transformOrigin: 'left center',
+          transform: `scaleX(${clampedProg})`,
           borderRadius: 6,
           background: 'linear-gradient(90deg, #8B6914 0%, #C8A24C 30%, #FFD700 60%, #FFF8DC 80%, #FFD700 100%)',
           backgroundSize: '200% 100%',
-          transition: 'width 1.2s cubic-bezier(0.4,0,0.2,1)',
           animation: isNearLevelUp
             ? 'xp-shimmer-full 2s linear infinite, xp-almost-pulse 1.2s ease-in-out infinite'
             : 'xp-shimmer-full 2s linear infinite',
           boxShadow: `0 0 ${isNearLevelUp ? '14' : '10'}px rgba(200,162,76,${isNearLevelUp ? '0.9' : '0.5'})`,
         }}/>
-        {/* Top shine */}
-        <div style={{
-          position: 'absolute', top: 0, left: 0, right: 0, height: '50%',
-          background: 'linear-gradient(180deg, rgba(255,255,255,0.15) 0%, transparent 100%)',
-          borderRadius: '6px 6px 0 0', pointerEvents: 'none',
-        }}/>
-        {/* Segment markers at 25%, 50%, 75% */}
+        <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '50%', background: 'linear-gradient(180deg, rgba(255,255,255,0.15) 0%, transparent 100%)', borderRadius: '6px 6px 0 0', pointerEvents: 'none' }}/>
         {[0.25, 0.5, 0.75].map(pct => (
-          <div key={pct} style={{
-            position: 'absolute', top: 0, bottom: 0,
-            left: `${pct * 100}%`, width: 1,
-            background: 'rgba(255,255,255,0.08)', pointerEvents: 'none',
-          }}/>
+          <div key={pct} style={{ position: 'absolute', top: 0, bottom: 0, left: `${pct * 100}%`, width: 1, background: 'rgba(255,255,255,0.08)', pointerEvents: 'none' }}/>
         ))}
+        {/* Floating delta */}
+        {floatingDelta && (
+          <div key={floatingDelta.id} style={{
+            position: 'absolute', right: 8, top: -28,
+            fontSize: 15, fontWeight: 900, color: '#FFD700',
+            textShadow: '0 0 12px rgba(255,215,0,0.8)',
+            pointerEvents: 'none',
+            animation: 'xp-float-up 1.1s cubic-bezier(0.16,1,0.3,1) forwards',
+          }}>
+            +{floatingDelta.value} XP
+          </div>
+        )}
       </div>
 
       <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10 }}>
         <span style={{ color: '#555' }}>{xpEarned.toLocaleString()} / {xpNeeded.toLocaleString()} XP this level</span>
         {isNearLevelUp ? (
           <span style={{ color: '#FFD700', fontWeight: 700, animation: 'xp-almost-blink 1s ease-in-out infinite' }}>
-            ⚡ ALMOST THERE · {(xpForNext - xp)} XP to go!
+            ⚡ {(xpForNext - xp)} XP to Level {actualLevel + 1}!
           </span>
         ) : (
           <span style={{ color: '#444' }}>{(xpForNext - xp).toLocaleString()} XP to Level {actualLevel + 1}</span>
         )}
       </div>
 
-      {/* XP breakdown hint */}
       <div style={{ marginTop: 10, padding: '8px 10px', background: '#111', borderRadius: 10, display: 'flex', gap: 12, justifyContent: 'center' }}>
         {[
           { label: 'Check-in', xp: '10 XP' },

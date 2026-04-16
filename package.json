@@ -13,6 +13,7 @@
   "dependencies": {
     "@capacitor/app": "^8.1.0",
     "@capacitor/core": "^8.3.0",
+    "@capacitor/haptics": "^8.0.2",
     "@fontsource-variable/inter": "^5.2.8",
     "@hookform/resolvers": "^3.10.0",
     "@jridgewell/trace-mapping": "^0.3.25",

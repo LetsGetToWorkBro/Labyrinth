@@ -27,6 +27,9 @@ export default function LeaderboardPage() {
   const [refreshing, setRefreshing] = useState(false);
   const [selectedBelt, setSelectedBelt] = useState<string | null>(null);
   const [sortBy, setSortBy] = useState<SortBy>('classes');
+  const [prevPositions, setPrevPositions] = useState<Record<string, number>>(() => {
+    try { return JSON.parse(localStorage.getItem('lbjj_lb_positions_v1') || '{}'); } catch { return {}; }
+  });
 
   const load = useCallback(async (showRefresh = false) => {
     if (showRefresh) setRefreshing(true);
@@ -51,6 +54,11 @@ export default function LeaderboardPage() {
       }
       setClassEntries(classes);
       setGameEntries(games);
+      // Save current positions for rank delta tracking
+      const newPositions: Record<string, number> = {};
+      classes.forEach((e, i) => { if (e.name) newPositions[e.name] = i + 1; });
+      localStorage.setItem('lbjj_lb_positions_v1', JSON.stringify(newPositions));
+      setPrevPositions(prev => ({ ...prev })); // trigger re-read
     } catch (err) {
       console.error('[Leaderboard] Failed to load leaderboard:', err);
     }
@@ -223,6 +231,9 @@ export default function LeaderboardPage() {
               const isTop3 = i < 3;
               const isMe = entry.isMe || (member && entry.name === member.name);
               const hasClassCount = entry.classCount && entry.classCount > 0;
+              const currentPos = i + 1;
+              const prevPos = entry.name ? prevPositions[entry.name] : undefined;
+              const rankDelta = prevPos !== undefined && prevPos !== currentPos ? prevPos - currentPos : null;
               return (
                 <div key={i} style={{
                   background: isMe ? `${GOLD}14` : isTop3 ? `${GOLD}0A` : '#111',
@@ -230,10 +241,15 @@ export default function LeaderboardPage() {
                   border: `1px solid ${isMe ? GOLD + '40' : isTop3 ? GOLD + '20' : '#1A1A1A'}`,
                   display: 'flex', alignItems: 'center', gap: 12,
                 }}>
-                  <div style={{ width: 28, textAlign: 'center', flexShrink: 0 }}>
+                  <div style={{ width: 36, textAlign: 'center', flexShrink: 0 }}>
                     {medal
                       ? <span style={{ fontSize: 18 }}>{medal}</span>
-                      : <span style={{ color: '#555', fontSize: 13, fontWeight: 700 }}>#{entry.rank || i + 1}</span>}
+                      : <span style={{ color: '#555', fontSize: 13, fontWeight: 700 }}>#{currentPos}</span>}
+                    {rankDelta !== null && (
+                      <div style={{ fontSize: 9, fontWeight: 700, color: rankDelta > 0 ? '#4CAF80' : '#E05555', lineHeight: 1, marginTop: 1 }}>
+                        {rankDelta > 0 ? `▲${rankDelta}` : `▼${Math.abs(rankDelta)}`}
+                      </div>
+                    )}
                   </div>
                   <div style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
                     {entry.belt && (

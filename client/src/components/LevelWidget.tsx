@@ -40,14 +40,18 @@ export function LevelWidget({ xp, memberName, memberBelt, profilePic, size = 64,
   const R = size / 2 - 4;
   const cx = size / 2;
   const cy = size / 2;
-  // Arc from 130° to 410° (going clockwise 280° sweep — bottom open like Diablo)
+  // Arc — stroke-dashoffset approach for smooth CSS transitions
   const startAngle = 130; // degrees, starting bottom-left
   const sweepDeg = 280;   // degrees of arc
+  const fullCircumference = 2 * Math.PI * R;
+  const arcCircumference = fullCircumference * (sweepDeg / 360);
+  const clampedProg = Math.min(1, Math.max(0, animProg));
+  const dashOffset = arcCircumference - clampedProg * arcCircumference;
   const toRad = (d: number) => (d * Math.PI) / 180;
   const arcStart = toRad(startAngle);
   const arcEnd = toRad(startAngle + sweepDeg);
-  const arcFillEnd = toRad(startAngle + sweepDeg * animProg);
 
+  // Track path still uses arcPath for the background track
   const arcPath = (from: number, to: number) => {
     const x1 = cx + R * Math.cos(from);
     const y1 = cy + R * Math.sin(from);
@@ -79,19 +83,23 @@ export function LevelWidget({ xp, memberName, memberBelt, profilePic, size = 64,
           </defs>
           {/* Track */}
           <path d={arcPath(arcStart, arcEnd)} fill="none" stroke="#1A1A1A" strokeWidth="5" strokeLinecap="round" transform={`translate(8,8)`}/>
-          {/* Fill */}
-          {animProg > 0 && (
-            <path
-              d={arcPath(arcStart, arcFillEnd)}
-              fill="none"
-              stroke="url(#xp-arc-fill)"
-              strokeWidth="5"
-              strokeLinecap="round"
-              filter={xpFlash ? 'url(#xp-glow)' : undefined}
-              transform={`translate(8,8)`}
-              style={{ transition: 'stroke-width 0.3s' }}
-            />
-          )}
+          {/* Fill — stroke-dashoffset for smooth GPU-composited animation */}
+          <circle
+            cx={cx + 8}
+            cy={cy + 8}
+            r={R}
+            fill="none"
+            stroke="url(#xp-arc-fill)"
+            strokeWidth={xpFlash ? 7 : 5}
+            strokeLinecap="round"
+            strokeDasharray={`${arcCircumference} ${fullCircumference}`}
+            strokeDashoffset={dashOffset}
+            transform={`rotate(${startAngle - 90}, ${cx + 8}, ${cy + 8})`}
+            filter={xpFlash ? 'url(#xp-glow)' : undefined}
+            style={{
+              transition: 'stroke-dashoffset 900ms cubic-bezier(0.4,0,0.2,1), stroke-width 200ms ease',
+            }}
+          />
         </svg>
 
         {/* Profile ring + avatar */}
