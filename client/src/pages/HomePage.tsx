@@ -438,6 +438,12 @@ export default function HomePage() {
   // ─── Today's check-in count (immediate, localStorage-based) ────
   const [classesToday, setClassesToday] = useState(0);
   const [totalClasses, setTotalClasses] = useState(0);
+  const [memberXP, setMemberXP] = useState<number>(() => {
+    try {
+      const stats = JSON.parse(localStorage.getItem('lbjj_game_stats_v2') || '{}');
+      return stats.totalXP || (member as any)?.totalPoints || 0;
+    } catch { return 0; }
+  });
 
   // ─── Total classes count-up animation ─────────────────────────
   const [displayTotalClasses, setDisplayTotalClasses] = useState(0);
@@ -473,9 +479,14 @@ export default function HomePage() {
       const realTotal = allCheckIns.length;
       if (realTotal > 0) {
         setTotalClasses(realTotal);
+        // Derive XP from check-ins + member profile
+        const gasXP = (member as any)?.totalPoints || 0;
+        const derivedXP = Math.max(gasXP, realTotal * 10);
+        setMemberXP(derivedXP);
         try {
           const stats = JSON.parse(localStorage.getItem('lbjj_game_stats_v2') || '{}');
           stats.classesAttended = realTotal;
+          stats.totalXP = derivedXP;
           localStorage.setItem('lbjj_game_stats_v2', JSON.stringify(stats));
         } catch {}
       }
@@ -987,7 +998,7 @@ export default function HomePage() {
           {/* Avatar — LevelWidget portrait with XP arc */}
           <div onClick={(e) => e.stopPropagation()} style={{ flexShrink: 0 }}>
             <LevelWidget
-              xp={(member as any)?.totalPoints || 0}
+              xp={memberXP}
               memberName={member?.name}
               memberBelt={member?.belt}
               size={72}
@@ -1173,15 +1184,15 @@ export default function HomePage() {
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
                   fontSize: 12, fontWeight: 900, color: '#000',
                 }}>
-                  {getActualLevel((member as any)?.totalPoints || 0)}
+                  {getActualLevel(memberXP)}
                 </div>
                 <div>
-                  <div style={{ fontSize: 13, fontWeight: 800, color: '#F0F0F0' }}>{getLevelFromXP((member as any)?.totalPoints || 0).title}</div>
-                  <div style={{ fontSize: 10, color: '#555' }}>{((member as any)?.totalPoints || 0).toLocaleString()} XP</div>
+                  <div style={{ fontSize: 13, fontWeight: 800, color: '#F0F0F0' }}>{getLevelFromXP(memberXP).title}</div>
+                  <div style={{ fontSize: 10, color: '#555' }}>{memberXP.toLocaleString()} XP</div>
                 </div>
               </div>
               <div style={{ fontSize: 11, color: '#C8A24C', fontWeight: 600 }}>
-                +{(getLevelFromXP((member as any)?.totalPoints || 0).xpForNext - ((member as any)?.totalPoints || 0)).toLocaleString()} to next
+                +{(getLevelFromXP(memberXP).xpForNext - ((member as any)?.totalPoints || 0)).toLocaleString()} to next
               </div>
             </div>
 
@@ -1190,7 +1201,7 @@ export default function HomePage() {
               {/* Fill */}
               <div style={{
                 height: '100%',
-                width: `${getLevelFromXP((member as any)?.totalPoints || 0).progress * 100}%`,
+                width: `${getLevelFromXP(memberXP).progress * 100}%`,
                 background: 'linear-gradient(90deg, #6B4A00 0%, #C8A24C 40%, #FFD700 70%, #FFF8DC 85%, #FFD700 100%)',
                 backgroundSize: '300% 100%',
                 animation: 'xp-shimmer 2s linear infinite',

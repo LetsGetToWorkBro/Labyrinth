@@ -188,6 +188,9 @@ export default function ChatPage() {
   const [showOnlineTab, setShowOnlineTab] = useState(false);
   const [onlineMembers, setOnlineMembers] = useState<ChannelMember[]>([]);
   const [onlineLoading, setOnlineLoading] = useState(false);
+  const [onlineExpanded, setOnlineExpanded] = useState(true);
+  const [recentExpanded, setRecentExpanded] = useState(true);
+  const [offlineExpanded, setOfflineExpanded] = useState(false);
   const [isTyping] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -346,7 +349,7 @@ export default function ChatPage() {
     if (!navigator.onLine) { setSendError("No internet connection. Please connect and try again."); return; }
     if (!isAuthenticated) { setSendError("Sign in to send messages."); return; }
     setSending(true); setSendError("");
-    const result = await chatSendMessage(activeChannelId, inputText.trim());
+    const result = await chatSendMessage(activeChannelId, inputText.trim(), localStorage.getItem('lbjj_profile_picture') || undefined);
     setSending(false);
     if (result.success) {
       setInputText("");
@@ -658,22 +661,31 @@ export default function ChatPage() {
             <>
               {online.length > 0 && (
                 <>
-                  <div style={{ fontSize: 10, fontWeight: 700, color: '#4CAF80', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 8 }}>Online — {online.length}</div>
-                  {online.map(m => <OnlineMemberRow key={m.email} m={m} status="online" now={now} onSelect={setSelectedMember} />)}
+                  <button onClick={() => setOnlineExpanded(v => !v)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', background: 'none', border: 'none', cursor: 'pointer', padding: '4px 0 8px' }}>
+                    <span style={{ fontSize: 10, fontWeight: 700, color: '#4CAF80', letterSpacing: '0.1em', textTransform: 'uppercase' }}>Online — {online.length}</span>
+                    <ChevronDown size={14} color="#4CAF80" style={{ transform: onlineExpanded ? 'rotate(0deg)' : 'rotate(-90deg)', transition: 'transform 0.2s' }}/>
+                  </button>
+                  {onlineExpanded && online.map(m => <OnlineMemberRow key={m.email} m={m} status="online" now={now} onSelect={setSelectedMember} />)}
                   <div style={{ height: 16 }} />
                 </>
               )}
               {recent.length > 0 && (
                 <>
-                  <div style={{ fontSize: 10, fontWeight: 700, color: '#C8A24C', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 8, marginTop: 4 }}>Recent — {recent.length}</div>
-                  {recent.map(m => <OnlineMemberRow key={m.email} m={m} status="recent" now={now} onSelect={setSelectedMember} />)}
+                  <button onClick={() => setRecentExpanded(v => !v)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', background: 'none', border: 'none', cursor: 'pointer', padding: '4px 0 8px', marginTop: 4 }}>
+                    <span style={{ fontSize: 10, fontWeight: 700, color: '#C8A24C', letterSpacing: '0.1em', textTransform: 'uppercase' }}>Recent — {recent.length}</span>
+                    <ChevronDown size={14} color="#C8A24C" style={{ transform: recentExpanded ? 'rotate(0deg)' : 'rotate(-90deg)', transition: 'transform 0.2s' }}/>
+                  </button>
+                  {recentExpanded && recent.map(m => <OnlineMemberRow key={m.email} m={m} status="recent" now={now} onSelect={setSelectedMember} />)}
                   <div style={{ height: 16 }} />
                 </>
               )}
               {offline.length > 0 && (
                 <>
-                  <div style={{ fontSize: 10, fontWeight: 700, color: '#333', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 8, marginTop: 4 }}>Offline — {offline.length}</div>
-                  {offline.map(m => <OnlineMemberRow key={m.email} m={m} status="offline" now={now} onSelect={setSelectedMember} />)}
+                  <button onClick={() => setOfflineExpanded(v => !v)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', background: 'none', border: 'none', cursor: 'pointer', padding: '4px 0 8px', marginTop: 4 }}>
+                    <span style={{ fontSize: 10, fontWeight: 700, color: '#444', letterSpacing: '0.1em', textTransform: 'uppercase' }}>Offline — {offline.length}</span>
+                    <ChevronDown size={14} color="#444" style={{ transform: offlineExpanded ? 'rotate(0deg)' : 'rotate(-90deg)', transition: 'transform 0.2s' }}/>
+                  </button>
+                  {offlineExpanded && offline.map(m => <OnlineMemberRow key={m.email} m={m} status="offline" now={now} onSelect={setSelectedMember} />)}
                 </>
               )}
             </>
@@ -953,6 +965,7 @@ function MessageBubble({ msg, myName }: { msg: ChatMessage; myName: string }) {
           xp={senderXP}
           memberName={msg.sender}
           memberBelt={msg.senderBelt}
+          profilePic={msg.senderProfilePic || undefined}
           size={32}
           interactive={false}
         />

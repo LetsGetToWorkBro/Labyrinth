@@ -751,19 +751,24 @@ function SettingsTab() {
     if (!addressQuery.trim()) return;
     setGeocoding(true);
     try {
+      // Photon geocoder — powered by OpenStreetMap, better results, free, no API key
       const res = await fetch(
-        `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(addressQuery)}&format=json&limit=1`,
-        { headers: { 'Accept-Language': 'en', 'User-Agent': 'LabyrinthBJJ/1.0' } }
+        `https://photon.komoot.io/api/?q=${encodeURIComponent(addressQuery)}&limit=3&lang=en`
       );
       const data = await res.json();
-      if (data[0]) {
-        setGymLat(parseFloat(data[0].lat).toFixed(6));
-        setGymLng(parseFloat(data[0].lon).toFixed(6));
+      const features = data?.features || [];
+      if (features.length > 0) {
+        const [lng, lat] = features[0].geometry.coordinates;
+        setGymLat(parseFloat(lat).toFixed(6));
+        setGymLng(parseFloat(lng).toFixed(6));
+        const p = features[0].properties;
+        const matched = [p.name, p.street, p.city, p.state].filter(Boolean).join(', ');
+        setAddressQuery(matched);
       } else {
-        alert('Address not found. Try a more specific address.');
+        alert('Address not found. Try adding city and state (e.g. "2500 Main St, Fulshear TX").');
       }
     } catch {
-      alert('Search failed. Try again or enter coordinates manually.');
+      alert('Search failed. Check your connection and try again.');
     }
     setGeocoding(false);
   };

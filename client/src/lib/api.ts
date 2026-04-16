@@ -469,6 +469,7 @@ export interface ChatMessage {
   sender: string;
   senderBelt: string;
   senderRole: string;
+  senderProfilePic?: string;
   text: string;
   timestamp: string;
 }
@@ -507,11 +508,12 @@ export async function chatGetMessages(channel: string, limit = 50): Promise<Chat
   }
 }
 
-export async function chatSendMessage(channel: string, text: string): Promise<{ success: boolean; messageId?: string }> {
+export async function chatSendMessage(channel: string, text: string, senderProfilePic?: string): Promise<{ success: boolean; messageId?: string }> {
   const token = getToken() || localStorage.getItem('lbjj_session_token') || '';
   if (!token) return { success: false };
   try {
-    const result = await gasCall("chatSendMessage", { channel, text, token });
+    const pic = (senderProfilePic || '').slice(0, 500);
+    const result = await gasCall("chatSendMessage", { channel, text, token, senderProfilePic: pic });
     try { sessionStorage.removeItem(`lbjj_chat_msgs_${channel}`); } catch {}
     return result;
   } catch (err) {
