@@ -12,6 +12,7 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { ListSkeleton } from "@/components/LoadingSkeleton";
 import { getBeltColor } from "@/lib/constants";
 import { BeltIcon } from "@/components/BeltIcon";
+import { LevelWidget } from "@/components/LevelWidget";
 import { ProfileRing } from "@/components/ProfileRing";
 import { getRingTier, getActualLevel } from "@/lib/xp";
 import { useAuth } from "@/lib/auth-context";
@@ -26,20 +27,6 @@ import {
 
 const GOLD = "#C8A24C";
 const POLL_INTERVAL_MS = 20_000; // refresh messages every 20 s
-
-const RANK_LEGEND = [
-  // Adult belts
-  { belt: 'white',  title: 'Beginner',    beltColor: '#E5E5E5', tier: 'Foundation', smallLabel: 'Adult I' },
-  { belt: 'blue',   title: 'Warrior',     beltColor: '#1A5DAB', tier: 'Student',    smallLabel: 'Adult II' },
-  { belt: 'purple', title: 'Elite',       beltColor: '#7E3AF2', tier: 'Skilled',    smallLabel: 'Adult III' },
-  { belt: 'brown',  title: 'Master',      beltColor: '#92400E', tier: 'Advanced',   smallLabel: 'Adult IV' },
-  { belt: 'black',  title: 'Grandmaster', beltColor: '#1A1A1A', tier: 'Legend',     smallLabel: 'Adult V', border: '#C8A24C' },
-  // Kids belts
-  { belt: 'grey',   title: 'Initiate',    beltColor: '#6B6B6B', tier: 'Kids I',     smallLabel: 'Kids I' },
-  { belt: 'yellow', title: 'Striker',     beltColor: '#C49B1A', tier: 'Kids II',    smallLabel: 'Kids II' },
-  { belt: 'orange', title: 'Challenger',  beltColor: '#C4641A', tier: 'Kids III',   smallLabel: 'Kids III' },
-  { belt: 'green',  title: 'Champion',    beltColor: '#2D8040', tier: 'Kids IV',    smallLabel: 'Kids IV' },
-] as const;
 
 // Belt rank order for inclusive channel membership display
 const ADULT_BELT_ORDER = ['white', 'blue', 'purple', 'brown', 'black'];
@@ -194,7 +181,6 @@ export default function ChatPage() {
   const [sending, setSending] = useState(false);
   const [sendError, setSendError] = useState("");
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({ 'Kids Ranks': true });
-  const [showRankLegend, setShowRankLegend] = useState(false);
   const [showMembers, setShowMembers] = useState(false);
   const [channelMembers, setChannelMembers] = useState<ChannelMember[]>([]);
   const [membersLoading, setMembersLoading] = useState(false);
@@ -387,8 +373,6 @@ export default function ChatPage() {
 
   // ─── Shared rank info ──────────────────────────────────────────
   const myBelt = (member?.belt || "white").toLowerCase();
-  const userRank = getRankProfile(myBelt);
-  const triggerColor = myBelt === 'black' ? '#C8A24C' : getBeltColor(myBelt);
 
   // ─── Channel Room ─────────────────────────────────────────────
   const activeChannel = channels.find(c => c.id === activeChannelId);
@@ -406,25 +390,18 @@ export default function ChatPage() {
             <h2 style={{ color: "#F0F0F0", fontSize: 16, fontWeight: 700, margin: 0 }}>{activeChannel.name}</h2>
             {member && (
               <button
-                onClick={() => setShowRankLegend(true)}
+                onClick={() => { setShowOnlineTab(true); loadOnlineMembers(); }}
                 style={{
                   display: 'inline-flex', alignItems: 'center', gap: 6,
-                  padding: '5px 12px 5px 6px',
-                  borderRadius: 20,
-                  background: `${triggerColor}18`,
-                  border: `1.5px solid ${triggerColor}50`,
+                  padding: '5px 12px 5px 8px', borderRadius: 20,
+                  background: 'rgba(76,175,128,0.1)',
+                  border: '1px solid rgba(76,175,128,0.25)',
                   cursor: 'pointer',
-                  transition: 'opacity 0.15s',
                 }}
               >
-                <BeltIcon belt={myBelt} width={28} style={{ flexShrink: 0 }} />
-                <span style={{
-                  fontSize: 11, fontWeight: 700,
-                  color: triggerColor,
-                  letterSpacing: '0.08em',
-                  textTransform: 'uppercase' as const,
-                }}>
-                  {userRank.title}
+                <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#4CAF80', boxShadow: '0 0 5px #4CAF80' }}/>
+                <span style={{ fontSize: 11, fontWeight: 700, color: '#4CAF80', letterSpacing: '0.05em', textTransform: 'uppercase' }}>
+                  Members Online
                 </span>
               </button>
             )}
@@ -457,60 +434,6 @@ export default function ChatPage() {
             </button>
           )}
         </div>
-
-        {/* Rank Legend Bottom Sheet */}
-        {showRankLegend && (
-          <div
-            style={{ position: "fixed", inset: 0, zIndex: 200, display: "flex", alignItems: "flex-end" }}
-            onClick={() => setShowRankLegend(false)}
-          >
-            <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.5)", backdropFilter: "blur(4px)" }} />
-            <div
-              onClick={e => e.stopPropagation()}
-              style={{
-                position: "relative", width: "100%",
-                background: "#111", borderRadius: "20px 20px 0 0",
-                padding: "24px 20px", borderTop: "1px solid #1A1A1A",
-                paddingBottom: "max(100px, calc(env(safe-area-inset-bottom, 0px) + 100px))",
-                maxHeight: 'calc(85vh - 80px)', overflowY: 'auto', WebkitOverflowScrolling: 'touch',
-              }}
-            >
-              <div style={{ width: 36, height: 4, borderRadius: 2, background: "#2A2A2A", margin: "0 auto 16px" }} />
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
-                <h3 style={{ fontSize: 16, fontWeight: 700, color: "#F0F0F0", margin: 0 }}>BJJ Rank Hierarchy</h3>
-                <button onClick={() => setShowRankLegend(false)} style={{ background: "none", border: "none", padding: 4, cursor: "pointer" }}>
-                  <X size={18} style={{ color: "#555" }} />
-                </button>
-              </div>
-              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                {RANK_LEGEND.map((r) => {
-                  const nameColor = r.belt === 'black' ? '#C8A24C' : (r.beltColor as string) === '#1A1A1A' ? '#BBBBBB' : r.beltColor;
-                  const pillColor = r.belt === 'black' ? '#C8A24C' : r.beltColor;
-                  return (
-                    <div key={r.belt}>
-                      {r.belt === 'grey' && (
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, margin: '4px 0 10px' }}>
-                          <div style={{ flex: 1, height: 1, background: '#1A1A1A' }} />
-                          <span style={{ fontSize: 10, color: '#444', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase' }}>Kids Program</span>
-                          <div style={{ flex: 1, height: 1, background: '#1A1A1A' }} />
-                        </div>
-                      )}
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 14px', borderRadius: 10, background: '#0D0D0D', border: '1px solid #1A1A1A', borderLeft: `3px solid ${r.belt === 'black' ? '#C8A24C' : r.beltColor}` }}>
-                        <div style={{ flexShrink: 0 }}>
-                          <BeltIcon belt={r.belt} width={36} />
-                        </div>
-                        <div style={{ flex: 1 }}>
-                          <div style={{ fontSize: 14, fontWeight: 700, color: nameColor, textTransform: 'capitalize' }}>{r.belt} Belt</div>
-                        </div>
-                        <span style={{ fontSize: 9, fontWeight: 700, padding: '2px 8px', borderRadius: 10, background: `${pillColor}20`, color: r.belt === 'black' ? '#C8A24C' : nameColor, border: `1px solid ${pillColor}40`, letterSpacing: '0.06em', textTransform: 'uppercase', flexShrink: 0 }}>{r.title}</span>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          </div>
-        )}
 
         {/* Members slide-up sheet */}
         {showMembers && (
@@ -648,12 +571,19 @@ export default function ChatPage() {
                 const chatXP = member?.totalPoints || (member as any)?.totalPoints || 0;
                 const chatLevel = getActualLevel(chatXP);
                 const chatRingTier = getRingTier(chatLevel);
-                return chatXP > 0 ? (
-                  <ProfileRing tier={chatRingTier} size={24}>
-                    <BeltIcon belt={myBelt} width={18} style={{ flexShrink: 0 }} />
-                  </ProfileRing>
-                ) : (
-                  <BeltIcon belt={myBelt} width={18} style={{ flexShrink: 0 }} />
+                return (
+                  <>
+                    {chatXP > 0 ? (
+                      <ProfileRing tier={chatRingTier} size={24}>
+                        <BeltIcon belt={myBelt} width={18} style={{ flexShrink: 0 }} />
+                      </ProfileRing>
+                    ) : (
+                      <BeltIcon belt={myBelt} width={18} style={{ flexShrink: 0 }} />
+                    )}
+                    <span style={{ fontSize: 11, fontWeight: 600, color: getBeltColor(myBelt) }}>
+                      {myBelt.charAt(0).toUpperCase() + myBelt.slice(1)} Belt
+                    </span>
+                  </>
                 );
               })()}
               <input
@@ -766,25 +696,18 @@ export default function ChatPage() {
           </div>
           {member && (
             <button
-              onClick={() => setShowRankLegend(true)}
+              onClick={() => { setShowOnlineTab(true); loadOnlineMembers(); }}
               style={{
                 display: 'inline-flex', alignItems: 'center', gap: 6,
-                padding: '5px 12px 5px 6px',
-                borderRadius: 20,
-                background: `${triggerColor}18`,
-                border: `1.5px solid ${triggerColor}50`,
+                padding: '5px 12px 5px 8px', borderRadius: 20,
+                background: 'rgba(76,175,128,0.1)',
+                border: '1px solid rgba(76,175,128,0.25)',
                 cursor: 'pointer',
-                transition: 'opacity 0.15s',
               }}
             >
-              <BeltIcon belt={myBelt} width={28} style={{ flexShrink: 0 }} />
-              <span style={{
-                fontSize: 11, fontWeight: 700,
-                color: triggerColor,
-                letterSpacing: '0.08em',
-                textTransform: 'uppercase' as const,
-              }}>
-                {userRank.title}
+              <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#4CAF80', boxShadow: '0 0 5px #4CAF80' }}/>
+              <span style={{ fontSize: 11, fontWeight: 700, color: '#4CAF80', letterSpacing: '0.05em', textTransform: 'uppercase' }}>
+                Members Online
               </span>
             </button>
           )}
@@ -874,60 +797,6 @@ export default function ChatPage() {
           </>
         )}
       </div>
-
-      {/* Rank Legend Bottom Sheet (from channel list view) */}
-      {showRankLegend && (
-        <div
-          style={{ position: "fixed", inset: 0, zIndex: 200, display: "flex", alignItems: "flex-end" }}
-          onClick={() => setShowRankLegend(false)}
-        >
-          <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.5)", backdropFilter: "blur(4px)" }} />
-          <div
-            onClick={e => e.stopPropagation()}
-            style={{
-              position: "relative", width: "100%",
-              background: "#111", borderRadius: "20px 20px 0 0",
-              padding: "24px 20px", borderTop: "1px solid #1A1A1A",
-              paddingBottom: "max(100px, calc(env(safe-area-inset-bottom, 0px) + 100px))",
-              maxHeight: 'calc(85vh - 80px)', overflowY: 'auto', WebkitOverflowScrolling: 'touch',
-            }}
-          >
-            <div style={{ width: 36, height: 4, borderRadius: 2, background: "#2A2A2A", margin: "0 auto 16px" }} />
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
-              <h3 style={{ fontSize: 16, fontWeight: 700, color: "#F0F0F0", margin: 0 }}>BJJ Rank Hierarchy</h3>
-              <button onClick={() => setShowRankLegend(false)} style={{ background: "none", border: "none", padding: 4, cursor: "pointer" }}>
-                <X size={18} style={{ color: "#555" }} />
-              </button>
-            </div>
-            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-              {RANK_LEGEND.map((r) => {
-                const nameColor = r.belt === 'black' ? '#C8A24C' : (r.beltColor as string) === '#1A1A1A' ? '#BBBBBB' : r.beltColor;
-                const pillColor = r.belt === 'black' ? '#C8A24C' : r.beltColor;
-                return (
-                  <div key={r.belt}>
-                    {r.belt === 'grey' && (
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, margin: '4px 0 10px' }}>
-                        <div style={{ flex: 1, height: 1, background: '#1A1A1A' }} />
-                        <span style={{ fontSize: 10, color: '#444', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase' }}>Kids Program</span>
-                        <div style={{ flex: 1, height: 1, background: '#1A1A1A' }} />
-                      </div>
-                    )}
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 14px', borderRadius: 10, background: '#0D0D0D', border: '1px solid #1A1A1A', borderLeft: `3px solid ${r.belt === 'black' ? '#C8A24C' : r.beltColor}` }}>
-                      <div style={{ flexShrink: 0 }}>
-                        <BeltIcon belt={r.belt} width={36} />
-                      </div>
-                      <div style={{ flex: 1 }}>
-                        <div style={{ fontSize: 14, fontWeight: 700, color: nameColor, textTransform: 'capitalize' }}>{r.belt} Belt</div>
-                      </div>
-                      <span style={{ fontSize: 9, fontWeight: 700, padding: '2px 8px', borderRadius: 10, background: `${pillColor}20`, color: r.belt === 'black' ? '#C8A24C' : nameColor, border: `1px solid ${pillColor}40`, letterSpacing: '0.06em', textTransform: 'uppercase', flexShrink: 0 }}>{r.title}</span>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        </div>
-      )}
 
       <div style={{ height: 20 }} />
     </div>
@@ -1048,8 +917,6 @@ function MessageBubble({ msg, myName }: { msg: ChatMessage; myName: string }) {
   const rank = getRankProfile(msg.senderBelt || "white");
   const isHighRank = rank.tier >= 3;
   const isCoachMsg = (msg.senderRole || "").toLowerCase().includes("coach") || (msg.senderRole || "").toLowerCase().includes("instructor");
-  const isOwnerMsg = (msg.senderRole || "").toLowerCase().includes("owner");
-  const rankTitle = (isOwnerMsg || (msg.senderBelt || "").toLowerCase() === "black") ? "GRANDMASTER" : rank.title;
 
   function fmt(ts: string) {
     try { return new Date(ts).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" }); }
@@ -1077,6 +944,8 @@ function MessageBubble({ msg, myName }: { msg: ChatMessage; myName: string }) {
       <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 2, marginTop: 8 }}>
         <div style={{ maxWidth: "80%" }}>
           <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 4, marginBottom: 2 }}>
+            <span style={{ fontSize: 11, fontWeight: 700, color: '#C8A24C' }}>You</span>
+            <BeltIcon belt={msg.senderBelt || 'white'} width={28} style={{ flexShrink: 0 }} />
             <span style={{ fontSize: 12, color: "#666" }}>{fmt(msg.timestamp)}</span>
           </div>
           <div style={{ backgroundColor: GOLD, color: "#0A0A0A", padding: "8px 14px", borderRadius: "16px 16px 4px 16px", fontSize: 13, fontWeight: 500, lineHeight: 1.4 }}>
@@ -1089,21 +958,17 @@ function MessageBubble({ msg, myName }: { msg: ChatMessage; myName: string }) {
 
   return (
     <div style={{ marginBottom: 2, marginTop: 8 }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 5, marginBottom: 3, marginLeft: 2 }}>
-        <BeltIcon belt={msg.senderBelt || "white"} width={isHighRank ? 28 : 22} style={{ flexShrink: 0, filter: isHighRank ? `drop-shadow(${rank.glow})` : "none" }} />
-        <span style={{ fontSize: 12, fontWeight: isHighRank ? 800 : 600, color: isHighRank ? rank.color : "#BBB", letterSpacing: isHighRank ? "0.02em" : "0", textShadow: isHighRank ? rank.glow : "none" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4, marginLeft: 2 }}>
+        <LevelWidget
+          xp={0}
+          memberName={msg.sender}
+          memberBelt={msg.senderBelt}
+          size={32}
+        />
+        <span style={{ fontSize: 12, fontWeight: 700, color: rank.color }}>
           {msg.sender}
         </span>
-        <span style={{
-          fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em',
-          padding: '2px 7px', borderRadius: 5,
-          backgroundColor: `${rank.color}20`, color: rank.color,
-          border: `1px solid ${rank.color}35`,
-          display: 'inline-flex', alignItems: 'center', gap: 3,
-        }}>
-          {rank.badge && <span style={{ fontSize: 11 }}>{rank.badge}</span>}
-          {rankTitle.toUpperCase()}
-        </span>
+        <BeltIcon belt={msg.senderBelt || 'white'} width={32} style={{ flexShrink: 0 }} />
         {isCoachMsg && (
           <span style={{ fontSize: 8, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", padding: "1px 5px", borderRadius: 4, backgroundColor: `${GOLD}18`, color: GOLD, border: `1px solid ${GOLD}30`, display: "flex", alignItems: "center", gap: 2 }}>
             <Crown size={8} /> Coach
