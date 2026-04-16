@@ -90,6 +90,7 @@ export interface MemberProfile {
   isPrimary?: boolean;
   familyMembers?: FamilyMember[];
   totalPoints?: number; // XP from GAS TotalPoints column
+  currentStreak?: number; // Current training streak in weeks
   // Admin role fields — set from the Members sheet "Role" column
   role?: string;       // 'owner' | 'admin' | 'coach' | 'instructor' | ''
   isAdmin?: boolean;   // true when role is owner/admin/coach
@@ -806,6 +807,7 @@ export interface LeaderboardEntry {
   belt?: string;
   classCount?: number;
   score?: number;
+  totalPoints?: number;
 }
 
 export async function saveGameScore(data: {

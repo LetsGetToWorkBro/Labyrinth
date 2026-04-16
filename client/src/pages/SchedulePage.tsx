@@ -207,13 +207,13 @@ export default function SchedulePage() {
         const todayNames = (res?.checkIns || [])
           .filter((c: any) => (c.date || c.timestamp || '').startsWith(today))
           .map((c: any) => c.className);
-        if (todayNames.length > 0) setCheckedInClasses(prev => [...new Set([...prev, ...todayNames])]);
+        if (todayNames.length > 0) setCheckedInClasses(prev => Array.from(new Set([...prev, ...todayNames])));
       }).catch(() => {});
     }
   }, []);
 
   const markClassCheckedIn = useCallback((className: string) => {
-    setCheckedInClasses(prev => [...new Set([...prev, className])]);
+    setCheckedInClasses(prev => Array.from(new Set([...prev, className])));
   }, []);
 
   // 5a: Day pill indicator slide

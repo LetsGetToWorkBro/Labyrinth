@@ -974,6 +974,8 @@ export default function HomePage() {
   }, []);
 
   // ─── Logged-in home ───────────────────────────────────────────────
+  // member is guaranteed non-null here (checked by auth guard in parent)
+  if (!member) return null;
   const hasWarnings = !member.waiverSigned || !member.agreementSigned;
   const hasFamily = familyMembers.length > 1;
   const joinDate = (() => {

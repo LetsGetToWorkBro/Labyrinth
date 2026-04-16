@@ -106,8 +106,8 @@ export default function StatsPage() {
     }).sort((a, b) => b.rating - a.rating);
   }, [athletes, search, filterBelt, filterTier]);
 
-  const uniqueBelts = useMemo(() => [...new Set(athletes.map(a => a.belt.toLowerCase()).filter(Boolean))], [athletes]);
-  const uniqueTiers = useMemo(() => [...new Set(athletes.map(a => a.tier).filter(Boolean))], [athletes]);
+  const uniqueBelts = useMemo(() => Array.from(new Set(athletes.map(a => a.belt.toLowerCase()).filter(Boolean))), [athletes]);
+  const uniqueTiers = useMemo(() => Array.from(new Set(athletes.map(a => a.tier).filter(Boolean))), [athletes]);
 
   const memberXP = (() => { try { return parseInt(localStorage.getItem('lbjj_member_xp') || '0'); } catch { return 0; } })();
 

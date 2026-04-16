@@ -22,7 +22,7 @@ import { XPBar } from "@/components/XPBar";
 import { getRankProfile } from "@/lib/chat-data";
 import logoMaze from "@assets/maze-gold-md.png";
 import {
-  Send, ArrowLeft, Lock, Users, Hash, ChevronRight, ChevronLeft, X,
+  Send, ArrowLeft, Lock, Users, Hash, ChevronRight, ChevronLeft, ChevronDown, X,
   Shield, Crown, MessageCircle, Megaphone, Loader2, RefreshCw, Award,
 } from "lucide-react";
 
@@ -971,10 +971,10 @@ function MemberProfileModal({ member: sm, onClose }: { member: ChannelMember; on
 
         {/* Profile info */}
         <div style={{ background: '#0D0D0D', borderRadius: 10, padding: '10px 12px', marginBottom: 10, border: '1px solid #1A1A1A' }}>
-          <div style={{ fontSize: 11, color: '#444', marginBottom: 4 }}>Viewing {member.name.split(' ')[0]}'s profile</div>
+          <div style={{ fontSize: 11, color: '#444', marginBottom: 4 }}>Viewing {sm.name.split(' ')[0]}'s profile</div>
           <div style={{ display: 'flex', gap: 16 }}>
-            {member.badgeCount ? <div><span style={{ fontSize: 14, fontWeight: 700, color: '#F0F0F0' }}>{member.badgeCount}</span><span style={{ fontSize: 10, color: '#555', marginLeft: 4 }}>badges</span></div> : null}
-            <div><span style={{ fontSize: 14, fontWeight: 700, color: '#C8A24C' }}>Lv {getActualLevel(member.totalPoints || 0)}</span></div>
+            {sm.badgeCount ? <div><span style={{ fontSize: 14, fontWeight: 700, color: '#F0F0F0' }}>{sm.badgeCount}</span><span style={{ fontSize: 10, color: '#555', marginLeft: 4 }}>badges</span></div> : null}
+            <div><span style={{ fontSize: 14, fontWeight: 700, color: '#C8A24C' }}>Lv {getActualLevel(sm.totalPoints || 0)}</span></div>
           </div>
         </div>
         {/* View their achievements (link to their profile via More) */}
