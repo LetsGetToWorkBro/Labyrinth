@@ -295,7 +295,7 @@ export async function cachedGasCall(
 // ─── Auth ─────────────────────────────────────────────────────────
 
 /** Derive isAdmin from the role field returned by GAS */
-function normalizeAdminRole(profile: any): MemberProfile {
+export function normalizeAdminRole(profile: any): MemberProfile {
   const role = (profile?.role || "").toLowerCase();
   const isAdmin = role === "owner" || role === "admin" || role === "coach" || role === "instructor";
 

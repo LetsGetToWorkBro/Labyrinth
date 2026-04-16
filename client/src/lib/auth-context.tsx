@@ -1,6 +1,6 @@
 import { createContext, useContext, useState, useCallback, useEffect } from "react";
 import type { MemberProfile, FamilyMember } from "./api";
-import { setToken, setMemberData, clearAuth, memberLogin as apiLogin, memberGetProfile, memberSwitchProfile as apiSwitchProfile, setActiveLocation, gasCall } from "./api";
+import { setToken, setMemberData, clearAuth, memberLogin as apiLogin, memberGetProfile, memberSwitchProfile as apiSwitchProfile, setActiveLocation, gasCall, normalizeAdminRole } from "./api";
 import { getSavedLocationId } from "./locations";
 
 function sanitizeProfileForStorage(profile: any) {
@@ -90,10 +90,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             setMemberState(null);
             setFamilyMembers([]);
           } else {
-            // Refresh member data from server
+            // Refresh member data from server — use normalizeAdminRole to coerce
+            // GAS string booleans ("TRUE"/"FALSE") to real booleans for waiverSigned etc.
             const raw = res?.member || res;
-            if (raw) {
-              const normalized = { ...raw, role: raw?.role || '', isAdmin: ['owner', 'admin', 'coach', 'instructor'].includes((raw?.role || '').toLowerCase()) };
+            if (raw && typeof raw === 'object' && raw.name) {
+              const normalized = normalizeAdminRole(raw);
               setMemberState(normalized);
               setMemberData(normalized);
               localStorage.setItem('lbjj_member_profile', JSON.stringify(sanitizeProfileForStorage(normalized)));
@@ -136,24 +137,72 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const loginWithPasskey = useCallback(async (email: string) => {
     try {
       setActiveLocation(getSavedLocationId());
-      // Try to restore session using saved token
       const savedToken = localStorage.getItem('lbjj_session_token');
+
+      // Fast path: if we have a saved token, optimistically restore from cached profile
+      // and validate in the background (same as the app startup flow)
+      const cachedProfileRaw = localStorage.getItem('lbjj_member_profile');
+      if (savedToken && cachedProfileRaw) {
+        try {
+          const cachedProfile = JSON.parse(cachedProfileRaw);
+          if (cachedProfile && cachedProfile.name) {
+            // Restore session immediately from cache
+            setToken(savedToken);
+            const normalized = normalizeAdminRole(cachedProfile);
+            setIsAuthenticated(true);
+            setMemberState(normalized);
+            setMemberData(normalized);
+            if (normalized.familyMembers) setFamilyMembers(normalized.familyMembers);
+
+            // Background re-validate against GAS (non-blocking)
+            gasCall('memberGetProfile', { token: savedToken }).then((res: any) => {
+              if (res?.success === false && !res?.member) {
+                // Token expired — log out
+                clearAuth();
+                localStorage.removeItem('lbjj_session_token');
+                localStorage.removeItem('lbjj_member_profile');
+                setIsAuthenticated(false);
+                setMemberState(null);
+                setFamilyMembers([]);
+              } else {
+                const raw = res?.member || res;
+                if (raw && typeof raw === 'object' && raw.name) {
+                  const fresh = normalizeAdminRole(raw);
+                  setMemberState(fresh);
+                  setMemberData(fresh);
+                  localStorage.setItem('lbjj_member_profile', JSON.stringify(sanitizeProfileForStorage(fresh)));
+                  if (fresh.familyMembers) setFamilyMembers(fresh.familyMembers);
+                }
+              }
+            }).catch(() => { /* network error — keep cached state */ });
+
+            return { success: true };
+          }
+        } catch { /* corrupt cache — fall through to network */ }
+      }
+
+      // No cache — try GAS directly
       if (savedToken) {
         const result = await gasCall('memberGetProfile', { token: savedToken });
-        if (result?.success !== false && (result?.member || result)) {
-          setToken(savedToken);
-          const raw = result.member || result;
-          const normalized = { ...raw, role: raw?.role || '', isAdmin: ['owner', 'admin', 'coach', 'instructor'].includes((raw?.role || '').toLowerCase()) };
-          setIsAuthenticated(true);
-          setMemberState(normalized);
-          setMemberData(normalized);
-          localStorage.setItem('lbjj_member_profile', JSON.stringify(sanitizeProfileForStorage(normalized)));
-          if (normalized.familyMembers) setFamilyMembers(normalized.familyMembers);
-          return { success: true };
+        if (result?.success !== false) {
+          const raw = result?.member || result;
+          if (raw && typeof raw === 'object' && raw.name) {
+            setToken(savedToken);
+            const normalized = normalizeAdminRole(raw);
+            setIsAuthenticated(true);
+            setMemberState(normalized);
+            setMemberData(normalized);
+            localStorage.setItem('lbjj_member_profile', JSON.stringify(sanitizeProfileForStorage(normalized)));
+            if (normalized.familyMembers) setFamilyMembers(normalized.familyMembers);
+            return { success: true };
+          }
         }
+        // Token invalid
+        localStorage.removeItem('lbjj_session_token');
+        localStorage.removeItem('lbjj_member_profile');
       }
-      // No saved token — need password login first
-      return { success: false, error: 'Biometric login unavailable — please sign in with password' };
+
+      return { success: false, error: 'Session expired — please sign in with your password' };
     } catch {
       return { success: false, error: 'Connection error' };
     }
