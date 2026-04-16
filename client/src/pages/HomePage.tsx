@@ -9,6 +9,7 @@ import { ALL_ACHIEVEMENTS, checkAndUnlockAchievements } from "@/lib/achievements
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { validateGeoIfRequired } from "@/lib/geo";
 import { LevelWidget } from "@/components/LevelWidget";
+import { getLevelFromXP, getActualLevel } from "@/lib/xp";
 import {
   CreditCard, FileText, ChevronRight, ChevronDown, LogOut,
   Users, Check, Loader2, Plus, Trash2, Star, CheckCircle,
@@ -938,10 +939,10 @@ export default function HomePage() {
       />
 
       {/* Greeting */}
-      <div className="mx-5 mb-4 stagger-child">
-        <h1 className="text-xl font-bold" style={{ color: "#F0F0F0" }} data-testid="text-greeting">
+      <div className="mx-5 mb-3 stagger-child">
+        <p style={{ fontSize: 13, color: '#666', margin: 0, fontWeight: 500 }} data-testid="text-greeting">
           Welcome back, {member?.name?.split(' ')[0] || 'Warrior'}
-        </h1>
+        </p>
       </div>
 
       {/* LIVE banner */}
@@ -985,13 +986,13 @@ export default function HomePage() {
             transition: 'border-radius 0.2s ease',
           }}
         >
-          {/* Avatar — LevelWidget portrait */}
-          <div style={{ flexShrink: 0 }}>
+          {/* Avatar — LevelWidget portrait with XP arc */}
+          <div onClick={(e) => e.stopPropagation()} style={{ flexShrink: 0 }}>
             <LevelWidget
               xp={(member as any)?.totalPoints || 0}
               memberName={member?.name}
               memberBelt={member?.belt}
-              size={52}
+              size={72}
             />
           </div>
 
@@ -1002,6 +1003,22 @@ export default function HomePage() {
               <BeltVisual belt={member?.belt || 'white'} />
               <span style={{ fontSize: 12, color: getBeltColor(member?.belt || 'white'), fontWeight: 600, textTransform: 'capitalize' }}>{member?.belt || 'White'} Belt</span>
             </div>
+            {(() => {
+              const xp = (member as any)?.totalPoints || 0;
+              const { title } = getLevelFromXP(xp);
+              const lvl = getActualLevel(xp);
+              return (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 4 }}>
+                  <div style={{
+                    fontSize: 10, fontWeight: 800, color: '#000',
+                    background: 'linear-gradient(135deg, #C8A24C, #FFD700)',
+                    padding: '1px 6px', borderRadius: 8,
+                    letterSpacing: '0.03em',
+                  }}>Lv {lvl}</div>
+                  <span style={{ fontSize: 11, color: '#C8A24C', fontWeight: 600 }}>{title}</span>
+                </div>
+              );
+            })()}
           </div>
 
           {/* Chevron */}
