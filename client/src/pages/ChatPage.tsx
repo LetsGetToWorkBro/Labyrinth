@@ -880,9 +880,17 @@ function MemberProfileModal({ member: sm, onClose }: { member: ChannelMember; on
           </div>
         )}
 
-        {/* View Belt Journey button */}
+        {/* Profile info */}
+        <div style={{ background: '#0D0D0D', borderRadius: 10, padding: '10px 12px', marginBottom: 10, border: '1px solid #1A1A1A' }}>
+          <div style={{ fontSize: 11, color: '#444', marginBottom: 4 }}>Viewing {member.name.split(' ')[0]}'s profile</div>
+          <div style={{ display: 'flex', gap: 16 }}>
+            {member.badgeCount ? <div><span style={{ fontSize: 14, fontWeight: 700, color: '#F0F0F0' }}>{member.badgeCount}</span><span style={{ fontSize: 10, color: '#555', marginLeft: 4 }}>badges</span></div> : null}
+            <div><span style={{ fontSize: 14, fontWeight: 700, color: '#C8A24C' }}>Lv {getActualLevel(member.totalPoints || 0)}</span></div>
+          </div>
+        </div>
+        {/* View their achievements (link to their profile via More) */}
         <button
-          onClick={() => { onClose(); window.location.hash = '#/belt'; }}
+          onClick={() => { onClose(); }}
           style={{
             width: '100%', padding: '12px', borderRadius: 12,
             background: 'rgba(200,162,76,0.1)', border: '1px solid rgba(200,162,76,0.2)',
@@ -891,7 +899,7 @@ function MemberProfileModal({ member: sm, onClose }: { member: ChannelMember; on
             letterSpacing: '0.04em',
           }}
         >
-          View Belt Journey
+          Close
         </button>
       </div>
     </div>

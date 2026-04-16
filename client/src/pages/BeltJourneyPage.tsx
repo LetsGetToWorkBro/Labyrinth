@@ -124,6 +124,7 @@ export default function BeltJourneyPage() {
   const [loadingPromotions, setLoadingPromotions] = useState(false);
   const [showAdd, setShowAdd] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [swipedId, setSwipedId] = useState<string | null>(null);
   const [newBelt, setNewBelt] = useState("white");
   const [newStripes, setNewStripes] = useState(0);
   const [newDate, setNewDate] = useState(() => new Date().toISOString().split("T")[0]);
@@ -330,7 +331,26 @@ export default function BeltJourneyPage() {
 
                 return (
                   <div key={promo.id}>
-                    <div className="relative flex items-start gap-3 py-2">
+                    <div
+                      className="relative flex items-start gap-3 py-2"
+                      onTouchStart={e => { (e.currentTarget as any)._swipeX = e.touches[0].clientX; }}
+                      onTouchEnd={e => {
+                        const dx = (e.currentTarget as any)._swipeX - e.changedTouches[0].clientX;
+                        if (dx > 60 && !isEditing) setSwipedId(swipedId === promo.id ? null : promo.id);
+                        else if (dx < -20) setSwipedId(null);
+                      }}
+                      style={{ position: 'relative' }}
+                    >
+                      {/* Swipe-revealed delete button */}
+                      {swipedId === promo.id && (
+                        <button
+                          onClick={() => { deletePromotion(promo.id); setSwipedId(null); }}
+                          style={{ position: 'absolute', right: 4, top: '50%', transform: 'translateY(-50%)', background: '#E05555', border: 'none', borderRadius: 10, padding: '8px 12px', cursor: 'pointer', zIndex: 10, display: 'flex', alignItems: 'center', gap: 4 }}
+                        >
+                          <Trash2 size={14} color="#fff"/>
+                          <span style={{ fontSize: 11, fontWeight: 700, color: '#fff' }}>Delete</span>
+                        </button>
+                      )}
                       {/* Belt icon */}
                       <div className="relative z-10 flex flex-col items-center flex-shrink-0 transition-all"
                         style={{

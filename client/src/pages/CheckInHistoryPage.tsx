@@ -95,6 +95,17 @@ export default function CheckInHistoryPage() {
         ))}
       </div>
 
+      {/* Leaderboard link */}
+      <div style={{ padding: '0 20px 12px' }}>
+        <a href="/#/leaderboard" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', background: '#111', borderRadius: 12, border: '1px solid #1A1A1A', textDecoration: 'none' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span style={{ fontSize: 16 }}>🏆</span>
+            <span style={{ fontSize: 13, fontWeight: 600, color: '#F0F0F0' }}>View Class Leaderboard</span>
+          </div>
+          <span style={{ fontSize: 11, color: '#C8A24C', fontWeight: 600 }}>See rankings →</span>
+        </a>
+      </div>
+
       {/* List */}
       <div style={{ padding: '0 20px' }}>
         {loading ? (

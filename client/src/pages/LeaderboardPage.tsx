@@ -3,10 +3,12 @@ import { getLeaderboard, type LeaderboardEntry } from '@/lib/api';
 import { useAuth } from '@/lib/auth-context';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { RefreshCw } from 'lucide-react';
+import { getActualLevel } from '@/lib/xp';
 
 const GOLD = '#C8A24C';
 
 type Tab = 'classes' | 'games';
+type SortBy = 'classes' | 'level';
 type Period = 'weekly' | 'monthly' | 'allTime';
 
 const BELT_DOT_COLORS: Record<string, string> = {
@@ -24,6 +26,7 @@ export default function LeaderboardPage() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [selectedBelt, setSelectedBelt] = useState<string | null>(null);
+  const [sortBy, setSortBy] = useState<SortBy>('classes');
 
   const load = useCallback(async (showRefresh = false) => {
     if (showRefresh) setRefreshing(true);
@@ -71,12 +74,20 @@ export default function LeaderboardPage() {
     green:  ['green'],
   };
 
-  const filteredEntries = selectedBelt
-    ? entries.filter(e => {
-        const b = (e.belt || 'white').toLowerCase();
-        return (BELT_GROUPS[selectedBelt] || [selectedBelt]).includes(b);
-      })
-    : entries;
+  const filteredEntries = (() => {
+    let result = selectedBelt
+      ? entries.filter(e => {
+          const b = (e.belt || 'white').toLowerCase();
+          return (BELT_GROUPS[selectedBelt] || [selectedBelt]).includes(b);
+        })
+      : entries;
+    if (sortBy === 'level') {
+      result = [...result].sort((a, b) =>
+        getActualLevel(b.totalPoints || 0) - getActualLevel(a.totalPoints || 0)
+      );
+    }
+    return result;
+  })();
 
   const beltDotColor = (belt?: string) => {
     if (!belt) return '#666';
@@ -114,6 +125,19 @@ export default function LeaderboardPage() {
             }}
           >
             <span style={{ fontSize: 14 }}>{t.icon}</span> {t.label}
+          </button>
+        ))}
+      </div>
+
+      {/* Sort by toggle */}
+      <div style={{ margin: '0 20px 8px', display: 'flex', gap: 6 }}>
+        {([{ key: 'classes', label: '# Classes' }, { key: 'level', label: '⚡ Level' }] as { key: SortBy; label: string }[]).map(s => (
+          <button key={s.key} onClick={() => setSortBy(s.key)}
+            style={{ padding: '4px 12px', borderRadius: 16, fontSize: 11, fontWeight: 600, border: 'none', cursor: 'pointer',
+              background: sortBy === s.key ? GOLD : '#1A1A1A',
+              color: sortBy === s.key ? '#000' : '#666',
+            }}>
+            {s.label}
           </button>
         ))}
       </div>
