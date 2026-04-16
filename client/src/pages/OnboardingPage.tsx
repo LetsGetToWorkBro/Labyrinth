@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useAuth } from "@/lib/auth-context";
 import { BeltIcon } from "@/components/BeltIcon";
 import { LevelWidget } from "@/components/LevelWidget";
@@ -19,18 +19,150 @@ const NAV_TABS = [
 
 const firstStepAchievement = ALL_ACHIEVEMENTS.find(a => a.key === 'first_class') || ALL_ACHIEVEMENTS[0];
 
+// ── Belt SVG that draws itself via stroke-dashoffset ──────────────
+function AnimatedBelt({ belt = 'white' }: { belt: string }) {
+  const pathRef = useRef<SVGPathElement>(null);
+  const [drawn, setDrawn] = useState(false);
+
+  useEffect(() => {
+    const t = setTimeout(() => setDrawn(true), 200);
+    return () => clearTimeout(t);
+  }, []);
+
+  const beltColors: Record<string, string> = {
+    white: '#E5E5E5', blue: '#1A5DAB', purple: '#7E3AF2',
+    brown: '#92400E', black: '#1A1A1A',
+  };
+  const color = beltColors[belt] || beltColors.white;
+
+  return (
+    <div style={{ position: 'relative', animation: 'badge-appear 400ms cubic-bezier(0.34,1.56,0.64,1) both' }}>
+      {/* Glow aura */}
+      <div style={{
+        position: 'absolute', inset: -24,
+        background: `radial-gradient(circle, ${color}18 0%, transparent 70%)`,
+        borderRadius: '50%',
+        animation: 'ring-pulse 2.5s ease-in-out infinite',
+      }}/>
+      {/* Belt body */}
+      <svg width={220} height={64} viewBox="0 0 220 64">
+        <defs>
+          <filter id="belt-glow">
+            <feGaussianBlur stdDeviation="3" result="blur"/>
+            <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+          </filter>
+        </defs>
+        {/* Belt track */}
+        <rect x={4} y={20} width={212} height={24} rx={4} fill={color} opacity={0.15}/>
+        {/* Belt body — draws left to right */}
+        <rect x={4} y={20} width={212} height={24} rx={4} fill="none"
+          stroke={color} strokeWidth={2} opacity={0.4}
+          style={{
+            strokeDasharray: 512,
+            strokeDashoffset: drawn ? 0 : 512,
+            transition: 'stroke-dashoffset 1.1s cubic-bezier(0.4,0,0.2,1)',
+          }}
+        />
+        {/* Belt center block */}
+        <rect
+          x={88} y={14} width={44} height={36} rx={3}
+          fill={color}
+          style={{
+            opacity: drawn ? 1 : 0,
+            transition: 'opacity 400ms ease 900ms',
+          }}
+          filter="url(#belt-glow)"
+        />
+        {/* Stitching lines — draw sequentially */}
+        {[0, 1, 2, 3, 4].map((i) => (
+          <line
+            key={i}
+            x1={4 + i * 42} y1={26} x2={4 + i * 42} y2={38}
+            stroke="rgba(255,255,255,0.15)" strokeWidth={1}
+            style={{
+              strokeDasharray: 12,
+              strokeDashoffset: drawn ? 0 : 12,
+              transition: `stroke-dashoffset 300ms ease ${600 + i * 80}ms`,
+            }}
+          />
+        ))}
+        {/* Belt label text */}
+        <text
+          x={110} y={37} textAnchor="middle"
+          fill="#000" fontSize={11} fontWeight={800} fontFamily="sans-serif"
+          letterSpacing={1} opacity={0.7}
+          style={{ opacity: drawn ? 0.7 : 0, transition: 'opacity 300ms ease 1100ms' }}
+        >
+          {belt.toUpperCase()}
+        </text>
+      </svg>
+    </div>
+  );
+}
+
+// ── Achievement tile that flips from locked → unlocked ─────────────
+function FlipAchievementTile({ achievement, delay = 0 }: { achievement: typeof firstStepAchievement; delay?: number }) {
+  const [flipped, setFlipped] = useState(false);
+
+  useEffect(() => {
+    const t = setTimeout(() => setFlipped(true), delay);
+    return () => clearTimeout(t);
+  }, [delay]);
+
+  return (
+    <div style={{
+      width: 100, height: 100,
+      perspective: 600,
+      cursor: 'default',
+    }}>
+      <div style={{
+        width: '100%', height: '100%',
+        position: 'relative',
+        transformStyle: 'preserve-3d',
+        transform: flipped ? 'rotateY(180deg)' : 'rotateY(0deg)',
+        transition: 'transform 700ms cubic-bezier(0.4,0,0.2,1)',
+      }}>
+        {/* Front — locked */}
+        <div style={{
+          position: 'absolute', inset: 0,
+          backfaceVisibility: 'hidden',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          background: '#111', borderRadius: 16,
+          border: '1px solid #1A1A1A',
+        }}>
+          <AchievementBadge achievementKey={achievement.key} size={60} unlocked={false} />
+        </div>
+        {/* Back — unlocked */}
+        <div style={{
+          position: 'absolute', inset: 0,
+          backfaceVisibility: 'hidden',
+          transform: 'rotateY(180deg)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          background: `${achievement.color}12`,
+          borderRadius: 16,
+          border: `1px solid ${achievement.color}40`,
+          boxShadow: flipped ? `0 0 20px ${achievement.color}30` : 'none',
+        }}>
+          <AchievementBadge achievementKey={achievement.key} size={60} unlocked={true} />
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function OnboardingPage() {
   const { member } = useAuth();
   const [step, setStep] = useState(0);
   const [xpAnimated, setXpAnimated] = useState(0);
   const [tabsVisible, setTabsVisible] = useState<boolean[]>([false, false, false, false, false]);
+  const [ctaTapped, setCtaTapped] = useState(false);
 
   // Already completed — render nothing
   if (localStorage.getItem(ONBOARDING_KEY)) return null;
 
   const complete = () => {
     localStorage.setItem(ONBOARDING_KEY, "1");
-    window.location.hash = "#/schedule";
+    window.location.hash = "#/";
   };
 
   const skip = () => {
@@ -44,18 +176,19 @@ export default function OnboardingPage() {
   const firstName = member?.name?.split(" ")[0] || "Warrior";
   const belt = member?.belt || "white";
 
-  // XP animation for step 3
+  // XP animation for step 3 (XP arc)
   useEffect(() => {
     if (step === 3) {
       setXpAnimated(0);
       const timeout = setTimeout(() => {
         let val = 0;
         const interval = setInterval(() => {
-          val += 3;
-          if (val >= 50) { val = 50; clearInterval(interval); }
+          val += 2;
+          if (val >= 65) { val = 65; clearInterval(interval); }
           setXpAnimated(val);
-        }, 30);
-      }, 400);
+        }, 25);
+        return () => clearInterval(interval);
+      }, 600);
       return () => clearTimeout(timeout);
     }
   }, [step]);
@@ -71,12 +204,24 @@ export default function OnboardingPage() {
             next[i] = true;
             return next;
           });
-        }, 200 + i * 150);
+        }, 300 + i * 130);
       });
     }
   }, [step]);
 
   const TOTAL_STEPS = 6;
+
+  const handleFinalCTA = () => {
+    setCtaTapped(true);
+    // Haptic — single strong pulse
+    try { navigator.vibrate?.(80); } catch {}
+    try {
+      import('@capacitor/haptics').then(({ Haptics, ImpactStyle }) => {
+        Haptics.impact({ style: ImpactStyle.Heavy });
+      });
+    } catch {}
+    setTimeout(complete, 400);
+  };
 
   return (
     <div
@@ -95,16 +240,16 @@ export default function OnboardingPage() {
       }}
     >
       {/* Progress dots */}
-      <div style={{ display: "flex", gap: 8, marginBottom: 24 }}>
+      <div style={{ display: "flex", gap: 8, marginBottom: 28 }}>
         {Array.from({ length: TOTAL_STEPS }).map((_, i) => (
           <div
             key={i}
             style={{
-              width: i === step ? 24 : 8,
+              width: i === step ? 28 : 8,
               height: 8,
               borderRadius: 4,
-              background: i === step ? "#C8A24C" : i < step ? "#5A4A2A" : "#222",
-              transition: "all 0.3s ease",
+              background: i === step ? "#C8A24C" : i < step ? "#5A4A2A" : "#1A1A1A",
+              transition: "all 0.35s cubic-bezier(0.34,1.56,0.64,1)",
             }}
           />
         ))}
@@ -121,82 +266,63 @@ export default function OnboardingPage() {
           justifyContent: "center",
           width: "100%",
           maxWidth: 400,
-          animation: "onboardSlide 0.3s ease-out",
+          animation: "onboardSlide 0.3s cubic-bezier(0.16,1,0.3,1)",
           textAlign: "center",
           gap: 20,
         }}
       >
-        {/* Step 0: Welcome + Name */}
+
+        {/* ── Step 0: Welcome ── */}
         {step === 0 && (
           <>
-            <div style={{ fontSize: 48, marginBottom: 8 }}>🥋</div>
-            <div style={{ fontSize: 28, fontWeight: 900, letterSpacing: "-0.03em", color: "#C8A24C" }}>
-              LABYRINTH BJJ
-            </div>
-            <h1 style={{ fontSize: 22, fontWeight: 800, color: "#F0F0F0", margin: 0 }}>
-              Welcome, {firstName}
-            </h1>
-            <p style={{ fontSize: 14, color: "#888", lineHeight: 1.6, maxWidth: 280, margin: 0 }}>
-              Track your training, earn achievements, and stay connected with your team.
-            </p>
-            <button onClick={next} style={goldButtonStyle}>
-              Begin Journey
-            </button>
-          </>
-        )}
-
-        {/* Step 1: Logo Materialize */}
-        {step === 1 && (
-          <>
             <div style={{
-              width: 120, height: 120,
-              borderRadius: "50%",
-              background: "radial-gradient(circle, #1A1510, #0A0A0A)",
-              border: "2px solid #C8A24C30",
-              display: "flex", alignItems: "center", justifyContent: "center",
-              boxShadow: "0 0 60px rgba(200,162,76,0.2)",
-              animation: "ring-pulse 2s ease-in-out infinite",
+              width: 100, height: 100, borderRadius: '50%',
+              background: 'radial-gradient(circle, #1A1510, #0A0A0A)',
+              border: '1px solid #C8A24C20',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              boxShadow: '0 0 50px rgba(200,162,76,0.15)',
+              animation: 'ring-pulse 3s ease-in-out infinite, badge-appear 600ms cubic-bezier(0.34,1.56,0.64,1) both',
             }}>
               <img
                 src={logoMaze}
                 alt="Labyrinth"
                 style={{
-                  width: 80, height: 80, objectFit: "contain",
+                  width: 64, height: 64, objectFit: "contain",
                   filter: "sepia(1) saturate(2) hue-rotate(5deg) brightness(1.1)",
-                  animation: "badge-appear 600ms cubic-bezier(0.34,1.56,0.64,1) both",
                 }}
               />
             </div>
-            <div style={{ fontSize: 26, fontWeight: 900, color: "#F0F0F0", letterSpacing: "0.15em", margin: 0 }}>
-              LABYRINTH
+            <div style={{ fontSize: 11, letterSpacing: '0.35em', fontWeight: 700, color: '#C8A24C', textTransform: 'uppercase' }}>
+              LABYRINTH BJJ
             </div>
-            <div style={{ fontSize: 13, color: "#C8A24C", letterSpacing: "0.2em", fontWeight: 700, textTransform: "uppercase" }}>
-              The Way of the Fighter
-            </div>
-            <p style={{ fontSize: 13, color: "#666", maxWidth: 260, lineHeight: 1.6, margin: 0 }}>
-              Every champion started somewhere. Your journey begins now.
+            <h1 style={{ fontSize: 26, fontWeight: 900, color: "#F0F0F0", margin: 0, letterSpacing: '-0.02em' }}>
+              Welcome, {firstName}.
+            </h1>
+            <p style={{ fontSize: 14, color: "#666", lineHeight: 1.7, maxWidth: 280, margin: 0 }}>
+              Your training, your ranks, your journey — all in one place. Ready to begin?
             </p>
-            <button onClick={next} style={goldButtonStyle}>Continue</button>
+            <button onClick={next} style={goldButtonStyle}>
+              Begin My Journey
+            </button>
           </>
         )}
 
-        {/* Step 2: Belt-tying moment */}
-        {step === 2 && (
+        {/* ── Step 1: Belt ties itself ── */}
+        {step === 1 && (
           <>
-            <div style={{ animation: "badge-appear 500ms cubic-bezier(0.34,1.56,0.64,1) both" }}>
-              <BeltIcon belt="white" stripes={0} width={180} style={{ filter: "drop-shadow(0 2px 20px rgba(229,229,229,0.3))" }} />
+            <div style={{ marginBottom: 8 }}>
+              <AnimatedBelt belt={belt} />
             </div>
-            <h2 style={{ fontSize: 22, fontWeight: 800, color: "#F0F0F0", margin: 0 }}>
-              Your journey begins<br />with a white belt
+            <h2 style={{ fontSize: 22, fontWeight: 900, color: "#F0F0F0", margin: 0, letterSpacing: '-0.02em' }}>
+              Your belt. Your identity.
             </h2>
-            <p style={{ fontSize: 14, color: "#888", lineHeight: 1.6, maxWidth: 280, margin: 0 }}>
-              Every champion started here. The belt doesn't make the fighter — the fighter makes the belt.
+            <p style={{ fontSize: 14, color: "#666", lineHeight: 1.7, maxWidth: 280, margin: 0 }}>
+              Every stripe earned. Every class attended. The belt remembers it all.
             </p>
             <div style={{
-              padding: "10px 20px", borderRadius: 12,
-              background: "rgba(229,229,229,0.05)",
-              border: "1px solid rgba(229,229,229,0.1)",
-              fontSize: 13, color: "#999", fontStyle: "italic",
+              padding: "12px 20px", borderRadius: 12,
+              background: "#111", border: "1px solid #222",
+              fontSize: 13, color: "#666", fontStyle: "italic", maxWidth: 280,
             }}>
               "A black belt is a white belt who never quit."
             </div>
@@ -204,78 +330,100 @@ export default function OnboardingPage() {
           </>
         )}
 
-        {/* Step 3: XP arc demonstration */}
-        {step === 3 && (
+        {/* ── Step 2: XP arc fills from zero ── */}
+        {step === 2 && (
           <>
-            <div style={{ animation: "badge-appear 500ms cubic-bezier(0.34,1.56,0.64,1) both" }}>
+            <div style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              {/* Radial glow that pulses behind the widget */}
+              <div style={{
+                position: 'absolute', width: 160, height: 160,
+                background: 'radial-gradient(circle, rgba(200,162,76,0.12) 0%, transparent 70%)',
+                borderRadius: '50%',
+                animation: 'ring-pulse 2s ease-in-out infinite',
+              }}/>
               <LevelWidget
                 xp={xpAnimated}
                 memberName={firstName}
                 memberBelt={belt}
-                size={100}
+                size={96}
                 interactive={false}
               />
+              {/* Floating +10 XP hint */}
+              {xpAnimated > 20 && (
+                <div style={{
+                  position: 'absolute', top: -10, right: -10,
+                  background: 'rgba(200,162,76,0.95)', color: '#000',
+                  fontSize: 11, fontWeight: 900, padding: '3px 10px',
+                  borderRadius: 20, animation: 'xp-pulse 2s ease-in-out infinite',
+                }}>
+                  +10 XP per class
+                </div>
+              )}
             </div>
-            <h2 style={{ fontSize: 22, fontWeight: 800, color: "#F0F0F0", margin: 0 }}>
-              Earn XP every time<br />you train
+            <h2 style={{ fontSize: 22, fontWeight: 900, color: "#F0F0F0", margin: 0, letterSpacing: '-0.02em' }}>
+              Every class fills this arc.
             </h2>
-            <p style={{ fontSize: 14, color: "#888", lineHeight: 1.6, maxWidth: 280, margin: 0 }}>
-              Every class earns XP. Level up. Unlock rings. Rise through the ranks of Labyrinth.
+            <p style={{ fontSize: 14, color: "#666", lineHeight: 1.7, maxWidth: 280, margin: 0 }}>
+              Check into class → earn 10 XP → level up → unlock rings. You're watching the system live right now.
             </p>
-            <div style={{ display: "flex", gap: 16 }}>
-              <div style={{ textAlign: "center" }}>
-                <div style={{ fontSize: 22, fontWeight: 900, color: "#C8A24C" }}>+10</div>
-                <div style={{ fontSize: 10, color: "#555", textTransform: "uppercase", letterSpacing: "0.1em" }}>per class</div>
-              </div>
-              <div style={{ width: 1, background: "#222" }} />
-              <div style={{ textAlign: "center" }}>
-                <div style={{ fontSize: 22, fontWeight: 900, color: "#FFD700" }}>∞</div>
-                <div style={{ fontSize: 10, color: "#555", textTransform: "uppercase", letterSpacing: "0.1em" }}>levels</div>
-              </div>
+            <div style={{ display: "flex", gap: 20, marginTop: 4 }}>
+              {[
+                { val: '+10', label: 'per class' },
+                { val: '+50', label: 'tournament' },
+                { val: '+500', label: 'belt promo' },
+              ].map(item => (
+                <div key={item.label} style={{ textAlign: "center" }}>
+                  <div style={{ fontSize: 20, fontWeight: 900, color: "#C8A24C" }}>{item.val}</div>
+                  <div style={{ fontSize: 10, color: "#555", textTransform: "uppercase", letterSpacing: "0.1em" }}>{item.label}</div>
+                </div>
+              ))}
             </div>
             <button onClick={next} style={goldButtonStyle}>Next</button>
           </>
         )}
 
-        {/* Step 4: Achievement unlock */}
-        {step === 4 && (
+        {/* ── Step 3: Achievement tile flips locked → unlocked ── */}
+        {step === 3 && (
           <>
-            <div style={{
-              position: "relative",
-              animation: "badge-ceremony-badge-in 600ms cubic-bezier(0.34,1.56,0.64,1) both",
-            }}>
-              <AchievementBadge achievementKey={firstStepAchievement.key} size={100} unlocked={true} />
+            <div style={{ position: 'relative' }}>
+              <FlipAchievementTile achievement={firstStepAchievement} delay={500} />
+              {/* "UNLOCKED" label fades in after flip */}
               <div style={{
-                position: "absolute", inset: -20,
-                background: `radial-gradient(circle, ${firstStepAchievement.color}20 0%, transparent 70%)`,
-                animation: "ring-pulse 2s ease-in-out infinite",
-                borderRadius: "50%",
-              }} />
+                marginTop: 10, fontSize: 10, fontWeight: 800, letterSpacing: '0.2em',
+                textTransform: 'uppercase', color: firstStepAchievement.color,
+                animation: 'badge-ceremony-text-in 400ms ease 1300ms both',
+                opacity: 0,
+              }}>
+                Achievement Unlocked
+              </div>
             </div>
-            <h2 style={{ fontSize: 22, fontWeight: 800, color: "#F0F0F0", margin: 0 }}>
-              Achievements mark<br />your milestones
+            <h2 style={{ fontSize: 22, fontWeight: 900, color: "#F0F0F0", margin: 0, letterSpacing: '-0.02em' }}>
+              Achievements mark your milestones.
             </h2>
-            <div style={{ padding: "12px 20px", background: "#111", borderRadius: 14, border: `1px solid ${firstStepAchievement.color}30` }}>
+            <div style={{
+              padding: "12px 20px", background: "#111", borderRadius: 14,
+              border: `1px solid ${firstStepAchievement.color}30`, maxWidth: 280,
+            }}>
               <div style={{ fontSize: 14, fontWeight: 700, color: firstStepAchievement.color }}>{firstStepAchievement.label}</div>
               <div style={{ fontSize: 12, color: "#666", marginTop: 4 }}>{firstStepAchievement.desc}</div>
             </div>
-            <p style={{ fontSize: 13, color: "#888", maxWidth: 260, lineHeight: 1.6, margin: 0 }}>
-              Every class, every stripe, every win — immortalized.
+            <p style={{ fontSize: 13, color: "#666", maxWidth: 260, lineHeight: 1.7, margin: 0 }}>
+              Every class, every stripe, every win — immortalized as a badge you can flex in chat.
             </p>
-            <button onClick={next} style={goldButtonStyle}>Last step</button>
+            <button onClick={next} style={goldButtonStyle}>One more thing</button>
           </>
         )}
 
-        {/* Step 5: Nav map reveal */}
-        {step === 5 && (
+        {/* ── Step 4: Nav reveal ── */}
+        {step === 4 && (
           <>
-            <h2 style={{ fontSize: 22, fontWeight: 800, color: "#F0F0F0", margin: 0 }}>
-              The Labyrinth<br />awaits
+            <h2 style={{ fontSize: 22, fontWeight: 900, color: "#F0F0F0", margin: 0, letterSpacing: '-0.02em' }}>
+              Five doors.<br />Infinite paths.
             </h2>
-            <p style={{ fontSize: 14, color: "#888", lineHeight: 1.6, maxWidth: 260, margin: 0 }}>
-              Five doors. Infinite paths. Your journey starts now.
+            <p style={{ fontSize: 14, color: "#666", lineHeight: 1.7, maxWidth: 260, margin: 0 }}>
+              Your gym lives inside. Chat, compete, train, watch, and rise.
             </p>
-            <div style={{ display: "flex", gap: 12, justifyContent: "center", flexWrap: "wrap", width: "100%" }}>
+            <div style={{ display: "flex", gap: 10, justifyContent: "center", flexWrap: "wrap", width: "100%", maxWidth: 320 }}>
               {NAV_TABS.map((tab, i) => {
                 const Icon = tab.Icon;
                 return (
@@ -283,27 +431,77 @@ export default function OnboardingPage() {
                     key={tab.label}
                     style={{
                       display: "flex", flexDirection: "column", alignItems: "center", gap: 6,
-                      padding: "16px 12px", borderRadius: 16, minWidth: 64,
+                      padding: "16px 14px", borderRadius: 16, minWidth: 62,
                       background: "#111", border: "1px solid #1A1A1A",
                       opacity: tabsVisible[i] ? 1 : 0,
-                      transform: tabsVisible[i] ? "translateY(0) scale(1)" : "translateY(20px) scale(0.8)",
-                      transition: "all 0.4s cubic-bezier(0.34,1.56,0.64,1)",
+                      transform: tabsVisible[i] ? "translateY(0) scale(1)" : "translateY(24px) scale(0.85)",
+                      transition: "all 0.45s cubic-bezier(0.34,1.56,0.64,1)",
                     }}
                   >
                     <Icon size={24} color="#C8A24C" strokeWidth={1.5} />
-                    <span style={{ fontSize: 11, color: "#888", fontWeight: 600 }}>{tab.label}</span>
+                    <span style={{ fontSize: 10, color: "#777", fontWeight: 600 }}>{tab.label}</span>
                   </div>
                 );
               })}
             </div>
-            <button onClick={complete} style={{ ...goldButtonStyle, marginTop: 8 }}>
-              Enter the Labyrinth
+            <button onClick={next} style={goldButtonStyle}>I'm ready</button>
+          </>
+        )}
+
+        {/* ── Step 5: Final CTA — Check In to Your First Class ── */}
+        {step === 5 && (
+          <>
+            {/* Big gold burst radial */}
+            <div style={{
+              width: 140, height: 140, borderRadius: '50%',
+              background: 'radial-gradient(circle, rgba(200,162,76,0.2) 0%, rgba(200,162,76,0.05) 50%, transparent 70%)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              animation: 'ring-pulse 2s ease-in-out infinite',
+              marginBottom: 8,
+            }}>
+              <img
+                src={logoMaze}
+                alt="Labyrinth"
+                style={{
+                  width: 80, height: 80, objectFit: "contain",
+                  filter: "sepia(1) saturate(3) hue-rotate(5deg) brightness(1.2)",
+                  animation: 'badge-appear 500ms cubic-bezier(0.34,1.56,0.64,1) both',
+                }}
+              />
+            </div>
+            <h2 style={{ fontSize: 24, fontWeight: 900, color: "#F0F0F0", margin: 0, letterSpacing: '-0.02em' }}>
+              The mat is waiting,<br />{firstName}.
+            </h2>
+            <p style={{ fontSize: 14, color: "#666", lineHeight: 1.7, maxWidth: 260, margin: 0 }}>
+              Check into your first class to unlock your first achievement and start climbing the ranks.
+            </p>
+            {/* Giant gold CTA with pulse animation */}
+            <button
+              onClick={handleFinalCTA}
+              style={{
+                ...goldButtonStyle,
+                fontSize: 17,
+                padding: '18px 48px',
+                borderRadius: 16,
+                marginTop: 8,
+                animation: ctaTapped
+                  ? 'victoryBurst 400ms ease forwards'
+                  : 'xp-pulse 2s ease-in-out infinite',
+                boxShadow: '0 0 30px rgba(200,162,76,0.5), 0 4px 20px rgba(0,0,0,0.4)',
+                transform: ctaTapped ? 'scale(0.95)' : undefined,
+                transition: 'transform 100ms ease',
+              }}
+            >
+              {ctaTapped ? 'Let\'s Go!' : 'Check In to First Class'}
             </button>
+            <p style={{ fontSize: 11, color: '#333', margin: 0 }}>
+              You can explore everything else from the home screen
+            </p>
           </>
         )}
       </div>
 
-      {/* Bottom nav: back button + skip */}
+      {/* Bottom nav: back + skip */}
       <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 12, width: "100%" }}>
         <div style={{ display: "flex", gap: 16, alignItems: "center" }}>
           {step > 0 && step < 5 && (
@@ -311,7 +509,7 @@ export default function OnboardingPage() {
               onClick={back}
               style={{
                 background: "none", border: "1px solid #222",
-                color: "#666", fontSize: 13, cursor: "pointer",
+                color: "#555", fontSize: 13, cursor: "pointer",
                 padding: "8px 20px", borderRadius: 10,
               }}
             >
@@ -323,7 +521,7 @@ export default function OnboardingPage() {
               onClick={skip}
               style={{
                 background: "none", border: "none",
-                color: "#444", fontSize: 13, cursor: "pointer",
+                color: "#333", fontSize: 13, cursor: "pointer",
                 padding: "8px 16px",
               }}
             >
@@ -335,7 +533,7 @@ export default function OnboardingPage() {
 
       <style>{`
         @keyframes onboardSlide {
-          from { opacity: 0; transform: translateX(30px); }
+          from { opacity: 0; transform: translateX(28px); }
           to { opacity: 1; transform: translateX(0); }
         }
       `}</style>
@@ -345,12 +543,13 @@ export default function OnboardingPage() {
 
 const goldButtonStyle: React.CSSProperties = {
   padding: "14px 40px",
-  borderRadius: 12,
+  borderRadius: 14,
   background: "#C8A24C",
   color: "#0A0A0A",
-  fontWeight: 700,
+  fontWeight: 800,
   fontSize: 15,
   border: "none",
   cursor: "pointer",
-  minWidth: 180,
+  minWidth: 200,
+  letterSpacing: '0.02em',
 };

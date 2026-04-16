@@ -1052,6 +1052,68 @@ export default function HomePage() {
     } catch { return 1; }
   })();
 
+  // ── Narrative Arc: Training Season (monthly progress ring) ────────
+  const trainingSeasonData = (() => {
+    try {
+      const now = new Date();
+      const yearMonth = now.toISOString().slice(0, 7); // "2026-04"
+      const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+      const dayOfMonth = now.getDate();
+      // Count check-ins from lbjj_checkin_history this month
+      const history: string[] = JSON.parse(localStorage.getItem('lbjj_checkin_history') || '[]');
+      const thisMonthClasses = history.filter(d => d.startsWith(yearMonth)).length;
+      // Also count from game stats as fallback
+      const stats = JSON.parse(localStorage.getItem('lbjj_game_stats_v2') || '{}');
+      const goalClasses = 20; // monthly goal
+      const progress = Math.min(1, thisMonthClasses / goalClasses);
+      const monthName = now.toLocaleString('default', { month: 'long' });
+      return { thisMonthClasses, goalClasses, progress, monthName, dayOfMonth, daysInMonth };
+    } catch { return null; }
+  })();
+
+  // ── Narrative Arc: Next Milestone (XP level OR achievement) ────────
+  const nextMilestoneData = (() => {
+    try {
+      const xp = memberXP;
+      const { xpForNext, title: nextTitle } = getLevelFromXP(xp);
+      const actualLvl = getActualLevel(xp);
+      const xpNeeded = xpForNext - xp;
+      // Find next locked achievement that is closest to unlocking
+      const earned: string[] = JSON.parse(localStorage.getItem('lbjj_achievements') || '[]');
+      const stats = JSON.parse(localStorage.getItem('lbjj_game_stats_v2') || '{}');
+      const classes = stats.classesAttended || 0;
+      const achMilestones = [
+        { key: 'ten_classes', label: 'Mat Initiate', need: Math.max(0, 10 - classes), unit: 'classes', icon: '🥋' },
+        { key: 'thirty_classes', label: 'Mat Warrior', need: Math.max(0, 30 - classes), unit: 'classes', icon: '⚔️' },
+        { key: 'hundred_classes', label: 'Century Club', need: Math.max(0, 100 - classes), unit: 'classes', icon: '💯' },
+      ];
+      const nearestAch = achMilestones
+        .filter(a => !earned.includes(a.key) && a.need > 0)
+        .sort((a, b) => a.need - b.need)[0];
+      // Pick whichever is closer: XP level or achievement
+      const xpClassesEquivalent = Math.ceil(xpNeeded / 10);
+      if (nearestAch && nearestAch.need < xpClassesEquivalent) {
+        return { type: 'achievement' as const, label: nearestAch.label, need: nearestAch.need, unit: nearestAch.unit, icon: nearestAch.icon, xpToNext: xpNeeded, nextLevel: actualLvl + 1, nextTitle };
+      }
+      return { type: 'xp' as const, label: nextTitle, need: xpNeeded, unit: 'XP', icon: '⚡', xpToNext: xpNeeded, nextLevel: actualLvl + 1, nextTitle };
+    } catch { return null; }
+  })();
+
+  // ── Narrative Arc: Game Day mode (class starting in ≤2 hours) ──────
+  const isGameDay = !!nextClass && nextClass.isToday && (() => {
+    try {
+      if (!nextClass.time) return false;
+      const [time, meridiem] = nextClass.time.split(' ');
+      const [hStr, mStr] = time.split(':');
+      let h = parseInt(hStr); const m = parseInt(mStr) || 0;
+      if (meridiem?.toUpperCase() === 'PM' && h !== 12) h += 12;
+      if (meridiem?.toUpperCase() === 'AM' && h === 12) h = 0;
+      const classTime = new Date(); classTime.setHours(h, m, 0, 0);
+      const diffMs = classTime.getTime() - Date.now();
+      return diffMs > 0 && diffMs <= 2 * 60 * 60 * 1000;
+    } catch { return false; }
+  })();
+
   // M3: Rival computation
   const myLeaderboardRank = leaderboard ? leaderboard.findIndex((e: any) => e.name === member?.name) + 1 : 0;
   const rival = myLeaderboardRank > 1 && leaderboard ? leaderboard[myLeaderboardRank - 2] : null;
@@ -1092,6 +1154,108 @@ export default function HomePage() {
           Welcome back, {member?.name?.split(' ')[0] || 'Warrior'}
         </p>
       </div>
+
+      {/* ── Training Season Ring ── */}
+      {trainingSeasonData && (
+        <div style={{ margin: '0 20px 14px' }}>
+          <div style={{
+            background: 'linear-gradient(135deg, #0D0D0D, #111)',
+            border: '1px solid #1A1A1A',
+            borderRadius: 16, padding: '14px 16px',
+            display: 'flex', alignItems: 'center', gap: 16,
+          }}>
+            {/* SVG progress ring */}
+            <div style={{ position: 'relative', flexShrink: 0 }}>
+              <svg width={64} height={64} viewBox="0 0 64 64">
+                <circle cx={32} cy={32} r={26} fill="none" stroke="#1A1A1A" strokeWidth={5}/>
+                <circle
+                  cx={32} cy={32} r={26}
+                  fill="none"
+                  stroke="url(#season-grad)"
+                  strokeWidth={5}
+                  strokeLinecap="round"
+                  strokeDasharray={`${2 * Math.PI * 26}`}
+                  strokeDashoffset={`${2 * Math.PI * 26 * (1 - trainingSeasonData.progress)}`}
+                  transform="rotate(-90 32 32)"
+                  style={{ transition: 'stroke-dashoffset 1.2s cubic-bezier(0.4,0,0.2,1)' }}
+                />
+                <defs>
+                  <linearGradient id="season-grad" x1="0%" y1="0%" x2="100%" y2="0%">
+                    <stop offset="0%" stopColor="#8B6914"/>
+                    <stop offset="100%" stopColor="#FFD700"/>
+                  </linearGradient>
+                </defs>
+                <text x={32} y={36} textAnchor="middle" fill="#F0F0F0" fontSize={16} fontWeight={800} fontFamily="sans-serif">
+                  {trainingSeasonData.thisMonthClasses}
+                </text>
+              </svg>
+            </div>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: '#C8A24C', marginBottom: 4 }}>
+                {trainingSeasonData.monthName} Season
+              </div>
+              <div style={{ fontSize: 15, fontWeight: 800, color: '#F0F0F0', marginBottom: 3 }}>
+                {trainingSeasonData.thisMonthClasses} / {trainingSeasonData.goalClasses} classes
+              </div>
+              <div style={{ fontSize: 11, color: '#555' }}>
+                {trainingSeasonData.thisMonthClasses >= trainingSeasonData.goalClasses
+                  ? '🏆 Perfect season. Elite consistency.'
+                  : `${trainingSeasonData.goalClasses - trainingSeasonData.thisMonthClasses} more to complete this season`}
+              </div>
+              {/* Mini progress bar */}
+              <div style={{ marginTop: 8, height: 3, borderRadius: 2, background: '#1A1A1A', overflow: 'hidden' }}>
+                <div style={{
+                  height: '100%',
+                  width: `${Math.min(100, trainingSeasonData.progress * 100)}%`,
+                  background: 'linear-gradient(90deg, #8B6914, #FFD700)',
+                  borderRadius: 2,
+                  transition: 'width 1.2s cubic-bezier(0.4,0,0.2,1)',
+                }}/>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Next Milestone Card ── */}
+      {nextMilestoneData && nextMilestoneData.need > 0 && (
+        <div style={{ margin: '0 20px 14px' }}>
+          <a href={nextMilestoneData.type === 'achievement' ? '/#/achievements' : undefined}
+            style={{ textDecoration: 'none', display: 'block' }}>
+            <div style={{
+              background: '#0D0D0D',
+              border: '1px solid #C8A24C20',
+              borderRadius: 14, padding: '12px 16px',
+              display: 'flex', alignItems: 'center', gap: 12,
+            }}>
+              <div style={{
+                width: 38, height: 38, borderRadius: 10, flexShrink: 0,
+                background: 'rgba(200,162,76,0.1)',
+                border: '1px solid rgba(200,162,76,0.2)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontSize: 18,
+              }}>
+                {nextMilestoneData.icon}
+              </div>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#555', marginBottom: 3 }}>
+                  Next Milestone
+                </div>
+                <div style={{ fontSize: 13, fontWeight: 700, color: '#F0F0F0' }}>
+                  {nextMilestoneData.type === 'achievement'
+                    ? `${nextMilestoneData.need} more ${nextMilestoneData.unit} to unlock "${nextMilestoneData.label}"`
+                    : `${nextMilestoneData.need.toLocaleString()} XP to Level ${nextMilestoneData.nextLevel}`}
+                </div>
+              </div>
+              <div style={{ fontSize: 11, fontWeight: 700, color: '#C8A24C' }}>
+                {nextMilestoneData.type === 'xp'
+                  ? `${Math.ceil(nextMilestoneData.need / 10)} classes away`
+                  : ''}
+              </div>
+            </div>
+          </a>
+        </div>
+      )}
 
       {/* LIVE banner */}
       {stream?.isLive && (
@@ -1621,16 +1785,19 @@ export default function HomePage() {
                     }}
                     disabled={alreadyCheckedIn || checkinPhase === 'success' || checkinPhase === 'done'}
                     style={{
-                      flexShrink: 0, padding: '10px 14px', borderRadius: 10,
+                      flexShrink: 0,
+                      padding: isGameDay ? '14px 20px' : '10px 14px',
+                      borderRadius: isGameDay ? 14 : 10,
                       background: alreadyCheckedIn || checkinPhase === 'success' || checkinPhase === 'done' ? '#333' : '#C8A24C',
                       border: 'none',
                       color: alreadyCheckedIn ? '#666' : '#000',
-                      fontWeight: 700, fontSize: 13,
+                      fontWeight: 800, fontSize: isGameDay ? 15 : 13,
                       cursor: alreadyCheckedIn ? 'default' : 'pointer',
-                      display: 'flex', flexDirection: 'row', alignItems: 'center', gap: 5,
+                      display: 'flex', flexDirection: 'row', alignItems: 'center', gap: 6,
                       opacity: alreadyCheckedIn ? 0.6 : 1,
                       transform: checkinPhase === 'pressing' ? 'scale(0.95) translateY(1px)' : checkinPhase === 'success' ? 'scale(1.02)' : 'scale(1)',
                       transition: 'transform 120ms ease, background 200ms ease',
+                      boxShadow: isGameDay && !alreadyCheckedIn ? '0 0 20px rgba(200,162,76,0.5)' : 'none',
                     }}
                   >
                     {checkinPhase === 'success' || checkinPhase === 'done' ? (
