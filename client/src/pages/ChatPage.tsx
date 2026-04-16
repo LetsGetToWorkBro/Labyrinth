@@ -17,7 +17,7 @@ import { LevelWidget } from "@/components/LevelWidget";
 import { ProfileRing } from "@/components/ProfileRing";
 import { getRingTier, getActualLevel } from "@/lib/xp";
 import { useAuth } from "@/lib/auth-context";
-import { chatGetMessages, chatSendMessage, chatGetChannels, chatGetChannelMembers, type ChatMessage, type ChatChannel, type ChannelMember } from "@/lib/api";
+import { chatGetMessages, chatSendMessage, chatGetChannels, chatGetChannelMembers, updatePresence, type ChatMessage, type ChatChannel, type ChannelMember } from "@/lib/api";
 import { XPBar } from "@/components/XPBar";
 import { getRankProfile } from "@/lib/chat-data";
 import logoMaze from "@assets/maze-gold-md.png";
@@ -117,22 +117,23 @@ function MemberMiniProfile({ member, onClose }: { member: ChannelMember; onClose
 }
 
 // ── MemberRow component for Online tab ──
-function OnlineMemberRow({ m, status, now, onSelect }: {
+function OnlineMemberRow({ m, status, now, onSelect, isMe }: {
   m: ChannelMember;
   status: 'online' | 'recent' | 'offline';
   now: number;
   onSelect: (m: ChannelMember) => void;
+  isMe?: boolean;
 }) {
   const statusColor = status === 'online' ? '#4CAF80' : status === 'recent' ? '#C8A24C' : '#444';
   const minsAgo = m.lastSeen ? Math.floor((now - new Date(m.lastSeen).getTime()) / 60000) : null;
-  const statusLabel = status === 'online' ? 'Online' : minsAgo !== null ? (minsAgo < 60 ? `${minsAgo}m ago` : `${Math.floor(minsAgo / 60)}h ago`) : 'Offline';
+  const statusLabel = isMe ? 'You · Online' : status === 'online' ? 'Online' : minsAgo !== null ? (minsAgo < 60 ? `${minsAgo}m ago` : `${Math.floor(minsAgo / 60)}h ago`) : 'Offline';
   const memberXP = m.totalPoints || 0;
   const memberLevel = getActualLevel(memberXP);
   const memberTier = getRingTier(memberLevel);
 
   return (
     <button onClick={() => onSelect(m)}
-      style={{ display: 'flex', alignItems: 'center', gap: 12, width: '100%', padding: '10px 0', background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left', borderBottom: '1px solid #0D0D0D' }}>
+      style={{ display: 'flex', alignItems: 'center', gap: 12, width: '100%', padding: '10px 8px', background: isMe ? 'rgba(200,162,76,0.06)' : 'none', border: 'none', borderRadius: isMe ? 10 : 0, cursor: 'pointer', textAlign: 'left', borderBottom: isMe ? 'none' : '1px solid #0D0D0D', marginBottom: isMe ? 4 : 0 }}>
       {/* Portrait with ring */}
       <div style={{ position: 'relative', flexShrink: 0 }}>
         <ProfileRing tier={memberTier} size={48} level={memberLevel}>
@@ -144,7 +145,9 @@ function OnlineMemberRow({ m, status, now, onSelect }: {
         <div style={{ position: 'absolute', bottom: 0, right: 0, width: 12, height: 12, borderRadius: '50%', background: statusColor, border: '2px solid #0A0A0A' }} />
       </div>
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontSize: 14, fontWeight: 600, color: '#F0F0F0', marginBottom: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{m.name}</div>
+        <div style={{ fontSize: 14, fontWeight: 600, color: isMe ? '#C8A24C' : '#F0F0F0', marginBottom: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            {m.name}{isMe && <span style={{ fontSize: 10, fontWeight: 700, color: '#C8A24C', marginLeft: 6, opacity: 0.8 }}>You</span>}
+          </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
           <BeltIcon belt={m.belt || 'white'} width={24} />
           <span style={{ fontSize: 11, color: statusColor }}>{statusLabel}</span>
@@ -468,7 +471,7 @@ export default function ChatPage() {
             <h2 style={{ color: "#F0F0F0", fontSize: 16, fontWeight: 700, margin: 0 }}>{activeChannel.name}</h2>
             {member && (
               <button
-                onClick={() => { setShowOnlineTab(true); loadOnlineMembers(); }}
+                onClick={() => { updatePresence(); setShowOnlineTab(true); loadOnlineMembers(); }}
                 style={{
                   display: 'inline-flex', alignItems: 'center', gap: 6,
                   padding: '5px 12px 5px 8px', borderRadius: 20,
@@ -722,6 +725,7 @@ export default function ChatPage() {
   // ── Online tab full-screen view ──────────────────────────────
   if (showOnlineTab) {
     const now = Date.now();
+    const myEmail = member?.email?.toLowerCase() || '';
     const online = onlineMembers.filter(m => m.lastSeen && (now - new Date(m.lastSeen).getTime()) < 300000);
     const recent = onlineMembers.filter(m => m.lastSeen && (now - new Date(m.lastSeen).getTime()) >= 300000 && (now - new Date(m.lastSeen).getTime()) < 1800000);
     const offline = onlineMembers.filter(m => !m.lastSeen || (now - new Date(m.lastSeen).getTime()) >= 1800000);
@@ -753,7 +757,7 @@ export default function ChatPage() {
                     <span style={{ fontSize: 10, fontWeight: 700, color: '#4CAF80', letterSpacing: '0.1em', textTransform: 'uppercase' }}>Online — {online.length}</span>
                     <ChevronDown size={14} color="#4CAF80" style={{ transform: onlineExpanded ? 'rotate(0deg)' : 'rotate(-90deg)', transition: 'transform 0.2s' }}/>
                   </button>
-                  {onlineExpanded && online.map(m => <OnlineMemberRow key={m.email} m={m} status="online" now={now} onSelect={setSelectedMember} />)}
+                  {onlineExpanded && online.map(m => <OnlineMemberRow key={m.email} m={m} status="online" now={now} onSelect={setSelectedMember} isMe={m.email?.toLowerCase() === myEmail} />)}
                   <div style={{ height: 16 }} />
                 </>
               )}
@@ -763,7 +767,7 @@ export default function ChatPage() {
                     <span style={{ fontSize: 10, fontWeight: 700, color: '#C8A24C', letterSpacing: '0.1em', textTransform: 'uppercase' }}>Recent — {recent.length}</span>
                     <ChevronDown size={14} color="#C8A24C" style={{ transform: recentExpanded ? 'rotate(0deg)' : 'rotate(-90deg)', transition: 'transform 0.2s' }}/>
                   </button>
-                  {recentExpanded && recent.map(m => <OnlineMemberRow key={m.email} m={m} status="recent" now={now} onSelect={setSelectedMember} />)}
+                  {recentExpanded && recent.map(m => <OnlineMemberRow key={m.email} m={m} status="recent" now={now} onSelect={setSelectedMember} isMe={m.email?.toLowerCase() === myEmail} />)}
                   <div style={{ height: 16 }} />
                 </>
               )}
@@ -773,7 +777,7 @@ export default function ChatPage() {
                     <span style={{ fontSize: 10, fontWeight: 700, color: '#444', letterSpacing: '0.1em', textTransform: 'uppercase' }}>Offline — {offline.length}</span>
                     <ChevronDown size={14} color="#444" style={{ transform: offlineExpanded ? 'rotate(0deg)' : 'rotate(-90deg)', transition: 'transform 0.2s' }}/>
                   </button>
-                  {offlineExpanded && offline.map(m => <OnlineMemberRow key={m.email} m={m} status="offline" now={now} onSelect={setSelectedMember} />)}
+                  {offlineExpanded && offline.map(m => <OnlineMemberRow key={m.email} m={m} status="offline" now={now} onSelect={setSelectedMember} isMe={m.email?.toLowerCase() === myEmail} />)}
                 </>
               )}
             </>
@@ -797,7 +801,7 @@ export default function ChatPage() {
           </div>
           {member && (
             <button
-              onClick={() => { setShowOnlineTab(true); loadOnlineMembers(); }}
+              onClick={() => { updatePresence(); setShowOnlineTab(true); loadOnlineMembers(); }}
               style={{
                 display: 'inline-flex', alignItems: 'center', gap: 6,
                 padding: '5px 12px 5px 8px', borderRadius: 20,

@@ -148,7 +148,7 @@ function TabBar() {
                 style={{
                   width: 22, height: 22,
                   objectFit: 'contain',
-                  filter: isActive ? 'brightness(1) sepia(1) saturate(3) hue-rotate(5deg)' : 'brightness(0.35)',
+                  filter: isActive ? 'brightness(1.2) sepia(1) saturate(5) hue-rotate(5deg)' : 'invert(1) brightness(0.5)',
                   transition: 'filter 200ms var(--ease-out)',
                 }}
               />

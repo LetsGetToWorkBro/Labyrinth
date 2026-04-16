@@ -215,24 +215,6 @@ function getWeekNumber(d: Date): number {
 }
 
 // M2: Techniques array
-const TECHNIQUES = [
-  { name: "Rear Naked Choke", category: "Submission", from: "Back Control", tip: "Squeeze with the elbow, not the wrist." },
-  { name: "Armbar from Guard", category: "Submission", from: "Closed Guard", tip: "Hip out before breaking posture." },
-  { name: "Triangle Choke", category: "Submission", from: "Closed Guard", tip: "Cut the angle before locking the triangle." },
-  { name: "Double Leg Takedown", category: "Takedown", from: "Standing", tip: "Level change first, then shoot." },
-  { name: "Hip Escape", category: "Defense", from: "Side Control", tip: "Create space before framing." },
-  { name: "Scissor Sweep", category: "Sweep", from: "Closed Guard", tip: "Pull down on the collar simultaneously." },
-  { name: "Kimura", category: "Submission", from: "Side Control", tip: "Control the near hip first." },
-  { name: "Bow and Arrow Choke", category: "Submission", from: "Back Control", tip: "Extend their body like a bow." },
-  { name: "Guillotine Choke", category: "Submission", from: "Guard Pull", tip: "Angle out — don't squeeze straight down." },
-  { name: "Collar Drag", category: "Takedown", from: "Standing", tip: "Create the angle before pulling." },
-  { name: "Knee Slice Pass", category: "Pass", from: "Half Guard", tip: "Drive the knee through, chest pressure helps." },
-  { name: "X Guard Sweep", category: "Sweep", from: "X Guard", tip: "Extend both legs simultaneously." },
-  { name: "Berimbolo", category: "Technique", from: "De La Riva Guard", tip: "Invert first, then take the back." },
-  { name: "Single Leg Takedown", category: "Takedown", from: "Standing", tip: "Lift the leg, don't just pull." },
-  { name: "Omoplata", category: "Submission", from: "Guard", tip: "Hip up to finish — don't just pull." },
-];
-const getDayOfYear = () => { const n = new Date(); const s = new Date(n.getFullYear(),0,0); return Math.floor((n.getTime()-s.getTime())/86400000); };
 
 export default function HomePage() {
   const { member, familyMembers, isAuthenticated, logout, switchProfile, setMember, refreshProfile } = useAuth();
@@ -1022,7 +1004,6 @@ export default function HomePage() {
   })();
 
   // M2: Technique of the day
-  const todayTech = TECHNIQUES[getDayOfYear() % TECHNIQUES.length];
 
   // M3: Rival computation
   const myLeaderboardRank = leaderboard ? leaderboard.findIndex((e: any) => e.name === member?.name) + 1 : 0;
@@ -1146,28 +1127,6 @@ export default function HomePage() {
           </div>
         </div>
       )}
-
-      {/* M2: Technique of the Day */}
-      <div style={{
-        margin: '0 20px 12px',
-        background: '#0D0D0D',
-        border: '1px solid #1A1A1A',
-        borderRadius: 14,
-        padding: '14px 16px',
-      }}>
-        <div style={{ fontSize: 9, color: '#555', letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: 4 }}>
-          Today's Technique
-        </div>
-        <div style={{ fontSize: 15, fontWeight: 800, color: '#F0F0F0', marginTop: 2 }}>
-          {todayTech.name}
-        </div>
-        <div style={{ fontSize: 11, color: '#C8A24C', marginTop: 2 }}>
-          {todayTech.category} · from {todayTech.from}
-        </div>
-        <div style={{ fontSize: 11, color: '#666', marginTop: 6, fontStyle: 'italic' }}>
-          "{todayTech.tip}"
-        </div>
-      </div>
 
       {/* M3: Rival System */}
       {rival && myLeaderboardRank > 1 && (
