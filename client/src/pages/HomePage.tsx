@@ -9,7 +9,7 @@ import { ALL_ACHIEVEMENTS, checkAndUnlockAchievements } from "@/lib/achievements
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { validateGeoIfRequired } from "@/lib/geo";
 import { LevelWidget } from "@/components/LevelWidget";
-import { getLevelFromXP, getActualLevel } from "@/lib/xp";
+import { getLevelFromXP, getActualLevel, XP_LEVELS } from "@/lib/xp";
 import {
   CreditCard, FileText, ChevronRight, ChevronDown, LogOut,
   Users, Check, Loader2, Plus, Trash2, Star, CheckCircle,
@@ -230,6 +230,8 @@ export default function HomePage() {
   const [rankSubmitting, setRankSubmitting] = useState(false);
   const [rankSent, setRankSent] = useState(false);
   const [profileExpanded, setProfileExpanded] = useState(false);
+  const [showRankInfo, setShowRankInfo] = useState(false);
+  const [showStreakInfo, setShowStreakInfo] = useState(false);
 
   // ─── Home loading skeleton state ─────────────────────────────────
   const [homeLoading, setHomeLoading] = useState(true);
@@ -265,9 +267,15 @@ export default function HomePage() {
     return () => clearTimeout(t);
   }, [homeLoading]);
 
-  // Profile photo state
+  // Profile photo state — persisted in two keys for redundancy
   const [profilePic, setProfilePic] = useState<string | null>(() => {
-    try { return localStorage.getItem('lbjj_profile_picture'); } catch { return null; }
+    try {
+      // Primary key first, fallback to game_stats backup
+      const primary = localStorage.getItem('lbjj_profile_picture');
+      if (primary) return primary;
+      const stats = JSON.parse(localStorage.getItem('lbjj_game_stats_v2') || '{}');
+      return stats.profilePic || null;
+    } catch { return null; }
   });
   const avatarFileRef = useRef<HTMLInputElement>(null);
 
@@ -298,7 +306,14 @@ export default function HomePage() {
       ctx.drawImage(img, sx, sy, size, size, 0, 0, 200, 200);
       const base64 = canvas.toDataURL('image/jpeg', 0.8);
       setProfilePic(base64);
-      try { localStorage.setItem('lbjj_profile_picture', base64); } catch {}
+      try {
+        // Primary key
+        localStorage.setItem('lbjj_profile_picture', base64);
+        // Backup in game_stats so it survives if primary key gets cleared
+        const stats = JSON.parse(localStorage.getItem('lbjj_game_stats_v2') || '{}');
+        stats.profilePic = base64;
+        localStorage.setItem('lbjj_game_stats_v2', JSON.stringify(stats));
+      } catch {}
     };
     img.src = URL.createObjectURL(file);
   };
@@ -455,8 +470,11 @@ export default function HomePage() {
   const [memberXP, setMemberXP] = useState<number>(() => {
     try {
       const stats = JSON.parse(localStorage.getItem('lbjj_game_stats_v2') || '{}');
-      return stats.totalXP || (member as any)?.totalPoints || 0;
-    } catch { return 0; }
+      const cachedXP = stats.totalXP || 0;
+      const profileXP = (member as any)?.totalPoints || 0;
+      // Use whichever is larger — GAS profile or local cache
+      return Math.max(cachedXP, profileXP);
+    } catch { return (member as any)?.totalPoints || 0; }
   });
 
   // ─── Total classes count-up animation ─────────────────────────
@@ -491,19 +509,24 @@ export default function HomePage() {
     getCheckInsOnce(member.email).then((allCheckIns: any[]) => {
       // Total count
       const realTotal = allCheckIns.length;
-      if (realTotal > 0) {
+      // Always write to game stats, even if 0, so next boot has a valid cache
+      const gasXP = (member as any)?.totalPoints || 0;
+      const derivedXP = Math.max(gasXP, realTotal * 10);
+      const gasStreak = (member as any)?.currentStreak || 0;
+      if (realTotal > 0 || gasXP > 0) {
         setTotalClasses(realTotal);
-        // Derive XP from check-ins + member profile
-        const gasXP = (member as any)?.totalPoints || 0;
-        const derivedXP = Math.max(gasXP, realTotal * 10);
         setMemberXP(derivedXP);
-        try {
-          const stats = JSON.parse(localStorage.getItem('lbjj_game_stats_v2') || '{}');
-          stats.classesAttended = realTotal;
-          stats.totalXP = derivedXP;
-          localStorage.setItem('lbjj_game_stats_v2', JSON.stringify(stats));
-        } catch {}
       }
+      try {
+        const stats = JSON.parse(localStorage.getItem('lbjj_game_stats_v2') || '{}');
+        stats.classesAttended = realTotal;
+        stats.totalXP = derivedXP;
+        // Persist streak so it survives across sessions even if GAS is slow
+        if (gasStreak > 0) stats.currentStreak = gasStreak;
+        localStorage.setItem('lbjj_game_stats_v2', JSON.stringify(stats));
+        // Also cache the streak separately for fast reads
+        if (gasStreak > 0) localStorage.setItem('lbjj_streak_cache', String(gasStreak));
+      } catch {}
       // Today's count + dedup
       const today = new Date().toISOString().split('T')[0];
       const todayCheckIns = allCheckIns.filter((c: any) => (c.date || c.timestamp || '').startsWith(today));
@@ -1358,7 +1381,7 @@ export default function HomePage() {
         const milestoneAt = [3, 5, 7];
 
         return (
-          <div className="mx-5 mb-4 stagger-child">
+          <div className="mx-5 mb-4 stagger-child" onClick={() => { haptic(); setShowStreakInfo(true); }} style={{ cursor: 'pointer' }}>
             <div style={{
               background: cardBg,
               border: `1px solid ${cardBorder}`,
@@ -1380,20 +1403,52 @@ export default function HomePage() {
                     This Week
                   </span>
                 </div>
-                {/* Current multiplier badge */}
-                <div style={{
-                  display: 'inline-flex', alignItems: 'center', gap: 5,
-                  padding: '3px 10px', borderRadius: 999,
-                  background: isEliteWeek ? 'rgba(168,85,247,0.15)' : isPerfectWeek ? 'rgba(255,215,0,0.12)' : 'rgba(200,162,76,0.08)',
-                  border: `1px solid ${isEliteWeek ? 'rgba(168,85,247,0.4)' : isPerfectWeek ? 'rgba(255,215,0,0.3)' : 'rgba(200,162,76,0.2)'}`,
-                  animation: isPerfectWeek || isEliteWeek ? 'xp-pulse 2s ease-in-out infinite' : undefined,
-                }}>
-                  <span style={{ fontSize: 10, fontWeight: 900, color: headerColor }}>
-                    {weekMultiplier.mult}
-                  </span>
-                  <span style={{ fontSize: 8, fontWeight: 700, letterSpacing: '0.1em', color: headerColor, opacity: 0.8 }}>
-                    {weekMultiplier.label}
-                  </span>
+                {/* Current multiplier badge — glows when active */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  {/* Active multiplier glow badge (only shows when mult > 1×) */}
+                  {trainedCount >= 3 && (
+                    <div style={{
+                      position: 'relative',
+                      width: 22, height: 22, borderRadius: '50%',
+                      background: isEliteWeek
+                        ? 'radial-gradient(circle at 40% 35%, #C084FC, #7C3AED)'
+                        : isPerfectWeek
+                          ? 'radial-gradient(circle at 40% 35%, #FFE566, #C8A24C)'
+                          : 'radial-gradient(circle at 40% 35%, #FFBB55, #C8520A)',
+                      boxShadow: isEliteWeek
+                        ? '0 0 10px rgba(168,85,247,0.9), 0 0 20px rgba(168,85,247,0.5)'
+                        : isPerfectWeek
+                          ? '0 0 10px rgba(255,215,0,0.9), 0 0 20px rgba(255,215,0,0.5)'
+                          : '0 0 10px rgba(249,115,22,0.9), 0 0 20px rgba(249,115,22,0.4)',
+                      animation: 'activeMultiplierPulse 1.8s ease-in-out infinite',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      flexShrink: 0,
+                    }}>
+                      <span style={{ fontSize: 9, fontWeight: 900, color: '#000', letterSpacing: '-0.02em' }}>
+                        {isEliteWeek ? '3×' : isPerfectWeek ? '2×' : '1.5×'}
+                      </span>
+                      {/* Outer pulse ring */}
+                      <div style={{
+                        position: 'absolute', inset: -3, borderRadius: '50%',
+                        border: `1.5px solid ${isEliteWeek ? 'rgba(168,85,247,0.6)' : isPerfectWeek ? 'rgba(255,215,0,0.6)' : 'rgba(249,115,22,0.6)'}`,
+                        animation: 'activeMultiplierRing 1.8s ease-in-out infinite',
+                      }}/>
+                    </div>
+                  )}
+                  <div style={{
+                    display: 'inline-flex', alignItems: 'center', gap: 5,
+                    padding: '3px 10px', borderRadius: 999,
+                    background: isEliteWeek ? 'rgba(168,85,247,0.15)' : isPerfectWeek ? 'rgba(255,215,0,0.12)' : 'rgba(200,162,76,0.08)',
+                    border: `1px solid ${isEliteWeek ? 'rgba(168,85,247,0.4)' : isPerfectWeek ? 'rgba(255,215,0,0.3)' : 'rgba(200,162,76,0.2)'}`,
+                    animation: isPerfectWeek || isEliteWeek ? 'xp-pulse 2s ease-in-out infinite' : undefined,
+                  }}>
+                    <span style={{ fontSize: 10, fontWeight: 900, color: headerColor }}>
+                      {weekMultiplier.mult}
+                    </span>
+                    <span style={{ fontSize: 8, fontWeight: 700, letterSpacing: '0.1em', color: headerColor, opacity: 0.8 }}>
+                      {weekMultiplier.label}
+                    </span>
+                  </div>
                 </div>
               </div>
 
@@ -1801,7 +1856,7 @@ export default function HomePage() {
           XP PROGRESS WIDGET
           ════════════════════════════════════════════════════ */}
       {member && (
-        <div className="mx-5 mb-4 stagger-child" style={{ position: 'relative' }}>
+        <div className="mx-5 mb-4 stagger-child" style={{ position: 'relative' }} onClick={() => { haptic(); setShowRankInfo(true); }}>
           <div style={{
             position: 'absolute', inset: -1, borderRadius: 17,
             background: 'linear-gradient(135deg, rgba(200,162,76,0.25), transparent, rgba(200,162,76,0.08))',
@@ -1812,6 +1867,7 @@ export default function HomePage() {
             background: 'linear-gradient(135deg, #0D0D0D 0%, #141408 100%)',
             borderRadius: 16, padding: '14px 16px',
             border: '1px solid rgba(200,162,76,0.18)',
+            cursor: 'pointer',
           }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -1871,6 +1927,22 @@ export default function HomePage() {
         @keyframes xp-shimmer {
           0% { background-position: 0% 50%; }
           100% { background-position: 300% 50%; }
+        }
+        @keyframes activeMultiplierPulse {
+          0%, 100% { transform: scale(1); }
+          50% { transform: scale(1.12); }
+        }
+        @keyframes activeMultiplierRing {
+          0%, 100% { transform: scale(1); opacity: 0.6; }
+          50% { transform: scale(1.35); opacity: 0; }
+        }
+        @keyframes modalSlideUp {
+          from { transform: translateY(100%); opacity: 0; }
+          to { transform: translateY(0); opacity: 1; }
+        }
+        @keyframes streakBarFill {
+          from { width: 0%; }
+          to { width: var(--bar-width); }
         }
       `}</style>
 
@@ -2278,6 +2350,241 @@ export default function HomePage() {
           </div>
         </div>
       )}
+
+      {/* ════════════════════════════════════════════════════
+          RANK INFO MODAL — tap XP bar to open
+          ════════════════════════════════════════════════════ */}
+      {showRankInfo && (
+        <div
+          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.88)', zIndex: 1100, display: 'flex', alignItems: 'flex-end', justifyContent: 'center', animation: 'fadeInOverlay 0.2s ease-out' }}
+          onClick={() => setShowRankInfo(false)}
+        >
+          <div
+            style={{ width: '100%', maxWidth: 480, background: 'linear-gradient(180deg, #111108 0%, #0D0D0D 100%)', borderRadius: '24px 24px 0 0', padding: '0 0 32px', maxHeight: '88vh', overflowY: 'auto', animation: 'modalSlideUp 0.32s cubic-bezier(0.34,1.28,0.64,1)' }}
+            onClick={e => e.stopPropagation()}
+          >
+            {/* Drag handle */}
+            <div style={{ width: 36, height: 4, borderRadius: 2, background: '#2A2A2A', margin: '12px auto 0' }} />
+
+            {/* Header */}
+            <div style={{ padding: '18px 20px 0', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <div>
+                <div style={{ fontSize: 9, fontWeight: 800, letterSpacing: '0.14em', textTransform: 'uppercase', color: '#C8A24C', marginBottom: 4 }}>Experience System</div>
+                <div style={{ fontSize: 20, fontWeight: 900, color: '#F0F0F0' }}>Ranks & Levels</div>
+              </div>
+              <button onClick={() => setShowRankInfo(false)} style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid #222', borderRadius: '50%', width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#888', fontSize: 16 }}>✕</button>
+            </div>
+
+            {/* Your current position */}
+            {member && (() => {
+              const lvl = getActualLevel(memberXP);
+              const { title, progress, xpForNext } = getLevelFromXP(memberXP);
+              const toNext = xpForNext - memberXP;
+              return (
+                <div style={{ margin: '16px 20px', background: 'linear-gradient(135deg, rgba(200,162,76,0.12), rgba(200,162,76,0.04))', border: '1px solid rgba(200,162,76,0.25)', borderRadius: 14, padding: '14px 16px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12 }}>
+                    <div style={{ width: 42, height: 42, borderRadius: '50%', background: 'radial-gradient(circle at 35% 30%, #FFD700, #C8A24C 50%, #6B4A00)', boxShadow: '0 0 16px rgba(200,162,76,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 900, color: '#000', flexShrink: 0 }}>
+                      {lvl}
+                    </div>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontSize: 15, fontWeight: 800, color: '#F0F0F0' }}>{title}</div>
+                      <div style={{ fontSize: 11, color: '#C8A24C', marginTop: 2 }}>{memberXP.toLocaleString()} XP · {toNext.toLocaleString()} to next level</div>
+                    </div>
+                  </div>
+                  <div style={{ height: 8, borderRadius: 4, background: '#0A0A0A', overflow: 'hidden', border: '1px solid #1A1A1A' }}>
+                    <div style={{ height: '100%', width: `${progress * 100}%`, background: 'linear-gradient(90deg, #C8A24C, #FFD700)', borderRadius: 4, transition: 'width 1s ease', boxShadow: '0 0 8px rgba(255,215,0,0.5)' }} />
+                  </div>
+                </div>
+              );
+            })()}
+
+            {/* How to earn XP */}
+            <div style={{ margin: '0 20px 20px' }}>
+              <div style={{ fontSize: 9, fontWeight: 800, letterSpacing: '0.14em', textTransform: 'uppercase', color: '#555', marginBottom: 10 }}>How to Earn XP</div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                {[
+                  { icon: '🥋', label: 'Class Check-in', xp: '+10 XP', note: 'Per class' },
+                  { icon: '🔥', label: 'Weekly Combo', xp: '+1 XP bonus', note: '3+ classes/week' },
+                  { icon: '🏅', label: 'Perfect Week', xp: '2× multiplier', note: '5+ classes' },
+                  { icon: '👑', label: 'Legend Week', xp: '3× multiplier', note: '7 classes' },
+                  { icon: '🏆', label: 'Tournament', xp: '+50 XP', note: 'Per event' },
+                  { icon: '🥇', label: 'Gold Medal', xp: '+150 XP', note: 'First place' },
+                  { icon: '🥈', label: 'Silver Medal', xp: '+100 XP', note: 'Second place' },
+                  { icon: '🎯', label: 'Achievement', xp: '+25–100 XP', note: 'Varies' },
+                ].map(item => (
+                  <div key={item.label} style={{ background: '#111', border: '1px solid #1A1A1A', borderRadius: 10, padding: '10px 12px', display: 'flex', gap: 10, alignItems: 'center' }}>
+                    <span style={{ fontSize: 18, flexShrink: 0 }}>{item.icon}</span>
+                    <div>
+                      <div style={{ fontSize: 11, fontWeight: 700, color: '#C8A24C' }}>{item.xp}</div>
+                      <div style={{ fontSize: 10, color: '#F0F0F0', fontWeight: 600 }}>{item.label}</div>
+                      <div style={{ fontSize: 9, color: '#555', marginTop: 1 }}>{item.note}</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Level milestones */}
+            <div style={{ margin: '0 20px' }}>
+              <div style={{ fontSize: 9, fontWeight: 800, letterSpacing: '0.14em', textTransform: 'uppercase', color: '#555', marginBottom: 10 }}>Level Milestones</div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                {XP_LEVELS.map((lvlDef, idx) => {
+                  const isCurrentBracket = memberXP >= lvlDef.xpRequired && (idx === XP_LEVELS.length - 1 || memberXP < XP_LEVELS[idx + 1].xpRequired);
+                  const isUnlocked = memberXP >= lvlDef.xpRequired;
+                  const tierColors: Record<number, string> = { 1: '#888', 5: '#C8A24C', 10: '#FFD700', 15: '#22D3EE', 20: '#60A5FA', 25: '#A78BFA', 30: '#F472B6', 40: '#F97316', 50: '#A855F7' };
+                  const color = tierColors[lvlDef.level] || '#555';
+                  return (
+                    <div key={lvlDef.level} style={{
+                      display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px', borderRadius: 10,
+                      background: isCurrentBracket ? 'rgba(200,162,76,0.1)' : 'transparent',
+                      border: isCurrentBracket ? '1px solid rgba(200,162,76,0.25)' : '1px solid transparent',
+                      opacity: isUnlocked ? 1 : 0.4,
+                    }}>
+                      <div style={{ width: 28, height: 28, borderRadius: '50%', background: isUnlocked ? `radial-gradient(circle at 40% 35%, ${color}CC, ${color}55)` : '#1A1A1A', border: `1.5px solid ${isUnlocked ? color : '#2A2A2A'}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, fontWeight: 900, color: isUnlocked ? '#000' : '#333', flexShrink: 0, boxShadow: isUnlocked ? `0 0 8px ${color}55` : 'none' }}>
+                        {lvlDef.level}
+                      </div>
+                      <div style={{ flex: 1 }}>
+                        <div style={{ fontSize: 12, fontWeight: 700, color: isCurrentBracket ? '#F0F0F0' : isUnlocked ? '#CCC' : '#444' }}>{lvlDef.title}</div>
+                        <div style={{ fontSize: 10, color: '#555' }}>{lvlDef.xpRequired.toLocaleString()} XP required</div>
+                      </div>
+                      {isCurrentBracket && (
+                        <div style={{ fontSize: 9, fontWeight: 800, letterSpacing: '0.08em', color: '#C8A24C', background: 'rgba(200,162,76,0.15)', padding: '2px 7px', borderRadius: 999 }}>YOU</div>
+                      )}
+                      {!isCurrentBracket && isUnlocked && (
+                        <div style={{ fontSize: 14, color: '#2A8A2A' }}>✓</div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ════════════════════════════════════════════════════
+          STREAK & MULTIPLIER INFO MODAL — tap weekly widget
+          ════════════════════════════════════════════════════ */}
+      {showStreakInfo && (() => {
+        const isActive = trainedCount >= 3;
+        const streakTiers = [
+          { days: 1, label: '1 Class', mult: '1×', desc: 'Base XP per class check-in', color: '#555', icon: '🥋' },
+          { days: 3, label: '3 Classes', mult: '1.5×', desc: 'On a Roll — combo bonus kicks in', color: '#F97316', icon: '🔥' },
+          { days: 5, label: '5 Classes', mult: '2×', desc: 'Perfect Week — double all XP', color: '#FFD700', icon: '🏆' },
+          { days: 7, label: '7 Classes', mult: '3×', desc: 'Legendary — triple XP for the week', color: '#A855F7', icon: '👑' },
+        ];
+        return (
+          <div
+            style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.88)', zIndex: 1100, display: 'flex', alignItems: 'flex-end', justifyContent: 'center', animation: 'fadeInOverlay 0.2s ease-out' }}
+            onClick={() => setShowStreakInfo(false)}
+          >
+            <div
+              style={{ width: '100%', maxWidth: 480, background: isActive ? (isEliteWeek ? 'linear-gradient(180deg, #120820, #0D0D0D)' : isPerfectWeek ? 'linear-gradient(180deg, #141008, #0D0D0D)' : 'linear-gradient(180deg, #110A04, #0D0D0D)') : 'linear-gradient(180deg, #111, #0D0D0D)', borderRadius: '24px 24px 0 0', padding: '0 0 32px', maxHeight: '88vh', overflowY: 'auto', animation: 'modalSlideUp 0.32s cubic-bezier(0.34,1.28,0.64,1)' }}
+              onClick={e => e.stopPropagation()}
+            >
+              {/* Drag handle */}
+              <div style={{ width: 36, height: 4, borderRadius: 2, background: '#2A2A2A', margin: '12px auto 0' }} />
+
+              {/* Header */}
+              <div style={{ padding: '18px 20px 0', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <div>
+                  <div style={{ fontSize: 9, fontWeight: 800, letterSpacing: '0.14em', textTransform: 'uppercase', color: isEliteWeek ? '#A855F7' : isPerfectWeek ? '#FFD700' : '#C8A24C', marginBottom: 4 }}>Weekly Training</div>
+                  <div style={{ fontSize: 20, fontWeight: 900, color: '#F0F0F0' }}>Streaks & Multipliers</div>
+                </div>
+                <button onClick={() => setShowStreakInfo(false)} style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid #222', borderRadius: '50%', width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#888', fontSize: 16 }}>✕</button>
+              </div>
+
+              {/* Active multiplier hero — only when active */}
+              {isActive && (
+                <div style={{ margin: '16px 20px 0', borderRadius: 16, padding: '16px 18px', background: isEliteWeek ? 'linear-gradient(135deg, rgba(168,85,247,0.18), rgba(168,85,247,0.06))' : isPerfectWeek ? 'linear-gradient(135deg, rgba(255,215,0,0.15), rgba(255,215,0,0.04))' : 'linear-gradient(135deg, rgba(249,115,22,0.15), rgba(249,115,22,0.04))', border: `1px solid ${isEliteWeek ? 'rgba(168,85,247,0.4)' : isPerfectWeek ? 'rgba(255,215,0,0.35)' : 'rgba(249,115,22,0.35)'}` }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+                    <div style={{ width: 52, height: 52, borderRadius: '50%', background: isEliteWeek ? 'radial-gradient(circle at 35% 30%, #C084FC, #7C3AED)' : isPerfectWeek ? 'radial-gradient(circle at 35% 30%, #FFE566, #C8A24C)' : 'radial-gradient(circle at 35% 30%, #FFBB55, #C8520A)', boxShadow: isEliteWeek ? '0 0 20px rgba(168,85,247,0.8)' : isPerfectWeek ? '0 0 20px rgba(255,215,0,0.7)' : '0 0 20px rgba(249,115,22,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 900, color: '#000', flexShrink: 0, animation: 'activeMultiplierPulse 2s ease-in-out infinite' }}>
+                      {isEliteWeek ? '3×' : isPerfectWeek ? '2×' : '1.5×'}
+                    </div>
+                    <div>
+                      <div style={{ fontSize: 13, fontWeight: 900, color: isEliteWeek ? '#C084FC' : isPerfectWeek ? '#FFD700' : '#F97316', letterSpacing: '0.04em' }}>
+                        {isEliteWeek ? 'LEGENDARY WEEK ACTIVE' : isPerfectWeek ? 'PERFECT WEEK ACTIVE' : 'COMBO MULTIPLIER ACTIVE'}
+                      </div>
+                      <div style={{ fontSize: 11, color: '#999', marginTop: 3 }}>
+                        {isEliteWeek ? `All XP this week is tripled. ${7 - trainedCount > 0 ? `${7 - trainedCount} more class${7 - trainedCount !== 1 ? 'es' : ''} to keep the streak.` : 'Maximum achieved — legendary week!'}`
+                          : isPerfectWeek ? `All XP this week is doubled. ${7 - trainedCount > 0 ? `${7 - trainedCount} more class${7 - trainedCount !== 1 ? 'es' : ''} to hit legendary.` : '5 classes locked in!'}`
+                          : `Bonus XP on every class. ${5 - trainedCount} more class${5 - trainedCount !== 1 ? 'es' : ''} for Perfect Week.`}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* This week progress */}
+              <div style={{ margin: '16px 20px 0' }}>
+                <div style={{ fontSize: 9, fontWeight: 800, letterSpacing: '0.14em', textTransform: 'uppercase', color: '#555', marginBottom: 10 }}>This Week — {trainedCount}/7 Classes</div>
+                <div style={{ display: 'flex', gap: 6, marginBottom: 16 }}>
+                  {Array.from({ length: 7 }, (_, i) => {
+                    const dotNum = i + 1;
+                    const isTrained = i < trainedCount;
+                    const isMile = [3, 5, 7].includes(dotNum);
+                    const dotCol = dotNum === 7 ? '#A855F7' : dotNum === 5 ? '#FFD700' : '#C8A24C';
+                    return (
+                      <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
+                        <div style={{ width: '100%', aspectRatio: '1', borderRadius: '50%', background: isTrained ? dotCol : '#1A1A1A', border: `2px solid ${isTrained ? dotCol : isMile ? dotCol + '44' : '#222'}`, boxShadow: isTrained ? `0 0 8px ${dotCol}66` : 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 8, color: isTrained ? '#000' : '#333', fontWeight: 800, transition: 'all 0.3s ease' }}>
+                          {isTrained ? '✓' : ''}
+                        </div>
+                        {isMile && <div style={{ fontSize: 7, color: isTrained ? dotCol : dotCol + '55', fontWeight: 800 }}>{dotNum === 7 ? '3×' : dotNum === 5 ? '2×' : '1.5×'}</div>}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Multiplier tier cards */}
+              <div style={{ margin: '0 20px' }}>
+                <div style={{ fontSize: 9, fontWeight: 800, letterSpacing: '0.14em', textTransform: 'uppercase', color: '#555', marginBottom: 10 }}>Multiplier Tiers</div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  {streakTiers.map(tier => {
+                    const isCurrentTier = (
+                      tier.days === 1 ? trainedCount >= 1 && trainedCount < 3 :
+                      tier.days === 3 ? trainedCount >= 3 && trainedCount < 5 :
+                      tier.days === 5 ? trainedCount >= 5 && trainedCount < 7 :
+                      trainedCount === 7
+                    );
+                    const isUnlocked = trainedCount >= tier.days;
+                    return (
+                      <div key={tier.days} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 14px', borderRadius: 14, background: isCurrentTier ? `rgba(${tier.color === '#F97316' ? '249,115,22' : tier.color === '#FFD700' ? '255,215,0' : tier.color === '#A855F7' ? '168,85,247' : '80,80,80'},0.1)` : '#111', border: `1.5px solid ${isCurrentTier ? tier.color + '55' : '#1A1A1A'}`, opacity: isUnlocked ? 1 : 0.45, transition: 'all 0.3s ease' }}>
+                        <div style={{ width: 36, height: 36, borderRadius: '50%', background: isUnlocked ? `radial-gradient(circle at 35% 30%, ${tier.color}CC, ${tier.color}44)` : '#1A1A1A', border: `2px solid ${isUnlocked ? tier.color : '#2A2A2A'}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, flexShrink: 0, boxShadow: isCurrentTier ? `0 0 14px ${tier.color}66` : 'none', animation: isCurrentTier ? 'activeMultiplierPulse 2s ease-in-out infinite' : undefined }}>
+                          {tier.icon}
+                        </div>
+                        <div style={{ flex: 1 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                            <span style={{ fontSize: 13, fontWeight: 800, color: isUnlocked ? '#F0F0F0' : '#444' }}>{tier.label}</span>
+                            <span style={{ fontSize: 11, fontWeight: 900, color: tier.color, background: `${tier.color}18`, padding: '1px 7px', borderRadius: 999, border: `1px solid ${tier.color}33` }}>{tier.mult}</span>
+                            {isCurrentTier && <span style={{ fontSize: 8, fontWeight: 800, letterSpacing: '0.1em', color: tier.color }}>ACTIVE</span>}
+                          </div>
+                          <div style={{ fontSize: 10, color: '#666', marginTop: 2 }}>{tier.desc}</div>
+                        </div>
+                        {isUnlocked && !isCurrentTier && <div style={{ fontSize: 14, color: '#2A8A2A' }}>✓</div>}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Monthly streak context */}
+              {streakCount > 0 && (
+                <div style={{ margin: '16px 20px 0', padding: '12px 14px', borderRadius: 12, background: 'rgba(200,162,76,0.06)', border: '1px solid rgba(200,162,76,0.12)' }}>
+                  <div style={{ fontSize: 9, fontWeight: 800, letterSpacing: '0.14em', textTransform: 'uppercase', color: '#555', marginBottom: 6 }}>Monthly Streak</div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <span style={{ fontSize: 28, fontWeight: 900, color: '#C8A24C', letterSpacing: '-0.02em' }}>{streakCount}</span>
+                    <div>
+                      <div style={{ fontSize: 12, color: '#F0F0F0', fontWeight: 600 }}>consecutive class months</div>
+                      <div style={{ fontSize: 10, color: '#555' }}>Keep training to grow your streak</div>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 }
