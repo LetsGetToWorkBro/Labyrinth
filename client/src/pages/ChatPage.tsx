@@ -271,13 +271,38 @@ export default function ChatPage() {
     setMembersLoading(false);
   }, []);
 
-  // ── Load all members for Online tab ──────────────────────────
-  const loadOnlineMembers = useCallback(async () => {
-    setOnlineLoading(true);
-    const members = await chatGetChannelMembers('general');
-    setOnlineMembers(members);
+  // ── Load all members for Online tab (with sessionStorage cache) ──
+  const ONLINE_CACHE_KEY = 'lbjj_online_members';
+  const ONLINE_CACHE_TTL = 2 * 60 * 1000;
+
+  const loadOnlineMembers = useCallback(async (silent = false) => {
+    // Load from cache immediately
+    try {
+      const cached = sessionStorage.getItem(ONLINE_CACHE_KEY);
+      if (cached) {
+        const { data, ts } = JSON.parse(cached);
+        if (Date.now() - ts < ONLINE_CACHE_TTL) {
+          setOnlineMembers(data);
+          if (silent) return;
+        }
+      }
+    } catch {}
+
+    if (!silent) setOnlineLoading(true);
+    try {
+      const members = await chatGetChannelMembers('general');
+      setOnlineMembers(members);
+      try { sessionStorage.setItem(ONLINE_CACHE_KEY, JSON.stringify({ data: members, ts: Date.now() })); } catch {}
+    } catch {}
     setOnlineLoading(false);
   }, []);
+
+  // Silently pre-fetch online members on mount
+  useEffect(() => {
+    if (isAuthenticated) {
+      loadOnlineMembers(true);
+    }
+  }, [isAuthenticated]);
 
   // ── Load messages for active channel ─────────────────────────
   const loadMessages = useCallback(async (channelId: string) => {

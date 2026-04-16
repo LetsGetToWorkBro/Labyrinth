@@ -313,6 +313,20 @@ export default function AchievementsPage() {
                 </div>
               )}
             </div>
+            {isSelectedEarned && (
+              <button
+                onClick={() => { setSelectedAchievement(null); handleShareBadge(selectedAchievement); }}
+                style={{
+                  marginTop: 12, width: '100%', padding: '11px',
+                  borderRadius: 12, background: 'rgba(200,162,76,0.1)',
+                  border: '1px solid rgba(200,162,76,0.25)',
+                  color: '#C8A24C', fontSize: 13, fontWeight: 600,
+                  cursor: 'pointer',
+                }}
+              >
+                Share to Community Chat
+              </button>
+            )}
             <button
               onClick={() => setSelectedAchievement(null)}
               style={{
@@ -342,20 +356,6 @@ function UnlockedCard({ achievement, onShare }: { achievement: Achievement; onSh
       boxShadow: `0 0 12px ${achievement.color}15`,
       position: 'relative',
     }}>
-      <button
-        onClick={(e) => { e.stopPropagation(); onShare(achievement); }}
-        style={{
-          position: 'absolute', top: 6, right: 6,
-          width: 24, height: 24, borderRadius: '50%',
-          background: 'rgba(200,162,76,0.15)', border: '1px solid rgba(200,162,76,0.3)',
-          color: '#C8A24C', fontSize: 12, cursor: 'pointer',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          padding: 0,
-        }}
-        aria-label={`Share ${achievement.label}`}
-      >
-        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>
-      </button>
       <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 8 }}>
         <AchievementBadge achievementKey={achievement.key} size={44} unlocked={true} />
       </div>

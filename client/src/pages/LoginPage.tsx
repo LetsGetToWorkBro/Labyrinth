@@ -503,16 +503,34 @@ export default function LoginPage() {
                         Forgot password?
                       </button>
 
-                      {/* Remember me — small, below sign in area */}
-                      <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', marginTop: -8 }}>
-                        <input
-                          type="checkbox"
-                          checked={rememberMe}
-                          onChange={e => setRememberMe(e.target.checked)}
-                          style={{ width: 14, height: 14, accentColor: GOLD, flexShrink: 0 }}
-                        />
-                        <span style={{ fontSize: 11, color: '#555' }}>Remember me</span>
-                      </label>
+                      {/* Remember Me — custom toggle */}
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+                        <label htmlFor="remember-me" style={{ fontSize: 13, color: '#888', cursor: 'pointer', userSelect: 'none' }}>
+                          Remember me
+                        </label>
+                        <button
+                          id="remember-me"
+                          type="button"
+                          role="checkbox"
+                          aria-checked={rememberMe}
+                          onClick={() => setRememberMe(v => !v)}
+                          style={{
+                            width: 40, height: 22, borderRadius: 11, border: 'none',
+                            background: rememberMe ? '#C8A24C' : '#2A2A2A',
+                            position: 'relative', cursor: 'pointer',
+                            transition: 'background 0.2s ease', flexShrink: 0,
+                            padding: 0,
+                          }}
+                        >
+                          <div style={{
+                            width: 16, height: 16, borderRadius: '50%',
+                            background: '#FFF', position: 'absolute',
+                            top: 3, left: rememberMe ? 21 : 3,
+                            transition: 'left 0.2s ease',
+                            boxShadow: '0 1px 3px rgba(0,0,0,0.3)',
+                          }}/>
+                        </button>
+                      </div>
 
                       {/* Lockout countdown */}
                       {lockedUntil && Date.now() < lockedUntil && (
