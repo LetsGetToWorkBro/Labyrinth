@@ -1,10 +1,29 @@
 import { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { useHashLocation } from 'wouter/use-hash-location';
 import { ALL_ACHIEVEMENTS, ACHIEVEMENT_CATEGORIES, checkAndUnlockAchievements } from '@/lib/achievements';
 import type { Achievement } from '@/lib/achievements';
 import { gasCall } from '@/lib/api';
 import { useAuth } from '@/lib/auth-context';
 import { AchievementBadge } from '@/lib/achievement-icons';
+
+
+// K3: Progress tracking for locked achievements
+function getProgressForAchievement(key: string, stats: any): { current: number; target: number } | null {
+  const map: Record<string, { current: () => number; target: number }> = {
+    ten_classes:      { current: () => stats?.classesAttended || 0, target: 10 },
+    thirty_classes:   { current: () => stats?.classesAttended || 0, target: 30 },
+    hundred_classes:  { current: () => stats?.classesAttended || 0, target: 100 },
+    streak_4:         { current: () => stats?.currentStreak || 0, target: 4 },
+    streak_8:         { current: () => stats?.currentStreak || 0, target: 8 },
+    game_win_5:       { current: () => stats?.wins || 0, target: 5 },
+  };
+  const config = map[key];
+  if (!config) return null;
+  const current = config.current();
+  if (current === 0) return null;
+  return { current, target: config.target };
+}
 
 export default function AchievementsPage() {
   const [, navigate] = useHashLocation();
@@ -14,6 +33,10 @@ export default function AchievementsPage() {
   const [selectedAchievement, setSelectedAchievement] = useState<Achievement | null>(null);
   const [isSelectedEarned, setIsSelectedEarned] = useState(false);
   const [newBadgeKeys, setNewBadgeKeys] = useState<string[]>([]);
+  // K2: Secret reveal overlay state
+  const [secretReveal, setSecretReveal] = useState<Achievement | null>(null);
+  // K3: Member stats for progress
+  const [memberStats, setMemberStats] = useState<any>({});
 
   // 4a: Progress bar animated fill
   const progressRef = useRef<HTMLDivElement>(null);
@@ -79,6 +102,22 @@ export default function AchievementsPage() {
     indicator.style.width = `${activeEl.offsetWidth}px`;
   }, [activeCategory]);
 
+
+  // K3: Load member stats for progress bars
+  useEffect(() => {
+    const profile = (() => { try { return JSON.parse(localStorage.getItem('lbjj_member_profile') || '{}'); } catch { return {}; } })();
+    const gameStats = (() => { try { return JSON.parse(localStorage.getItem('lbjj_game_stats_v2') || '{}'); } catch { return {}; } })();
+    setMemberStats({ ...profile, ...gameStats });
+  }, []);
+
+  // K2: Trigger secret reveal when new badge is secret
+  useEffect(() => {
+    if (newBadgeKeys.length > 0) {
+      const secretNew = ALL_ACHIEVEMENTS.find(a => a.secret && newBadgeKeys.includes(a.key));
+      if (secretNew) setSecretReveal(secretNew);
+    }
+  }, [newBadgeKeys]);
+
   const filtered = activeCategory === 'all'
     ? ALL_ACHIEVEMENTS
     : ALL_ACHIEVEMENTS.filter(a => a.category === activeCategory);
@@ -101,6 +140,7 @@ export default function AchievementsPage() {
 
   return (
     <div className="app-content achievements-page" style={{ background: '#0A0A0A', minHeight: '100dvh' }}>
+      {secretReveal && <SecretRevealOverlay achievement={secretReveal} onComplete={() => setSecretReveal(null)} />}
       {/* Header */}
       <div style={{ padding: '0 20px', paddingTop: 'max(16px, env(safe-area-inset-top, 16px))' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
@@ -240,7 +280,7 @@ export default function AchievementsPage() {
             >
               {isEarned
                 ? <UnlockedCard achievement={a} onShare={handleShareBadge} />
-                : <LockedCard achievement={a} isSecret={isSecret} />
+                : <LockedCard achievement={a} isSecret={isSecret} stats={memberStats} />
               }
             </div>
           );
@@ -345,6 +385,51 @@ export default function AchievementsPage() {
   );
 }
 
+
+// K2: Secret Achievement Reveal Overlay
+function SecretRevealOverlay({ achievement, onComplete }: { achievement: Achievement; onComplete: () => void }) {
+  const [phase, setPhase] = useState<'vignette' | 'orb' | 'text' | 'crack' | 'done'>('vignette');
+
+  useEffect(() => {
+    const t1 = setTimeout(() => setPhase('orb'), 500);
+    const t2 = setTimeout(() => setPhase('text'), 1500);
+    const t3 = setTimeout(() => setPhase('crack'), 2200);
+    const t4 = setTimeout(() => { setPhase('done'); onComplete(); }, 3200);
+    return () => { clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); clearTimeout(t4); };
+  }, [onComplete]);
+
+  return createPortal(
+    <div style={{
+      position: 'fixed', inset: 0, zIndex: 500,
+      background: 'rgba(0,0,0,0.95)',
+      display: 'flex', flexDirection: 'column',
+      alignItems: 'center', justifyContent: 'center',
+      gap: 24,
+    }}>
+      <div style={{
+        width: 80, height: 80, borderRadius: '50%',
+        background: 'radial-gradient(circle, #333, #111)',
+        border: '2px solid #333',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        fontSize: 36,
+        animation: phase === 'orb' || phase === 'text' ? 'pulse 0.6s ease-in-out 3' : phase === 'crack' ? 'badge-ceremony-badge-in 0.3s ease both' : 'none',
+      }}>
+        {phase === 'crack' ? <AchievementBadge achievementKey={achievement.key} size={56} unlocked={true} /> : '?'}
+      </div>
+      {(phase === 'text' || phase === 'crack') && (
+        <div style={{
+          fontSize: 14, fontWeight: 800, color: '#E05555',
+          letterSpacing: '0.2em', textTransform: 'uppercase',
+          animation: 'badge-ceremony-text-in 0.4s ease both',
+        }}>
+          Hidden Achievement
+        </div>
+      )}
+    </div>,
+    document.body
+  );
+}
+
 function UnlockedCard({ achievement, onShare }: { achievement: Achievement; onShare: (a: Achievement) => void }) {
   return (
     <div style={{
@@ -365,7 +450,8 @@ function UnlockedCard({ achievement, onShare }: { achievement: Achievement; onSh
   );
 }
 
-function LockedCard({ achievement, isSecret }: { achievement: Achievement; isSecret: boolean }) {
+function LockedCard({ achievement, isSecret, stats }: { achievement: Achievement; isSecret: boolean; stats?: any }) {
+  const progress = !isSecret ? getProgressForAchievement(achievement.key, stats || {}) : null;
   return (
     <div style={{
       background: '#0D0D0D',
@@ -381,6 +467,22 @@ function LockedCard({ achievement, isSecret }: { achievement: Achievement; isSec
       <div style={{ fontSize: 10, color: '#333', marginTop: 4, lineHeight: 1.4 }}>
         {isSecret ? 'Keep training to discover this achievement.' : achievement.desc}
       </div>
+      {progress && (
+        <div style={{ height: 2, background: '#111', borderRadius: 1, marginTop: 6, overflow: 'hidden' }}>
+          <div style={{
+            height: '100%',
+            width: `${Math.min((progress.current / progress.target) * 100, 100)}%`,
+            background: achievement.color,
+            borderRadius: 1,
+            transition: 'width 1s ease',
+          }}/>
+        </div>
+      )}
+      {progress && (
+        <div style={{ fontSize: 9, color: '#555', marginTop: 3 }}>
+          {progress.current}/{progress.target}
+        </div>
+      )}
     </div>
   );
 }

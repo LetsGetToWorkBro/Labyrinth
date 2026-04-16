@@ -13,6 +13,14 @@ export default function LivePage() {
   const [loading, setLoading] = useState(true);
   const [archivesLoading, setArchivesLoading] = useState(true);
   const [archivesError, setArchivesError] = useState(false);
+  // F2: Floating reactions
+  const [reactions, setReactions] = useState<Array<{id: number; emoji: string; x: number}>>([]);
+
+  const sendReaction = (emoji: string) => {
+    const id = Date.now();
+    setReactions(prev => [...prev, { id, emoji, x: 75 + Math.random() * 20 }]);
+    setTimeout(() => setReactions(prev => prev.filter(r => r.id !== id)), 3000);
+  };
 
   useEffect(() => {
     getStreamStatus().then(setStream).finally(() => setLoading(false));
@@ -80,6 +88,39 @@ export default function LivePage() {
             <div style={{ display: 'flex', gap: 16, marginTop: 10, padding: '10px 14px', background: '#141414', borderRadius: 10 }}>
               <div style={{ fontSize: 12, color: '#888' }}>🕐 {stream.durationMinutes}m in</div>
               <div style={{ fontSize: 12, color: '#888' }}>{stream.instructor}</div>
+            </div>
+
+            {/* F2: Floating reactions overlay */}
+            <div style={{ position: 'relative', height: 60, overflow: 'hidden', marginTop: 8, pointerEvents: 'none' }}>
+              {reactions.map(r => (
+                <div key={r.id} style={{
+                  position: 'absolute', bottom: 0, right: `${100 - r.x}%`,
+                  fontSize: 24,
+                  animation: 'reactionFloat 3s ease-out forwards',
+                  pointerEvents: 'none',
+                }}>
+                  {r.emoji}
+                </div>
+              ))}
+            </div>
+
+            {/* F2: Reaction buttons */}
+            <div style={{ display: 'flex', gap: 12, justifyContent: 'center', marginTop: 8 }}>
+              {['🔥', '💪', '🥋', '👏', '⚡'].map(emoji => (
+                <button key={emoji} onClick={() => sendReaction(emoji)}
+                  style={{
+                    fontSize: 22, background: 'rgba(255,255,255,0.05)',
+                    border: '1px solid #222', borderRadius: 12,
+                    padding: '8px 10px', cursor: 'pointer',
+                    transition: 'transform 0.1s ease',
+                    WebkitUserSelect: 'none' as const,
+                  }}
+                  onMouseDown={e => (e.currentTarget.style.transform = 'scale(0.9)')}
+                  onMouseUp={e => (e.currentTarget.style.transform = 'scale(1)')}
+                >
+                  {emoji}
+                </button>
+              ))}
             </div>
           </div>
         )}

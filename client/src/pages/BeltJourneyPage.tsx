@@ -66,6 +66,22 @@ function getTimeBetween(date1: string, date2: string): string {
   return `${years}y ${remaining}m`;
 }
 
+
+function getMonthsHeld(date1: string, date2: string): number {
+  const d1 = new Date(date1);
+  const d2 = new Date(date2);
+  return Math.round((d2.getTime() - d1.getTime()) / (1000 * 60 * 60 * 24 * 30.44));
+}
+
+const BJJ_AVERAGE_MONTHS: Record<string, number> = {
+  white: 18, blue: 30, purple: 30, brown: 24,
+};
+
+function isNearDate(d1: string, d2: string, days: number): boolean {
+  const diff = Math.abs(new Date(d1).getTime() - new Date(d2).getTime());
+  return diff <= days * 24 * 60 * 60 * 1000;
+}
+
 function getTotalTime(promotions: BeltPromotion[]): string {
   if (promotions.length < 2) return "";
   return getTimeBetween(promotions[0].date, promotions[promotions.length - 1].date);
@@ -325,7 +341,7 @@ export default function BeltJourneyPage() {
           <h3 className="text-xs font-medium uppercase tracking-wider mb-3" style={{ color: "#666" }}>Timeline</h3>
           <div className="relative">
             {/* Vertical line */}
-            <div className="absolute left-5 top-4 bottom-4 w-0.5" style={{ backgroundColor: "#222" }} />
+            <div className="absolute left-5 top-4 bottom-4 w-0.5" style={{ background: 'linear-gradient(to bottom, #E5E5E5, ' + (currentBelt ? (BELT_ACCENT_COLORS[currentBelt.belt] || getBeltColor(currentBelt.belt)) : '#444') + ')' }} />
 
             <div className="space-y-0">
               {promotions.map((promo, i) => {
@@ -344,7 +360,7 @@ export default function BeltJourneyPage() {
                         if (dx > 60 && !isEditing) setSwipedId(swipedId === promo.id ? null : promo.id);
                         else if (dx < -20) setSwipedId(null);
                       }}
-                      style={{ position: 'relative' }}
+                      style={{ position: 'relative', animation: i === promotions.length - 1 ? 'pulseGlow 2s ease-in-out infinite' : undefined }}
                     >
                       {/* Swipe-revealed delete button */}
                       {swipedId === promo.id && (
@@ -438,6 +454,65 @@ export default function BeltJourneyPage() {
                               <p className="text-[10px] mt-0.5" style={{ color: '#555' }}>Coach's Note</p>
                             </div>
                           )}
+                          {/* E1: Time-on-belt visualization */}
+                          {(() => {
+                            const nextPromoDate = nextPromo?.date || new Date().toISOString().split('T')[0];
+                            const monthsHeld = getMonthsHeld(promo.date, nextPromoDate);
+                            const avgMonths = BJJ_AVERAGE_MONTHS[promo.belt] || 24;
+                            const pct = Math.min((monthsHeld / avgMonths) * 50, 100);
+                            const beltClr = BELT_ACCENT_COLORS[promo.belt] || getBeltColor(promo.belt || 'white');
+                            return (
+                              <div style={{ marginTop: 8 }}>
+                                <div style={{ position: 'relative', height: 4, background: '#111', borderRadius: 2 }}>
+                                  <div style={{
+                                    position: 'absolute', top: 0, left: 0,
+                                    height: '100%', width: `${pct}%`,
+                                    background: beltClr, borderRadius: 2,
+                                    transition: 'width 0.8s ease',
+                                  }}/>
+                                  <div style={{
+                                    position: 'absolute', top: -3, left: '50%',
+                                    width: 2, height: 10, background: '#444',
+                                    transform: 'translateX(-50%)',
+                                  }}/>
+                                </div>
+                                <div style={{ fontSize: 10, color: '#555', marginTop: 3 }}>
+                                  {monthsHeld}mo held · avg {avgMonths}mo
+                                  {monthsHeld < avgMonths ? ' · Promoted early' : ''}
+                                </div>
+                              </div>
+                            );
+                          })()}
+                          {/* E2: Coach notes as handwritten cards */}
+                          {coachNotes
+                            .filter(note => isNearDate(note.date, promo.date, 90))
+                            .map((note, ni) => (
+                              <div key={ni} style={{
+                                background: '#1A1712',
+                                border: '1px solid #2A2520',
+                                borderRadius: 8,
+                                padding: '12px 14px',
+                                marginTop: 10,
+                                transform: `rotate(${ni % 2 === 0 ? -1.5 : 1.2}deg)`,
+                                boxShadow: '0 2px 8px rgba(0,0,0,0.4)',
+                                position: 'relative',
+                              }}>
+                                <div style={{
+                                  position: 'absolute', top: -5, left: '50%',
+                                  width: 10, height: 10, borderRadius: '50%',
+                                  background: '#C8A24C',
+                                  transform: 'translateX(-50%)',
+                                  boxShadow: '0 2px 4px rgba(0,0,0,0.5)',
+                                }}/>
+                                <div style={{ fontSize: 13, color: '#D4C8A0', lineHeight: 1.6, fontStyle: 'italic' }}>
+                                  "{note.note}"
+                                </div>
+                                <div style={{ fontSize: 10, color: '#5A5040', marginTop: 8 }}>
+                                  — {note.coach} · {new Date(note.date).toLocaleDateString()}
+                                </div>
+                              </div>
+                            ))
+                          }
                         </button>
                       )}
                     </div>
@@ -462,20 +537,7 @@ export default function BeltJourneyPage() {
         </div>
       )}
 
-      {/* Coach Feedback */}
-      {coachNotes.length > 0 && (
-        <div className="mx-5 mb-4" style={{ marginTop: 24, paddingTop: 20, borderTop: '1px solid #1A1A1A' }}>
-          <div style={{ fontSize: 11, fontWeight: 700, color: '#666', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 12 }}>
-            Coach Feedback
-          </div>
-          {coachNotes.map((n, i) => (
-            <div key={i} style={{ padding: '12px 14px', background: '#0D0D0D', borderRadius: 12, border: '1px solid #1A1A1A', borderLeft: '3px solid #C8A24C', marginBottom: 8 }}>
-              <div style={{ fontSize: 11, color: '#555', marginBottom: 4 }}>{n.date}{n.coach ? ` · ${n.coach}` : ''}</div>
-              <div style={{ fontSize: 13, color: '#D0D0D0', lineHeight: 1.5 }}>{n.note}</div>
-            </div>
-          ))}
-        </div>
-      )}
+
 
       {/* Add Promotion */}
       {showAdd ? (

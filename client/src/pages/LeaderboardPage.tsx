@@ -6,6 +6,13 @@ import { RefreshCw } from 'lucide-react';
 import { getActualLevel } from '@/lib/xp';
 
 const GOLD = '#C8A24C';
+const PODIUM_CONFIG: Record<number, { icon: string; borderColor: string; glow: string }> = {
+  1: { icon: '👑', borderColor: '#FFD700', glow: '0 0 20px rgba(255,215,0,0.25)' },
+  2: { icon: '🥈', borderColor: '#C0C0C0', glow: '0 0 12px rgba(192,192,192,0.15)' },
+  3: { icon: '🥉', borderColor: '#CD7F32', glow: '0 0 12px rgba(205,127,50,0.15)' },
+};
+
+
 
 type Tab = 'classes' | 'games';
 type SortBy = 'classes' | 'level';
@@ -227,7 +234,7 @@ export default function LeaderboardPage() {
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
             {filteredEntries.map((entry, i) => {
-              const medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : null;
+              const podiumCfg = PODIUM_CONFIG[i + 1];
               const isTop3 = i < 3;
               const isMe = entry.isMe || (member && entry.name === member.name);
               const hasClassCount = entry.classCount && entry.classCount > 0;
@@ -238,12 +245,14 @@ export default function LeaderboardPage() {
                 <div key={i} style={{
                   background: isMe ? `${GOLD}14` : isTop3 ? `${GOLD}0A` : '#111',
                   borderRadius: 12, padding: '12px 14px',
-                  border: `1px solid ${isMe ? GOLD + '40' : isTop3 ? GOLD + '20' : '#1A1A1A'}`,
+                  border: `1px solid ${isMe ? GOLD + '40' : podiumCfg ? podiumCfg.borderColor + '40' : '#1A1A1A'}`,
+                  boxShadow: podiumCfg ? podiumCfg.glow : undefined,
+                  animation: i === 0 ? 'pulseGlow 2s ease-in-out infinite' : undefined,
                   display: 'flex', alignItems: 'center', gap: 12,
                 }}>
                   <div style={{ width: 36, textAlign: 'center', flexShrink: 0 }}>
-                    {medal
-                      ? <span style={{ fontSize: 18 }}>{medal}</span>
+                    {podiumCfg
+                      ? <span style={{ fontSize: 18 }}>{podiumCfg.icon}</span>
                       : <span style={{ color: '#555', fontSize: 13, fontWeight: 700 }}>#{currentPos}</span>}
                     {rankDelta !== null && (
                       <div style={{ fontSize: 9, fontWeight: 700, color: rankDelta > 0 ? '#4CAF80' : '#E05555', lineHeight: 1, marginTop: 1 }}>
@@ -283,6 +292,37 @@ export default function LeaderboardPage() {
             })}
           </div>
         )}
+        {/* H3: User's own row always visible at bottom */}
+        {(() => {
+          if (!member) return null;
+          const userIdx = filteredEntries.findIndex(e => e.isMe || e.name === member.name);
+          const userRank = userIdx + 1;
+          const userEntry = filteredEntries[userIdx];
+          if (!userEntry || userRank <= 10) return null;
+          return (
+            <div style={{
+              position: 'sticky', bottom: 0,
+              background: 'linear-gradient(transparent, #0A0A0A 20%)',
+              paddingTop: 16,
+            }}>
+              <div style={{
+                background: `${GOLD}14`, borderRadius: 12, padding: '12px 14px',
+                border: `1px solid ${GOLD}40`,
+                display: 'flex', alignItems: 'center', gap: 12,
+              }}>
+                <div style={{ width: 36, textAlign: 'center', flexShrink: 0 }}>
+                  <span style={{ color: '#555', fontSize: 13, fontWeight: 700 }}>#{userRank}</span>
+                </div>
+                <div style={{ flex: 1, color: '#F0F0F0', fontSize: 13, fontWeight: 700 }}>
+                  {userEntry.name} (You)
+                </div>
+                <div style={{ color: GOLD, fontSize: 14, fontWeight: 700 }}>
+                  {userEntry.classCount || userEntry.score || 0}
+                </div>
+              </div>
+            </div>
+          );
+        })()}
       </div>
       <div style={{ height: 24 }} />
     </div>

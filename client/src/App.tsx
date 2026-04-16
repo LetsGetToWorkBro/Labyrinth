@@ -34,6 +34,7 @@ const AchievementsPage   = lazy(() => import("@/pages/AchievementsPage"));
 const LivePage           = lazy(() => import("@/pages/LivePage"));
 const CheckInHistoryPage = lazy(() => import("@/pages/CheckInHistoryPage"));
 const NotFound           = lazy(() => import("@/pages/not-found"));
+import logoMaze from './assets/logo-maze.webp';
 import {
   Home, MessageCircle, CalendarDays, MoreHorizontal,
   Gamepad2, BarChart2, Trophy, Thermometer,
@@ -43,6 +44,7 @@ import { useEffect, useCallback, useState, useRef } from "react";
 import { useHashLocation as useHashLoc } from "wouter/use-hash-location";
 import { Redirect } from "wouter";
 import { gasCall, cachedGasCall, beltSavePromotion, updatePresence } from "@/lib/api";
+import { getBeltColor } from "@/lib/constants";
 import { ProfileRing } from "@/components/ProfileRing";
 import { getRingTier, getActualLevel } from "@/lib/xp";
 import { XPBar } from "@/components/XPBar";
@@ -57,6 +59,7 @@ type NavOption = {
   label: string;
   Icon: LucideIcon | null;
   emoji: string; // fallback when no Lucide icon
+  customIcon?: string;
 };
 
 const ALL_NAV_OPTIONS: NavOption[] = [
@@ -64,7 +67,7 @@ const ALL_NAV_OPTIONS: NavOption[] = [
   { path: '/chat',     label: 'Chat',     Icon: MessageCircle,  emoji: '💬' },
   { path: '/achievements', label: 'Progress', Icon: Trophy,      emoji: '🏆' },
   { path: '/schedule', label: 'Schedule', Icon: CalendarDays,   emoji: '📅' },
-  { path: '/more',     label: 'More',     Icon: MoreHorizontal, emoji: '⋯'  },
+  { path: '/more',     label: 'More',     Icon: MoreHorizontal, emoji: '⋯', customIcon: 'maze'  },
   { path: '/games',    label: 'Games',    Icon: Gamepad2,       emoji: '🎮' },
   { path: '/stats',    label: 'Stats',    Icon: BarChart2,      emoji: '📊' },
   { path: '/calendar', label: 'Events',   Icon: Trophy,         emoji: '🏆' },
@@ -94,6 +97,7 @@ function saveNavConfig(paths: string[]) {
 function TabBar() {
   const [location] = useLocation();
   const [navPaths, setNavPaths] = useState<string[]>(getNavConfig);
+  const { member } = useAuth();
 
   useEffect(() => {
     const handler = () => setNavPaths(getNavConfig());
@@ -135,11 +139,35 @@ function TabBar() {
             className={`tab-item ${isActive ? 'active' : ''}`}
             data-testid={`tab-${tab.label.toLowerCase()}`}
             onClick={(e) => handleTabClick(e, tab.path)}
+            style={{ position: 'relative' }}
           >
-            {Icon
-              ? <Icon size={22} strokeWidth={isActive ? 2.2 : 1.5} />
-              : <span style={{ fontSize: 20, lineHeight: 1 }}>{tab.emoji}</span>
-            }
+            {tab.customIcon === 'maze' ? (
+              <img
+                src={logoMaze}
+                alt="More"
+                style={{
+                  width: 22, height: 22,
+                  objectFit: 'contain',
+                  filter: isActive ? 'brightness(1) sepia(1) saturate(3) hue-rotate(5deg)' : 'brightness(0.35)',
+                  transition: 'filter 200ms var(--ease-out)',
+                }}
+              />
+            ) : Icon ? (
+              <Icon size={22} strokeWidth={isActive ? 2.2 : 1.5} />
+            ) : (
+              <span style={{ fontSize: 20, lineHeight: 1 }}>{tab.emoji}</span>
+            )}
+            {isActive && (
+              <div style={{
+                position: 'absolute', bottom: 0, left: '50%',
+                transform: 'translateX(-50%)',
+                width: '80%', height: 2,
+                background: `radial-gradient(ellipse at center, ${getBeltColor(member?.belt || 'white')} 0%, transparent 80%)`,
+                borderRadius: '50%',
+                filter: 'blur(1px)',
+                pointerEvents: 'none',
+              }}/>
+            )}
             <span style={{ fontSize: 12, lineHeight: '1.2' }}>{tab.label}</span>
           </a>
         );

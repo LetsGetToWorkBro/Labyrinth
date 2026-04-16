@@ -9,6 +9,7 @@
  */
 
 import { useState, useRef, useEffect, useCallback } from "react";
+import { createPortal } from "react-dom";
 import { ListSkeleton } from "@/components/LoadingSkeleton";
 import { getBeltColor } from "@/lib/constants";
 import { BeltIcon } from "@/components/BeltIcon";
@@ -40,6 +41,79 @@ function getBeltRankIndex(belt: string, isKids: boolean): number {
 
 function isKidsBelt(belt: string): boolean {
   return KIDS_BELT_ORDER.includes(belt.toLowerCase()) && belt.toLowerCase() !== 'white';
+}
+
+// ── G2: SystemMessage ──
+function SystemMessage({ text, icon, color }: { text: string; icon: string; color: string }) {
+  return (
+    <div style={{ textAlign: 'center', padding: '8px 20px', margin: '6px 0' }}>
+      <div style={{
+        display: 'inline-flex', alignItems: 'center', gap: 8,
+        padding: '6px 14px', borderRadius: 999,
+        background: `${color}12`,
+        border: `1px solid ${color}25`,
+      }}>
+        <span style={{ fontSize: 14 }}>{icon}</span>
+        <span style={{ fontSize: 12, fontWeight: 600, color: '#888' }}>{text}</span>
+      </div>
+    </div>
+  );
+}
+
+// ── G3: MemberMiniProfile Bottom Sheet ──
+function MemberMiniProfile({ member, onClose }: { member: ChannelMember; onClose: () => void }) {
+  const level = getActualLevel(member.totalPoints || 0);
+  const tier = getRingTier(level);
+  const beltColor = getBeltColor(member.belt || 'white');
+
+  return createPortal(
+    <div onClick={onClose} style={{
+      position: 'fixed', inset: 0, zIndex: 300,
+      display: 'flex', alignItems: 'flex-end',
+    }}>
+      <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(6px)' }}/>
+      <div onClick={e => e.stopPropagation()} style={{
+        position: 'relative', width: '100%',
+        background: '#111',
+        borderRadius: '20px 20px 0 0',
+        padding: '28px 24px',
+        border: '1px solid #1A1A1A',
+        animation: 'modal-enter 300ms cubic-bezier(0.16,1,0.3,1) both',
+        paddingBottom: 'max(24px, calc(env(safe-area-inset-bottom) + 24px))',
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 20 }}>
+          <ProfileRing tier={tier} size={72}>
+            <div style={{
+              width: 72, height: 72, borderRadius: '50%',
+              background: 'radial-gradient(circle at 35% 30%, #2A2A2A, #0D0D0D)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              fontSize: 24, fontWeight: 800, color: '#F0F0F0',
+            }}>
+              {(member.name || '?').charAt(0)}
+            </div>
+          </ProfileRing>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: 18, fontWeight: 900, color: '#F0F0F0' }}>{member.name}</div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4 }}>
+              <span style={{ fontSize: 12, color: beltColor, fontWeight: 700, textTransform: 'capitalize' }}>
+                {member.belt || 'white'} Belt
+              </span>
+            </div>
+          </div>
+          <div style={{ marginLeft: 'auto', textAlign: 'right' }}>
+            <div style={{ fontSize: 24, fontWeight: 900, color: '#FFD700' }}>LV {level}</div>
+          </div>
+        </div>
+        <XPBar xp={member.totalPoints || 0} compact />
+        <button onClick={onClose} style={{
+          marginTop: 16, width: '100%', padding: 12, borderRadius: 12,
+          background: '#1A1A1A', border: '1px solid #222',
+          color: '#999', fontSize: 14, fontWeight: 600, cursor: 'pointer',
+        }}>Close</button>
+      </div>
+    </div>,
+    document.body
+  );
 }
 
 // ── MemberRow component for Online tab ──
@@ -184,6 +258,7 @@ export default function ChatPage() {
   const [showMembers, setShowMembers] = useState(false);
   const [channelMembers, setChannelMembers] = useState<ChannelMember[]>([]);
   const [membersLoading, setMembersLoading] = useState(false);
+  const [miniProfileMember, setMiniProfileMember] = useState<ChannelMember | null>(null);
   const [selectedMember, setSelectedMember] = useState<ChannelMember | null>(null);
   const [showOnlineTab, setShowOnlineTab] = useState(false);
   const [onlineMembers, setOnlineMembers] = useState<ChannelMember[]>([]);
@@ -508,6 +583,7 @@ export default function ChatPage() {
 
         {/* Member profile modal */}
         {selectedMember && <MemberProfileModal member={selectedMember} onClose={() => setSelectedMember(null)} />}
+        {miniProfileMember && <MemberMiniProfile member={miniProfileMember} onClose={() => setMiniProfileMember(null)} />}
 
         {/* Messages */}
         <div ref={messagesContainerRef} style={{ flex: 1, overflowY: "auto", padding: "12px 16px", display: "flex", flexDirection: "column", gap: 4 }}>
@@ -542,6 +618,18 @@ export default function ChatPage() {
           ) : (
             messages.map((msg, idx) => {
               const isNew = !initialLoadRef.current && idx >= initialMsgCountRef.current;
+              // G2: System messages get special treatment
+              if ((msg as any).sender === 'system' || (msg as any).type === 'system') {
+                const txt = msg.text || '';
+                const emojiMatch = txt.match(/^(\S{1,2})/);
+                const icon = emojiMatch && emojiMatch[1].codePointAt(0)! > 127 ? emojiMatch[1] : '🏆';
+                const color = '#C8A24C';
+                return (
+                  <div key={msg.id} className="chat-message-entry" style={isNew ? { animation: 'chat-msg-enter 160ms cubic-bezier(0.16, 1, 0.3, 1) both' } : undefined}>
+                    <SystemMessage text={txt} icon={icon} color={color} />
+                  </div>
+                );
+              }
               return (
                 <div
                   key={msg.id}
@@ -694,6 +782,7 @@ export default function ChatPage() {
 
         {/* Member profile modal (accessible from Online tab) */}
         {selectedMember && <MemberProfileModal member={selectedMember} onClose={() => setSelectedMember(null)} />}
+        {miniProfileMember && <MemberMiniProfile member={miniProfileMember} onClose={() => setMiniProfileMember(null)} />}
       </div>
     );
   }

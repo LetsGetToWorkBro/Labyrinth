@@ -204,6 +204,36 @@ function BeltVisual({ belt, size = 'sm' }: { belt: string; size?: 'sm' | 'md' })
   );
 }
 
+
+// J1: Week number helper
+function getWeekNumber(d: Date): number {
+  const date = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+  const dayNum = date.getUTCDay() || 7;
+  date.setUTCDate(date.getUTCDate() + 4 - dayNum);
+  const yearStart = new Date(Date.UTC(date.getUTCFullYear(), 0, 1));
+  return Math.ceil((((date.getTime() - yearStart.getTime()) / 86400000) + 1) / 7);
+}
+
+// M2: Techniques array
+const TECHNIQUES = [
+  { name: "Rear Naked Choke", category: "Submission", from: "Back Control", tip: "Squeeze with the elbow, not the wrist." },
+  { name: "Armbar from Guard", category: "Submission", from: "Closed Guard", tip: "Hip out before breaking posture." },
+  { name: "Triangle Choke", category: "Submission", from: "Closed Guard", tip: "Cut the angle before locking the triangle." },
+  { name: "Double Leg Takedown", category: "Takedown", from: "Standing", tip: "Level change first, then shoot." },
+  { name: "Hip Escape", category: "Defense", from: "Side Control", tip: "Create space before framing." },
+  { name: "Scissor Sweep", category: "Sweep", from: "Closed Guard", tip: "Pull down on the collar simultaneously." },
+  { name: "Kimura", category: "Submission", from: "Side Control", tip: "Control the near hip first." },
+  { name: "Bow and Arrow Choke", category: "Submission", from: "Back Control", tip: "Extend their body like a bow." },
+  { name: "Guillotine Choke", category: "Submission", from: "Guard Pull", tip: "Angle out — don't squeeze straight down." },
+  { name: "Collar Drag", category: "Takedown", from: "Standing", tip: "Create the angle before pulling." },
+  { name: "Knee Slice Pass", category: "Pass", from: "Half Guard", tip: "Drive the knee through, chest pressure helps." },
+  { name: "X Guard Sweep", category: "Sweep", from: "X Guard", tip: "Extend both legs simultaneously." },
+  { name: "Berimbolo", category: "Technique", from: "De La Riva Guard", tip: "Invert first, then take the back." },
+  { name: "Single Leg Takedown", category: "Takedown", from: "Standing", tip: "Lift the leg, don't just pull." },
+  { name: "Omoplata", category: "Submission", from: "Guard", tip: "Hip up to finish — don't just pull." },
+];
+const getDayOfYear = () => { const n = new Date(); const s = new Date(n.getFullYear(),0,0); return Math.floor((n.getTime()-s.getTime())/86400000); };
+
 export default function HomePage() {
   const { member, familyMembers, isAuthenticated, logout, switchProfile, setMember, refreshProfile } = useAuth();
 
@@ -900,9 +930,24 @@ export default function HomePage() {
     }
   }, [member?.email]);
 
+
+  // J1: Monday morning weekly report
+  useEffect(() => {
+    const today = new Date();
+    const weekKey = `${today.getFullYear()}-W${getWeekNumber(today)}`;
+    if (today.getDay() === 1 && localStorage.getItem('lbjj_week_report_seen') !== weekKey) {
+      setShowWeekReport(true);
+    }
+  }, []);
+
   // ─── Live stream status (poll every 30s) ───────────────────────────
   const STREAM_CACHE_KEY = 'lbjj_stream_status';
   const STREAM_TTL = 30_000;
+
+  // J1: Weekly report state
+  const [showWeekReport, setShowWeekReport] = useState(false);
+  const [weekReportDismissed, setWeekReportDismissed] = useState(false);
+
   const [stream, setStream] = useState<StreamStatus | null>(() => {
     try {
       const cached = localStorage.getItem(STREAM_CACHE_KEY);
@@ -941,6 +986,65 @@ export default function HomePage() {
 
   const defaultCard = cards.find(c => c.isDefault) || cards[0];
 
+
+  // J1: Dismiss weekly report
+  const dismissReport = () => {
+    const today = new Date();
+    const weekKey = `${today.getFullYear()}-W${getWeekNumber(today)}`;
+    localStorage.setItem('lbjj_week_report_seen', weekKey);
+    setShowWeekReport(false);
+    setWeekReportDismissed(true);
+  };
+
+  // J1: Compute last week stats
+  const lastWeekStats = (() => {
+    try {
+      const history = JSON.parse(localStorage.getItem('lbjj_checkin_history') || '[]');
+      const now = new Date();
+      const lastMonday = new Date(now);
+      lastMonday.setDate(now.getDate() - now.getDay() - 6);
+      lastMonday.setHours(0,0,0,0);
+      const lastSunday = new Date(lastMonday);
+      lastSunday.setDate(lastMonday.getDate() + 6);
+      lastSunday.setHours(23,59,59,999);
+      const lastWeekCheckins = history.filter((c: any) => {
+        const d = new Date(c.date || c.timestamp);
+        return d >= lastMonday && d <= lastSunday;
+      });
+      return {
+        classes: lastWeekCheckins.length,
+        xpEarned: lastWeekCheckins.length * 10,
+        gymRank: leaderboard ? leaderboard.findIndex((e: any) => e.name === member?.name) + 1 : 0,
+      };
+    } catch { return { classes: 0, xpEarned: 0, gymRank: 0 }; }
+  })();
+
+  // M2: Technique of the day
+  const todayTech = TECHNIQUES[getDayOfYear() % TECHNIQUES.length];
+
+  // M3: Rival computation
+  const myLeaderboardRank = leaderboard ? leaderboard.findIndex((e: any) => e.name === member?.name) + 1 : 0;
+  const rival = myLeaderboardRank > 1 && leaderboard ? leaderboard[myLeaderboardRank - 2] : null;
+  const myClassCount = leaderboard ? (leaderboard.find((e: any) => e.name === member?.name)?.classCount || 0) : 0;
+
+  // M4: Flow state
+  const isFlowState = (() => {
+    try {
+      const history = JSON.parse(localStorage.getItem('lbjj_checkin_history') || '[]');
+      const threeDaysAgo = Date.now() - 3 * 24 * 60 * 60 * 1000;
+      const recentCheckins = history.filter((c: any) => new Date(c.date || c.timestamp).getTime() > threeDaysAgo);
+      return recentCheckins.length >= 4;
+    } catch { return false; }
+  })();
+
+  // M5: Tournament countdown
+  const tournamentData = (() => {
+    try {
+      return JSON.parse(localStorage.getItem('lbjj_next_tournament') || 'null');
+    } catch { return null; }
+  })();
+  const daysUntilTournament = tournamentData ? Math.max(0, Math.ceil((new Date(tournamentData.date).getTime() - Date.now()) / 86400000)) : null;
+
   return (
     <div className="app-content">
       <ScreenHeader
@@ -977,6 +1081,142 @@ export default function HomePage() {
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#EF4444" strokeWidth="2"><polygon points="5 3 19 12 5 21 5 3" /></svg>
           </div>
         </a>
+      )}
+
+
+      {/* J1: Weekly Report - Monday morning summary */}
+      {showWeekReport && !weekReportDismissed && (
+        <div style={{
+          margin: '0 20px 16px',
+          background: 'linear-gradient(135deg, #141414, #0F0F12)',
+          border: '1px solid #C8A24C25',
+          borderRadius: 16, padding: '16px',
+          animation: 'page-slide-in-right 400ms var(--ease-out) both',
+          position: 'relative',
+        }}>
+          <button onClick={dismissReport} style={{ position: 'absolute', top: 12, right: 12, background: 'none', border: 'none', color: '#444', cursor: 'pointer', fontSize: 16 }}>✕</button>
+          <div style={{ fontSize: 9, fontWeight: 700, color: '#C8A24C', letterSpacing: '0.18em', textTransform: 'uppercase', marginBottom: 10 }}>Last Week</div>
+          <div style={{ display: 'flex', gap: 20, marginBottom: 12 }}>
+            <div style={{ textAlign: 'center' }}>
+              <div style={{ fontSize: 28, fontWeight: 900, color: '#F0F0F0' }}>{lastWeekStats.classes}</div>
+              <div style={{ fontSize: 9, color: '#555', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Classes</div>
+            </div>
+            <div style={{ textAlign: 'center' }}>
+              <div style={{ fontSize: 28, fontWeight: 900, color: '#C8A24C' }}>+{lastWeekStats.xpEarned}</div>
+              <div style={{ fontSize: 9, color: '#555', textTransform: 'uppercase', letterSpacing: '0.1em' }}>XP</div>
+            </div>
+            {lastWeekStats.gymRank > 0 && (
+              <div style={{ textAlign: 'center' }}>
+                <div style={{ fontSize: 28, fontWeight: 900, color: '#F0F0F0' }}>#{lastWeekStats.gymRank}</div>
+                <div style={{ fontSize: 9, color: '#555', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Gym Rank</div>
+              </div>
+            )}
+          </div>
+          <div style={{ fontSize: 13, color: '#888', lineHeight: 1.5 }}>
+            {lastWeekStats.classes >= 5
+              ? "Perfect week. That's elite consistency."
+              : lastWeekStats.classes >= 3
+              ? "Strong week. You outpaced most of the gym."
+              : lastWeekStats.classes >= 1
+              ? "You showed up. That's more than most."
+              : "The mat is waiting. New week, fresh start."}
+          </div>
+          <div style={{ marginTop: 12, padding: '8px 12px', background: '#0A0A0A', borderRadius: 10 }}>
+            <span style={{ fontSize: 11, color: '#C8A24C', fontWeight: 600 }}>
+              This week: {lastWeekStats.classes >= 5 ? "Defend the perfect week 🏆" : `${Math.max(0, 5 - lastWeekStats.classes)} more to hit Perfect Week`}
+            </span>
+          </div>
+        </div>
+      )}
+
+      {/* M4: Flow State chip */}
+      {isFlowState && (
+        <div style={{ margin: '0 20px 12px', display: 'flex' }}>
+          <div style={{
+            display: 'inline-flex', alignItems: 'center', gap: 6,
+            padding: '4px 10px', borderRadius: 999,
+            background: 'rgba(100,150,255,0.1)',
+            border: '1px solid rgba(100,150,255,0.2)',
+            animation: 'pulse 2s ease-in-out infinite',
+          }}>
+            <span>⚡</span>
+            <span style={{ fontSize: 10, fontWeight: 700, color: 'rgba(130,170,255,0.9)', letterSpacing: '0.1em', textTransform: 'uppercase' }}>Flow State</span>
+          </div>
+        </div>
+      )}
+
+      {/* M2: Technique of the Day */}
+      <div style={{
+        margin: '0 20px 12px',
+        background: '#0D0D0D',
+        border: '1px solid #1A1A1A',
+        borderRadius: 14,
+        padding: '14px 16px',
+      }}>
+        <div style={{ fontSize: 9, color: '#555', letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: 4 }}>
+          Today's Technique
+        </div>
+        <div style={{ fontSize: 15, fontWeight: 800, color: '#F0F0F0', marginTop: 2 }}>
+          {todayTech.name}
+        </div>
+        <div style={{ fontSize: 11, color: '#C8A24C', marginTop: 2 }}>
+          {todayTech.category} · from {todayTech.from}
+        </div>
+        <div style={{ fontSize: 11, color: '#666', marginTop: 6, fontStyle: 'italic' }}>
+          "{todayTech.tip}"
+        </div>
+      </div>
+
+      {/* M3: Rival System */}
+      {rival && myLeaderboardRank > 1 && (
+        <div style={{
+          margin: '0 20px 12px', padding: '12px 16px',
+          background: '#0D0D0D',
+          border: '1px solid rgba(224,85,85,0.2)',
+          borderRadius: 14,
+        }}>
+          <div style={{ fontSize: 9, color: '#E05555', letterSpacing: '0.15em', textTransform: 'uppercase', marginBottom: 8 }}>
+            Your Rival
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <div style={{
+              width: 36, height: 36, borderRadius: '50%',
+              background: '#1A1A1A', display: 'flex', alignItems: 'center', justifyContent: 'center',
+              fontSize: 14, fontWeight: 700, color: '#F0F0F0',
+              border: `2px solid ${getBeltColor(rival.belt || 'white')}`,
+              flexShrink: 0,
+            }}>
+              {(rival.name || '?').charAt(0)}
+            </div>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: 14, fontWeight: 700, color: '#F0F0F0' }}>{rival.name}</div>
+              <div style={{ fontSize: 11, color: '#E05555' }}>
+                Ranked #{myLeaderboardRank - 1} · {Math.max(0, (rival.classCount || 0) - myClassCount)} classes ahead
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* M5: Tournament Countdown */}
+      {tournamentData && daysUntilTournament !== null && daysUntilTournament <= 30 && (
+        <div style={{
+          margin: '0 20px 12px',
+          background: '#0D0D0D',
+          border: '1px solid #C8A24C25',
+          borderRadius: 14, padding: '14px 16px',
+        }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div>
+              <div style={{ fontSize: 9, color: '#C8A24C', letterSpacing: '0.12em', textTransform: 'uppercase' }}>Next Tournament</div>
+              <div style={{ fontSize: 15, fontWeight: 800, color: '#F0F0F0', marginTop: 2 }}>{tournamentData.name}</div>
+            </div>
+            <div style={{ textAlign: 'right' }}>
+              <div style={{ fontSize: 28, fontWeight: 900, color: '#FFD700' }}>{daysUntilTournament}</div>
+              <div style={{ fontSize: 9, color: '#555', textTransform: 'uppercase' }}>Days Out</div>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Profile card — collapsible */}

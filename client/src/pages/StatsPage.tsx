@@ -1,4 +1,8 @@
 import { useState, useEffect, useMemo, useRef } from "react";
+import { useAuth } from "@/lib/auth-context";
+import { getActualLevel, getLevelFromXP } from "@/lib/xp";
+import { getBeltColor } from "@/lib/constants";
+import { LevelWidget } from "@/components/LevelWidget";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { BeltBadge } from "@/components/BeltBadge";
 import { ListSkeleton, StatSkeleton } from "@/components/LoadingSkeleton";
@@ -28,6 +32,7 @@ function AnimatedCounter({ target, suffix = "" }: { target: number; suffix?: str
 }
 
 export default function StatsPage() {
+  const { member } = useAuth();
   const [config, setConfig] = useState<Record<string, string>>({});
   const [athletes, setAthletes] = useState<Athlete[]>([]);
   const [loading, setLoading] = useState(true);
@@ -104,6 +109,8 @@ export default function StatsPage() {
   const uniqueBelts = useMemo(() => [...new Set(athletes.map(a => a.belt.toLowerCase()).filter(Boolean))], [athletes]);
   const uniqueTiers = useMemo(() => [...new Set(athletes.map(a => a.tier).filter(Boolean))], [athletes]);
 
+  const memberXP = (() => { try { return parseInt(localStorage.getItem('lbjj_member_xp') || '0'); } catch { return 0; } })();
+
   if (loading) {
     return (
       <div className="app-content">
@@ -125,6 +132,64 @@ export default function StatsPage() {
   return (
     <div className="app-content">
       <ScreenHeader title="Academy Stats" subtitle="Powered by jits.gg" />
+
+
+      {/* I1: Personal Fighter Card */}
+      {member && (() => {
+        const myAthleteData = athletes.find(a => a.name.toLowerCase().includes((member.name || '').toLowerCase().split(' ')[0].toLowerCase()));
+        if (!myAthleteData) return null;
+        return (
+          <div style={{
+            margin: '0 20px 20px',
+            background: 'linear-gradient(145deg, #141414, #0D0D0D)',
+            border: '1px solid #1A1A1A',
+            borderRadius: 16, padding: '20px',
+            position: 'relative', overflow: 'hidden',
+          }}>
+            <div style={{
+              position: 'absolute', top: 0, right: 0,
+              width: 120, height: 120,
+              background: `radial-gradient(circle at 100% 0%, ${getBeltColor(member.belt || 'white')}18 0%, transparent 70%)`,
+              pointerEvents: 'none',
+            }}/>
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14, marginBottom: 16 }}>
+              <LevelWidget xp={memberXP} memberName={member.name || ''} memberBelt={member.belt || 'white'} size={56} interactive={false} />
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: 9, fontWeight: 700, color: '#555', letterSpacing: '0.15em', textTransform: 'uppercase', marginBottom: 4 }}>
+                  Your Record
+                </div>
+                <div style={{ fontSize: 20, fontWeight: 900, color: '#F0F0F0', letterSpacing: '-0.02em' }}>
+                  {member.name}
+                </div>
+                <div style={{ fontSize: 12, color: getBeltColor(member.belt || 'white'), fontWeight: 700, textTransform: 'capitalize', marginTop: 2 }}>
+                  {member.belt || 'white'} Belt · {getLevelFromXP(memberXP).title}
+                </div>
+              </div>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8 }}>
+              {[
+                { label: 'W-L', value: `${myAthleteData.wins}-${myAthleteData.losses}` },
+                { label: 'Win %', value: myAthleteData.winRate, suffix: '%' },
+                { label: 'Golds', value: myAthleteData.golds },
+                { label: 'Level', value: getActualLevel(memberXP) },
+              ].map(stat => (
+                <div key={stat.label} style={{
+                  textAlign: 'center', padding: '8px 4px',
+                  background: '#0A0A0A', borderRadius: 10,
+                  border: '1px solid #1A1A1A',
+                }}>
+                  <div style={{ fontSize: 16, fontWeight: 900, color: '#F0F0F0' }}>
+                    {typeof stat.value === 'number' ? <AnimatedCounter target={stat.value} suffix={stat.suffix} /> : stat.value}
+                  </div>
+                  <div style={{ fontSize: 9, color: '#555', fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase', marginTop: 2 }}>
+                    {stat.label}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Hero Stats */}
       <div className="px-5 mb-4">
