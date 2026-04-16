@@ -48,6 +48,7 @@ import { getBeltColor } from "@/lib/constants";
 import { ProfileRing } from "@/components/ProfileRing";
 import { getRingTier, getActualLevel } from "@/lib/xp";
 import { XPBar } from "@/components/XPBar";
+import { soundSystem } from '@/lib/sounds';
 
 // ─── Nav config ───────────────────────────────────────────────────
 
@@ -820,6 +821,69 @@ function AccountPage() {
 }
 
 
+// ── Sound toggle (used inside MorePage) ───────────────────────
+function SoundToggle() {
+  const [enabled, setEnabled] = useState(soundSystem.isEnabled);
+  const toggle = () => {
+    const next = !enabled;
+    soundSystem.setEnabled(next);
+    setEnabled(next);
+    if (next) {
+      soundSystem.preload(['checkin', 'xpEarn', 'levelUp', 'achievement', 'streak', 'beltPromo']);
+      setTimeout(() => soundSystem.play('xpEarn'), 100);
+    }
+  };
+  return (
+    <div
+      style={{
+        display: 'flex', alignItems: 'center', gap: 12,
+        padding: '14px 16px', borderRadius: 14,
+        background: '#111', border: '1px solid #1A1A1A',
+        marginTop: 12, cursor: 'pointer',
+      }}
+      onClick={toggle}
+    >
+      <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#C8A24C" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          {enabled ? (
+            <>
+              <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
+              <path d="M15.54 8.46a5 5 0 0 1 0 7.07"/>
+              <path d="M19.07 4.93a10 10 0 0 1 0 14.14"/>
+            </>
+          ) : (
+            <>
+              <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
+              <line x1="23" y1="9" x2="17" y2="15"/>
+              <line x1="17" y1="9" x2="23" y2="15"/>
+            </>
+          )}
+        </svg>
+      </span>
+      <div style={{ flex: 1 }}>
+        <p style={{ fontSize: 14, fontWeight: 600, color: '#F0F0F0', margin: 0 }}>Sound Effects</p>
+        <p style={{ fontSize: 12, color: '#888', margin: 0 }}>{enabled ? 'On — check-ins, level-ups & achievements' : 'Off — tap to enable'}</p>
+      </div>
+      {/* Toggle pill */}
+      <div style={{
+        width: 44, height: 26, borderRadius: 13,
+        background: enabled ? '#C8A24C' : '#2A2A2A',
+        position: 'relative', flexShrink: 0,
+        transition: 'background 200ms ease',
+        boxShadow: enabled ? '0 0 10px rgba(200,162,76,0.4)' : 'none',
+      }}>
+        <div style={{
+          position: 'absolute', top: 3, left: enabled ? 21 : 3,
+          width: 20, height: 20, borderRadius: '50%',
+          background: '#fff',
+          transition: 'left 200ms cubic-bezier(0.34,1.56,0.64,1)',
+          boxShadow: '0 1px 4px rgba(0,0,0,0.4)',
+        }}/>
+      </div>
+    </div>
+  );
+}
+
 function MorePage() {
   const { logout, isAdmin, member } = useAuth();
   const morePanelRef = useRef<HTMLDivElement>(null);
@@ -927,6 +991,8 @@ function MorePage() {
             </div>
           </div>
         ))}
+        {/* Sound toggle */}
+        <SoundToggle />
         <div style={{ marginTop: 20 }}>
           <NavCustomizer />
         </div>
@@ -1218,12 +1284,14 @@ function AppShell() {
     }
   }, [location]);
 
-  // ── Idle-prefetch top routes ──────────────────────────────────
+  // ── Idle-prefetch top routes + preload sounds ────────────────
   useEffect(() => {
     const prefetch = () => {
       import("@/pages/SchedulePage");
       import("@/pages/ChatPage");
       import("@/pages/AchievementsPage");
+      // Preload sounds on first idle tick so they're ready for interaction
+      soundSystem.preload(['checkin', 'xpEarn', 'levelUp', 'achievement', 'streak', 'beltPromo']);
     };
     if ("requestIdleCallback" in window) {
       (window as any).requestIdleCallback(prefetch, { timeout: 2000 });

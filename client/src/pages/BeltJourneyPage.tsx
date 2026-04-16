@@ -4,6 +4,7 @@ import { BeltIcon, ADULT_BELT_OPTIONS, KIDS_BELT_OPTIONS, BELT_DISPLAY_NAMES } f
 import { getBeltColor, getBeltTextColor } from "@/lib/constants";
 import { useAuth } from "@/lib/auth-context";
 import { beltGetPromotions, beltSavePromotion, beltDeletePromotion, beltUpdatePromotion, getCoachNotes } from "@/lib/api";
+import { soundSystem } from '@/lib/sounds';
 import { Plus, X, Trophy, Clock, ChevronDown, Sparkles, Calendar, Edit3, Check, Trash2, Loader2 } from "lucide-react";
 
 interface BeltPromotion {
@@ -209,6 +210,8 @@ export default function BeltJourneyPage() {
     setPromotions(prev => [...prev, promo].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()));
     setCelebrateId(promo.id);
     setTimeout(() => setCelebrateId(null), 1500);
+    // Sound
+    soundSystem.play('beltPromo');
     // Belt ceremony overlay
     setCeremonyBelt(newBelt);
     // Haptic championship rhythm

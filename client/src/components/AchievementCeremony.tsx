@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { soundSystem } from '@/lib/sounds';
 import { createPortal } from 'react-dom';
 import { ParticleBurst } from './LevelUpOverlay';
 import type { Achievement } from '@/lib/achievements';
@@ -15,6 +16,7 @@ export function AchievementCeremony({ achievement, onDismiss, onShare }: Achieve
   const accentColor = (achievement as any).color || '#C8A24C';
 
   useEffect(() => {
+    soundSystem.play('achievement');
     const t1 = setTimeout(() => setPhase('visible'), 50);
     const t2 = setTimeout(() => setShowParticles(true), 400);
     const t3 = setTimeout(() => setPhase('exiting'), 4000);

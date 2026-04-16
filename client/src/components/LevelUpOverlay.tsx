@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { soundSystem } from '@/lib/sounds';
 import { createPortal } from 'react-dom';
 import { getLevelFromXP, getRingTier, getActualLevel } from '@/lib/xp';
 import { ProfileRing } from './ProfileRing';
@@ -88,6 +89,7 @@ export function LevelUpOverlay({ newLevel, prevLevel, beltColor = '#C8A24C', mem
   const { title } = getLevelFromXP(getActualLevel(newLevel) * 100);
 
   useEffect(() => {
+    soundSystem.play('levelUp');
     const t1 = setTimeout(() => setPhase('visible'), 50);
     const t2 = setTimeout(() => { setShowParticles(true); triggerLevelUpHaptic(); }, 800);
     const t3 = setTimeout(() => setPhase('out'), 3500);

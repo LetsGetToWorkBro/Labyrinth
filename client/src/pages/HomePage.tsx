@@ -19,6 +19,7 @@ import {
   memberAddCard, memberCreateSetupLink,
 } from "@/lib/api";
 import { useState, useEffect, useCallback, useRef } from "react";
+import { soundSystem } from '@/lib/sounds';
 import { StatSkeleton, ListSkeleton } from "@/components/LoadingSkeleton";
 import { getStreamStatus, clearStreamCache } from "@/lib/streaming";
 import type { StreamStatus } from "@/lib/streaming";
@@ -561,6 +562,7 @@ export default function HomePage() {
     const newMilestone = milestones.find(m => streakCount >= m && m > lastMilestone);
     if (newMilestone) {
       localStorage.setItem('lbjj_last_streak_milestone', String(newMilestone));
+      soundSystem.play('streak');
       showBadgeUnlock({ key: 'streak', label: `${newMilestone}-Week Streak!`, icon: '\u{1F525}', desc: `${newMilestone} consecutive weeks of training. Consistency is everything.`, color: '#F97316' });
     }
   }, [streakCount]);
@@ -711,6 +713,10 @@ export default function HomePage() {
     // Morph check-in button to success state
     setCheckinPhase('success');
     setTimeout(() => setCheckinPhase('done'), 1500);
+
+    // Play sounds
+    soundSystem.play('checkin');
+    setTimeout(() => soundSystem.play('xpEarn'), 300);
 
     // Show success toast
     showPointsToast(10);
@@ -1004,6 +1010,47 @@ export default function HomePage() {
   })();
 
   // M2: Technique of the day
+  const techniqueOfDay = (() => {
+    const techniques = [
+      { name: 'Double Leg Takedown', category: 'Takedowns', tip: 'Level change fast, drive through the hips.' },
+      { name: 'Armbar from Guard', category: 'Submissions', tip: 'Hip out, control the arm tight to your chest.' },
+      { name: 'Rear Naked Choke', category: 'Submissions', tip: 'Seat belt grip first, sink the hook before the choke.' },
+      { name: 'Single Leg X Guard', category: 'Guard', tip: 'Keep the knee shield active until you establish X.' },
+      { name: 'Triangle Choke', category: 'Submissions', tip: 'Cut the angle 45 degrees before squeezing.' },
+      { name: 'Butterfly Guard Sweep', category: 'Sweeps', tip: 'Break their posture down before the lift.' },
+      { name: 'Knee Slice Pass', category: 'Passing', tip: 'Chest heavy, hip switch at the moment of pass.' },
+      { name: 'Guillotine Choke', category: 'Submissions', tip: 'Hips in, pull up, not out.' },
+      { name: 'Spider Guard Control', category: 'Guard', tip: 'Maintain frames, use legs as pistons.' },
+      { name: 'Half Guard Sweep', category: 'Sweeps', tip: 'Get the underhook before you go to your knees.' },
+      { name: 'Bow and Arrow Choke', category: 'Submissions', tip: 'Control the collar deep, far leg for the finish.' },
+      { name: 'De La Riva Hook', category: 'Guard', tip: 'DLR hook on the outside of the knee, not the ankle.' },
+      { name: 'Leg Lock Entry', category: 'Leg Locks', tip: 'Get the outside position before the heel hook.' },
+      { name: 'Uchi Mata', category: 'Takedowns', tip: 'Kuzushi first — break their balance before the lift.' },
+      { name: 'North South Escape', category: 'Escapes', tip: 'Bridge and shrimp simultaneously, not sequentially.' },
+      { name: 'Kimura Trap', category: 'Submissions', tip: 'Control the wrist, shoulder up first.' },
+      { name: 'X-Guard Sweep', category: 'Sweeps', tip: 'Extend both legs together to break their base.' },
+      { name: 'Clock Choke', category: 'Submissions', tip: 'Walk feet toward their head to tighten the choke.' },
+      { name: 'Omoplata', category: 'Submissions', tip: 'Hip escape to prevent roll, sit up to finish.' },
+      { name: 'Berimbolo', category: 'Guard', tip: 'Invert tight, get the back before they can react.' },
+      { name: 'Torreando Pass', category: 'Passing', tip: 'Control both pants, step around, dont step in.' },
+      { name: 'Arm Drag to Back', category: 'Takedowns', tip: 'Pull the arm, step behind in the same motion.' },
+    ];
+    const dayOfYear = Math.floor((Date.now() - new Date(new Date().getFullYear(), 0, 0).getTime()) / 86400000);
+    return techniques[dayOfYear % techniques.length];
+  })();
+
+  // M6: Combo multiplier (consecutive days this week)
+  const comboMultiplier = (() => {
+    try {
+      const weekly = JSON.parse(localStorage.getItem('lbjj_weekly_training') || '[]');
+      const today = new Date().toISOString().split('T')[0];
+      const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0];
+      const twoDaysAgo = new Date(Date.now() - 2 * 86400000).toISOString().split('T')[0];
+      if (weekly.includes(today) && weekly.includes(yesterday) && weekly.includes(twoDaysAgo)) return 3;
+      if (weekly.includes(today) && weekly.includes(yesterday)) return 2;
+      return 1;
+    } catch { return 1; }
+  })();
 
   // M3: Rival computation
   const myLeaderboardRank = leaderboard ? leaderboard.findIndex((e: any) => e.name === member?.name) + 1 : 0;
@@ -1124,6 +1171,53 @@ export default function HomePage() {
           }}>
             <span>⚡</span>
             <span style={{ fontSize: 10, fontWeight: 700, color: 'rgba(130,170,255,0.9)', letterSpacing: '0.1em', textTransform: 'uppercase' }}>Flow State</span>
+          </div>
+        </div>
+      )}
+
+      {/* M2: Technique of the Day */}
+      {techniqueOfDay && (
+        <div style={{
+          margin: '0 20px 12px', padding: '14px 16px',
+          background: 'linear-gradient(135deg, #0D0D0D, #0A0A10)',
+          border: '1px solid #C8A24C18',
+          borderRadius: 14,
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+            <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.15em', textTransform: 'uppercase', color: '#C8A24C' }}>
+              Technique of the Day
+            </div>
+            <div style={{
+              fontSize: 9, fontWeight: 700, color: '#444', letterSpacing: '0.08em',
+              textTransform: 'uppercase', padding: '2px 8px', borderRadius: 999,
+              background: '#111', border: '1px solid #222',
+            }}>
+              {techniqueOfDay.category}
+            </div>
+          </div>
+          <div style={{ fontSize: 16, fontWeight: 800, color: '#F0F0F0', marginBottom: 6 }}>
+            {techniqueOfDay.name}
+          </div>
+          <div style={{ fontSize: 12, color: '#666', lineHeight: 1.5 }}>
+            {techniqueOfDay.tip}
+          </div>
+        </div>
+      )}
+
+      {/* M6: Combo Multiplier */}
+      {comboMultiplier > 1 && (
+        <div style={{ margin: '0 20px 12px', display: 'flex' }}>
+          <div style={{
+            display: 'inline-flex', alignItems: 'center', gap: 8,
+            padding: '6px 14px', borderRadius: 999,
+            background: comboMultiplier >= 3 ? 'rgba(255,180,0,0.12)' : 'rgba(200,162,76,0.1)',
+            border: `1px solid ${comboMultiplier >= 3 ? 'rgba(255,180,0,0.35)' : 'rgba(200,162,76,0.25)'}`,
+            animation: comboMultiplier >= 3 ? 'xp-pulse 1.5s ease-in-out infinite' : undefined,
+          }}>
+            <span style={{ fontSize: 14 }}>{comboMultiplier >= 3 ? '🔥' : '⚡'}</span>
+            <span style={{ fontSize: 11, fontWeight: 800, color: comboMultiplier >= 3 ? '#FFB800' : '#C8A24C', letterSpacing: '0.05em' }}>
+              {comboMultiplier}× COMBO — {comboMultiplier} days straight!
+            </span>
           </div>
         </div>
       )}
@@ -1550,7 +1644,7 @@ export default function HomePage() {
                       </svg>
                     )}
                     <span style={{ fontSize: 12, fontWeight: 700 }}>
-                      {alreadyCheckedIn || checkinPhase === 'done' ? 'Done' : checkinPhase === 'success' ? '✓' : 'Check In'}
+                      {alreadyCheckedIn || checkinPhase === 'done' ? 'Done' : checkinPhase === 'success' ? 'OSS!' : 'Check In'}
                     </span>
                   </button>
                 </div>
