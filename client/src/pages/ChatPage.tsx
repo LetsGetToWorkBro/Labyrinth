@@ -20,8 +20,8 @@ import { XPBar } from "@/components/XPBar";
 import { getRankProfile } from "@/lib/chat-data";
 import logoMaze from "@assets/maze-gold-md.png";
 import {
-  Send, ArrowLeft, Lock, Users, Hash, ChevronRight, X,
-  Shield, Crown, MessageCircle, Megaphone, Loader2, RefreshCw,
+  Send, ArrowLeft, Lock, Users, Hash, ChevronRight, ChevronLeft, X,
+  Shield, Crown, MessageCircle, Megaphone, Loader2, RefreshCw, Award,
 } from "lucide-react";
 
 const GOLD = "#C8A24C";
@@ -40,6 +40,62 @@ const RANK_LEGEND = [
   { belt: 'orange', title: 'Challenger',  beltColor: '#C4641A', tier: 'Kids III',   smallLabel: 'Kids III' },
   { belt: 'green',  title: 'Champion',    beltColor: '#2D8040', tier: 'Kids IV',    smallLabel: 'Kids IV' },
 ] as const;
+
+// Belt rank order for inclusive channel membership display
+const ADULT_BELT_ORDER = ['white', 'blue', 'purple', 'brown', 'black'];
+const KIDS_BELT_ORDER = ['white', 'grey', 'gray', 'yellow', 'orange', 'green'];
+
+function getBeltRankIndex(belt: string, isKids: boolean): number {
+  const order = isKids ? KIDS_BELT_ORDER : ADULT_BELT_ORDER;
+  const idx = order.indexOf(belt.toLowerCase());
+  return idx === -1 ? 0 : idx;
+}
+
+function isKidsBelt(belt: string): boolean {
+  return KIDS_BELT_ORDER.includes(belt.toLowerCase()) && belt.toLowerCase() !== 'white';
+}
+
+// ── MemberRow component for Online tab ──
+function OnlineMemberRow({ m, status, now, onSelect }: {
+  m: ChannelMember;
+  status: 'online' | 'recent' | 'offline';
+  now: number;
+  onSelect: (m: ChannelMember) => void;
+}) {
+  const statusColor = status === 'online' ? '#4CAF80' : status === 'recent' ? '#C8A24C' : '#444';
+  const minsAgo = m.lastSeen ? Math.floor((now - new Date(m.lastSeen).getTime()) / 60000) : null;
+  const statusLabel = status === 'online' ? 'Online' : minsAgo !== null ? (minsAgo < 60 ? `${minsAgo}m ago` : `${Math.floor(minsAgo / 60)}h ago`) : 'Offline';
+  const memberXP = m.totalPoints || 0;
+  const memberLevel = getActualLevel(memberXP);
+  const memberTier = getRingTier(memberLevel);
+
+  return (
+    <button onClick={() => onSelect(m)}
+      style={{ display: 'flex', alignItems: 'center', gap: 12, width: '100%', padding: '10px 0', background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left', borderBottom: '1px solid #0D0D0D' }}>
+      {/* Portrait with ring */}
+      <div style={{ position: 'relative', flexShrink: 0 }}>
+        <ProfileRing tier={memberTier} size={48} level={memberLevel}>
+          <div style={{ width: 48, height: 48, borderRadius: '50%', background: 'radial-gradient(circle at 35% 30%, #2A2A2A, #0D0D0D)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, fontWeight: 800, color: '#F0F0F0' }}>
+            {m.name.charAt(0)}
+          </div>
+        </ProfileRing>
+        {/* Status dot */}
+        <div style={{ position: 'absolute', bottom: 0, right: 0, width: 12, height: 12, borderRadius: '50%', background: statusColor, border: '2px solid #0A0A0A' }} />
+      </div>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ fontSize: 14, fontWeight: 600, color: '#F0F0F0', marginBottom: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{m.name}</div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          <BeltIcon belt={m.belt || 'white'} width={24} />
+          <span style={{ fontSize: 11, color: statusColor }}>{statusLabel}</span>
+        </div>
+      </div>
+      <div style={{ textAlign: 'right', flexShrink: 0 }}>
+        <div style={{ fontSize: 12, fontWeight: 700, color: '#C8A24C' }}>Lv {memberLevel}</div>
+        {m.badgeCount ? <div style={{ fontSize: 10, color: '#444' }}>{m.badgeCount} badges</div> : null}
+      </div>
+    </button>
+  );
+}
 
 // ── RankOrb: celestial orb/gemstone SVG per belt ──
 const RankOrb = ({ belt, size = 32 }: { belt: string; size?: number }) => {
@@ -143,6 +199,9 @@ export default function ChatPage() {
   const [channelMembers, setChannelMembers] = useState<ChannelMember[]>([]);
   const [membersLoading, setMembersLoading] = useState(false);
   const [selectedMember, setSelectedMember] = useState<ChannelMember | null>(null);
+  const [showOnlineTab, setShowOnlineTab] = useState(false);
+  const [onlineMembers, setOnlineMembers] = useState<ChannelMember[]>([]);
+  const [onlineLoading, setOnlineLoading] = useState(false);
   const [isTyping] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -210,6 +269,14 @@ export default function ChatPage() {
     const members = await chatGetChannelMembers(channelId);
     setChannelMembers(members);
     setMembersLoading(false);
+  }, []);
+
+  // ── Load all members for Online tab ──────────────────────────
+  const loadOnlineMembers = useCallback(async () => {
+    setOnlineLoading(true);
+    const members = await chatGetChannelMembers('general');
+    setOnlineMembers(members);
+    setOnlineLoading(false);
   }, []);
 
   // ── Load messages for active channel ─────────────────────────
@@ -489,49 +556,7 @@ export default function ChatPage() {
         )}
 
         {/* Member profile modal */}
-        {selectedMember && (
-          <div style={{ position: 'fixed', inset: 0, zIndex: 300, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 20px' }}
-            onClick={() => setSelectedMember(null)}>
-            <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(6px)' }}/>
-            <div onClick={e => e.stopPropagation()} style={{
-              position: 'relative', width: '100%', maxWidth: 340,
-              background: '#111', borderRadius: 20, padding: '24px 20px',
-              border: '1px solid #1A1A1A',
-            }}>
-              {/* Close */}
-              <button onClick={() => setSelectedMember(null)} style={{ position: 'absolute', top: 12, right: 12, background: 'none', border: 'none', color: '#555', cursor: 'pointer' }}>
-                <X size={18}/>
-              </button>
-
-              {/* Belt + name */}
-              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: 16 }}>
-                <BeltIcon belt={selectedMember.belt || 'white'} width={80} style={{ marginBottom: 10 }}/>
-                <div style={{ fontSize: 17, fontWeight: 700, color: '#F0F0F0', marginBottom: 4 }}>{selectedMember.name}</div>
-                <div style={{ fontSize: 12, color: getBeltColor(selectedMember.belt || 'white'), fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase' }}>
-                  {getRankProfile(selectedMember.belt || 'white').title}
-                </div>
-              </div>
-
-              {/* Stats row */}
-              <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
-                {[
-                  { label: 'Level', value: selectedMember.totalPoints ? getActualLevel(selectedMember.totalPoints) : '\u2014' },
-                  { label: 'Badges', value: selectedMember.badgeCount ?? '\u2014' },
-                ].map(stat => (
-                  <div key={stat.label} style={{ flex: 1, background: '#0D0D0D', borderRadius: 10, padding: '10px', textAlign: 'center', border: '1px solid #1A1A1A' }}>
-                    <div style={{ fontSize: 18, fontWeight: 700, color: '#F0F0F0' }}>{String(stat.value)}</div>
-                    <div style={{ fontSize: 10, color: '#555', marginTop: 2 }}>{stat.label}</div>
-                  </div>
-                ))}
-              </div>
-
-              {/* XP bar compact */}
-              {(selectedMember.totalPoints || 0) > 0 && (
-                <XPBar xp={selectedMember.totalPoints || 0} compact/>
-              )}
-            </div>
-          </div>
-        )}
+        {selectedMember && <MemberProfileModal member={selectedMember} onClose={() => setSelectedMember(null)} />}
 
         {/* Messages */}
         <div ref={messagesContainerRef} style={{ flex: 1, overflowY: "auto", padding: "12px 16px", display: "flex", flexDirection: "column", gap: 4 }}>
@@ -648,6 +673,64 @@ export default function ChatPage() {
     setCollapsed(prev => ({ ...prev, [label]: !prev[label] }));
   };
 
+  // ── Online tab full-screen view ──────────────────────────────
+  if (showOnlineTab) {
+    const now = Date.now();
+    const online = onlineMembers.filter(m => m.lastSeen && (now - new Date(m.lastSeen).getTime()) < 300000);
+    const recent = onlineMembers.filter(m => m.lastSeen && (now - new Date(m.lastSeen).getTime()) >= 300000 && (now - new Date(m.lastSeen).getTime()) < 1800000);
+    const offline = onlineMembers.filter(m => !m.lastSeen || (now - new Date(m.lastSeen).getTime()) >= 1800000);
+
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', height: '100%', backgroundColor: '#0A0A0A' }}>
+        {/* Header */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px', borderBottom: '1px solid #1A1A1A' }}>
+          <button onClick={() => setShowOnlineTab(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#888', padding: 4 }}>
+            <ChevronLeft size={20} />
+          </button>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: 16, fontWeight: 700, color: '#F0F0F0' }}>Members</div>
+            <div style={{ fontSize: 11, color: '#555' }}>{onlineMembers.length} members</div>
+          </div>
+        </div>
+
+        {/* Member list */}
+        <div style={{ flex: 1, overflowY: 'auto', padding: '12px 16px' }}>
+          {onlineLoading ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {[1, 2, 3, 4, 5].map(i => <div key={i} style={{ height: 64, borderRadius: 14, background: '#1A1A1A', animation: 'shimmer 1.5s ease-in-out infinite' }} />)}
+            </div>
+          ) : (
+            <>
+              {online.length > 0 && (
+                <>
+                  <div style={{ fontSize: 10, fontWeight: 700, color: '#4CAF80', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 8 }}>Online — {online.length}</div>
+                  {online.map(m => <OnlineMemberRow key={m.email} m={m} status="online" now={now} onSelect={setSelectedMember} />)}
+                  <div style={{ height: 16 }} />
+                </>
+              )}
+              {recent.length > 0 && (
+                <>
+                  <div style={{ fontSize: 10, fontWeight: 700, color: '#C8A24C', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 8, marginTop: 4 }}>Recent — {recent.length}</div>
+                  {recent.map(m => <OnlineMemberRow key={m.email} m={m} status="recent" now={now} onSelect={setSelectedMember} />)}
+                  <div style={{ height: 16 }} />
+                </>
+              )}
+              {offline.length > 0 && (
+                <>
+                  <div style={{ fontSize: 10, fontWeight: 700, color: '#333', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 8, marginTop: 4 }}>Offline — {offline.length}</div>
+                  {offline.map(m => <OnlineMemberRow key={m.email} m={m} status="offline" now={now} onSelect={setSelectedMember} />)}
+                </>
+              )}
+            </>
+          )}
+        </div>
+
+        {/* Member profile modal (accessible from Online tab) */}
+        {selectedMember && <MemberProfileModal member={selectedMember} onClose={() => setSelectedMember(null)} />}
+      </div>
+    );
+  }
+
   return (
     <div className="app-content">
       <div style={{ padding: "16px 20px 12px", paddingTop: "max(16px, env(safe-area-inset-top, 16px))" }}>
@@ -699,6 +782,30 @@ export default function ChatPage() {
           </div>
         ) : (
           <>
+            {/* Online tab button — first item in channel list */}
+            <button
+              onClick={() => { setShowOnlineTab(true); loadOnlineMembers(); }}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 12,
+                width: '100%', padding: '12px 16px', background: 'rgba(200,162,76,0.06)',
+                border: 'none', borderBottom: '1px solid #1A1A1A', cursor: 'pointer', textAlign: 'left',
+                borderRadius: 14, marginBottom: 6,
+              }}
+            >
+              <div style={{
+                width: 40, height: 40, borderRadius: '50%',
+                background: '#0D0D0D', border: '1px solid #1A1A1A',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+              }}>
+                <div style={{ width: 10, height: 10, borderRadius: '50%', background: '#4CAF80', boxShadow: '0 0 6px #4CAF80' }} />
+              </div>
+              <div>
+                <div style={{ fontSize: 14, fontWeight: 700, color: '#F0F0F0' }}>Members Online</div>
+                <div style={{ fontSize: 11, color: '#555' }}>See who's active right now</div>
+              </div>
+              <ChevronRight size={14} color="#333" style={{ marginLeft: 'auto' }} />
+            </button>
+
             {/* Announcements pinned to top */}
             {announcementChannel && (
               <ChannelRow key={announcementChannel.id} channel={announcementChannel} onOpen={() => setActiveChannelId(announcementChannel.id)} />
@@ -798,6 +905,113 @@ export default function ChatPage() {
       )}
 
       <div style={{ height: 20 }} />
+    </div>
+  );
+}
+
+// ─── Member Profile Modal (rich version) ──────────────────────────
+
+function MemberProfileModal({ member: sm, onClose }: { member: ChannelMember; onClose: () => void }) {
+  const memberXP = sm.totalPoints || 0;
+  const memberLevel = getActualLevel(memberXP);
+  const memberTier = getRingTier(memberLevel);
+  const beltColor = getBeltColor(sm.belt || 'white');
+  const rankProfile = getRankProfile(sm.belt || 'white');
+  const badgeCount = sm.badgeCount || 0;
+
+  return (
+    <div style={{ position: 'fixed', inset: 0, zIndex: 300, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 20px' }}
+      onClick={onClose}>
+      <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(6px)' }} />
+      <div onClick={e => e.stopPropagation()} style={{
+        position: 'relative', width: '100%', maxWidth: 340,
+        background: '#111', borderRadius: 20, padding: '24px 20px',
+        border: '1px solid #1A1A1A',
+      }}>
+        {/* Close */}
+        <button onClick={onClose} style={{ position: 'absolute', top: 12, right: 12, background: 'none', border: 'none', color: '#555', cursor: 'pointer' }}>
+          <X size={18} />
+        </button>
+
+        {/* Portrait with ring + name */}
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: 16 }}>
+          <ProfileRing tier={memberTier} size={80} level={memberLevel}>
+            <div style={{ width: 80, height: 80, borderRadius: '50%', background: 'radial-gradient(circle at 35% 30%, #2A2A2A, #0D0D0D)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 28, fontWeight: 800, color: '#F0F0F0' }}>
+              {sm.name.charAt(0)}
+            </div>
+          </ProfileRing>
+          <div style={{ fontSize: 17, fontWeight: 700, color: '#F0F0F0', marginTop: 10, marginBottom: 4 }}>{sm.name}</div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <BeltIcon belt={sm.belt || 'white'} width={28} />
+            <span style={{ fontSize: 12, color: beltColor, fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase' }}>
+              {rankProfile.title}
+            </span>
+          </div>
+        </div>
+
+        {/* Stats row */}
+        <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
+          {[
+            { label: 'Level', value: memberXP > 0 ? memberLevel : '\u2014' },
+            { label: 'Rank', value: '\u2014' },
+            { label: 'Badges', value: badgeCount || '\u2014' },
+          ].map(stat => (
+            <div key={stat.label} style={{ flex: 1, background: '#0D0D0D', borderRadius: 10, padding: '10px', textAlign: 'center', border: '1px solid #1A1A1A' }}>
+              <div style={{ fontSize: 18, fontWeight: 700, color: '#F0F0F0' }}>{String(stat.value)}</div>
+              <div style={{ fontSize: 10, color: '#555', marginTop: 2 }}>{stat.label}</div>
+            </div>
+          ))}
+        </div>
+
+        {/* XP bar compact */}
+        {memberXP > 0 && (
+          <div style={{ marginBottom: 16 }}>
+            <XPBar xp={memberXP} compact />
+          </div>
+        )}
+
+        {/* Achievements preview */}
+        {badgeCount > 0 && (
+          <div style={{ marginBottom: 16 }}>
+            <div style={{ fontSize: 11, fontWeight: 700, color: '#555', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 8 }}>Achievements</div>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              {Array.from({ length: Math.min(badgeCount, 6) }).map((_, i) => (
+                <div key={i} style={{
+                  width: 40, height: 40, borderRadius: 10,
+                  background: '#0D0D0D', border: '1px solid #1A1A1A',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                }}>
+                  <Award size={18} color="#C8A24C" opacity={0.6} />
+                </div>
+              ))}
+              {badgeCount > 6 && (
+                <div style={{
+                  width: 40, height: 40, borderRadius: 10,
+                  background: '#0D0D0D', border: '1px solid #1A1A1A',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontSize: 11, fontWeight: 700, color: '#555',
+                }}>
+                  +{badgeCount - 6}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* View Belt Journey button */}
+        <button
+          onClick={() => { onClose(); window.location.hash = '#/belt'; }}
+          style={{
+            width: '100%', padding: '12px', borderRadius: 12,
+            background: 'rgba(200,162,76,0.1)', border: '1px solid rgba(200,162,76,0.2)',
+            color: '#C8A24C', fontSize: 13, fontWeight: 700,
+            cursor: 'pointer', textAlign: 'center',
+            letterSpacing: '0.04em',
+          }}
+        >
+          View Belt Journey
+        </button>
+      </div>
     </div>
   );
 }
