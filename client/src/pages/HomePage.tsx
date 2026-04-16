@@ -1837,28 +1837,51 @@ export default function HomePage() {
       ) : (
       <>
       {/* Weekly Training Progress */}
-      <div className="mx-5 mb-3 stagger-child">
-        <div style={{ display: 'flex', justifyContent: 'center', gap: 8 }}>
-          {weekDots.map((d, i) => (
-            <div key={i} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
-              <div className={d.isToday ? 'weekly-dot-active' : ''} style={{
-                width: 28, height: 28, borderRadius: '50%',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                fontSize: 14,
-                ...(d.trained
-                  ? { background: '#C8A24C', color: '#0A0A0A' }
-                  : d.isToday
-                    ? { background: 'transparent', border: '2px solid #E0E0E0', color: '#E0E0E0' }
-                    : { background: 'transparent', border: '2px solid #2A2A2A', color: '#2A2A2A' }
-                ),
-              }}>
-                {d.trained ? '●' : '○'}
-              </div>
-              <span style={{ fontSize: 9, color: d.isToday ? '#E0E0E0' : '#555', fontWeight: d.isToday ? 700 : 400 }}>{d.label}</span>
+      {(() => {
+        const anyTrained = weekDots.some(d => d.trained);
+        return (
+          <div className="mx-5 mb-3 stagger-child">
+            <div style={{ display: 'flex', justifyContent: 'center', gap: 8 }}>
+              {weekDots.map((d, i) => (
+                <div key={i} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
+                  <div className={d.isToday ? 'weekly-dot-active' : ''} style={{
+                    width: 28, height: 28, borderRadius: '50%',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    fontSize: 14,
+                    ...(d.trained
+                      ? { background: '#C8A24C', color: '#0A0A0A', boxShadow: '0 0 8px rgba(200,162,76,0.5)' }
+                      : d.isToday
+                        ? { background: 'transparent', border: '2px solid #E0E0E0', color: '#E0E0E0' }
+                        : !anyTrained
+                          ? { background: 'transparent', border: '2px dashed #C8A24C22', color: '#C8A24C14' } // ghost state
+                          : { background: 'transparent', border: '2px solid #2A2A2A', color: '#2A2A2A' }
+                    ),
+                  }}>
+                    {d.trained ? '●' : '○'}
+                  </div>
+                  <span style={{ fontSize: 9, color: d.isToday ? '#E0E0E0' : '#444', fontWeight: d.isToday ? 700 : 400 }}>{d.label}</span>
+                </div>
+              ))}
             </div>
-          ))}
-        </div>
-      </div>
+            {/* Empty state callout — only when nothing trained this week yet */}
+            {!anyTrained && (
+              <div style={{
+                marginTop: 10, padding: '10px 14px', borderRadius: 10,
+                background: 'rgba(200,162,76,0.05)',
+                border: '1px dashed rgba(200,162,76,0.2)',
+                textAlign: 'center',
+              }}>
+                <div style={{ fontSize: 12, fontWeight: 700, color: '#C8A24C', marginBottom: 2 }}>
+                  Fill the week.
+                </div>
+                <div style={{ fontSize: 11, color: '#555', lineHeight: 1.5 }}>
+                  5 classes = Perfect Week badge + bonus XP
+                </div>
+              </div>
+            )}
+          </div>
+        );
+      })()}
 
       {/* Attendance streak widget */}
       <div className="stagger-child" style={{

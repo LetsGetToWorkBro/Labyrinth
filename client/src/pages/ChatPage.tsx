@@ -600,23 +600,63 @@ export default function ChatPage() {
               alignItems: 'center',
               justifyContent: 'center',
               padding: '40px 24px',
-              gap: 12,
+              gap: 16,
               textAlign: 'center',
             }}>
-              <div style={{
-                width: 64, height: 64, borderRadius: '50%',
-                background: 'rgba(200,162,76,0.1)',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                fontSize: 28, marginBottom: 4,
-              }}>
-                💬
-              </div>
-              <p style={{ fontSize: 15, fontWeight: 600, color: '#E0E0E0', margin: 0 }}>
-                No messages yet
-              </p>
-              <p style={{ fontSize: 13, color: '#666', margin: 0, maxWidth: 240, lineHeight: 1.5 }}>
-                Your coaches will post updates, announcements, and class notes here.
-              </p>
+              {activeChannel?.type === 'rank' || activeChannel?.type === 'kids-rank' ? (
+                /* Belt channel welcome — animated rank orb + personalized message */
+                <>
+                  <div style={{
+                    position: 'relative',
+                    animation: 'badge-appear 500ms cubic-bezier(0.34,1.56,0.64,1) both',
+                  }}>
+                    <RankOrb belt={activeChannel.id.replace('-belts','').replace('kids-','')} size={72} />
+                    <div style={{
+                      position: 'absolute', inset: -16, borderRadius: '50%',
+                      background: `radial-gradient(circle, ${getBeltColor(activeChannel.id.replace('-belts','').replace('kids-',''))}18 0%, transparent 70%)`,
+                      animation: 'ring-pulse 2.5s ease-in-out infinite',
+                    }}/>
+                  </div>
+                  <div>
+                    <p style={{ fontSize: 16, fontWeight: 800, color: '#F0F0F0', margin: '0 0 6px' }}>
+                      Welcome to {activeChannel.name}
+                    </p>
+                    <p style={{ fontSize: 13, color: '#666', margin: 0, maxWidth: 240, lineHeight: 1.6 }}>
+                      You earned your way in here. Say hi — your teammates are watching.
+                    </p>
+                  </div>
+                  <div style={{
+                    padding: '10px 18px', borderRadius: 20,
+                    background: `rgba(${activeChannel.id.includes('black') ? '200,162,76' : activeChannel.id.includes('blue') ? '26,93,171' : activeChannel.id.includes('purple') ? '126,58,242' : activeChannel.id.includes('brown') ? '146,64,14' : '200,200,200'},0.12)`,
+                    border: `1px solid ${getBeltColor(activeChannel.id.replace('-belts','').replace('kids-',''))}30`,
+                    fontSize: 12, color: '#888', fontStyle: 'italic',
+                  }}>
+                    Be the first to post in this channel
+                  </div>
+                </>
+              ) : (
+                /* Generic channel empty state */
+                <>
+                  <div style={{
+                    width: 64, height: 64, borderRadius: '50%',
+                    background: 'rgba(200,162,76,0.08)',
+                    border: '1px solid rgba(200,162,76,0.15)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    fontSize: 28,
+                    animation: 'badge-appear 400ms cubic-bezier(0.34,1.56,0.64,1) both',
+                  }}>
+                    💬
+                  </div>
+                  <div>
+                    <p style={{ fontSize: 15, fontWeight: 700, color: '#E0E0E0', margin: '0 0 6px' }}>
+                      Nothing here yet
+                    </p>
+                    <p style={{ fontSize: 13, color: '#555', margin: 0, maxWidth: 240, lineHeight: 1.6 }}>
+                      Coaches will post updates, class notes, and announcements here.
+                    </p>
+                  </div>
+                </>
+              )}
             </div>
           ) : (
             messages.map((msg, idx) => {
