@@ -9,9 +9,10 @@ interface LevelWidgetProps {
   memberBelt?: string;
   profilePic?: string;
   size?: number; // diameter of the portrait orb
+  interactive?: boolean; // default true — when false, portrait is display-only
 }
 
-export function LevelWidget({ xp, memberName, memberBelt, profilePic, size = 64 }: LevelWidgetProps) {
+export function LevelWidget({ xp, memberName, memberBelt, profilePic, size = 64, interactive }: LevelWidgetProps) {
   const actualLevel = getActualLevel(xp);
   const tier = getRingTier(actualLevel);
   const { title, progress, xpForNext } = getLevelFromXP(xp);
@@ -56,11 +57,12 @@ export function LevelWidget({ xp, memberName, memberBelt, profilePic, size = 64 
     return `M ${x1} ${y1} A ${R} ${R} 0 ${large} 1 ${x2} ${y2}`;
   };
 
+  const Wrapper = interactive !== false ? 'button' : 'div';
   return (
     <>
-      <button
-        onClick={() => setShowModal(true)}
-        style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, position: 'relative', display: 'inline-block' }}
+      <Wrapper
+        onClick={interactive !== false ? () => setShowModal(true) : undefined}
+        style={{ background: 'none', border: 'none', cursor: interactive !== false ? 'pointer' : 'default', padding: 0, position: 'relative', display: 'inline-block' }}
       >
         {/* Outer SVG arc */}
         <svg width={size + 16} height={size + 16} style={{ position: 'absolute', top: -8, left: -8, pointerEvents: 'none', overflow: 'visible' }}>
@@ -123,10 +125,10 @@ export function LevelWidget({ xp, memberName, memberBelt, profilePic, size = 64 
         }}>
           LV {actualLevel}
         </div>
-      </button>
+      </Wrapper>
 
       {/* Level Journey Modal — portaled to body to avoid overflow clipping */}
-      {showModal && createPortal(
+      {interactive !== false && showModal && createPortal(
         <div style={{ position: 'fixed', inset: 0, zIndex: 500, display: 'flex', alignItems: 'flex-end' }}
           onClick={() => setShowModal(false)}>
           <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(6px)' }}/>

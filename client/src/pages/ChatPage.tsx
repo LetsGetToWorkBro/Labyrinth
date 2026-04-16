@@ -730,30 +730,6 @@ export default function ChatPage() {
           </div>
         ) : (
           <>
-            {/* Online tab button — first item in channel list */}
-            <button
-              onClick={() => { setShowOnlineTab(true); loadOnlineMembers(); }}
-              style={{
-                display: 'flex', alignItems: 'center', gap: 12,
-                width: '100%', padding: '12px 16px', background: 'rgba(200,162,76,0.06)',
-                border: 'none', borderBottom: '1px solid #1A1A1A', cursor: 'pointer', textAlign: 'left',
-                borderRadius: 14, marginBottom: 6,
-              }}
-            >
-              <div style={{
-                width: 40, height: 40, borderRadius: '50%',
-                background: '#0D0D0D', border: '1px solid #1A1A1A',
-                display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
-              }}>
-                <div style={{ width: 10, height: 10, borderRadius: '50%', background: '#4CAF80', boxShadow: '0 0 6px #4CAF80' }} />
-              </div>
-              <div>
-                <div style={{ fontSize: 14, fontWeight: 700, color: '#F0F0F0' }}>Members Online</div>
-                <div style={{ fontSize: 11, color: '#555' }}>See who's active right now</div>
-              </div>
-              <ChevronRight size={14} color="#333" style={{ marginLeft: 'auto' }} />
-            </button>
-
             {/* Announcements pinned to top */}
             {announcementChannel && (
               <ChannelRow key={announcementChannel.id} channel={announcementChannel} onOpen={() => setActiveChannelId(announcementChannel.id)} />
@@ -910,6 +886,18 @@ function MemberProfileModal({ member: sm, onClose }: { member: ChannelMember; on
   );
 }
 
+// ─── Belt → minimum XP proxy (so message avatars show appropriate ring) ───
+
+function beltToMinXP(belt: string, role: string): number {
+  const r = (role || '').toLowerCase();
+  if (r.includes('owner') || r.includes('coach') || r.includes('instructor')) return 19000; // paragon
+  const map: Record<string, number> = {
+    black: 8500, brown: 5000, purple: 2700, blue: 1000, white: 0,
+    green: 2700, orange: 1350, yellow: 700, grey: 250, gray: 250,
+  };
+  return map[(belt || 'white').toLowerCase()] ?? 0;
+}
+
 // ─── Message bubble ────────────────────────────────────────────────
 
 function MessageBubble({ msg, myName }: { msg: ChatMessage; myName: string }) {
@@ -956,14 +944,17 @@ function MessageBubble({ msg, myName }: { msg: ChatMessage; myName: string }) {
     );
   }
 
+  const senderXP = beltToMinXP(msg.senderBelt || 'white', msg.senderRole || '');
+
   return (
     <div style={{ marginBottom: 2, marginTop: 8 }}>
       <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4, marginLeft: 2 }}>
         <LevelWidget
-          xp={0}
+          xp={senderXP}
           memberName={msg.sender}
           memberBelt={msg.senderBelt}
           size={32}
+          interactive={false}
         />
         <span style={{ fontSize: 12, fontWeight: 700, color: rank.color }}>
           {msg.sender}
