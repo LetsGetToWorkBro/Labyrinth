@@ -1137,6 +1137,93 @@ export default function HomePage() {
   })();
   const daysUntilTournament = tournamentData ? Math.max(0, Math.ceil((new Date(tournamentData.date).getTime() - Date.now()) / 86400000)) : null;
 
+  // ── Narrative helpers ──────────────────────────────────────────
+  const trainedCount = weekDots.filter(d => d.trained).length;
+  const isPerfectWeek = trainedCount >= 5;
+  const isEliteWeek = trainedCount === 7;
+
+  // Multiplier thresholds per day count
+  const getWeekMultiplier = (count: number): { label: string; color: string; mult: string } => {
+    if (count >= 7) return { label: 'LEGENDARY', color: '#A855F7', mult: '3×' };
+    if (count >= 5) return { label: 'PERFECT WEEK', color: '#FFD700', mult: '2×' };
+    if (count >= 3) return { label: 'ON A ROLL', color: '#C8A24C', mult: '1.5×' };
+    return { label: 'BUILDING', color: '#555', mult: '1×' };
+  };
+
+  // Per-dot XP reward label
+  const getDotXP = (dotIndex: number): { xp: string; special?: string; color: string } => {
+    // dotIndex = how many trained INCLUDING this dot (1-based position if trained)
+    if (dotIndex === 7) return { xp: '+15', special: '3× LEGEND', color: '#A855F7' };
+    if (dotIndex === 5) return { xp: '+12', special: '2× PERFECT', color: '#FFD700' };
+    if (dotIndex === 3) return { xp: '+11', special: '1.5× COMBO', color: '#F97316' };
+    return { xp: '+10', color: '#C8A24C' };
+  };
+
+  // Context-aware narrative headline
+  const getNarrativeHeadline = (): { line1: string; line2: string; accent?: string } => {
+    const name = member?.name?.split(' ')[0] || 'Warrior';
+    const belt = member?.belt || 'white';
+
+    if (isGameDay && nextClass) {
+      return {
+        line1: `Game day, ${name}.`,
+        line2: `${nextClass.name} is coming up.`,
+        accent: 'GAME DAY',
+      };
+    }
+    if (isEliteWeek) {
+      return {
+        line1: `Legendary week, ${name}.`,
+        line2: `7 days. Most people dream that.`,
+        accent: 'LEGENDARY',
+      };
+    }
+    if (isPerfectWeek) {
+      return {
+        line1: `Perfect week locked in.`,
+        line2: `Defend it. Add to it. This is your season.`,
+        accent: 'PERFECT WEEK',
+      };
+    }
+    if (comboMultiplier >= 3) {
+      return {
+        line1: `You're in the zone, ${name}.`,
+        line2: `3 days straight. Your XP is on fire.`,
+        accent: `${comboMultiplier}× COMBO`,
+      };
+    }
+    if (effectiveStreak > 4) {
+      return {
+        line1: `Week ${effectiveStreak} of showing up.`,
+        line2: `The mat remembers everyone who keeps coming back.`,
+      };
+    }
+    if (trainedCount === 0) {
+      return {
+        line1: `Your ${trainingSeasonData?.monthName || 'month'} chapter starts now.`,
+        line2: `First class of the week = the hardest. Also the most important.`,
+      };
+    }
+    if (trainedCount === 1) {
+      return {
+        line1: `Day 1 checked. ${name}.`,
+        line2: `Momentum takes 3. Come back tomorrow.`,
+      };
+    }
+    return {
+      line1: `${trainedCount} down this week, ${name}.`,
+      line2: trainedCount >= 4
+        ? `One more and you hit Perfect Week. Do it.`
+        : `${5 - trainedCount} more = Perfect Week + 2× XP.`,
+    };
+  };
+
+  const narrative = getNarrativeHeadline();
+  const beltColor = getBeltColor(member?.belt || 'white');
+
+  // Weekly multiplier state
+  const weekMultiplier = getWeekMultiplier(trainedCount);
+
   return (
     <div className="app-content">
       <ScreenHeader
@@ -1148,114 +1235,85 @@ export default function HomePage() {
         }
       />
 
-      {/* Greeting */}
-      <div className="mx-5 mb-3 stagger-child">
-        <p style={{ fontSize: 13, color: '#666', margin: 0, fontWeight: 500 }} data-testid="text-greeting">
-          Welcome back, {member?.name?.split(' ')[0] || 'Warrior'}
-        </p>
-      </div>
-
-      {/* ── Training Season Ring ── */}
-      {trainingSeasonData && (
-        <div style={{ margin: '0 20px 14px' }}>
+      {/* ════════════════════════════════════════════════════
+          NARRATIVE HERO — "Where am I right now?"
+          ════════════════════════════════════════════════════ */}
+      <div style={{ margin: '0 20px 18px' }} className="stagger-child">
+        <div style={{
+          background: isGameDay
+            ? 'linear-gradient(135deg, #141008, #1A1500)'
+            : isPerfectWeek
+              ? 'linear-gradient(135deg, #0F0E00, #1A1600)'
+              : 'linear-gradient(135deg, #0D0D0D, #111)',
+          border: `1px solid ${isGameDay ? 'rgba(200,162,76,0.35)' : isPerfectWeek ? 'rgba(255,215,0,0.3)' : '#1A1A1A'}`,
+          borderRadius: 18,
+          padding: '16px 18px',
+          position: 'relative',
+          overflow: 'hidden',
+        }}>
+          {/* Belt-color ambient glow strip at top */}
           <div style={{
-            background: 'linear-gradient(135deg, #0D0D0D, #111)',
-            border: '1px solid #1A1A1A',
-            borderRadius: 16, padding: '14px 16px',
-            display: 'flex', alignItems: 'center', gap: 16,
-          }}>
-            {/* SVG progress ring */}
-            <div style={{ position: 'relative', flexShrink: 0 }}>
-              <svg width={64} height={64} viewBox="0 0 64 64">
-                <circle cx={32} cy={32} r={26} fill="none" stroke="#1A1A1A" strokeWidth={5}/>
-                <circle
-                  cx={32} cy={32} r={26}
-                  fill="none"
-                  stroke="url(#season-grad)"
-                  strokeWidth={5}
-                  strokeLinecap="round"
-                  strokeDasharray={`${2 * Math.PI * 26}`}
-                  strokeDashoffset={`${2 * Math.PI * 26 * (1 - trainingSeasonData.progress)}`}
-                  transform="rotate(-90 32 32)"
-                  style={{ transition: 'stroke-dashoffset 1.2s cubic-bezier(0.4,0,0.2,1)' }}
-                />
-                <defs>
-                  <linearGradient id="season-grad" x1="0%" y1="0%" x2="100%" y2="0%">
-                    <stop offset="0%" stopColor="#8B6914"/>
-                    <stop offset="100%" stopColor="#FFD700"/>
-                  </linearGradient>
-                </defs>
-                <text x={32} y={36} textAnchor="middle" fill="#F0F0F0" fontSize={16} fontWeight={800} fontFamily="sans-serif">
-                  {trainingSeasonData.thisMonthClasses}
-                </text>
-              </svg>
+            position: 'absolute', top: 0, left: 0, right: 0, height: 2,
+            background: `linear-gradient(90deg, transparent 0%, ${beltColor} 40%, ${beltColor} 60%, transparent 100%)`,
+            opacity: 0.7,
+          }} />
+
+          {/* Accent chip */}
+          {narrative.accent && (
+            <div style={{
+              display: 'inline-flex', alignItems: 'center', gap: 5,
+              padding: '3px 9px', borderRadius: 999, marginBottom: 10,
+              background: isGameDay ? 'rgba(200,162,76,0.15)' : isPerfectWeek ? 'rgba(255,215,0,0.12)' : 'rgba(200,162,76,0.1)',
+              border: `1px solid ${isGameDay ? 'rgba(200,162,76,0.3)' : isPerfectWeek ? 'rgba(255,215,0,0.25)' : 'rgba(200,162,76,0.2)'}`,
+              animation: isGameDay || isPerfectWeek ? 'xp-pulse 2s ease-in-out infinite' : undefined,
+            }}>
+              <span style={{ fontSize: 9 }}>{isGameDay ? '⚔️' : isPerfectWeek ? '🏆' : comboMultiplier >= 3 ? '🔥' : '⚡'}</span>
+              <span style={{ fontSize: 9, fontWeight: 800, letterSpacing: '0.12em', color: isGameDay ? '#C8A24C' : isPerfectWeek ? '#FFD700' : '#C8A24C' }}>
+                {narrative.accent}
+              </span>
             </div>
-            <div style={{ flex: 1 }}>
-              <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: '#C8A24C', marginBottom: 4 }}>
-                {trainingSeasonData.monthName} Season
+          )}
+
+          {/* Main narrative lines */}
+          <div style={{ fontSize: 19, fontWeight: 900, color: '#F0F0F0', lineHeight: 1.15, marginBottom: 6, letterSpacing: '-0.01em' }}>
+            {narrative.line1}
+          </div>
+          <div style={{ fontSize: 13, color: '#666', lineHeight: 1.5, fontWeight: 500 }}>
+            {narrative.line2}
+          </div>
+
+          {/* Bottom row: streak + combo inline */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 12 }}>
+            {effectiveStreak > 0 && (
+              <a href="/#/history" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 5 }}>
+                <span style={{ fontSize: 13, animation: 'flame-idle 2.4s ease-in-out infinite' }}>🔥</span>
+                <span style={{ fontSize: 12, fontWeight: 700, color: '#C8A24C' }}>{effectiveStreak}-week streak</span>
+                {streakFreezeActive && <span style={{ fontSize: 11 }}>🛡️</span>}
+              </a>
+            )}
+            {comboMultiplier > 1 && (
+              <div style={{
+                display: 'flex', alignItems: 'center', gap: 4,
+                padding: '2px 8px', borderRadius: 999,
+                background: comboMultiplier >= 3 ? 'rgba(249,115,22,0.15)' : 'rgba(200,162,76,0.1)',
+                border: `1px solid ${comboMultiplier >= 3 ? 'rgba(249,115,22,0.3)' : 'rgba(200,162,76,0.2)'}`,
+              }}>
+                <span style={{ fontSize: 10, fontWeight: 800, color: comboMultiplier >= 3 ? '#F97316' : '#C8A24C' }}>
+                  {comboMultiplier}× COMBO
+                </span>
               </div>
-              <div style={{ fontSize: 15, fontWeight: 800, color: '#F0F0F0', marginBottom: 3 }}>
-                {trainingSeasonData.thisMonthClasses} / {trainingSeasonData.goalClasses} classes
+            )}
+            {trainingSeasonData && (
+              <div style={{ marginLeft: 'auto', textAlign: 'right' }}>
+                <div style={{ fontSize: 9, color: '#444', textTransform: 'uppercase', letterSpacing: '0.1em' }}>{trainingSeasonData.monthName}</div>
+                <div style={{ fontSize: 12, fontWeight: 800, color: '#F0F0F0' }}>
+                  {trainingSeasonData.thisMonthClasses}<span style={{ fontSize: 9, color: '#555', fontWeight: 400 }}>/{trainingSeasonData.goalClasses}</span>
+                </div>
               </div>
-              <div style={{ fontSize: 11, color: '#555' }}>
-                {trainingSeasonData.thisMonthClasses >= trainingSeasonData.goalClasses
-                  ? '🏆 Perfect season. Elite consistency.'
-                  : `${trainingSeasonData.goalClasses - trainingSeasonData.thisMonthClasses} more to complete this season`}
-              </div>
-              {/* Mini progress bar */}
-              <div style={{ marginTop: 8, height: 3, borderRadius: 2, background: '#1A1A1A', overflow: 'hidden' }}>
-                <div style={{
-                  height: '100%',
-                  width: `${Math.min(100, trainingSeasonData.progress * 100)}%`,
-                  background: 'linear-gradient(90deg, #8B6914, #FFD700)',
-                  borderRadius: 2,
-                  transition: 'width 1.2s cubic-bezier(0.4,0,0.2,1)',
-                }}/>
-              </div>
-            </div>
+            )}
           </div>
         </div>
-      )}
-
-      {/* ── Next Milestone Card ── */}
-      {nextMilestoneData && nextMilestoneData.need > 0 && (
-        <div style={{ margin: '0 20px 14px' }}>
-          <a href={nextMilestoneData.type === 'achievement' ? '/#/achievements' : undefined}
-            style={{ textDecoration: 'none', display: 'block' }}>
-            <div style={{
-              background: '#0D0D0D',
-              border: '1px solid #C8A24C20',
-              borderRadius: 14, padding: '12px 16px',
-              display: 'flex', alignItems: 'center', gap: 12,
-            }}>
-              <div style={{
-                width: 38, height: 38, borderRadius: 10, flexShrink: 0,
-                background: 'rgba(200,162,76,0.1)',
-                border: '1px solid rgba(200,162,76,0.2)',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                fontSize: 18,
-              }}>
-                {nextMilestoneData.icon}
-              </div>
-              <div style={{ flex: 1 }}>
-                <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#555', marginBottom: 3 }}>
-                  Next Milestone
-                </div>
-                <div style={{ fontSize: 13, fontWeight: 700, color: '#F0F0F0' }}>
-                  {nextMilestoneData.type === 'achievement'
-                    ? `${nextMilestoneData.need} more ${nextMilestoneData.unit} to unlock "${nextMilestoneData.label}"`
-                    : `${nextMilestoneData.need.toLocaleString()} XP to Level ${nextMilestoneData.nextLevel}`}
-                </div>
-              </div>
-              <div style={{ fontSize: 11, fontWeight: 700, color: '#C8A24C' }}>
-                {nextMilestoneData.type === 'xp'
-                  ? `${Math.ceil(nextMilestoneData.need / 10)} classes away`
-                  : ''}
-              </div>
-            </div>
-          </a>
-        </div>
-      )}
+      </div>
 
       {/* LIVE banner */}
       {stream?.isLive && (
@@ -1264,7 +1322,7 @@ export default function HomePage() {
             background: 'linear-gradient(135deg, #1A0A0A, #1A1010)',
             border: '1px solid #EF444430',
             borderRadius: 14, padding: '12px 16px',
-            margin: '0 20px 12px', cursor: 'pointer',
+            margin: '0 20px 14px', cursor: 'pointer',
             display: 'flex', alignItems: 'center', gap: 12,
           }}>
             <span style={{ width: 10, height: 10, borderRadius: '50%', background: '#EF4444', flexShrink: 0, display: 'inline-block', animation: 'livePulse 1.5s ease-in-out infinite', boxShadow: '0 0 8px #EF4444' }} />
@@ -1277,493 +1335,256 @@ export default function HomePage() {
         </a>
       )}
 
+      {/* ════════════════════════════════════════════════════
+          WEEKLY XP MULTIPLIER WIDGET
+          Transforms at milestone thresholds.
+          ════════════════════════════════════════════════════ */}
+      {(() => {
+        const anyTrained = weekDots.some(d => d.trained);
+        const isMaxed = isEliteWeek;
+        const cardBg = isEliteWeek
+          ? 'linear-gradient(135deg, #120820, #1A0A2A)'
+          : isPerfectWeek
+            ? 'linear-gradient(135deg, #141008, #1A1500)'
+            : 'linear-gradient(135deg, #0D0D0D, #111)';
+        const cardBorder = isEliteWeek
+          ? 'rgba(168,85,247,0.45)'
+          : isPerfectWeek
+            ? 'rgba(255,215,0,0.4)'
+            : anyTrained ? 'rgba(200,162,76,0.15)' : 'rgba(200,162,76,0.08)';
+        const headerColor = isEliteWeek ? '#A855F7' : isPerfectWeek ? '#FFD700' : '#C8A24C';
 
-      {/* J1: Weekly Report - Monday morning summary */}
-      {showWeekReport && !weekReportDismissed && (
-        <div style={{
-          margin: '0 20px 16px',
-          background: 'linear-gradient(135deg, #141414, #0F0F12)',
-          border: '1px solid #C8A24C25',
-          borderRadius: 16, padding: '16px',
-          animation: 'page-slide-in-right 400ms var(--ease-out) both',
-          position: 'relative',
-        }}>
-          <button onClick={dismissReport} style={{ position: 'absolute', top: 12, right: 12, background: 'none', border: 'none', color: '#444', cursor: 'pointer', fontSize: 16 }}>✕</button>
-          <div style={{ fontSize: 9, fontWeight: 700, color: '#C8A24C', letterSpacing: '0.18em', textTransform: 'uppercase', marginBottom: 10 }}>Last Week</div>
-          <div style={{ display: 'flex', gap: 20, marginBottom: 12 }}>
-            <div style={{ textAlign: 'center' }}>
-              <div style={{ fontSize: 28, fontWeight: 900, color: '#F0F0F0' }}>{lastWeekStats.classes}</div>
-              <div style={{ fontSize: 9, color: '#555', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Classes</div>
-            </div>
-            <div style={{ textAlign: 'center' }}>
-              <div style={{ fontSize: 28, fontWeight: 900, color: '#C8A24C' }}>+{lastWeekStats.xpEarned}</div>
-              <div style={{ fontSize: 9, color: '#555', textTransform: 'uppercase', letterSpacing: '0.1em' }}>XP</div>
-            </div>
-            {lastWeekStats.gymRank > 0 && (
-              <div style={{ textAlign: 'center' }}>
-                <div style={{ fontSize: 28, fontWeight: 900, color: '#F0F0F0' }}>#{lastWeekStats.gymRank}</div>
-                <div style={{ fontSize: 9, color: '#555', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Gym Rank</div>
-              </div>
-            )}
-          </div>
-          <div style={{ fontSize: 13, color: '#888', lineHeight: 1.5 }}>
-            {lastWeekStats.classes >= 5
-              ? "Perfect week. That's elite consistency."
-              : lastWeekStats.classes >= 3
-              ? "Strong week. You outpaced most of the gym."
-              : lastWeekStats.classes >= 1
-              ? "You showed up. That's more than most."
-              : "The mat is waiting. New week, fresh start."}
-          </div>
-          <div style={{ marginTop: 12, padding: '8px 12px', background: '#0A0A0A', borderRadius: 10 }}>
-            <span style={{ fontSize: 11, color: '#C8A24C', fontWeight: 600 }}>
-              This week: {lastWeekStats.classes >= 5 ? "Defend the perfect week 🏆" : `${Math.max(0, 5 - lastWeekStats.classes)} more to hit Perfect Week`}
-            </span>
-          </div>
-        </div>
-      )}
+        // Milestones on the journey: day 3 = combo, day 5 = perfect, day 7 = legend
+        const milestoneAt = [3, 5, 7];
 
-      {/* M4: Flow State chip */}
-      {isFlowState && (
-        <div style={{ margin: '0 20px 12px', display: 'flex' }}>
-          <div style={{
-            display: 'inline-flex', alignItems: 'center', gap: 6,
-            padding: '4px 10px', borderRadius: 999,
-            background: 'rgba(100,150,255,0.1)',
-            border: '1px solid rgba(100,150,255,0.2)',
-            animation: 'pulse 2s ease-in-out infinite',
-          }}>
-            <span>⚡</span>
-            <span style={{ fontSize: 10, fontWeight: 700, color: 'rgba(130,170,255,0.9)', letterSpacing: '0.1em', textTransform: 'uppercase' }}>Flow State</span>
-          </div>
-        </div>
-      )}
-
-      {/* M2: Technique of the Day */}
-      {techniqueOfDay && (
-        <div style={{
-          margin: '0 20px 12px', padding: '14px 16px',
-          background: 'linear-gradient(135deg, #0D0D0D, #0A0A10)',
-          border: '1px solid #C8A24C18',
-          borderRadius: 14,
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-            <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.15em', textTransform: 'uppercase', color: '#C8A24C' }}>
-              Technique of the Day
-            </div>
+        return (
+          <div className="mx-5 mb-4 stagger-child">
             <div style={{
-              fontSize: 9, fontWeight: 700, color: '#444', letterSpacing: '0.08em',
-              textTransform: 'uppercase', padding: '2px 8px', borderRadius: 999,
-              background: '#111', border: '1px solid #222',
+              background: cardBg,
+              border: `1px solid ${cardBorder}`,
+              borderRadius: 16,
+              padding: '14px 16px',
+              position: 'relative',
+              overflow: 'hidden',
+              transition: 'border-color 600ms ease, background 600ms ease',
+              ...(isPerfectWeek ? { boxShadow: '0 0 30px rgba(255,215,0,0.08)' } : {}),
+              ...(isEliteWeek ? { boxShadow: '0 0 40px rgba(168,85,247,0.12)' } : {}),
             }}>
-              {techniqueOfDay.category}
-            </div>
-          </div>
-          <div style={{ fontSize: 16, fontWeight: 800, color: '#F0F0F0', marginBottom: 6 }}>
-            {techniqueOfDay.name}
-          </div>
-          <div style={{ fontSize: 12, color: '#666', lineHeight: 1.5 }}>
-            {techniqueOfDay.tip}
-          </div>
-        </div>
-      )}
-
-      {/* M6: Combo Multiplier */}
-      {comboMultiplier > 1 && (
-        <div style={{ margin: '0 20px 12px', display: 'flex' }}>
-          <div style={{
-            display: 'inline-flex', alignItems: 'center', gap: 8,
-            padding: '6px 14px', borderRadius: 999,
-            background: comboMultiplier >= 3 ? 'rgba(255,180,0,0.12)' : 'rgba(200,162,76,0.1)',
-            border: `1px solid ${comboMultiplier >= 3 ? 'rgba(255,180,0,0.35)' : 'rgba(200,162,76,0.25)'}`,
-            animation: comboMultiplier >= 3 ? 'xp-pulse 1.5s ease-in-out infinite' : undefined,
-          }}>
-            <span style={{ fontSize: 14 }}>{comboMultiplier >= 3 ? '🔥' : '⚡'}</span>
-            <span style={{ fontSize: 11, fontWeight: 800, color: comboMultiplier >= 3 ? '#FFB800' : '#C8A24C', letterSpacing: '0.05em' }}>
-              {comboMultiplier}× COMBO — {comboMultiplier} days straight!
-            </span>
-          </div>
-        </div>
-      )}
-
-      {/* M3: Rival System */}
-      {rival && myLeaderboardRank > 1 && (
-        <div style={{
-          margin: '0 20px 12px', padding: '12px 16px',
-          background: '#0D0D0D',
-          border: '1px solid rgba(224,85,85,0.2)',
-          borderRadius: 14,
-        }}>
-          <div style={{ fontSize: 9, color: '#E05555', letterSpacing: '0.15em', textTransform: 'uppercase', marginBottom: 8 }}>
-            Your Rival
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            <div style={{
-              width: 36, height: 36, borderRadius: '50%',
-              background: '#1A1A1A', display: 'flex', alignItems: 'center', justifyContent: 'center',
-              fontSize: 14, fontWeight: 700, color: '#F0F0F0',
-              border: `2px solid ${getBeltColor(rival.belt || 'white')}`,
-              flexShrink: 0,
-            }}>
-              {(rival.name || '?').charAt(0)}
-            </div>
-            <div style={{ flex: 1 }}>
-              <div style={{ fontSize: 14, fontWeight: 700, color: '#F0F0F0' }}>{rival.name}</div>
-              <div style={{ fontSize: 11, color: '#E05555' }}>
-                Ranked #{myLeaderboardRank - 1} · {Math.max(0, (rival.classCount || 0) - myClassCount)} classes ahead
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* M5: Tournament Countdown */}
-      {tournamentData && daysUntilTournament !== null && daysUntilTournament <= 30 && (
-        <div style={{
-          margin: '0 20px 12px',
-          background: '#0D0D0D',
-          border: '1px solid #C8A24C25',
-          borderRadius: 14, padding: '14px 16px',
-        }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <div>
-              <div style={{ fontSize: 9, color: '#C8A24C', letterSpacing: '0.12em', textTransform: 'uppercase' }}>Next Tournament</div>
-              <div style={{ fontSize: 15, fontWeight: 800, color: '#F0F0F0', marginTop: 2 }}>{tournamentData.name}</div>
-            </div>
-            <div style={{ textAlign: 'right' }}>
-              <div style={{ fontSize: 28, fontWeight: 900, color: '#FFD700' }}>{daysUntilTournament}</div>
-              <div style={{ fontSize: 9, color: '#555', textTransform: 'uppercase' }}>Days Out</div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Profile card — collapsible */}
-      <input
-        ref={avatarFileRef}
-        type="file"
-        accept="image/*"
-        onChange={handleAvatarPhoto}
-        style={{ display: 'none' }}
-      />
-      <div className="mx-5 mb-3 stagger-child" style={{ transition: 'all 0.2s ease' }}>
-        {/* Collapsed header row — always visible */}
-        <div
-          onClick={() => setProfileExpanded(p => !p)}
-          style={{
-            background: '#141414', border: '1px solid #1A1A1A',
-            borderRadius: profileExpanded ? '16px 16px 0 0' : 16,
-            padding: '12px 16px',
-            display: 'flex', alignItems: 'center', gap: 12,
-            cursor: 'pointer',
-            transition: 'border-radius 0.2s ease',
-          }}
-        >
-          {/* Avatar — LevelWidget portrait with XP arc */}
-          <div onClick={(e) => e.stopPropagation()} style={{ flexShrink: 0 }}>
-            <LevelWidget
-              xp={memberXP}
-              memberName={member?.name}
-              memberBelt={member?.belt}
-              size={72}
-              profilePic={profilePic || undefined}
-            />
-          </div>
-
-          {/* Name + belt */}
-          <div style={{ flex: 1 }}>
-            <div style={{ fontSize: 16, fontWeight: 700, color: '#F0F0F0' }} data-testid="text-member-name">{member?.name}</div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 2 }}>
-              <BeltVisual belt={member?.belt || 'white'} />
-              <span style={{ fontSize: 12, color: getBeltColor(member?.belt || 'white'), fontWeight: 600, textTransform: 'capitalize' }}>{member?.belt || 'White'} Belt</span>
-            </div>
-            {(() => {
-              const xp = (member as any)?.totalPoints || 0;
-              const { title } = getLevelFromXP(xp);
-              const lvl = getActualLevel(xp);
-              return (
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 4 }}>
-                  <div style={{
-                    fontSize: 10, fontWeight: 800, color: '#000',
-                    background: 'linear-gradient(135deg, #C8A24C, #FFD700)',
-                    padding: '1px 6px', borderRadius: 8,
-                    letterSpacing: '0.03em',
-                  }}>Lv {lvl}</div>
-                  <span style={{ fontSize: 11, color: '#C8A24C', fontWeight: 600 }}>{title}</span>
+              {/* Header row */}
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+                  <span style={{ fontSize: 13 }}>
+                    {isEliteWeek ? '👑' : isPerfectWeek ? '🏆' : anyTrained ? '📅' : '🎯'}
+                  </span>
+                  <span style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.12em', textTransform: 'uppercase', color: headerColor }}>
+                    This Week
+                  </span>
                 </div>
-              );
-            })()}
-          </div>
+                {/* Current multiplier badge */}
+                <div style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 5,
+                  padding: '3px 10px', borderRadius: 999,
+                  background: isEliteWeek ? 'rgba(168,85,247,0.15)' : isPerfectWeek ? 'rgba(255,215,0,0.12)' : 'rgba(200,162,76,0.08)',
+                  border: `1px solid ${isEliteWeek ? 'rgba(168,85,247,0.4)' : isPerfectWeek ? 'rgba(255,215,0,0.3)' : 'rgba(200,162,76,0.2)'}`,
+                  animation: isPerfectWeek || isEliteWeek ? 'xp-pulse 2s ease-in-out infinite' : undefined,
+                }}>
+                  <span style={{ fontSize: 10, fontWeight: 900, color: headerColor }}>
+                    {weekMultiplier.mult}
+                  </span>
+                  <span style={{ fontSize: 8, fontWeight: 700, letterSpacing: '0.1em', color: headerColor, opacity: 0.8 }}>
+                    {weekMultiplier.label}
+                  </span>
+                </div>
+              </div>
 
-          {/* Chevron */}
-          <ChevronDown size={16} style={{ color: '#444', transform: profileExpanded ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s', flexShrink: 0 }} />
-        </div>
+              {/* THE DOTS — each with multiplier preview */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', gap: 4 }}>
+                {weekDots.map((d, i) => {
+                  const dotNum = i + 1; // 1-based
+                  const isMilestone = milestoneAt.includes(dotNum);
+                  const dotXP = getDotXP(dotNum);
 
-        {/* Expanded details */}
-        {profileExpanded && (
-          <div style={{
-            background: '#141414', border: '1px solid #1A1A1A', borderTop: 'none',
-            borderRadius: '0 0 16px 16px',
-            padding: '0 16px 16px',
-          }}>
-            <div style={{ borderTop: '1px solid #1A1A1A', paddingTop: 14, display: 'flex', flexDirection: 'column', gap: 8 }}>
-              <div style={{ fontSize: 12, color: '#666' }}>Member since <span style={{ color: '#999' }}>{joinDate}</span></div>
-              {member.phone && (
-                <div style={{ fontSize: 12, color: '#666' }}>Phone <span style={{ color: '#999' }}>{member.phone}</span></div>
-              )}
-              {member.email && member.email !== member.name && (
-                <div style={{ fontSize: 12, color: '#666' }}>Email <span style={{ color: '#999' }}>{member.email}</span></div>
-              )}
-              <button
-                onClick={() => avatarFileRef.current?.click()}
-                style={{
-                  fontSize: 11, color: '#C8A24C', background: 'none', border: 'none',
-                  cursor: 'pointer', padding: '4px 0', fontWeight: 600,
-                }}
-              >
-                Change Photo
-              </button>
-            </div>
+                  // For untrained future dots, show what XP they would grant
+                  const dotColor = d.trained
+                    ? (dotNum === 7 ? '#A855F7' : dotNum === 5 ? '#FFD700' : '#C8A24C')
+                    : d.isToday
+                      ? '#F0F0F0'
+                      : '#2A2A2A';
 
-            {/* Belt + Family row */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 14 }}>
-              {hasFamily && (
-                <button
-                  onClick={(e) => { e.stopPropagation(); setShowFamilySwitcher(!showFamilySwitcher); }}
-                  className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all active:scale-[0.97]"
-                  style={{
-                    backgroundColor: showFamilySwitcher ? "rgba(200,162,76,0.15)" : "#1A1A1A",
-                    color: showFamilySwitcher ? "#C8A24C" : "#999",
-                    border: showFamilySwitcher ? "1px solid rgba(200,162,76,0.3)" : "1px solid #222",
-                  }}
-                  data-testid="button-family-switcher"
-                >
-                  <Users size={13} />
-                  Family
-                </button>
-              )}
-              <button
-                onClick={(e) => { e.stopPropagation(); haptic(); setShowRankRequest(true); setRankBelt(member.belt || "white"); setRankStripes(0); setRankNote(""); setRankSent(false); }}
-                style={{ background: "none", border: "none", padding: 0, cursor: "pointer", position: "relative", overflow: "visible" }}
-                title="Tap to request a rank update"
-              >
-                <BeltIcon
-                  belt={member.belt || "white"}
-                  stripes={0}
-                  width={72}
-                  style={{ filter: `drop-shadow(0 1px 6px ${getBeltColor(member.belt)}40)` }}
-                />
-                <span style={{ position: "absolute", bottom: -2, right: -2, width: 14, height: 14, borderRadius: "50%", backgroundColor: "#C8A24C", border: "2px solid #141414", display: "flex", alignItems: "center", justifyContent: "center", overflow: "visible" }}>
-                  <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="#0A0A0A" strokeWidth="2.5">
-                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
-                    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
-                  </svg>
-                </span>
-              </button>
-              <div style={{ flex: 1 }} />
-              <a href="/#/account" style={{ fontSize: 12, color: '#C8A24C', fontWeight: 600, textDecoration: 'none' }}>Edit Profile →</a>
-            </div>
+                  const dotBg = d.trained
+                    ? dotColor
+                    : d.isToday
+                      ? 'transparent'
+                      : 'transparent';
 
-            {/* Family switcher */}
-            {hasFamily && showFamilySwitcher && (
-              <div className="mt-3 rounded-xl overflow-hidden" style={{ border: "1px solid #222" }}>
-                <p className="text-[10px] uppercase tracking-wider px-3 pt-2.5 pb-1.5 font-medium" style={{ color: "#555", backgroundColor: "#0D0D0D" }}>
-                  Switch Profile
-                </p>
-                {switchError && <p className="text-xs px-3 py-1.5" style={{ color: "#E05555", backgroundColor: "rgba(224,85,85,0.07)" }}>{switchError}</p>}
-                {familyMembers.map((fm) => {
-                  const isActive = fm.row === member.row;
-                  const isLoading = switchingRow === fm.row;
+                  const dotBorder = d.trained
+                    ? 'none'
+                    : d.isToday
+                      ? `2px solid ${beltColor}`
+                      : !anyTrained
+                        ? `2px dashed rgba(200,162,76,0.2)` // ghost
+                        : `2px solid #222`;
+
+                  const dotGlow = d.trained
+                    ? (dotNum === 7 ? '0 0 12px rgba(168,85,247,0.7)' : dotNum === 5 ? '0 0 12px rgba(255,215,0,0.5)' : '0 0 8px rgba(200,162,76,0.4)')
+                    : 'none';
+
+                  // Size: milestone dots are slightly larger
+                  const dotSize = isMilestone ? 32 : 28;
+
                   return (
-                    <button
-                      key={fm.row}
-                      onClick={(e) => { e.stopPropagation(); handleSwitchProfile(fm); }}
-                      disabled={!!switchingRow}
-                      className="w-full flex items-center gap-3 px-3 py-2.5 transition-colors text-left"
-                      style={{ backgroundColor: isActive ? "rgba(200,162,76,0.08)" : "#0D0D0D", borderTop: "1px solid #181818", opacity: switchingRow && !isLoading ? 0.5 : 1 }}
-                    >
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium truncate" style={{ color: isActive ? "#C8A24C" : "#E0E0E0" }}>{fm.name}</p>
-                        <p className="text-[10px] mt-0.5" style={{ color: "#555" }}>{fm.type} · {fm.belt || "White"} belt{fm.isPrimary ? " · Primary" : ""}</p>
+                    <div key={i} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3, flex: 1 }}>
+                      {/* XP label above dot — shown for trained or upcoming milestones */}
+                      <div style={{
+                        fontSize: 8, fontWeight: 800,
+                        color: d.trained ? dotXP.color : !anyTrained ? 'rgba(200,162,76,0.3)' : '#2A2A2A',
+                        letterSpacing: '0.05em',
+                        height: 10, display: 'flex', alignItems: 'center',
+                        transition: 'color 400ms ease',
+                      }}>
+                        {dotXP.xp}
                       </div>
-                      <div className="flex-shrink-0">
-                        {isLoading ? <Loader2 size={14} className="animate-spin" style={{ color: "#C8A24C" }} />
-                          : isActive ? <Check size={14} style={{ color: "#C8A24C" }} />
-                          : <ChevronRight size={14} style={{ color: "#333" }} />}
+
+                      {/* The dot itself */}
+                      <div style={{
+                        width: dotSize, height: dotSize,
+                        borderRadius: '50%',
+                        background: dotBg,
+                        border: dotBorder,
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        boxShadow: dotGlow,
+                        transition: 'all 300ms cubic-bezier(0.34,1.56,0.64,1)',
+                        position: 'relative',
+                        flexShrink: 0,
+                      }}>
+                        {d.trained ? (
+                          <svg width={dotSize === 32 ? 14 : 12} height={dotSize === 32 ? 14 : 12} viewBox="0 0 24 24" fill="none" stroke={dotNum >= 5 ? '#000' : '#0A0A0A'} strokeWidth={3} strokeLinecap="round" strokeLinejoin="round">
+                            <polyline points="20 6 9 17 4 12"/>
+                          </svg>
+                        ) : d.isToday ? (
+                          <div style={{ width: 6, height: 6, borderRadius: '50%', background: beltColor }} />
+                        ) : (
+                          <div style={{ width: 4, height: 4, borderRadius: '50%', background: '#2A2A2A', opacity: !anyTrained ? 0.4 : 1 }} />
+                        )}
+
+                        {/* Milestone ring — pulsing halo for unlocked milestones */}
+                        {d.trained && isMilestone && (
+                          <div style={{
+                            position: 'absolute', inset: -4,
+                            borderRadius: '50%',
+                            border: `1.5px solid ${dotColor}`,
+                            opacity: 0.4,
+                            animation: 'ring-pulse 2s ease-in-out infinite',
+                          }} />
+                        )}
                       </div>
-                    </button>
+
+                      {/* Day label */}
+                      <span style={{
+                        fontSize: 9,
+                        color: d.isToday ? '#E0E0E0' : d.trained ? dotColor : '#3A3A3A',
+                        fontWeight: d.isToday ? 700 : 500,
+                        transition: 'color 400ms ease',
+                      }}>
+                        {d.label}
+                      </span>
+
+                      {/* Milestone label under day for key days */}
+                      <div style={{
+                        fontSize: 7, fontWeight: 800, letterSpacing: '0.04em',
+                        color: d.trained
+                          ? (dotNum === 7 ? '#A855F7' : dotNum === 5 ? '#FFD700' : dotNum === 3 ? '#F97316' : 'transparent')
+                          : 'transparent',
+                        height: 9,
+                        textAlign: 'center',
+                        lineHeight: 1,
+                      }}>
+                        {dotNum === 3 ? '1.5×' : dotNum === 5 ? 'PERF' : dotNum === 7 ? '3×' : ''}
+                      </div>
+                    </div>
                   );
                 })}
               </div>
-            )}
 
-            {/* Document status row */}
-            <div className="flex gap-3 mt-3 pt-3" style={{ borderTop: "1px solid #1A1A1A" }}>
-              <a href="/#/waiver" className="flex items-center gap-1.5 flex-1 text-xs" style={{ textDecoration: "none" }}>
-                {member.waiverSigned
-                  ? <CheckCircle size={13} style={{ color: "#4CAF80", flexShrink: 0 }} />
-                  : <FileText size={13} style={{ color: "#E08228", flexShrink: 0 }} />}
-                <span style={{ color: member.waiverSigned ? "#4CAF80" : "#E08228" }}>
-                  {member.waiverSigned ? "Waiver signed" : "Sign waiver"}
-                </span>
-              </a>
-              <a href="/#/waiver" className="flex items-center gap-1.5 flex-1 text-xs" style={{ textDecoration: "none" }}>
-                {member.agreementSigned
-                  ? <CheckCircle size={13} style={{ color: "#4CAF80", flexShrink: 0 }} />
-                  : <FileText size={13} style={{ color: "#E08228", flexShrink: 0 }} />}
-                <span style={{ color: member.agreementSigned ? "#4CAF80" : "#E08228" }}>
-                  {member.agreementSigned ? "Agreement signed" : "Sign agreement"}
-                </span>
-              </a>
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* XP Progress Widget */}
-      {member && (
-        <div className="mx-5 mb-4 stagger-child" style={{ position: 'relative' }}>
-          {/* Background glow */}
-          <div style={{
-            position: 'absolute', inset: -1,
-            borderRadius: 17,
-            background: 'linear-gradient(135deg, rgba(200,162,76,0.3), transparent, rgba(200,162,76,0.1))',
-            filter: 'blur(8px)',
-            zIndex: 0,
-          }}/>
-          <div style={{
-            position: 'relative', zIndex: 1,
-            background: 'linear-gradient(135deg, #0D0D0D 0%, #141408 100%)',
-            borderRadius: 16, padding: '14px 16px',
-            border: '1px solid rgba(200,162,76,0.2)',
-          }}>
-            {/* Level row */}
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                {/* Gem/orb icon */}
+              {/* Progress bar showing path to perfect week */}
+              <div style={{ marginTop: 14, height: 3, borderRadius: 2, background: '#111', overflow: 'hidden', position: 'relative' }}>
+                {/* Milestone markers */}
+                {[3/7, 5/7].map((pct, idx) => (
+                  <div key={idx} style={{
+                    position: 'absolute', top: 0, bottom: 0,
+                    left: `${pct * 100}%`, width: 1,
+                    background: idx === 0 ? 'rgba(249,115,22,0.4)' : 'rgba(255,215,0,0.4)',
+                  }} />
+                ))}
                 <div style={{
-                  width: 32, height: 32, borderRadius: '50%',
-                  background: 'radial-gradient(circle at 35% 30%, #FFD700, #C8A24C 50%, #6B4A00)',
-                  boxShadow: '0 0 12px rgba(200,162,76,0.6), inset 0 1px 0 rgba(255,255,255,0.3)',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  fontSize: 12, fontWeight: 900, color: '#000',
-                }}>
-                  {getActualLevel(memberXP)}
+                  height: '100%',
+                  width: `${(trainedCount / 7) * 100}%`,
+                  background: isEliteWeek
+                    ? 'linear-gradient(90deg, #A855F7, #EC4899)'
+                    : isPerfectWeek
+                      ? 'linear-gradient(90deg, #C8A24C, #FFD700)'
+                      : 'linear-gradient(90deg, #555, #C8A24C)',
+                  borderRadius: 2,
+                  transition: 'width 800ms cubic-bezier(0.4,0,0.2,1)',
+                }} />
+              </div>
+
+              {/* Bottom CTA — contextual */}
+              <div style={{ marginTop: 10, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <div style={{ fontSize: 11, color: '#555' }}>
+                  {isEliteWeek
+                    ? 'Full week. You are the gym.'
+                    : isPerfectWeek
+                      ? `Perfect. ${7 - trainedCount} more to go legendary.`
+                      : trainedCount > 0
+                        ? `${5 - trainedCount > 0 ? `${5 - trainedCount} more → Perfect Week` : 'Perfect. Keep going.'}`
+                        : 'First class unlocks the streak.'}
                 </div>
-                <div>
-                  <div style={{ fontSize: 13, fontWeight: 800, color: '#F0F0F0' }}>{getLevelFromXP(memberXP).title}</div>
-                  <div style={{ fontSize: 10, color: '#555' }}>{memberXP.toLocaleString()} XP</div>
+                <div style={{ fontSize: 10, fontWeight: 700, color: headerColor }}>
+                  {trainedCount}/7
                 </div>
               </div>
-              <div style={{ fontSize: 11, color: '#C8A24C', fontWeight: 600 }}>
-                +{(getLevelFromXP(memberXP).xpForNext - ((member as any)?.totalPoints || 0)).toLocaleString()} to next
-              </div>
-            </div>
-
-            {/* XP bar — thick, glowing, segmented */}
-            <div style={{ height: 14, borderRadius: 7, background: '#0A0A0A', overflow: 'hidden', position: 'relative', border: '1px solid #1A1A1A', boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.5)' }}>
-              {/* Fill */}
-              <div style={{
-                height: '100%',
-                width: `${getLevelFromXP(memberXP).progress * 100}%`,
-                background: 'linear-gradient(90deg, #6B4A00 0%, #C8A24C 40%, #FFD700 70%, #FFF8DC 85%, #FFD700 100%)',
-                backgroundSize: '300% 100%',
-                animation: 'xp-shimmer 2s linear infinite',
-                borderRadius: 7,
-                transition: 'width 1.5s cubic-bezier(0.4,0,0.2,1)',
-                boxShadow: '0 0 10px rgba(255,215,0,0.6), 0 0 20px rgba(200,162,76,0.3)',
-              }}/>
-              {/* Shine */}
-              <div style={{
-                position: 'absolute', top: 0, left: 0, right: 0, height: '45%',
-                background: 'linear-gradient(180deg, rgba(255,255,255,0.12) 0%, transparent 100%)',
-                borderRadius: '7px 7px 0 0', pointerEvents: 'none',
-              }}/>
-              {/* Segment markers at 25/50/75% */}
-              {[25, 50, 75].map(pct => (
-                <div key={pct} style={{
-                  position: 'absolute', top: 0, bottom: 0,
-                  left: `${pct}%`, width: 1,
-                  background: 'rgba(0,0,0,0.3)',
-                }}/>
-              ))}
-            </div>
-
-            {/* Earn XP hint */}
-            <div style={{ marginTop: 8, display: 'flex', gap: 12, justifyContent: 'center' }}>
-              {[
-                { icon: '🥋', label: 'Check in', xp: '+10' },
-                { icon: '🏆', label: 'Tournament', xp: '+50' },
-                { icon: '🥇', label: 'Gold', xp: '+150' },
-              ].map(item => (
-                <div key={item.label} style={{ textAlign: 'center' as const, opacity: 0.7 }}>
-                  <div style={{ fontSize: 14 }}>{item.icon}</div>
-                  <div style={{ fontSize: 9, color: '#C8A24C', fontWeight: 700 }}>{item.xp} XP</div>
-                  <div style={{ fontSize: 8, color: '#444' }}>{item.label}</div>
-                </div>
-              ))}
             </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
-      {/* Animated flame pulse keyframes + XP shimmer */}
-      <style>{`
-        @keyframes flamePulse {
-          0%, 100% { transform: scale(1); filter: drop-shadow(0 0 4px #C8A24C88); }
-          50% { transform: scale(1.15); filter: drop-shadow(0 0 10px #C8A24Ccc); }
-        }
-        @keyframes xp-shimmer {
-          0% { background-position: 0% 50%; }
-          100% { background-position: 300% 50%; }
-        }
-      `}</style>
-
-      {/* Warning banners */}
-      {hasWarnings && (
-        <div className="mx-5 mb-4 space-y-2">
-          {!member.waiverSigned && <WarningBanner text="Liability waiver not signed" action="Sign Now" href="/#/waiver" />}
-          {!member.agreementSigned && <WarningBanner text="Membership agreement not signed" action="Sign Now" href="/#/waiver" />}
-        </div>
-      )}
-
-      {/* Pinned Announcement */}
-      {pinnedAnnouncement && (
-        <div className="mx-5 mb-4 stagger-child">
-          <div style={{ background: '#111', borderRadius: 14, border: '1px solid #1A1A1A', padding: '12px 14px', borderLeft: '3px solid #C8A24C' }}>
-            <div style={{ fontSize: 10, fontWeight: 700, color: '#C8A24C', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 6 }}>📢 Announcement</div>
-            <div style={{ fontSize: 13, color: '#CCC', lineHeight: 1.5 }}>{pinnedAnnouncement.message}</div>
-          </div>
-        </div>
-      )}
-
-      {/* Next Class Card */}
+      {/* ════════════════════════════════════════════════════
+          NEXT CLASS / GAME DAY CARD
+          ════════════════════════════════════════════════════ */}
       {nextClass && (
-        <div className="mx-5 mb-3 stagger-child">
+        <div className="mx-5 mb-4 stagger-child">
           <div style={{
-            background: '#141414', border: '1px solid #1A1A1A',
-            borderLeft: '3px solid #C8A24C', borderRadius: 14,
-            padding: '14px 16px', display: 'flex', alignItems: 'center', gap: 12
+            background: isGameDay ? 'linear-gradient(135deg, #141008, #1A1402)' : '#141414',
+            border: isGameDay ? '1px solid rgba(200,162,76,0.4)' : '1px solid #1A1A1A',
+            borderLeft: `3px solid ${isGameDay ? '#FFD700' : '#C8A24C'}`,
+            borderRadius: 14,
+            padding: isGameDay ? '16px 18px' : '14px 16px',
+            display: 'flex', alignItems: 'center', gap: 12,
+            boxShadow: isGameDay ? '0 0 24px rgba(200,162,76,0.1)' : 'none',
           }}>
-            {/* Left: class info — taps to schedule */}
             <a href="/#/schedule" style={{ textDecoration: 'none', flex: 1 }}>
-              <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', color: '#C8A24C', textTransform: 'uppercase' as const, marginBottom: 4 }}>Next Class</div>
-              <div style={{ fontSize: 16, fontWeight: 700, color: '#F0F0F0', marginBottom: 2 }}>{nextClass.name}</div>
+              {isGameDay && (
+                <div style={{ fontSize: 9, fontWeight: 800, letterSpacing: '0.15em', color: '#FFD700', textTransform: 'uppercase', marginBottom: 4, display: 'flex', alignItems: 'center', gap: 5 }}>
+                  <span style={{ animation: 'xp-pulse 1.5s ease-in-out infinite', display: 'inline-block' }}>⚔️</span> Game Day
+                </div>
+              )}
+              <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', color: isGameDay ? '#C8A24C' : '#C8A24C', textTransform: 'uppercase' as const, marginBottom: 4 }}>
+                {isGameDay ? nextClass.name : 'Next Class'}
+              </div>
+              {!isGameDay && <div style={{ fontSize: 16, fontWeight: 700, color: '#F0F0F0', marginBottom: 2 }}>{nextClass.name}</div>}
               <div style={{ fontSize: 12, color: '#666' }}>{nextClass.dayLabel} · {formatClassTime(nextClass.time)}</div>
               {nextClass.instructor && <div style={{ fontSize: 11, color: '#555', marginTop: 1 }}>w/ {nextClass.instructor}</div>}
               {timeUntilClass && (
-                <div style={{ fontSize: 12, fontWeight: 600, color: '#C8A24C', marginTop: 3 }}>
-                  {'\u23F1'} {timeUntilClass}
+                <div style={{ fontSize: 12, fontWeight: 600, color: isGameDay ? '#FFD700' : '#C8A24C', marginTop: 3 }}>
+                  ⏱ {timeUntilClass}
                 </div>
               )}
             </a>
-
-            {/* Right: Check In button */}
             {nextClass.isToday && (() => {
               const alreadyCheckedIn = checkedInClasses.includes(nextClass.name || '');
               return (
                 <div style={{ position: 'relative' }}>
-                  {/* Gold shimmer sweep on success */}
                   {checkinPhase === 'success' && (
                     <div style={{
                       position: 'absolute', inset: 0, borderRadius: 10,
@@ -1779,7 +1600,7 @@ export default function HomePage() {
                     onMouseDown={() => !alreadyCheckedIn && checkinPhase === 'idle' && setCheckinPhase('pressing')}
                     onTouchStart={() => !alreadyCheckedIn && checkinPhase === 'idle' && setCheckinPhase('pressing')}
                     onClick={() => {
-                      if (alreadyCheckedIn || checkinPhase !== 'idle' && checkinPhase !== 'pressing') return;
+                      if (alreadyCheckedIn || (checkinPhase !== 'idle' && checkinPhase !== 'pressing')) return;
                       setCheckinPhase('pressing');
                       handleHomeCheckIn(nextClass);
                     }}
@@ -1821,93 +1642,34 @@ export default function HomePage() {
         </div>
       )}
 
+      {/* Loading skeleton */}
       {homeLoading ? (
-        <div className="px-5 space-y-3 mt-4">
+        <div className="px-5 space-y-3 mt-2">
           <div style={{ display: 'flex', gap: 12 }}>
             <StatSkeleton />
             <StatSkeleton />
           </div>
           <ListSkeleton count={3} />
           {homeLoadSlow && (
-            <p style={{ textAlign: 'center', color: '#666', fontSize: 12, marginTop: 8 }}>
-              Still loading your dashboard…
-            </p>
+            <p style={{ textAlign: 'center', color: '#666', fontSize: 12, marginTop: 8 }}>Still loading your dashboard…</p>
           )}
         </div>
       ) : (
       <>
-      {/* Weekly Training Progress */}
-      {(() => {
-        const anyTrained = weekDots.some(d => d.trained);
-        return (
-          <div className="mx-5 mb-3 stagger-child">
-            <div style={{ display: 'flex', justifyContent: 'center', gap: 8 }}>
-              {weekDots.map((d, i) => (
-                <div key={i} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
-                  <div className={d.isToday ? 'weekly-dot-active' : ''} style={{
-                    width: 28, height: 28, borderRadius: '50%',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    fontSize: 14,
-                    ...(d.trained
-                      ? { background: '#C8A24C', color: '#0A0A0A', boxShadow: '0 0 8px rgba(200,162,76,0.5)' }
-                      : d.isToday
-                        ? { background: 'transparent', border: '2px solid #E0E0E0', color: '#E0E0E0' }
-                        : !anyTrained
-                          ? { background: 'transparent', border: '2px dashed #C8A24C22', color: '#C8A24C14' } // ghost state
-                          : { background: 'transparent', border: '2px solid #2A2A2A', color: '#2A2A2A' }
-                    ),
-                  }}>
-                    {d.trained ? '●' : '○'}
-                  </div>
-                  <span style={{ fontSize: 9, color: d.isToday ? '#E0E0E0' : '#444', fontWeight: d.isToday ? 700 : 400 }}>{d.label}</span>
-                </div>
-              ))}
-            </div>
-            {/* Empty state callout — only when nothing trained this week yet */}
-            {!anyTrained && (
-              <div style={{
-                marginTop: 10, padding: '10px 14px', borderRadius: 10,
-                background: 'rgba(200,162,76,0.05)',
-                border: '1px dashed rgba(200,162,76,0.2)',
-                textAlign: 'center',
-              }}>
-                <div style={{ fontSize: 12, fontWeight: 700, color: '#C8A24C', marginBottom: 2 }}>
-                  Fill the week.
-                </div>
-                <div style={{ fontSize: 11, color: '#555', lineHeight: 1.5 }}>
-                  5 classes = Perfect Week badge + bonus XP
-                </div>
-              </div>
-            )}
-          </div>
-        );
-      })()}
 
-      {/* Attendance streak widget */}
-      <div className="stagger-child" style={{
-        display: 'flex',
-        gap: 10,
-        margin: '0 20px 16px',
-      }}>
+      {/* ════════════════════════════════════════════════════
+          STATS ROW — Streak + Total classes
+          ════════════════════════════════════════════════════ */}
+      <div className="stagger-child" style={{ display: 'flex', gap: 10, margin: '0 20px 16px' }}>
         <a href="/#/history" style={{
-          flex: 1,
-          background: 'linear-gradient(135deg, rgba(200,162,76,0.12) 0%, rgba(200,162,76,0.04) 100%)',
-          border: '1px solid rgba(200,162,76,0.2)',
-          borderRadius: 12,
-          padding: '12px 14px',
-          display: 'flex',
-          alignItems: 'center',
-          gap: 10,
-          textDecoration: 'none',
-          transition: 'transform 120ms cubic-bezier(0.16, 1, 0.3, 1)',
-          cursor: 'pointer',
-        }}
-          className="active:scale-[0.95]"
-        >
+          flex: 1, background: 'linear-gradient(135deg, rgba(200,162,76,0.1) 0%, rgba(200,162,76,0.03) 100%)',
+          border: '1px solid rgba(200,162,76,0.18)', borderRadius: 12,
+          padding: '12px 14px', display: 'flex', alignItems: 'center', gap: 10,
+          textDecoration: 'none', cursor: 'pointer',
+        }} className="active:scale-[0.95]">
           <span className="streak-icon" style={{
-            display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-            color: '#C8A24C',
-            ...(streakCount > 0 ? { animation: 'flame-idle 2.4s ease-in-out infinite' } : {}),
+            display: 'inline-flex', alignItems: 'center', justifyContent: 'center', color: '#C8A24C',
+            ...(effectiveStreak > 0 ? { animation: 'flame-idle 2.4s ease-in-out infinite' } : {}),
           }}>
             <svg width="24" height="24" viewBox="0 0 24 24" fill="#C8A24C" stroke="none">
               <path d="M12 2c0 0-5 5.5-5 10a5 5 0 0 0 10 0C17 7.5 12 2 12 2zm0 15a3 3 0 0 1-3-3c0-2.5 3-6 3-6s3 3.5 3 6a3 3 0 0 1-3 3z"/>
@@ -1916,9 +1678,9 @@ export default function HomePage() {
           <div style={{ flex: 1 }}>
             <div style={{ fontSize: 20, fontWeight: 700, color: '#C8A24C', lineHeight: 1, display: 'flex', alignItems: 'center', gap: 4 }}>
               {displayStreak}
-              {streakFreezeActive && <span style={{ fontSize: 14 }}>{'\uD83D\uDEE1\uFE0F'}</span>}
+              {streakFreezeActive && <span style={{ fontSize: 14 }}>🛡️</span>}
             </div>
-            <div style={{ fontSize: 11, color: '#666', marginTop: 2 }}>Class streak</div>
+            <div style={{ fontSize: 11, color: '#666', marginTop: 2 }}>Week streak</div>
           </div>
           <ChevronRight size={14} color="#555" strokeWidth={2} />
         </a>
@@ -1926,24 +1688,16 @@ export default function HomePage() {
           flex: 1,
           background: classesToday > 0 ? 'linear-gradient(135deg, rgba(76,175,128,0.12) 0%, rgba(76,175,128,0.04) 100%)' : 'rgba(255,255,255,0.03)',
           border: classesToday > 0 ? '1px solid rgba(76,175,128,0.2)' : '1px solid #1A1A1A',
-          borderRadius: 12,
-          padding: '12px 14px',
-          display: 'flex',
-          alignItems: 'center',
-          gap: 10,
-          textDecoration: 'none',
-          transition: 'transform 120ms cubic-bezier(0.16, 1, 0.3, 1)',
-          cursor: 'pointer',
-        }}
-          className="active:scale-[0.95]"
-        >
+          borderRadius: 12, padding: '12px 14px', display: 'flex', alignItems: 'center', gap: 10,
+          textDecoration: 'none', cursor: 'pointer',
+        }} className="active:scale-[0.95]">
           {classesToday > 0 ? (
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
               <circle cx="12" cy="12" r="11" fill="rgba(76,175,128,0.15)" stroke="#4CAF80" strokeWidth="1.5"/>
               <polyline points="7 12 10.5 15.5 17 9" stroke="#4CAF80" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
             </svg>
           ) : (
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: '#E0E0E0', width: 24, height: 24 }}>
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#E0E0E0" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
             </svg>
           )}
@@ -1952,382 +1706,571 @@ export default function HomePage() {
               {displayTotalClasses}
             </div>
             <div style={{ fontSize: 11, color: '#666', marginTop: 2 }}>Total classes</div>
-            {classesToday > 0 && (
-              <div style={{ fontSize: 11, color: '#888', marginTop: 1 }}>{classesToday} today</div>
-            )}
+            {classesToday > 0 && <div style={{ fontSize: 11, color: '#888', marginTop: 1 }}>{classesToday} today</div>}
           </div>
           <ChevronRight size={14} color="#555" strokeWidth={2} />
         </a>
       </div>
 
-      {/* Streak freeze controls */}
-      {freezeAvailable && (
-        <div className="mx-5 mb-2" style={{ display: 'flex', justifyContent: 'center' }}>
-          <button
-            onClick={() => {
-              const thisMonth = new Date().toISOString().slice(0, 7);
-              localStorage.setItem('lbjj_streak_freeze_used', thisMonth);
-              setFreezeAvailable(false);
-              setFreezeUsed(true);
-            }}
-            style={{
-              display: 'flex', alignItems: 'center', gap: 6,
-              padding: '6px 12px', borderRadius: 20,
-              background: 'rgba(200,162,76,0.08)',
-              border: '1px solid rgba(200,162,76,0.2)',
-              color: '#C8A24C', fontSize: 11, fontWeight: 600,
-              cursor: 'pointer',
-            }}
-          >
-            {'\uD83D\uDEE1\uFE0F'} Freeze Streak (1 available this month)
-          </button>
-        </div>
-      )}
-      {freezeUsed && (
-        <div className="mx-5 mb-2" style={{ textAlign: 'center', fontSize: 10, color: '#555' }}>
-          Streak freeze used this month
-        </div>
-      )}
-
-      {/* Class Leaders Widget */}
+      {/* ════════════════════════════════════════════════════
+          SOCIAL PRESSURE STRIP — Gym activity + Rival
+          ════════════════════════════════════════════════════ */}
       {leaderboard.length > 0 && (
-        <div className="mx-5 mb-3 stagger-child">
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
-            <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#444' }}>
-              Class Leaders
-            </span>
-            <a href="/#/leaderboard" style={{ fontSize: 11, color: '#C8A24C', textDecoration: 'none', fontWeight: 600 }}>
-              View All &rarr;
-            </a>
-          </div>
-          <div style={{ background: '#111', borderRadius: 14, border: '1px solid #1A1A1A', overflow: 'hidden' }}>
-            {leaderboard.map((entry, i) => {
+        <div className="mx-5 mb-4 stagger-child">
+          <div style={{
+            background: '#0D0D0D',
+            border: '1px solid #1A1A1A',
+            borderRadius: 14,
+            overflow: 'hidden',
+          }}>
+            {/* Header */}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px 8px', borderBottom: '1px solid #141414' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#4CAF80', animation: 'ring-pulse 2s ease-in-out infinite' }} />
+                <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#4CAF80' }}>Gym Activity</span>
+              </div>
+              <a href="/#/leaderboard" style={{ fontSize: 11, color: '#C8A24C', textDecoration: 'none', fontWeight: 600 }}>Full board →</a>
+            </div>
+
+            {/* Rival callout — if not #1 */}
+            {rival && myLeaderboardRank > 1 && (
+              <div style={{ padding: '10px 14px', borderBottom: '1px solid #111', background: 'rgba(224,85,85,0.04)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <div style={{ fontSize: 9, fontWeight: 700, color: '#E05555', letterSpacing: '0.12em', textTransform: 'uppercase', flexShrink: 0 }}>Your Rival</div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 7, flex: 1 }}>
+                    <div style={{
+                      width: 24, height: 24, borderRadius: '50%',
+                      background: '#1A1A1A', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      fontSize: 11, fontWeight: 700, color: '#F0F0F0',
+                      border: `1.5px solid ${getBeltColor(rival.belt || 'white')}`,
+                      flexShrink: 0,
+                    }}>
+                      {(rival.name || '?').charAt(0)}
+                    </div>
+                    <span style={{ fontSize: 13, fontWeight: 600, color: '#CCC', flex: 1 }}>{rival.name}</span>
+                    <span style={{ fontSize: 11, color: '#E05555', fontWeight: 600 }}>
+                      +{Math.max(0, (rival.classCount || 0) - myClassCount)} classes ahead
+                    </span>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Top 3 compact */}
+            {leaderboard.slice(0, 3).map((entry, i) => {
               const medalColors = ['#FFD700', '#C0C0C0', '#CD7F32'];
+              const isMe = entry.name === member?.name;
               return (
                 <div key={i} style={{
-                  display: 'flex', alignItems: 'center', gap: 12,
-                  padding: '10px 16px',
-                  borderBottom: i < leaderboard.length - 1 ? '1px solid #1A1A1A' : 'none',
-                  background: entry.isMe ? 'rgba(200,162,76,0.06)' : 'transparent',
+                  display: 'flex', alignItems: 'center', gap: 10, padding: '9px 14px',
+                  borderBottom: i < 2 ? '1px solid #111' : 'none',
+                  background: isMe ? 'rgba(200,162,76,0.06)' : 'transparent',
                 }}>
-                  {i < 3 ? (
-                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" style={{ flexShrink: 0 }}>
-                      <circle cx="12" cy="14" r="7" fill={medalColors[i]} opacity="0.15" stroke={medalColors[i]} strokeWidth="1.5"/>
-                      <text x="12" y="18" textAnchor="middle" fontSize="9" fontWeight="800" fill={medalColors[i]}>{i + 1}</text>
-                      <path d="M9 7l-2-5h10l-2 5" fill={medalColors[i]} opacity="0.6"/>
-                    </svg>
-                  ) : (
-                    <span style={{
-                      width: 22, height: 22, borderRadius: '50%',
-                      display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      fontSize: 11, fontWeight: 800,
-                      background: '#1A1A1A', color: '#666', flexShrink: 0,
-                    }}>
-                      {i + 1}
-                    </span>
-                  )}
-                  <BeltIcon belt={entry.belt || 'white'} width={20} style={{ flexShrink: 0 }} />
-                  <span style={{ flex: 1, fontSize: 13, fontWeight: entry.isMe ? 700 : 500, color: entry.isMe ? '#C8A24C' : '#CCC' }}>
-                    {entry.isMe ? 'You' : entry.name}
+                  <span style={{
+                    width: 18, height: 18, borderRadius: '50%', flexShrink: 0,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    fontSize: 10, fontWeight: 900, color: medalColors[i],
+                    background: `${medalColors[i]}18`,
+                  }}>
+                    {i + 1}
                   </span>
-                  <span style={{ fontSize: 12, color: '#666', fontWeight: 600 }}>
-                    {entry.classCount || 0} <span style={{ fontSize: 10, color: '#444' }}>classes</span>
+                  <BeltIcon belt={entry.belt || 'white'} width={18} style={{ flexShrink: 0 }} />
+                  <span style={{ flex: 1, fontSize: 13, fontWeight: isMe ? 700 : 500, color: isMe ? '#C8A24C' : '#CCC' }}>
+                    {isMe ? 'You' : entry.name}
+                  </span>
+                  <span style={{ fontSize: 12, color: '#555', fontWeight: 600 }}>
+                    {entry.classCount || 0}<span style={{ fontSize: 9, color: '#333' }}> cls</span>
                   </span>
                 </div>
               );
             })}
+
+            {/* My rank if not in top 3 */}
+            {myLeaderboardRank > 3 && (
+              <div style={{ padding: '8px 14px', borderTop: '1px solid #111', background: 'rgba(200,162,76,0.04)', display: 'flex', alignItems: 'center', gap: 10 }}>
+                <span style={{ fontSize: 9, color: '#555', letterSpacing: '0.06em' }}>YOUR RANK</span>
+                <span style={{ fontSize: 13, fontWeight: 700, color: '#C8A24C' }}>#{myLeaderboardRank}</span>
+                <span style={{ fontSize: 11, color: '#555' }}>· {myClassCount} classes</span>
+              </div>
+            )}
           </div>
         </div>
       )}
+
+      {/* ════════════════════════════════════════════════════
+          XP PROGRESS WIDGET
+          ════════════════════════════════════════════════════ */}
+      {member && (
+        <div className="mx-5 mb-4 stagger-child" style={{ position: 'relative' }}>
+          <div style={{
+            position: 'absolute', inset: -1, borderRadius: 17,
+            background: 'linear-gradient(135deg, rgba(200,162,76,0.25), transparent, rgba(200,162,76,0.08))',
+            filter: 'blur(8px)', zIndex: 0,
+          }}/>
+          <div style={{
+            position: 'relative', zIndex: 1,
+            background: 'linear-gradient(135deg, #0D0D0D 0%, #141408 100%)',
+            borderRadius: 16, padding: '14px 16px',
+            border: '1px solid rgba(200,162,76,0.18)',
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <div style={{
+                  width: 32, height: 32, borderRadius: '50%',
+                  background: 'radial-gradient(circle at 35% 30%, #FFD700, #C8A24C 50%, #6B4A00)',
+                  boxShadow: '0 0 12px rgba(200,162,76,0.6), inset 0 1px 0 rgba(255,255,255,0.3)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontSize: 12, fontWeight: 900, color: '#000',
+                }}>
+                  {getActualLevel(memberXP)}
+                </div>
+                <div>
+                  <div style={{ fontSize: 13, fontWeight: 800, color: '#F0F0F0' }}>{getLevelFromXP(memberXP).title}</div>
+                  <div style={{ fontSize: 10, color: '#555' }}>{memberXP.toLocaleString()} XP</div>
+                </div>
+              </div>
+              <div style={{ fontSize: 11, color: '#C8A24C', fontWeight: 600 }}>
+                +{(getLevelFromXP(memberXP).xpForNext - memberXP).toLocaleString()} to next
+              </div>
+            </div>
+            <div style={{ height: 14, borderRadius: 7, background: '#0A0A0A', overflow: 'hidden', position: 'relative', border: '1px solid #1A1A1A', boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.5)' }}>
+              <div style={{
+                height: '100%', width: `${getLevelFromXP(memberXP).progress * 100}%`,
+                background: 'linear-gradient(90deg, #6B4A00 0%, #C8A24C 40%, #FFD700 70%, #FFF8DC 85%, #FFD700 100%)',
+                backgroundSize: '300% 100%', animation: 'xp-shimmer 2s linear infinite',
+                borderRadius: 7, transition: 'width 1.5s cubic-bezier(0.4,0,0.2,1)',
+                boxShadow: '0 0 10px rgba(255,215,0,0.6), 0 0 20px rgba(200,162,76,0.3)',
+              }}/>
+              <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '45%', background: 'linear-gradient(180deg, rgba(255,255,255,0.12) 0%, transparent 100%)', borderRadius: '7px 7px 0 0', pointerEvents: 'none' }}/>
+              {[25, 50, 75].map(pct => (
+                <div key={pct} style={{ position: 'absolute', top: 0, bottom: 0, left: `${pct}%`, width: 1, background: 'rgba(0,0,0,0.3)' }}/>
+              ))}
+            </div>
+            <div style={{ marginTop: 8, display: 'flex', gap: 12, justifyContent: 'center' }}>
+              {[
+                { icon: '🥋', label: 'Check in', xp: '+10' },
+                { icon: '🏆', label: 'Tournament', xp: '+50' },
+                { icon: '🥇', label: 'Gold', xp: '+150' },
+              ].map(item => (
+                <div key={item.label} style={{ textAlign: 'center' as const, opacity: 0.7 }}>
+                  <div style={{ fontSize: 14 }}>{item.icon}</div>
+                  <div style={{ fontSize: 9, color: '#C8A24C', fontWeight: 700 }}>{item.xp} XP</div>
+                  <div style={{ fontSize: 8, color: '#444' }}>{item.label}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      <style>{`
+        @keyframes flamePulse {
+          0%, 100% { transform: scale(1); filter: drop-shadow(0 0 4px #C8A24C88); }
+          50% { transform: scale(1.15); filter: drop-shadow(0 0 10px #C8A24Ccc); }
+        }
+        @keyframes xp-shimmer {
+          0% { background-position: 0% 50%; }
+          100% { background-position: 300% 50%; }
+        }
+      `}</style>
+
+      {/* ════════════════════════════════════════════════════
+          SEASON PROGRESS + NEXT MILESTONE (combined)
+          ════════════════════════════════════════════════════ */}
+      {(trainingSeasonData || (nextMilestoneData && nextMilestoneData.need > 0)) && (
+        <div className="mx-5 mb-4 stagger-child">
+          <div style={{ background: '#0D0D0D', border: '1px solid #1A1A1A', borderRadius: 16, overflow: 'hidden' }}>
+            {/* Season row */}
+            {trainingSeasonData && (
+              <div style={{ padding: '14px 16px', display: 'flex', alignItems: 'center', gap: 14,
+                borderBottom: nextMilestoneData && nextMilestoneData.need > 0 ? '1px solid #141414' : 'none' }}>
+                <div style={{ position: 'relative', flexShrink: 0 }}>
+                  <svg width={52} height={52} viewBox="0 0 64 64">
+                    <circle cx={32} cy={32} r={26} fill="none" stroke="#1A1A1A" strokeWidth={5}/>
+                    <circle cx={32} cy={32} r={26} fill="none"
+                      stroke="url(#season-grad2)"
+                      strokeWidth={5} strokeLinecap="round"
+                      strokeDasharray={`${2 * Math.PI * 26}`}
+                      strokeDashoffset={`${2 * Math.PI * 26 * (1 - trainingSeasonData.progress)}`}
+                      transform="rotate(-90 32 32)"
+                      style={{ transition: 'stroke-dashoffset 1.2s cubic-bezier(0.4,0,0.2,1)' }}
+                    />
+                    <defs>
+                      <linearGradient id="season-grad2" x1="0%" y1="0%" x2="100%" y2="0%">
+                        <stop offset="0%" stopColor="#8B6914"/>
+                        <stop offset="100%" stopColor="#FFD700"/>
+                      </linearGradient>
+                    </defs>
+                    <text x={32} y={36} textAnchor="middle" fill="#F0F0F0" fontSize={14} fontWeight={800} fontFamily="sans-serif">
+                      {trainingSeasonData.thisMonthClasses}
+                    </text>
+                  </svg>
+                </div>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: '#C8A24C', marginBottom: 3 }}>
+                    {trainingSeasonData.monthName} Season
+                  </div>
+                  <div style={{ fontSize: 14, fontWeight: 800, color: '#F0F0F0', marginBottom: 3 }}>
+                    {trainingSeasonData.thisMonthClasses} / {trainingSeasonData.goalClasses} classes
+                  </div>
+                  <div style={{ height: 3, borderRadius: 2, background: '#1A1A1A', overflow: 'hidden' }}>
+                    <div style={{
+                      height: '100%',
+                      width: `${Math.min(100, trainingSeasonData.progress * 100)}%`,
+                      background: 'linear-gradient(90deg, #8B6914, #FFD700)',
+                      borderRadius: 2, transition: 'width 1.2s cubic-bezier(0.4,0,0.2,1)',
+                    }}/>
+                  </div>
+                  <div style={{ fontSize: 10, color: '#555', marginTop: 4 }}>
+                    {trainingSeasonData.thisMonthClasses >= trainingSeasonData.goalClasses
+                      ? '🏆 Season complete.'
+                      : `${trainingSeasonData.goalClasses - trainingSeasonData.thisMonthClasses} more to complete`}
+                  </div>
+                </div>
+              </div>
+            )}
+            {/* Next milestone row */}
+            {nextMilestoneData && nextMilestoneData.need > 0 && (
+              <a href={nextMilestoneData.type === 'achievement' ? '/#/achievements' : undefined} style={{ textDecoration: 'none', display: 'block' }}>
+                <div style={{ padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 12 }}>
+                  <div style={{
+                    width: 34, height: 34, borderRadius: 9, flexShrink: 0,
+                    background: 'rgba(200,162,76,0.08)', border: '1px solid rgba(200,162,76,0.15)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16,
+                  }}>
+                    {nextMilestoneData.icon}
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#444', marginBottom: 2 }}>Next Milestone</div>
+                    <div style={{ fontSize: 12, fontWeight: 700, color: '#F0F0F0' }}>
+                      {nextMilestoneData.type === 'achievement'
+                        ? `${nextMilestoneData.need} more ${nextMilestoneData.unit} → "${nextMilestoneData.label}"`
+                        : `${nextMilestoneData.need.toLocaleString()} XP to Level ${nextMilestoneData.nextLevel}`}
+                    </div>
+                  </div>
+                  <ChevronRight size={14} color="#444" />
+                </div>
+              </a>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ════════════════════════════════════════════════════
+          TECHNIQUE OF THE DAY
+          ════════════════════════════════════════════════════ */}
+      {techniqueOfDay && (
+        <div style={{
+          margin: '0 20px 14px', padding: '14px 16px',
+          background: 'linear-gradient(135deg, #0D0D0D, #0A0A10)',
+          border: '1px solid #C8A24C14', borderRadius: 14,
+        }} className="stagger-child">
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+            <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.15em', textTransform: 'uppercase', color: '#C8A24C' }}>
+              Technique of the Day
+            </div>
+            <div style={{ fontSize: 9, fontWeight: 700, color: '#444', letterSpacing: '0.08em', textTransform: 'uppercase', padding: '2px 8px', borderRadius: 999, background: '#111', border: '1px solid #222' }}>
+              {techniqueOfDay.category}
+            </div>
+          </div>
+          <div style={{ fontSize: 16, fontWeight: 800, color: '#F0F0F0', marginBottom: 6 }}>{techniqueOfDay.name}</div>
+          <div style={{ fontSize: 12, color: '#666', lineHeight: 1.5 }}>{techniqueOfDay.tip}</div>
+        </div>
+      )}
+
+      {/* ════════════════════════════════════════════════════
+          FLOW STATE / COMBO (ambient chips — only if notable)
+          ════════════════════════════════════════════════════ */}
+      {isFlowState && (
+        <div style={{ margin: '0 20px 10px', display: 'flex' }} className="stagger-child">
+          <div style={{
+            display: 'inline-flex', alignItems: 'center', gap: 6,
+            padding: '4px 10px', borderRadius: 999,
+            background: 'rgba(100,150,255,0.1)', border: '1px solid rgba(100,150,255,0.2)',
+            animation: 'pulse 2s ease-in-out infinite',
+          }}>
+            <span>⚡</span>
+            <span style={{ fontSize: 10, fontWeight: 700, color: 'rgba(130,170,255,0.9)', letterSpacing: '0.1em', textTransform: 'uppercase' }}>Flow State</span>
+          </div>
+        </div>
+      )}
+
+      {/* ════════════════════════════════════════════════════
+          WEEKLY REPORT (Monday morning)
+          ════════════════════════════════════════════════════ */}
+      {showWeekReport && !weekReportDismissed && (
+        <div style={{
+          margin: '0 20px 16px', background: 'linear-gradient(135deg, #141414, #0F0F12)',
+          border: '1px solid #C8A24C25', borderRadius: 16, padding: 16,
+          animation: 'page-slide-in-right 400ms var(--ease-out) both', position: 'relative',
+        }} className="stagger-child">
+          <button onClick={dismissReport} style={{ position: 'absolute', top: 12, right: 12, background: 'none', border: 'none', color: '#444', cursor: 'pointer', fontSize: 16 }}>✕</button>
+          <div style={{ fontSize: 9, fontWeight: 700, color: '#C8A24C', letterSpacing: '0.18em', textTransform: 'uppercase', marginBottom: 10 }}>Last Week</div>
+          <div style={{ display: 'flex', gap: 20, marginBottom: 12 }}>
+            <div style={{ textAlign: 'center' }}>
+              <div style={{ fontSize: 28, fontWeight: 900, color: '#F0F0F0' }}>{lastWeekStats.classes}</div>
+              <div style={{ fontSize: 9, color: '#555', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Classes</div>
+            </div>
+            <div style={{ textAlign: 'center' }}>
+              <div style={{ fontSize: 28, fontWeight: 900, color: '#C8A24C' }}>+{lastWeekStats.xpEarned}</div>
+              <div style={{ fontSize: 9, color: '#555', textTransform: 'uppercase', letterSpacing: '0.1em' }}>XP</div>
+            </div>
+            {lastWeekStats.gymRank > 0 && (
+              <div style={{ textAlign: 'center' }}>
+                <div style={{ fontSize: 28, fontWeight: 900, color: '#F0F0F0' }}>#{lastWeekStats.gymRank}</div>
+                <div style={{ fontSize: 9, color: '#555', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Gym Rank</div>
+              </div>
+            )}
+          </div>
+          <div style={{ fontSize: 13, color: '#888', lineHeight: 1.5 }}>
+            {lastWeekStats.classes >= 5 ? "Perfect week. That's elite consistency."
+              : lastWeekStats.classes >= 3 ? "Strong week. You outpaced most of the gym."
+              : lastWeekStats.classes >= 1 ? "You showed up. That's more than most."
+              : "The mat is waiting. New week, fresh start."}
+          </div>
+        </div>
+      )}
+
+      {/* Streak freeze controls */}
+      {freezeAvailable && (
+        <div className="mx-5 mb-3" style={{ display: 'flex', justifyContent: 'center' }}>
+          <button onClick={() => {
+            const thisMonth = new Date().toISOString().slice(0, 7);
+            localStorage.setItem('lbjj_streak_freeze_used', thisMonth);
+            setFreezeAvailable(false); setFreezeUsed(true);
+          }} style={{
+            display: 'flex', alignItems: 'center', gap: 6,
+            padding: '6px 12px', borderRadius: 20,
+            background: 'rgba(200,162,76,0.08)', border: '1px solid rgba(200,162,76,0.2)',
+            color: '#C8A24C', fontSize: 11, fontWeight: 600, cursor: 'pointer',
+          }}>
+            🛡️ Freeze Streak (1 available this month)
+          </button>
+        </div>
+      )}
+      {freezeUsed && <div className="mx-5 mb-2" style={{ textAlign: 'center', fontSize: 10, color: '#555' }}>Streak freeze used this month</div>}
+
       </>
       )}
 
-      {/* Tournament Countdown (conditional) */}
+      {/* ════════════════════════════════════════════════════
+          TOURNAMENT COUNTDOWN
+          ════════════════════════════════════════════════════ */}
       {nextTournament && tournamentDaysUntil <= 60 && (
-        <div className="mx-5 mb-3">
+        <div className="mx-5 mb-4">
           <a href="/#/calendar" style={{ textDecoration: 'none', display: 'block' }}>
-            <div style={{
-              background: 'linear-gradient(135deg, #141414, #1A1A0A)',
-              border: '1px solid rgba(200,162,76,0.19)', borderRadius: 14, padding: 16,
-              cursor: 'pointer',
-            }}>
+            <div style={{ background: 'linear-gradient(135deg, #141414, #1A1A0A)', border: '1px solid rgba(200,162,76,0.19)', borderRadius: 14, padding: 16 }}>
               <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', color: '#C8A24C', textTransform: 'uppercase' as const, marginBottom: 6 }}>🏆 Upcoming Tournament</div>
-              <div style={{ fontSize: 16, fontWeight: 700, color: '#F0F0F0', marginBottom: 4 }}>{nextTournament.name}</div>
-              <div style={{ fontSize: 13, color: '#888' }}>{tournamentDaysUntil === 0 ? 'Today!' : tournamentDaysUntil === 1 ? 'Tomorrow' : `${tournamentDaysUntil} days away`}</div>
-
-              {/* Location row */}
+              <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10 }}>
+                <div>
+                  <div style={{ fontSize: 16, fontWeight: 700, color: '#F0F0F0', marginBottom: 4 }}>{nextTournament.name}</div>
+                  <div style={{ fontSize: 13, color: '#888' }}>{tournamentDaysUntil === 0 ? 'Today!' : tournamentDaysUntil === 1 ? 'Tomorrow' : `${tournamentDaysUntil} days away`}</div>
+                </div>
+                <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                  <div style={{ fontSize: 28, fontWeight: 900, color: '#FFD700' }}>{tournamentDaysUntil}</div>
+                  <div style={{ fontSize: 9, color: '#555', textTransform: 'uppercase' }}>Days Out</div>
+                </div>
+              </div>
               {nextTournament.location && (
-                <a
-                  href={`https://maps.google.com/?q=${encodeURIComponent(nextTournament.location)}`}
+                <a href={`https://maps.google.com/?q=${encodeURIComponent(nextTournament.location)}`}
                   target="_blank" rel="noopener noreferrer"
                   style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 10, textDecoration: 'none' }}
-                  onClick={e => e.stopPropagation()}
-                >
+                  onClick={e => e.stopPropagation()}>
                   <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#C8A24C" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
                   <span style={{ fontSize: 12, color: '#C8A24C', fontWeight: 500 }}>{nextTournament.location}</span>
                 </a>
               )}
-
-              {/* Action buttons */}
-              <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
-                {nextTournament.location && (
-                  <a
-                    href={`https://maps.google.com/?q=${encodeURIComponent(nextTournament.location)}`}
-                    target="_blank" rel="noopener noreferrer"
-                    onClick={e => e.stopPropagation()}
-                    style={{
-                      flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-                      padding: '9px 0', borderRadius: 9, background: 'rgba(200,162,76,0.12)',
-                      border: '1px solid rgba(200,162,76,0.25)', textDecoration: 'none',
-                      fontSize: 12, fontWeight: 600, color: '#C8A24C',
-                    }}
-                  >
-                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
-                    Map
-                  </a>
-                )}
-                {nextTournament.link && (
-                  <a
-                    href={nextTournament.link}
-                    target="_blank" rel="noopener noreferrer"
-                    onClick={e => e.stopPropagation()}
-                    style={{
-                      flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-                      padding: '9px 0', borderRadius: 9, background: 'rgba(200,162,76,0.12)',
-                      border: '1px solid rgba(200,162,76,0.25)', textDecoration: 'none',
-                      fontSize: 12, fontWeight: 600, color: '#C8A24C',
-                    }}
-                  >
-                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
-                    Website
-                  </a>
-                )}
-              </div>
             </div>
           </a>
         </div>
       )}
 
-      {/* Recent Achievements strip */}
-      {(() => {
-        const earned: string[] = (() => { try { return JSON.parse(localStorage.getItem('lbjj_achievements') || '[]'); } catch { return []; } })();
-        if (earned.length === 0) return null;
-        const recent = earned.slice(-3).reverse();
-        const recentAchievements = recent
-          .map(key => ALL_ACHIEVEMENTS.find(a => a.key === key))
-          .filter(Boolean) as typeof ALL_ACHIEVEMENTS;
-        if (recentAchievements.length === 0) return null;
-        return (
-          <a href="/#/achievements" style={{ textDecoration: 'none', display: 'block', margin: '0 20px 16px' }}>
-            <div style={{
-              display: 'flex', alignItems: 'center', gap: 10,
-              background: '#111', border: '1px solid #1A1A1A', borderRadius: 12,
-              padding: '10px 14px',
-            }}>
-              <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: '#555', whiteSpace: 'nowrap' }}>Recent Achievements</div>
-              <div style={{ display: 'flex', gap: 6, flex: 1 }}>
-                {recentAchievements.map(a => (
-                  <div key={a.key} style={{
-                    width: 36, height: 36, borderRadius: 10,
-                    background: `${a.color}18`, border: `1px solid ${a.color}40`,
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    fontSize: 18,
-                  }}>
-                    {a.icon}
-                  </div>
-                ))}
-              </div>
-              <div style={{ fontSize: 11, color: '#C8A24C', fontWeight: 600, whiteSpace: 'nowrap' }}>View All →</div>
+      {/* ════════════════════════════════════════════════════
+          PROFILE CARD — collapsible, stays at bottom
+          ════════════════════════════════════════════════════ */}
+      <input ref={avatarFileRef} type="file" accept="image/*" onChange={handleAvatarPhoto} style={{ display: 'none' }} />
+      <div className="mx-5 mb-3 stagger-child" style={{ transition: 'all 0.2s ease' }}>
+        {/* Collapsed header row */}
+        <div onClick={() => setProfileExpanded(p => !p)} style={{
+          background: '#141414', border: '1px solid #1A1A1A',
+          borderRadius: profileExpanded ? '16px 16px 0 0' : 16,
+          padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 12,
+          cursor: 'pointer', transition: 'border-radius 0.2s ease',
+        }}>
+          <div onClick={(e) => e.stopPropagation()} style={{ flexShrink: 0 }}>
+            <LevelWidget xp={memberXP} memberName={member?.name} memberBelt={member?.belt} size={72} profilePic={profilePic || undefined} />
+          </div>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: 16, fontWeight: 700, color: '#F0F0F0' }} data-testid="text-member-name">{member?.name}</div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 2 }}>
+              <BeltVisual belt={member?.belt || 'white'} />
+              <span style={{ fontSize: 12, color: getBeltColor(member?.belt || 'white'), fontWeight: 600, textTransform: 'capitalize' }}>{member?.belt || 'White'} Belt</span>
             </div>
-          </a>
-        );
-      })()}
-
-      {/* Payment Methods */}
-      <div className="mx-5 mb-4 rounded-xl overflow-hidden" style={{ backgroundColor: "#111", border: "1px solid #1A1A1A" }}>
-        {/* Header */}
-        <div className="flex items-center justify-between px-4 pt-4 pb-3">
-          <div className="flex items-center gap-2">
-            <CreditCard size={15} style={{ color: "#C8A24C" }} />
-            <span className="text-sm font-semibold" style={{ color: "#F0F0F0" }}>Payment Methods</span>
-          </div>
-          <button
-            onClick={() => { haptic(); handleAddCard(); }}
-            disabled={addingCard}
-            className="flex items-center gap-1 text-xs font-medium px-2.5 rounded-lg transition-all active:scale-[0.97]"
-            style={{ backgroundColor: "rgba(200,162,76,0.1)", color: "#C8A24C", border: "1px solid rgba(200,162,76,0.15)", minHeight: 44 }}
-          >
-            {addingCard ? <Loader2 size={12} className="animate-spin" /> : <Plus size={12} />}
-            Add Card
-          </button>
-        </div>
-
-        {cardsError && (
-          <p className="text-xs px-4 pb-2" style={{ color: "#E05555" }}>{cardsError}</p>
-        )}
-
-        {/* Card list */}
-        {cardsLoading ? (
-          <div className="px-4 pb-4 space-y-2">
-            {[1, 2].map(i => <div key={i} className="h-12 rounded-lg animate-pulse" style={{ backgroundColor: "#1A1A1A" }} />)}
-          </div>
-        ) : cards.length === 0 ? (
-          <div className="px-4 pb-4">
-            <p className="text-sm" style={{ color: "#555" }}>No payment methods on file.</p>
-          </div>
-        ) : (
-          <div className="px-4 pb-4 space-y-2">
-            {cards.map(card => {
-              const isActing = cardActionId === card.id;
-              const expStr = `${String(card.expMonth).padStart(2, "0")}/${String(card.expYear).slice(-2)}`;
-              const brandColor = { visa: "#1A1FE0", mastercard: "#EB001B", amex: "#007BC1" }[card.brand?.toLowerCase()] || "#C8A24C";
-
+            {(() => {
+              const xp = (member as any)?.totalPoints || 0;
+              const { title } = getLevelFromXP(xp);
+              const lvl = getActualLevel(xp);
               return (
-                <div
-                  key={card.id}
-                  className="flex items-center gap-3 p-3 rounded-xl"
-                  style={{
-                    backgroundColor: card.isDefault ? "rgba(200,162,76,0.06)" : "#0D0D0D",
-                    border: card.isDefault ? "1px solid rgba(200,162,76,0.2)" : "1px solid #1A1A1A",
-                  }}
-                >
-                  {/* Brand pill */}
-                  <span className="text-[10px] font-bold uppercase px-1.5 py-0.5 rounded flex-shrink-0" style={{ backgroundColor: `${brandColor}18`, color: brandColor, border: `1px solid ${brandColor}30` }}>
-                    {card.brand || "Card"}
-                  </span>
-
-                  {/* Number + expiry */}
-                  <div className="flex-1 min-w-0">
-                    <span className="text-sm font-medium" style={{ color: "#E0E0E0" }}>•••• {card.last4}</span>
-                    <span className="text-xs ml-2" style={{ color: "#666" }}>exp {expStr}</span>
-                    {card.isDefault && <span className="ml-2 text-[10px] font-semibold uppercase" style={{ color: "#C8A24C" }}>Default</span>}
-                  </div>
-
-                  {/* Actions */}
-                  <div className="flex items-center gap-1 flex-shrink-0">
-                    {!card.isDefault && (
-                      <button
-                        onClick={() => handleSetDefault(card.id)}
-                        disabled={!!cardActionId}
-                        className="p-1.5 rounded-lg transition-colors"
-                        title="Set as default"
-                        style={{ color: "#666" }}
-                      >
-                        {isActing ? <Loader2 size={13} className="animate-spin" /> : <Star size={13} />}
-                      </button>
-                    )}
-                    <button
-                      onClick={() => handleRemove(card.id, card.last4)}
-                      disabled={!!cardActionId}
-                      className="p-1.5 rounded-lg transition-colors"
-                      title="Remove card"
-                      style={{ color: "#555" }}
-                    >
-                      {isActing && !(!card.isDefault) ? <Loader2 size={13} className="animate-spin" /> : <Trash2 size={13} />}
-                    </button>
-                  </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 4 }}>
+                  <div style={{ fontSize: 10, fontWeight: 800, color: '#000', background: 'linear-gradient(135deg, #C8A24C, #FFD700)', padding: '1px 6px', borderRadius: 8, letterSpacing: '0.03em' }}>Lv {lvl}</div>
+                  <span style={{ fontSize: 11, color: '#C8A24C', fontWeight: 600 }}>{title}</span>
                 </div>
               );
-            })}
+            })()}
+          </div>
+          <ChevronDown size={16} style={{ color: '#444', transform: profileExpanded ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s', flexShrink: 0 }} />
+        </div>
+
+        {/* Expanded details */}
+        {profileExpanded && (
+          <div style={{ background: '#141414', border: '1px solid #1A1A1A', borderTop: 'none', borderRadius: '0 0 16px 16px', padding: '0 16px 16px' }}>
+            <div style={{ borderTop: '1px solid #1A1A1A', paddingTop: 14, display: 'flex', flexDirection: 'column', gap: 8 }}>
+              <div style={{ fontSize: 12, color: '#666' }}>Member since <span style={{ color: '#999' }}>{joinDate}</span></div>
+              {member.phone && <div style={{ fontSize: 12, color: '#666' }}>Phone <span style={{ color: '#999' }}>{member.phone}</span></div>}
+              {member.email && member.email !== member.name && <div style={{ fontSize: 12, color: '#666' }}>Email <span style={{ color: '#999' }}>{member.email}</span></div>}
+              <button onClick={() => avatarFileRef.current?.click()} style={{ fontSize: 11, color: '#C8A24C', background: 'none', border: 'none', cursor: 'pointer', padding: '4px 0', fontWeight: 600 }}>Change Photo</button>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 14 }}>
+              {hasFamily && (
+                <button onClick={(e) => { e.stopPropagation(); setShowFamilySwitcher(!showFamilySwitcher); }}
+                  className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all active:scale-[0.97]"
+                  style={{ backgroundColor: showFamilySwitcher ? "rgba(200,162,76,0.15)" : "#1A1A1A", color: showFamilySwitcher ? "#C8A24C" : "#999", border: showFamilySwitcher ? "1px solid rgba(200,162,76,0.3)" : "1px solid #222" }}
+                  data-testid="button-family-switcher">
+                  <Users size={13} /> Family
+                </button>
+              )}
+              <button onClick={(e) => { e.stopPropagation(); haptic(); setShowRankRequest(true); setRankBelt(member.belt || "white"); setRankStripes(0); setRankNote(""); setRankSent(false); }}
+                style={{ background: "none", border: "none", padding: 0, cursor: "pointer", position: "relative", overflow: "visible" }} title="Tap to request a rank update">
+                <BeltIcon belt={member.belt || "white"} stripes={0} width={72} style={{ filter: `drop-shadow(0 1px 6px ${getBeltColor(member.belt)}40)` }} />
+                <span style={{ position: "absolute", bottom: -2, right: -2, width: 14, height: 14, borderRadius: "50%", backgroundColor: "#C8A24C", border: "2px solid #141414", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="#0A0A0A" strokeWidth="2.5"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                </span>
+              </button>
+              <div style={{ flex: 1 }} />
+              <a href="/#/account" style={{ fontSize: 12, color: '#C8A24C', fontWeight: 600, textDecoration: 'none' }}>Edit Profile →</a>
+            </div>
+            {hasFamily && showFamilySwitcher && (
+              <div className="mt-3 rounded-xl overflow-hidden" style={{ border: "1px solid #222" }}>
+                <p className="text-[10px] uppercase tracking-wider px-3 pt-2.5 pb-1.5 font-medium" style={{ color: "#555", backgroundColor: "#0D0D0D" }}>Switch Profile</p>
+                {switchError && <p className="text-xs px-3 py-1.5" style={{ color: "#E05555", backgroundColor: "rgba(224,85,85,0.07)" }}>{switchError}</p>}
+                {familyMembers.map((fm) => {
+                  const isActive = fm.row === member.row;
+                  const isLoading = switchingRow === fm.row;
+                  return (
+                    <button key={fm.row} onClick={(e) => { e.stopPropagation(); handleSwitchProfile(fm); }} disabled={!!switchingRow}
+                      className="w-full flex items-center gap-3 px-3 py-2.5 transition-colors text-left"
+                      style={{ backgroundColor: isActive ? "rgba(200,162,76,0.08)" : "#0D0D0D", borderTop: "1px solid #181818", opacity: switchingRow && !isLoading ? 0.5 : 1 }}>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium truncate" style={{ color: isActive ? "#C8A24C" : "#E0E0E0" }}>{fm.name}</p>
+                        <p className="text-[10px] mt-0.5" style={{ color: "#555" }}>{fm.type} · {fm.belt || "White"} belt{fm.isPrimary ? " · Primary" : ""}</p>
+                      </div>
+                      <div className="flex-shrink-0">
+                        {isLoading ? <Loader2 size={14} className="animate-spin" style={{ color: "#C8A24C" }} />
+                          : isActive ? <Check size={14} style={{ color: "#C8A24C" }} />
+                          : <ChevronRight size={14} style={{ color: "#333" }} />}
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+            <div className="flex gap-3 mt-3 pt-3" style={{ borderTop: "1px solid #1A1A1A" }}>
+              <a href="/#/waiver" className="flex items-center gap-1.5 flex-1 text-xs" style={{ textDecoration: "none" }}>
+                {member.waiverSigned ? <CheckCircle size={13} style={{ color: "#4CAF80", flexShrink: 0 }} /> : <FileText size={13} style={{ color: "#E08228", flexShrink: 0 }} />}
+                <span style={{ color: member.waiverSigned ? "#4CAF80" : "#E08228" }}>{member.waiverSigned ? "Waiver signed" : "Sign waiver"}</span>
+              </a>
+              <a href="/#/waiver" className="flex items-center gap-1.5 flex-1 text-xs" style={{ textDecoration: "none" }}>
+                {member.agreementSigned ? <CheckCircle size={13} style={{ color: "#4CAF80", flexShrink: 0 }} /> : <FileText size={13} style={{ color: "#E08228", flexShrink: 0 }} />}
+                <span style={{ color: member.agreementSigned ? "#4CAF80" : "#E08228" }}>{member.agreementSigned ? "Agreement signed" : "Sign agreement"}</span>
+              </a>
+            </div>
           </div>
         )}
       </div>
 
-      {/* ── Rank Request Bottom Sheet ── */}
-      {showRankRequest && (
-        <div
-          style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, backgroundColor: "rgba(0,0,0,0.7)", zIndex: 200, display: "flex", flexDirection: "column", justifyContent: "flex-end" }}
-          onClick={() => setShowRankRequest(false)}
-        >
-          <div
-            style={{ width: "100%", alignSelf: "center", maxWidth: 480, backgroundColor: "#111", borderRadius: "20px 20px 0 0", paddingTop: 20, paddingLeft: 20, paddingRight: 20, paddingBottom: "max(88px, calc(env(safe-area-inset-bottom, 0px) + 80px))", maxHeight: "min(88svh, calc(100vh - 48px))", overflowY: "auto", overscrollBehavior: "contain", WebkitOverflowScrolling: "touch" as any }}
-            onClick={e => e.stopPropagation()}
-          >
-            {/* Handle */}
-            <div style={{ width: 40, height: 4, borderRadius: 2, backgroundColor: "#333", margin: "0 auto 20px" }} />
+      {/* Warning banners */}
+      {hasWarnings && (
+        <div className="mx-5 mb-4 space-y-2">
+          {!member.waiverSigned && <WarningBanner text="Liability waiver not signed" action="Sign Now" href="/#/waiver" />}
+          {!member.agreementSigned && <WarningBanner text="Membership agreement not signed" action="Sign Now" href="/#/waiver" />}
+        </div>
+      )}
 
+      {/* Pinned Announcement */}
+      {pinnedAnnouncement && (
+        <div className="mx-5 mb-4 stagger-child">
+          <div style={{ background: '#111', borderRadius: 14, border: '1px solid #1A1A1A', padding: '12px 14px', borderLeft: '3px solid #C8A24C' }}>
+            <div style={{ fontSize: 10, fontWeight: 700, color: '#C8A24C', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 6 }}>📢 Announcement</div>
+            <div style={{ fontSize: 13, color: '#CCC', lineHeight: 1.5 }}>{pinnedAnnouncement.message}</div>
+          </div>
+        </div>
+      )}
+
+      {/* M5: Tournament Countdown (near-term) */}
+      {tournamentData && daysUntilTournament !== null && daysUntilTournament <= 30 && !nextTournament && (
+        <div style={{ margin: '0 20px 12px', background: '#0D0D0D', border: '1px solid #C8A24C25', borderRadius: 14, padding: '14px 16px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div>
+              <div style={{ fontSize: 9, color: '#C8A24C', letterSpacing: '0.12em', textTransform: 'uppercase' }}>Next Tournament</div>
+              <div style={{ fontSize: 15, fontWeight: 800, color: '#F0F0F0', marginTop: 2 }}>{tournamentData.name}</div>
+            </div>
+            <div style={{ textAlign: 'right' }}>
+              <div style={{ fontSize: 28, fontWeight: 900, color: '#FFD700' }}>{daysUntilTournament}</div>
+              <div style={{ fontSize: 9, color: '#555', textTransform: 'uppercase' }}>Days Out</div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Rank request modal */}
+      {showRankRequest && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', zIndex: 1000, display: 'flex', alignItems: 'flex-end', justifyContent: 'center', animation: 'fadeInOverlay 0.25s ease-out' }}>
+          <div style={{ width: '100%', maxWidth: 480, background: '#0F0F0F', borderRadius: '24px 24px 0 0', padding: '24px 20px', maxHeight: '90vh', overflowY: 'auto' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
+              <h2 style={{ fontSize: 18, fontWeight: 800, color: '#F0F0F0', margin: 0 }}>Request Belt Update</h2>
+              <button onClick={() => setShowRankRequest(false)} style={{ background: 'none', border: 'none', color: '#666', cursor: 'pointer', fontSize: 22, lineHeight: 1 }}>✕</button>
+            </div>
             {rankSent ? (
-              <div style={{ textAlign: "center", padding: "16px 0" }}>
-                <CheckCircle size={44} style={{ color: "#4CAF80", margin: "0 auto 12px" }} />
-                <h3 style={{ fontSize: 16, fontWeight: 700, color: "#F0F0F0", margin: "0 0 8px" }}>Request Sent!</h3>
-                <p style={{ fontSize: 13, color: "#888", lineHeight: 1.5 }}>Your coach will review and approve your promotion.</p>
-                <button onClick={() => setShowRankRequest(false)}
-                  style={{ marginTop: 20, padding: "11px 32px", borderRadius: 12, backgroundColor: "#C8A24C", color: "#0A0A0A", fontWeight: 700, fontSize: 14, border: "none", cursor: "pointer" }}>
-                  Done
-                </button>
+              <div style={{ textAlign: 'center', padding: '20px 0' }}>
+                <div style={{ fontSize: 40, marginBottom: 12 }}>🎉</div>
+                <div style={{ fontSize: 18, fontWeight: 800, color: '#C8A24C', marginBottom: 8 }}>Request Sent!</div>
+                <div style={{ fontSize: 13, color: '#888' }}>Your coach will review and confirm the update.</div>
+                <button onClick={() => setShowRankRequest(false)} style={{ marginTop: 20, padding: '10px 24px', borderRadius: 10, background: '#C8A24C', color: '#000', fontWeight: 700, border: 'none', cursor: 'pointer' }}>Done</button>
               </div>
             ) : (
               <>
-                <h3 style={{ fontSize: 16, fontWeight: 700, color: "#F0F0F0", margin: "0 0 4px" }}>Request Rank Update</h3>
-                <p style={{ fontSize: 12, color: "#666", margin: "0 0 20px" }}>Your coach will review and approve this before it's recorded.</p>
-
-                {/* Belt selector */}
                 <label style={{ display: "block", fontSize: 11, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.06em", color: "#666", marginBottom: 8 }}>Belt</label>
                 <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 20 }}>
-                  {ADULT_BELT_OPTIONS.map(b => (
+                  {ADULT_BELT_OPTIONS.map((b) => (
                     <button key={b} onClick={() => setRankBelt(b)}
-                      style={{
-                        padding: "8px 10px", borderRadius: 10, fontSize: 11, fontWeight: 600,
-                        border: rankBelt === b ? `2px solid ${getBeltColor(b)}` : "2px solid #222",
-                        backgroundColor: rankBelt === b ? `${getBeltColor(b)}18` : "#0D0D0D",
-                        color: rankBelt === b ? getBeltColor(b) : "#666",
-                        cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", gap: 4,
-                      }}
-                    >
-                      <BeltIcon belt={b} stripes={rankBelt === b ? rankStripes : 0} width={52} />
-                      {b.charAt(0).toUpperCase() + b.slice(1)}
+                      style={{ padding: "8px 14px", borderRadius: 10, border: `1.5px solid ${rankBelt === b ? "#C8A24C" : "#222"}`, background: rankBelt === b ? "rgba(200,162,76,0.15)" : "#111", color: rankBelt === b ? "#C8A24C" : "#888", fontWeight: 600, fontSize: 13, cursor: "pointer", textTransform: "capitalize" }}>
+                      {b}
                     </button>
                   ))}
                 </div>
-
-                {/* Stripes selector */}
                 <label style={{ display: "block", fontSize: 11, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.06em", color: "#666", marginBottom: 8 }}>Stripes</label>
-                <div style={{ display: "flex", gap: 6, marginBottom: 16 }}>
-                  {[0, 1, 2, 3, 4].map(s => (
+                <div style={{ display: "flex", gap: 8, marginBottom: 20 }}>
+                  {[0, 1, 2, 3, 4].map((s) => (
                     <button key={s} onClick={() => setRankStripes(s)}
-                      style={{
-                        width: 44, height: 44, borderRadius: 10, fontSize: 13, fontWeight: 700,
-                        border: rankStripes === s ? "2px solid #C8A24C" : "2px solid #222",
-                        backgroundColor: rankStripes === s ? "rgba(200,162,76,0.12)" : "#0D0D0D",
-                        color: rankStripes === s ? "#C8A24C" : "#888",
-                        cursor: "pointer",
-                      }}
-                    >
+                      style={{ width: 40, height: 40, borderRadius: 10, border: `1.5px solid ${rankStripes === s ? "#C8A24C" : "#222"}`, background: rankStripes === s ? "rgba(200,162,76,0.15)" : "#111", color: rankStripes === s ? "#C8A24C" : "#888", fontWeight: 700, fontSize: 14, cursor: "pointer" }}>
                       {s}
                     </button>
                   ))}
                 </div>
-
-                {/* Note */}
                 <label style={{ display: "block", fontSize: 11, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.06em", color: "#666", marginBottom: 8 }}>Note <span style={{ color: "#555", fontWeight: 400 }}>(optional)</span></label>
-                <textarea
-                  value={rankNote}
-                  onChange={e => setRankNote(e.target.value)}
-                  placeholder="e.g. Competed at Houston Open, won gold…"
-                  rows={2}
-                  style={{ width: "100%", backgroundColor: "#0D0D0D", border: "1px solid #222", borderRadius: 10, padding: "10px 12px", fontSize: 13, color: "#F0F0F0", outline: "none", resize: "none", boxSizing: "border-box", marginBottom: 20, fontFamily: "inherit" }}
-                />
-
-                <button
-                  onClick={async () => {
-                    haptic();
-                    if (!rankBelt) return;
-                    setRankSubmitting(true);
-                    const today = new Date().toISOString().split("T")[0];
-                    const result = await beltSavePromotion({ belt: rankBelt, stripes: rankStripes, date: today, note: rankNote });
-                    setRankSubmitting(false);
-                    if (result?.success) setRankSent(true);
-                  }}
-                  disabled={!rankBelt || rankSubmitting}
-                  style={{
-                    width: "100%", padding: "13px", borderRadius: 12, fontSize: 14, fontWeight: 700,
-                    backgroundColor: rankBelt ? "#C8A24C" : "#1A1A1A",
-                    color: rankBelt ? "#0A0A0A" : "#444",
-                    border: "none", cursor: rankBelt ? "pointer" : "default",
-                    display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
-                    opacity: rankSubmitting ? 0.7 : 1,
-                  }}
-                >
+                <textarea value={rankNote} onChange={e => setRankNote(e.target.value)}
+                  placeholder="e.g. Competed at Houston Open, won gold…" rows={2}
+                  style={{ width: "100%", backgroundColor: "#0D0D0D", border: "1px solid #222", borderRadius: 10, padding: "10px 12px", fontSize: 13, color: "#F0F0F0", outline: "none", resize: "none", boxSizing: "border-box", marginBottom: 20, fontFamily: "inherit" }} />
+                <button onClick={async () => {
+                  haptic();
+                  if (!rankBelt) return;
+                  setRankSubmitting(true);
+                  const today = new Date().toISOString().split("T")[0];
+                  const result = await beltSavePromotion({ belt: rankBelt, stripes: rankStripes, date: today, note: rankNote });
+                  setRankSubmitting(false);
+                  if (result?.success) setRankSent(true);
+                }} disabled={!rankBelt || rankSubmitting}
+                  style={{ width: "100%", padding: "13px", borderRadius: 12, fontSize: 14, fontWeight: 700, backgroundColor: rankBelt ? "#C8A24C" : "#1A1A1A", color: rankBelt ? "#0A0A0A" : "#444", border: "none", cursor: rankBelt ? "pointer" : "default", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, opacity: rankSubmitting ? 0.7 : 1 }}>
                   {rankSubmitting ? <><Loader2 size={15} className="animate-spin" /> Sending…</> : "Submit for Coach Approval"}
                 </button>
               </>
@@ -2338,6 +2281,7 @@ export default function HomePage() {
     </div>
   );
 }
+
 
 
 function WarningBanner({ text, action, href }: { text: string; action: string; href: string }) {
