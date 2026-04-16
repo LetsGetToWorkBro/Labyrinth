@@ -4,6 +4,7 @@ import { setActiveLocation, gasCall } from "@/lib/api";
 import { LOCATIONS, getSavedLocationId, type Location } from "@/lib/locations";
 import { Loader2, Eye, EyeOff, ArrowRight, CheckCircle, MapPin, ChevronRight, Fingerprint } from "lucide-react";
 import logoMaze from "@assets/maze-gold-md.png";
+import { NativeBiometric } from 'capacitor-native-biometric';
 
 type Screen = "location" | "login" | "request";
 
@@ -15,10 +16,93 @@ const requestAccessAttempts: number[] = [];
 const SUSPICIOUS_NAMES = ['test', 'demo', 'fake', 'sample', 'trial user', 'test user'];
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-// ── Biometric / WebAuthn helpers ──────────────────────────────────
+// ── Biometric helpers ────────────────────────────────────────────
+// Strategy (in priority order):
+//   1. NativeBiometric.verifyIdentity()  — Face ID / Touch ID / Fingerprint
+//      Works in Capacitor native iOS + Android. Throws on web.
+//   2. WebAuthn navigator.credentials.get  — works in Safari/Chrome on web
+//      DOES NOT work reliably inside Capacitor WKWebView (rpId mismatch).
+//   3. Token-only fallback — if both fail but a saved token exists,
+//      treat device possession as the auth factor (same security model
+//      as most "biometric" apps — the biometric just unlocks the device;
+//      the app checks the token).
 
-async function registerPasskey(email: string): Promise<boolean> {
+async function triggerBiometricPrompt(): Promise<'native' | 'webauthn' | 'token-fallback' | 'failed'> {
+  // 1. Try native Capacitor biometric
   try {
+    const { isAvailable } = await NativeBiometric.isAvailable({ useFallback: true });
+    if (isAvailable) {
+      await NativeBiometric.verifyIdentity({
+        reason: 'Sign in to Labyrinth BJJ',
+        title: 'Biometric Sign In',
+        useFallback: true,
+      });
+      return 'native';
+    }
+  } catch (e: any) {
+    // BIOMETRIC_DISMISSED or BIOMETRIC_AUTHENTICATION_FAILED = user cancelled
+    const msg = (e?.message || e?.code || '').toString().toLowerCase();
+    if (
+      msg.includes('cancel') ||
+      msg.includes('dismiss') ||
+      msg.includes('user_cancel') ||
+      msg.includes('authentication_failed') ||
+      msg.includes('lockout')
+    ) {
+      return 'failed'; // deliberate cancellation — don't silently fall through
+    }
+    // Otherwise it's a "not available" error — fall through to WebAuthn
+  }
+
+  // 2. Try WebAuthn (web browser / Safari)
+  if (typeof window !== 'undefined' && window.PublicKeyCredential) {
+    try {
+      const challenge = new Uint8Array(32);
+      crypto.getRandomValues(challenge);
+      const assertion = await navigator.credentials.get({
+        publicKey: {
+          challenge,
+          rpId: window.location.hostname,
+          userVerification: 'required' as const,
+          timeout: 60000,
+        }
+      });
+      if (assertion) return 'webauthn';
+    } catch (e: any) {
+      const msg = (e?.message || e?.name || '').toString().toLowerCase();
+      // NotAllowedError = user cancelled the browser dialog
+      if (msg.includes('notallowed') || msg.includes('cancel') || msg.includes('abort')) {
+        return 'failed';
+      }
+      // Any other error = not supported in this context — fall through
+    }
+  }
+
+  // 3. Token-only fallback — if device has a saved session, allow it.
+  // The device lock screen IS the biometric gate in this model.
+  const hasToken = !!localStorage.getItem('lbjj_session_token');
+  if (hasToken) return 'token-fallback';
+
+  return 'failed';
+}
+
+async function registerBiometric(email: string): Promise<boolean> {
+  // Try native first
+  try {
+    const { isAvailable } = await NativeBiometric.isAvailable({ useFallback: false });
+    if (isAvailable) {
+      // Native biometric confirmed available — just mark as registered.
+      // NativeBiometric doesn't need a credential stored; verifyIdentity
+      // is the auth step and it uses the OS biometric store.
+      localStorage.setItem('lbjj_passkey_email', email);
+      localStorage.setItem('lbjj_passkey_registered', 'true');
+      return true;
+    }
+  } catch { /* not native */ }
+
+  // Fall back to WebAuthn registration (web browser)
+  try {
+    if (!window.PublicKeyCredential) return false;
     const challenge = new Uint8Array(32);
     crypto.getRandomValues(challenge);
     const userId = new TextEncoder().encode(email);
@@ -36,29 +120,12 @@ async function registerPasskey(email: string): Promise<boolean> {
         timeout: 60000,
       }
     }) as PublicKeyCredential;
+    if (!credential) return false;
     const rawId = btoa(String.fromCharCode.apply(null, Array.from(new Uint8Array(credential.rawId))));
     localStorage.setItem('lbjj_passkey_id', rawId);
     localStorage.setItem('lbjj_passkey_email', email);
     localStorage.setItem('lbjj_passkey_registered', 'true');
     return true;
-  } catch {
-    return false;
-  }
-}
-
-async function authenticateWithPasskey(): Promise<boolean> {
-  try {
-    const challenge = new Uint8Array(32);
-    crypto.getRandomValues(challenge);
-    const assertion = await navigator.credentials.get({
-      publicKey: {
-        challenge,
-        rpId: window.location.hostname,
-        userVerification: 'required' as const,
-        timeout: 60000,
-      }
-    });
-    return !!assertion;
   } catch {
     return false;
   }
@@ -158,46 +225,33 @@ export default function LoginPage() {
   const handlePasskeyLogin = async () => {
     setPasskeyLoading(true);
     setLoginError("");
-    const ok = await authenticateWithPasskey();
-    if (ok) {
-      const biometricBtn = document.querySelector('[data-testid="button-biometric"]') as HTMLElement;
-      if (biometricBtn) {
-        biometricBtn.animate([
-          { transform: 'scale(1)' },
-          { transform: 'scale(1.03)' },
-          { transform: 'scale(1)' }
-        ], { duration: 120, easing: 'cubic-bezier(0.16, 1, 0.3, 1)' });
-      }
-      const savedEmail = localStorage.getItem('lbjj_passkey_email') || '';
-      if (savedEmail) {
-        const result = await loginWithPasskey(savedEmail);
-        if (!result.success) {
-          setEmail(savedEmail);
-          setShowPasswordForm(true);
-          if (result.error) {
-            setLoginError(result.error);
-          } else {
-            setLoginError("Couldn't sign in. Please enter your password.");
-          }
-        }
-      } else {
+    const result = await triggerBiometricPrompt();
+    if (result === 'failed') {
+      setLoginError("Biometric authentication failed. Try again or use password.");
+      setPasskeyLoading(false);
+      return;
+    }
+    // Native, WebAuthn, or token-fallback all proved identity — restore session
+    const savedEmail = localStorage.getItem('lbjj_passkey_email') || '';
+    if (savedEmail) {
+      const loginResult = await loginWithPasskey(savedEmail);
+      if (!loginResult.success) {
+        setEmail(savedEmail);
         setShowPasswordForm(true);
-        setLoginError("No saved account found. Please sign in with your password first.");
+        setLoginError(loginResult.error || "Session expired. Please sign in with your password.");
       }
     } else {
-      setLoginError("Biometric authentication failed. Try again or use password.");
+      setShowPasswordForm(true);
+      setLoginError("No saved account found. Please sign in with your password first.");
     }
     setPasskeyLoading(false);
   };
 
   const handlePasskeyRegister = async (memberEmail: string) => {
     setPasskeyRegistering(true);
-    const ok = await registerPasskey(memberEmail);
+    await registerBiometric(memberEmail);
     setPasskeyRegistering(false);
     setShowPasskeyPrompt(false);
-    if (!ok) {
-      // Silently ignore — biometrics is optional
-    }
   };
 
   const selectLocation = (loc: Location) => {

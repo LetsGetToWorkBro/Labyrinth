@@ -1,5 +1,6 @@
 // v2.1.0 — Apple Wallet integration
 import * as Sentry from "@sentry/react";
+import { NativeBiometric } from 'capacitor-native-biometric';
 import { Switch, Route, Router, useLocation } from "wouter";
 import { useHashLocation } from "wouter/use-hash-location";
 import { queryClient } from "./lib/queryClient";
@@ -1203,8 +1204,23 @@ function AdminShortcut() {
 // ─── Auth gate — shows login until authenticated ──────────────────
 
 // ── Biometric / WebAuthn registration helper ──────────────────────
+// Strategy: NativeBiometric first (Capacitor iOS/Android), WebAuthn fallback (web)
 async function registerPasskeyGlobal(email: string): Promise<boolean> {
+  // 1. Try native biometric (Face ID / Touch ID / Fingerprint via Capacitor)
   try {
+    const { isAvailable } = await NativeBiometric.isAvailable({ useFallback: false });
+    if (isAvailable) {
+      // Native confirmed — just mark registered. NativeBiometric uses the OS
+      // biometric store; no credential object is needed on our side.
+      localStorage.setItem('lbjj_passkey_email', email);
+      localStorage.setItem('lbjj_passkey_registered', 'true');
+      return true;
+    }
+  } catch { /* not running in Capacitor — fall through */ }
+
+  // 2. WebAuthn fallback (web browser only)
+  try {
+    if (!window.PublicKeyCredential) return false;
     const challenge = new Uint8Array(32);
     crypto.getRandomValues(challenge);
     const userId = new TextEncoder().encode(email);
@@ -1222,6 +1238,7 @@ async function registerPasskeyGlobal(email: string): Promise<boolean> {
         timeout: 60000,
       }
     }) as PublicKeyCredential;
+    if (!credential) return false;
     const rawId = btoa(String.fromCharCode.apply(null, Array.from(new Uint8Array(credential.rawId))));
     localStorage.setItem('lbjj_passkey_id', rawId);
     localStorage.setItem('lbjj_passkey_email', email);
