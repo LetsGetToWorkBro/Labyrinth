@@ -8,7 +8,8 @@ import { chatGetChannels, fetchCSV, parseCSV, CSV_ENDPOINTS } from "@/lib/api";
 import { ALL_ACHIEVEMENTS, checkAndUnlockAchievements } from "@/lib/achievements";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { validateGeoIfRequired } from "@/lib/geo";
-import { XPBar } from "@/components/XPBar";
+import { LevelWidget } from "@/components/LevelWidget";
+import { getLevelFromXP, getActualLevel } from "@/lib/xp";
 import {
   CreditCard, FileText, ChevronRight, ChevronDown, LogOut,
   Users, Check, Loader2, Plus, Trash2, Star, CheckCircle,
@@ -1336,10 +1337,31 @@ export default function HomePage() {
         </a>
       </div>
 
-      {/* XP / Level bar — always show for authenticated members */}
+      {/* XP Level Widget — Diablo portrait style */}
       {member && (
         <div className="mx-5 mb-3 stagger-child">
-          <XPBar xp={(member as any)?.totalPoints || 0} compact />
+          <div style={{ display: 'flex', alignItems: 'flex-end', gap: 16, padding: '8px 0 4px' }}>
+            <LevelWidget
+              xp={(member as any)?.totalPoints || 0}
+              memberName={member.name}
+              memberBelt={member.belt}
+              size={72}
+            />
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: 12, color: '#555', marginBottom: 2 }}>Welcome back</div>
+              <div style={{ fontSize: 20, fontWeight: 800, color: '#F0F0F0', marginBottom: 6 }}>
+                {member.name?.split(' ')[0] || 'Warrior'}
+              </div>
+              {(() => {
+                const { title } = getLevelFromXP((member as any)?.totalPoints || 0);
+                return (
+                  <div style={{ fontSize: 11, color: '#C8A24C', fontWeight: 600 }}>
+                    {title} · {((member as any)?.totalPoints || 0).toLocaleString()} XP
+                  </div>
+                );
+              })()}
+            </div>
+          </div>
         </div>
       )}
 
