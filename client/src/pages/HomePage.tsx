@@ -993,6 +993,7 @@ export default function HomePage() {
               memberName={member?.name}
               memberBelt={member?.belt}
               size={72}
+              profilePic={profilePic || undefined}
             />
           </div>
 

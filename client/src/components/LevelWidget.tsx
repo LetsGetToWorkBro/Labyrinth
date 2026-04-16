@@ -7,10 +7,11 @@ interface LevelWidgetProps {
   xp: number;
   memberName?: string;
   memberBelt?: string;
+  profilePic?: string;
   size?: number; // diameter of the portrait orb
 }
 
-export function LevelWidget({ xp, memberName, memberBelt, size = 64 }: LevelWidgetProps) {
+export function LevelWidget({ xp, memberName, memberBelt, profilePic, size = 64 }: LevelWidgetProps) {
   const actualLevel = getActualLevel(xp);
   const tier = getRingTier(actualLevel);
   const { title, progress, xpForNext } = getLevelFromXP(xp);
@@ -97,12 +98,16 @@ export function LevelWidget({ xp, memberName, memberBelt, size = 64 }: LevelWidg
             {/* Avatar — initials or belt-colored circle */}
             <div style={{
               width: size, height: size, borderRadius: '50%',
-              background: 'radial-gradient(circle at 35% 30%, #2A2A2A, #0D0D0D)',
+              background: profilePic ? 'none' : 'radial-gradient(circle at 35% 30%, #2A2A2A, #0D0D0D)',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               fontSize: size * 0.28, fontWeight: 800, color: '#F0F0F0',
-              userSelect: 'none',
+              userSelect: 'none', overflow: 'hidden',
             }}>
-              {(memberName || '?').charAt(0).toUpperCase()}
+              {profilePic ? (
+                <img src={profilePic} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              ) : (
+                (memberName || '?').charAt(0).toUpperCase()
+              )}
             </div>
           </ProfileRing>
         </div>
