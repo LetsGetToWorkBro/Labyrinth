@@ -869,6 +869,20 @@ export interface ChannelMember {
   badgeCount?: number;
 }
 
+// ─── Pinned Announcements ────────────────────────────────────────
+
+export async function getPinnedAnnouncement(): Promise<{ message: string; ts: string } | null> {
+  try {
+    const result = await gasCall('getPinnedAnnouncement', {});
+    return result?.announcement || null;
+  } catch { return null; }
+}
+
+export async function clearPinnedAnnouncement(): Promise<void> {
+  const token = getToken() || localStorage.getItem('lbjj_session_token') || '';
+  await gasCall('clearPinnedAnnouncement', { token });
+}
+
 export async function chatGetChannelMembers(channelId: string): Promise<ChannelMember[]> {
   const token = getToken() || localStorage.getItem('lbjj_session_token') || '';
   try {

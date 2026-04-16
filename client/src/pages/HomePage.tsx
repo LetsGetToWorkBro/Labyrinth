@@ -4,7 +4,7 @@ import { beltSavePromotion, gasCall, getLeaderboard, getMemberData, cachedGasCal
 import { BeltIcon } from "@/components/BeltIcon";
 import { ADULT_BELT_OPTIONS } from "@/components/BeltIcon";
 import { getBeltColor, CLASS_SCHEDULE } from "@/lib/constants";
-import { chatGetChannels, fetchCSV, parseCSV, CSV_ENDPOINTS } from "@/lib/api";
+import { chatGetChannels, fetchCSV, parseCSV, CSV_ENDPOINTS, getPinnedAnnouncement } from "@/lib/api";
 import { ALL_ACHIEVEMENTS, checkAndUnlockAchievements } from "@/lib/achievements";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { validateGeoIfRequired } from "@/lib/geo";
@@ -850,8 +850,12 @@ export default function HomePage() {
     loadTournaments();
   }, []);
 
-  // ─── Announcement preview ─────────────────────────────────────────
-  const [announcementPreview, setAnnouncementPreview] = useState<string | null>(null);
+  // ─── Pinned announcement ─────────────────────────────────────────
+  const [pinnedAnnouncement, setPinnedAnnouncement] = useState<{ message: string; ts: string } | null>(null);
+
+  useEffect(() => {
+    getPinnedAnnouncement().then(ann => setPinnedAnnouncement(ann)).catch(() => {});
+  }, []);
 
   // ─── Deferred non-critical data (leaderboard + announcements) ────
   useEffect(() => {
@@ -868,13 +872,7 @@ export default function HomePage() {
         }).catch(() => {});
       }
 
-      // announcements
-      chatGetChannels().then(channels => {
-        const ann = channels.find(ch => ch.id === 'announcements');
-        if (ann?.lastMessage) {
-          setAnnouncementPreview(ann.lastMessage);
-        }
-      }).catch(() => {});
+      // announcements (pinned announcement now loaded separately)
     };
 
     if ('requestIdleCallback' in window) {
@@ -1147,11 +1145,102 @@ export default function HomePage() {
         )}
       </div>
 
-      {/* Animated flame pulse keyframes */}
+      {/* XP Progress Widget */}
+      {member && (
+        <div className="mx-5 mb-4 stagger-child" style={{ position: 'relative' }}>
+          {/* Background glow */}
+          <div style={{
+            position: 'absolute', inset: -1,
+            borderRadius: 17,
+            background: 'linear-gradient(135deg, rgba(200,162,76,0.3), transparent, rgba(200,162,76,0.1))',
+            filter: 'blur(8px)',
+            zIndex: 0,
+          }}/>
+          <div style={{
+            position: 'relative', zIndex: 1,
+            background: 'linear-gradient(135deg, #0D0D0D 0%, #141408 100%)',
+            borderRadius: 16, padding: '14px 16px',
+            border: '1px solid rgba(200,162,76,0.2)',
+          }}>
+            {/* Level row */}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                {/* Gem/orb icon */}
+                <div style={{
+                  width: 32, height: 32, borderRadius: '50%',
+                  background: 'radial-gradient(circle at 35% 30%, #FFD700, #C8A24C 50%, #6B4A00)',
+                  boxShadow: '0 0 12px rgba(200,162,76,0.6), inset 0 1px 0 rgba(255,255,255,0.3)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontSize: 12, fontWeight: 900, color: '#000',
+                }}>
+                  {getActualLevel((member as any)?.totalPoints || 0)}
+                </div>
+                <div>
+                  <div style={{ fontSize: 13, fontWeight: 800, color: '#F0F0F0' }}>{getLevelFromXP((member as any)?.totalPoints || 0).title}</div>
+                  <div style={{ fontSize: 10, color: '#555' }}>{((member as any)?.totalPoints || 0).toLocaleString()} XP</div>
+                </div>
+              </div>
+              <div style={{ fontSize: 11, color: '#C8A24C', fontWeight: 600 }}>
+                +{(getLevelFromXP((member as any)?.totalPoints || 0).xpForNext - ((member as any)?.totalPoints || 0)).toLocaleString()} to next
+              </div>
+            </div>
+
+            {/* XP bar — thick, glowing, segmented */}
+            <div style={{ height: 14, borderRadius: 7, background: '#0A0A0A', overflow: 'hidden', position: 'relative', border: '1px solid #1A1A1A', boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.5)' }}>
+              {/* Fill */}
+              <div style={{
+                height: '100%',
+                width: `${getLevelFromXP((member as any)?.totalPoints || 0).progress * 100}%`,
+                background: 'linear-gradient(90deg, #6B4A00 0%, #C8A24C 40%, #FFD700 70%, #FFF8DC 85%, #FFD700 100%)',
+                backgroundSize: '300% 100%',
+                animation: 'xp-shimmer 2s linear infinite',
+                borderRadius: 7,
+                transition: 'width 1.5s cubic-bezier(0.4,0,0.2,1)',
+                boxShadow: '0 0 10px rgba(255,215,0,0.6), 0 0 20px rgba(200,162,76,0.3)',
+              }}/>
+              {/* Shine */}
+              <div style={{
+                position: 'absolute', top: 0, left: 0, right: 0, height: '45%',
+                background: 'linear-gradient(180deg, rgba(255,255,255,0.12) 0%, transparent 100%)',
+                borderRadius: '7px 7px 0 0', pointerEvents: 'none',
+              }}/>
+              {/* Segment markers at 25/50/75% */}
+              {[25, 50, 75].map(pct => (
+                <div key={pct} style={{
+                  position: 'absolute', top: 0, bottom: 0,
+                  left: `${pct}%`, width: 1,
+                  background: 'rgba(0,0,0,0.3)',
+                }}/>
+              ))}
+            </div>
+
+            {/* Earn XP hint */}
+            <div style={{ marginTop: 8, display: 'flex', gap: 12, justifyContent: 'center' }}>
+              {[
+                { icon: '🥋', label: 'Check in', xp: '+10' },
+                { icon: '🏆', label: 'Tournament', xp: '+50' },
+                { icon: '🥇', label: 'Gold', xp: '+150' },
+              ].map(item => (
+                <div key={item.label} style={{ textAlign: 'center' as const, opacity: 0.7 }}>
+                  <div style={{ fontSize: 14 }}>{item.icon}</div>
+                  <div style={{ fontSize: 9, color: '#C8A24C', fontWeight: 700 }}>{item.xp} XP</div>
+                  <div style={{ fontSize: 8, color: '#444' }}>{item.label}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Animated flame pulse keyframes + XP shimmer */}
       <style>{`
         @keyframes flamePulse {
           0%, 100% { transform: scale(1); filter: drop-shadow(0 0 4px #C8A24C88); }
           50% { transform: scale(1.15); filter: drop-shadow(0 0 10px #C8A24Ccc); }
+        }
+        @keyframes xp-shimmer {
+          0% { background-position: 0% 50%; }
+          100% { background-position: 300% 50%; }
         }
       `}</style>
 
@@ -1163,19 +1252,13 @@ export default function HomePage() {
         </div>
       )}
 
-      {/* Announcements Preview */}
-      {announcementPreview && (
-        <div className="mx-5 mb-3 stagger-child">
-          <a href="/#/chat" style={{ textDecoration: 'none', display: 'block' }}>
-            <div style={{
-              background: '#141414', border: '1px solid #1A1A1A',
-              borderRadius: 14, padding: '14px 16px',
-              cursor: 'pointer',
-            }}>
-              <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', color: '#666', textTransform: 'uppercase' as const, marginBottom: 6 }}>📢 Announcement</div>
-              <div style={{ fontSize: 13, color: '#CCC', lineHeight: 1.5, overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' as const }}>{announcementPreview}</div>
-            </div>
-          </a>
+      {/* Pinned Announcement */}
+      {pinnedAnnouncement && (
+        <div className="mx-5 mb-4 stagger-child">
+          <div style={{ background: '#111', borderRadius: 14, border: '1px solid #1A1A1A', padding: '12px 14px', borderLeft: '3px solid #C8A24C' }}>
+            <div style={{ fontSize: 10, fontWeight: 700, color: '#C8A24C', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 6 }}>📢 Announcement</div>
+            <div style={{ fontSize: 13, color: '#CCC', lineHeight: 1.5 }}>{pinnedAnnouncement.message}</div>
+          </div>
         </div>
       )}
 

@@ -27,6 +27,8 @@ import {
   gasCall,
   getToken,
   cachedGasCall,
+  getPinnedAnnouncement,
+  clearPinnedAnnouncement,
   type AdminMember,
   type AdminDashboard,
   type MemberComm,
@@ -536,9 +538,29 @@ function NotesTab() {
   const [saving, setSaving] = useState(false);
   const [search, setSearch] = useState("");
 
+  // Announcement send state
+  const [annText, setAnnText] = useState("");
+  const [annSending, setAnnSending] = useState(false);
+  const [annSent, setAnnSent] = useState(false);
+  const [pinToHome, setPinToHome] = useState(false);
+
   useEffect(() => {
     adminGetMembers().then(list => { setMembers(list); setLoadingMembers(false); });
   }, []);
+
+  const sendAnnouncement = async () => {
+    if (!annText.trim()) return;
+    setAnnSending(true);
+    try {
+      const token = getToken() || localStorage.getItem('lbjj_session_token') || '';
+      await gasCall('chatSendMessage', { token, channel: 'announcements', text: annText.trim(), pinToHome });
+      setAnnText('');
+      setPinToHome(false);
+      setAnnSent(true);
+      setTimeout(() => setAnnSent(false), 2500);
+    } catch {}
+    setAnnSending(false);
+  };
 
   const selectMember = useCallback(async (m: AdminMember) => {
     setSelectedMember(m);
@@ -627,6 +649,54 @@ function NotesTab() {
 
   return (
     <div style={{ padding: "16px" }}>
+      {/* Send Announcement */}
+      <div style={{ backgroundColor: "#111", borderRadius: 12, border: "1px solid #1A1A1A", padding: 14, marginBottom: 16 }}>
+        <div style={{ fontSize: 11, fontWeight: 700, color: '#666', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 10 }}>
+          Send Announcement
+        </div>
+        <textarea
+          value={annText}
+          onChange={e => setAnnText(e.target.value)}
+          placeholder="Type an announcement for all members..."
+          rows={3}
+          style={{ width: '100%', background: '#0D0D0D', border: '1px solid #222', borderRadius: 8, color: '#F0F0F0', fontSize: 13, padding: '8px 10px', resize: 'none', fontFamily: 'inherit', boxSizing: 'border-box' as const, marginBottom: 10 }}
+        />
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+          <div>
+            <div style={{ fontSize: 12, fontWeight: 600, color: '#F0F0F0' }}>Pin to Home Dashboard</div>
+            <div style={{ fontSize: 10, color: '#555' }}>Shows this announcement on members' home screens</div>
+          </div>
+          <button
+            type="button"
+            onClick={() => setPinToHome(v => !v)}
+            style={{
+              width: 40, height: 22, borderRadius: 11, border: 'none', cursor: 'pointer',
+              background: pinToHome ? '#C8A24C' : '#333',
+              position: 'relative', transition: 'background 0.2s',
+            }}
+          >
+            <div style={{ width: 16, height: 16, borderRadius: '50%', background: '#FFF', position: 'absolute', top: 3, left: pinToHome ? 21 : 3, transition: 'left 0.2s' }}/>
+          </button>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <button
+            onClick={sendAnnouncement}
+            disabled={annSending || !annText.trim()}
+            style={{
+              padding: '9px 18px', borderRadius: 8,
+              background: annText.trim() ? '#C8A24C' : '#1A1A1A',
+              color: annText.trim() ? '#000' : '#444',
+              fontWeight: 700, fontSize: 12, border: 'none',
+              cursor: annText.trim() ? 'pointer' : 'default',
+              opacity: annSending ? 0.7 : 1,
+            }}
+          >
+            {annSending ? 'Sending…' : 'Send Announcement'}
+          </button>
+          {annSent && <span style={{ fontSize: 12, color: '#4CAF80' }}>Sent ✓</span>}
+        </div>
+      </div>
+
       <div style={{ display: "flex", alignItems: "center", gap: 8, backgroundColor: "#111", borderRadius: 10, padding: "8px 12px", border: "1px solid #1A1A1A", marginBottom: 12 }}>
         <Search size={14} style={{ color: "#555" }} />
         <input
@@ -673,6 +743,10 @@ function SettingsTab() {
   const [addressQuery, setAddressQuery] = useState('');
   const [geocoding, setGeocoding] = useState(false);
 
+  // Pinned announcement state
+  const [pinnedAnn, setPinnedAnn] = useState<{ message: string; ts: string } | null>(null);
+  const [clearingPin, setClearingPin] = useState(false);
+
   const searchAddress = async () => {
     if (!addressQuery.trim()) return;
     setGeocoding(true);
@@ -705,6 +779,8 @@ function SettingsTab() {
         setRadiusYards(res.config.radiusYards || '500');
       }
     }).catch(() => {});
+    // Load pinned announcement
+    getPinnedAnnouncement().then(ann => setPinnedAnn(ann)).catch(() => {});
   }, []);
 
   const detectLocation = () => {
@@ -751,6 +827,7 @@ function SettingsTab() {
           <div>
             <div style={{ fontSize: 13, fontWeight: 600, color: '#F0F0F0' }}>Enable Geo Lock</div>
             <div style={{ fontSize: 11, color: '#555' }}>Members must share location to check in</div>
+            {!geoEnabled && <div style={{ fontSize: 10, color: '#888', marginTop: 4 }}>Geo lock is off until you press Save Settings</div>}
           </div>
           <button
             onClick={() => setGeoEnabled(v => !v)}
@@ -773,7 +850,7 @@ function SettingsTab() {
         <div style={{ opacity: geoEnabled ? 1 : 0.4, transition: 'opacity 0.2s' }}>
           {/* Address search */}
           <div style={{ marginBottom: 10 }}>
-            <label style={{ fontSize: 10, color: '#666', display: 'block', marginBottom: 4 }}>SEARCH ADDRESS</label>
+            <label style={{ fontSize: 10, color: '#666', display: 'block', marginBottom: 4 }}>SEARCH GYM ADDRESS</label>
             <div style={{ display: 'flex', gap: 8 }}>
               <input
                 value={addressQuery}
@@ -785,8 +862,8 @@ function SettingsTab() {
               />
               <button
                 onClick={searchAddress}
-                disabled={!geoEnabled || geocoding}
-                style={{ padding: '9px 14px', borderRadius: 8, background: '#C8A24C', color: '#000', fontWeight: 700, fontSize: 12, border: 'none', cursor: 'pointer', flexShrink: 0 }}
+                disabled={!geoEnabled || geocoding || !addressQuery.trim()}
+                style={{ padding: '9px 14px', borderRadius: 8, background: '#1A1A1A', color: '#C8A24C', fontWeight: 700, fontSize: 12, border: '1px solid #333', cursor: 'pointer', flexShrink: 0 }}
               >
                 {geocoding ? '\u2026' : 'Find'}
               </button>
@@ -865,6 +942,39 @@ function SettingsTab() {
           style={{ marginTop: 16, width: '100%', padding: '12px', borderRadius: 10, background: '#C8A24C', color: '#000', fontWeight: 700, fontSize: 13, border: 'none', cursor: 'pointer' }}>
           {saving ? 'Saving\u2026' : saved ? 'Saved \u2713' : 'Save Settings'}
         </button>
+      </div>
+
+      {/* Pinned Announcement Management */}
+      <div style={{ marginBottom: 24 }}>
+        <div style={{ fontSize: 14, fontWeight: 700, color: '#F0F0F0', marginBottom: 4 }}>Pinned Announcement</div>
+        <div style={{ fontSize: 12, color: '#666', marginBottom: 12 }}>
+          The pinned announcement appears on every member's home screen.
+        </div>
+        {pinnedAnn ? (
+          <div style={{ background: '#111', borderRadius: 10, border: '1px solid #1A1A1A', padding: '12px 14px', marginBottom: 10 }}>
+            <div style={{ fontSize: 10, fontWeight: 700, color: '#C8A24C', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 6 }}>Currently Pinned</div>
+            <div style={{ fontSize: 13, color: '#CCC', lineHeight: 1.5, marginBottom: 10 }}>{pinnedAnn.message}</div>
+            <div style={{ fontSize: 10, color: '#555', marginBottom: 10 }}>Pinned {pinnedAnn.ts ? new Date(pinnedAnn.ts).toLocaleDateString() : ''}</div>
+            <button
+              onClick={async () => {
+                setClearingPin(true);
+                try {
+                  await clearPinnedAnnouncement();
+                  setPinnedAnn(null);
+                } catch {}
+                setClearingPin(false);
+              }}
+              disabled={clearingPin}
+              style={{ padding: '8px 16px', borderRadius: 8, background: 'rgba(224,85,85,0.12)', color: '#E05555', fontWeight: 700, fontSize: 12, border: '1px solid rgba(224,85,85,0.3)', cursor: 'pointer' }}
+            >
+              {clearingPin ? 'Clearing…' : 'Clear Pinned Announcement'}
+            </button>
+          </div>
+        ) : (
+          <div style={{ background: '#111', borderRadius: 10, border: '1px solid #1A1A1A', padding: '14px', fontSize: 13, color: '#555' }}>
+            No announcement pinned. Send one from the Notes tab with "Pin to Home Dashboard" enabled.
+          </div>
+        )}
       </div>
     </div>
   );
