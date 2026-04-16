@@ -670,6 +670,29 @@ function SettingsTab() {
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [detecting, setDetecting] = useState(false);
+  const [addressQuery, setAddressQuery] = useState('');
+  const [geocoding, setGeocoding] = useState(false);
+
+  const searchAddress = async () => {
+    if (!addressQuery.trim()) return;
+    setGeocoding(true);
+    try {
+      const res = await fetch(
+        `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(addressQuery)}&format=json&limit=1`,
+        { headers: { 'Accept-Language': 'en', 'User-Agent': 'LabyrinthBJJ/1.0' } }
+      );
+      const data = await res.json();
+      if (data[0]) {
+        setGymLat(parseFloat(data[0].lat).toFixed(6));
+        setGymLng(parseFloat(data[0].lon).toFixed(6));
+      } else {
+        alert('Address not found. Try a more specific address.');
+      }
+    } catch {
+      alert('Search failed. Try again or enter coordinates manually.');
+    }
+    setGeocoding(false);
+  };
 
   // Load existing config on mount
   useEffect(() => {
@@ -683,9 +706,6 @@ function SettingsTab() {
       }
     }).catch(() => {});
   }, []);
-
-  const yardsToMiles = (y: number) => (y / 1760).toFixed(2);
-  const yards = parseFloat(radiusYards) || 0;
 
   const detectLocation = () => {
     setDetecting(true);
@@ -751,38 +771,93 @@ function SettingsTab() {
 
         {/* Coordinates */}
         <div style={{ opacity: geoEnabled ? 1 : 0.4, transition: 'opacity 0.2s' }}>
-          <button
-            onClick={detectLocation}
-            disabled={!geoEnabled || detecting}
-            style={{
-              width: '100%', padding: '10px', borderRadius: 8, marginBottom: 10,
-              background: 'rgba(200,162,76,0.1)', border: '1px solid rgba(200,162,76,0.3)',
-              color: '#C8A24C', fontWeight: 600, fontSize: 12, cursor: 'pointer',
-            }}
-          >
-            {detecting ? 'Detecting\u2026' : '\uD83D\uDCCD Use My Current Location as Gym'}
-          </button>
-
-          <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
-            <div style={{ flex: 1 }}>
-              <label style={{ fontSize: 10, color: '#666', display: 'block', marginBottom: 4 }}>LATITUDE</label>
-              <input value={gymLat} onChange={e => setGymLat(e.target.value)} disabled={!geoEnabled}
-                placeholder="29.694..." style={{ width: '100%', background: '#111', border: '1px solid #222', borderRadius: 8, color: '#F0F0F0', padding: '8px 10px', fontSize: 13, boxSizing: 'border-box' }}/>
-            </div>
-            <div style={{ flex: 1 }}>
-              <label style={{ fontSize: 10, color: '#666', display: 'block', marginBottom: 4 }}>LONGITUDE</label>
-              <input value={gymLng} onChange={e => setGymLng(e.target.value)} disabled={!geoEnabled}
-                placeholder="-95.771..." style={{ width: '100%', background: '#111', border: '1px solid #222', borderRadius: 8, color: '#F0F0F0', padding: '8px 10px', fontSize: 13, boxSizing: 'border-box' }}/>
+          {/* Address search */}
+          <div style={{ marginBottom: 10 }}>
+            <label style={{ fontSize: 10, color: '#666', display: 'block', marginBottom: 4 }}>SEARCH ADDRESS</label>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <input
+                value={addressQuery}
+                onChange={e => setAddressQuery(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && searchAddress()}
+                placeholder="123 Main St, Fulshear, TX"
+                disabled={!geoEnabled}
+                style={{ flex: 1, background: '#111', border: '1px solid #222', borderRadius: 8, color: '#F0F0F0', padding: '9px 10px', fontSize: 13, boxSizing: 'border-box' as const }}
+              />
+              <button
+                onClick={searchAddress}
+                disabled={!geoEnabled || geocoding}
+                style={{ padding: '9px 14px', borderRadius: 8, background: '#C8A24C', color: '#000', fontWeight: 700, fontSize: 12, border: 'none', cursor: 'pointer', flexShrink: 0 }}
+              >
+                {geocoding ? '\u2026' : 'Find'}
+              </button>
             </div>
           </div>
 
+          {/* OR detect location */}
+          <button onClick={detectLocation} disabled={!geoEnabled || detecting}
+            style={{ width: '100%', padding: '8px', borderRadius: 8, marginBottom: 10, background: 'rgba(200,162,76,0.06)', border: '1px solid rgba(200,162,76,0.2)', color: '#C8A24C', fontWeight: 600, fontSize: 11, cursor: 'pointer' }}>
+            {detecting ? 'Detecting\u2026' : '\uD83D\uDCCD Use My Current Location'}
+          </button>
+
+          {/* Coordinates display (read-only when address found) */}
+          {(gymLat && gymLng) && (
+            <div style={{ fontSize: 11, color: '#555', marginBottom: 8, padding: '6px 10px', background: '#0D0D0D', borderRadius: 8, border: '1px solid #1A1A1A' }}>
+              \uD83D\uDCCC {parseFloat(gymLat).toFixed(4)}, {parseFloat(gymLng).toFixed(4)}
+            </div>
+          )}
+
+          {/* Map preview with radius circle */}
+          {gymLat && gymLng && (
+            <div style={{ marginBottom: 10, borderRadius: 12, overflow: 'hidden', border: '1px solid #1A1A1A', position: 'relative' }}>
+              <img
+                src={`https://staticmap.openstreetmap.de/staticmap.php?center=${gymLat},${gymLng}&zoom=15&size=320x160&markers=${gymLat},${gymLng},red-pushpin`}
+                alt="Gym location map"
+                style={{ width: '100%', height: 160, objectFit: 'cover', display: 'block' }}
+                onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+              />
+              <div style={{
+                position: 'absolute', inset: 0,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                pointerEvents: 'none',
+              }}>
+                <svg width="320" height="160" viewBox="0 0 320 160" style={{ width: '100%', height: '100%' }}>
+                  {(() => {
+                    const metersPerPx = 4.8;
+                    const radiusMeters = (parseInt(radiusYards) || 500) * 0.9144;
+                    const radiusPx = Math.min(Math.max(radiusMeters / metersPerPx, 10), 80);
+                    return (
+                      <>
+                        <circle cx="160" cy="80" r={radiusPx} fill="rgba(200,162,76,0.15)" stroke="#C8A24C" strokeWidth="2" strokeDasharray="6 3"/>
+                        <circle cx="160" cy="80" r="6" fill="#C8A24C"/>
+                        <circle cx="160" cy="80" r="3" fill="#000"/>
+                      </>
+                    );
+                  })()}
+                </svg>
+              </div>
+            </div>
+          )}
+
+          {/* Radius number input */}
           <div>
             <label style={{ fontSize: 10, color: '#666', display: 'block', marginBottom: 4 }}>RADIUS</label>
             <input type="number" value={radiusYards} onChange={e => setRadiusYards(e.target.value)} disabled={!geoEnabled}
-              placeholder="500" style={{ width: '100%', background: '#111', border: '1px solid #222', borderRadius: 8, color: '#F0F0F0', padding: '8px 10px', fontSize: 13, boxSizing: 'border-box' }}/>
-            <div style={{ fontSize: 11, color: '#555', marginTop: 4 }}>
-              {yards} yards &middot; {yardsToMiles(yards)} miles
-            </div>
+              placeholder="500" style={{ width: '100%', background: '#111', border: '1px solid #222', borderRadius: 8, color: '#F0F0F0', padding: '8px 10px', fontSize: 13, boxSizing: 'border-box' as const }}/>
+          </div>
+
+          {/* Radius slider */}
+          <input
+            type="range"
+            min="50" max="2000" step="50"
+            value={radiusYards}
+            onChange={e => setRadiusYards(e.target.value)}
+            disabled={!geoEnabled}
+            style={{ width: '100%', marginTop: 6, accentColor: '#C8A24C' }}
+          />
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: '#444', marginTop: 2 }}>
+            <span>50 yd</span>
+            <span style={{ color: '#C8A24C', fontWeight: 600 }}>{radiusYards} yd &middot; {((parseInt(radiusYards)||0)/1760).toFixed(2)} mi</span>
+            <span>2000 yd</span>
           </div>
         </div>
 
