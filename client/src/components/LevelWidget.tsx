@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { getLevelFromXP, getActualLevel, getRingTier, XP_LEVELS } from '@/lib/xp';
 import { ProfileRing } from './ProfileRing';
 
@@ -119,8 +120,8 @@ export function LevelWidget({ xp, memberName, memberBelt, size = 64 }: LevelWidg
         </div>
       </button>
 
-      {/* Level Journey Modal */}
-      {showModal && (
+      {/* Level Journey Modal — portaled to body to avoid overflow clipping */}
+      {showModal && createPortal(
         <div style={{ position: 'fixed', inset: 0, zIndex: 500, display: 'flex', alignItems: 'flex-end' }}
           onClick={() => setShowModal(false)}>
           <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(6px)' }}/>
@@ -189,7 +190,8 @@ export function LevelWidget({ xp, memberName, memberBelt, size = 64 }: LevelWidg
               );
             })}
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </>
   );

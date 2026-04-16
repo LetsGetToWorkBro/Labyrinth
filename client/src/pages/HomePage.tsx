@@ -9,7 +9,6 @@ import { ALL_ACHIEVEMENTS, checkAndUnlockAchievements } from "@/lib/achievements
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { validateGeoIfRequired } from "@/lib/geo";
 import { LevelWidget } from "@/components/LevelWidget";
-import { getLevelFromXP, getActualLevel } from "@/lib/xp";
 import {
   CreditCard, FileText, ChevronRight, ChevronDown, LogOut,
   Users, Check, Loader2, Plus, Trash2, Star, CheckCircle,
@@ -150,10 +149,6 @@ const haptic = (pattern: number | number[] = 10) => {
   }
 };
 
-const getInitials = (name: string) => {
-  return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
-};
-
 function parseClassMinutes(timeStr: string): number {
   if (!timeStr) return 0;
   if (timeStr.includes('T') && timeStr.includes('Z')) {
@@ -180,12 +175,6 @@ function formatClassTime(timeStr: string): string {
   }
   return timeStr;
 }
-
-const beltColorMap: Record<string, string> = {
-  white: '#E0E0E0', blue: '#3B82F6', purple: '#8B5CF6',
-  brown: '#92400E', black: '#1A1A1A', grey: '#9CA3AF',
-  yellow: '#EAB308', orange: '#F97316', green: '#22C55E',
-};
 
 function BeltVisual({ belt, size = 'sm' }: { belt: string; size?: 'sm' | 'md' }) {
   const beltColors: Record<string, string> = {
@@ -217,8 +206,6 @@ function BeltVisual({ belt, size = 'sm' }: { belt: string; size?: 'sm' | 'md' })
 export default function HomePage() {
   const { member, familyMembers, isAuthenticated, logout, switchProfile, setMember, refreshProfile } = useAuth();
 
-  const avatarBg = beltColorMap[(member?.belt || 'white').toLowerCase()] || '#C8A24C';
-  const avatarFg = ['white', 'yellow', 'grey'].includes((member?.belt || '').toLowerCase()) ? '#0A0A0A' : '#FFFFFF';
   const [switchingRow, setSwitchingRow] = useState<number | null>(null);
   const [showFamilySwitcher, setShowFamilySwitcher] = useState(false);
   const [switchError, setSwitchError] = useState("");
@@ -250,6 +237,7 @@ export default function HomePage() {
             localStorage.setItem('lbjj_weekly_training', JSON.stringify(data.weeklyTraining));
           }
           if (data.checkedInClasses?.length) setCheckedInClasses(data.checkedInClasses);
+          if (data.leaderboard?.length) setLeaderboard(data.leaderboard);
           setHomeLoading(false);
         }
       }
@@ -380,19 +368,22 @@ export default function HomePage() {
   };
 
   // ─── Leaderboard widget ────────────────────────────────────────────
+  const LEADERBOARD_CACHE_KEY = 'lbjj_home_leaderboard';
+  const LEADERBOARD_TTL = 5 * 60 * 1000;
   const [leaderboard, setLeaderboard] = useState<any[]>([]);
 
-  // ─── Personalized greeting ─────────────────────────────────────────
-  const getGreeting = () => {
-    const hour = new Date().getHours();
-    let timeOfDay: string;
-    if (hour >= 5 && hour < 12) timeOfDay = "Good morning";
-    else if (hour >= 12 && hour < 18) timeOfDay = "Good afternoon";
-    else if (hour >= 18 && hour < 24) timeOfDay = "Good evening";
-    else timeOfDay = "Good night";
-    const firstName = member?.name?.split(" ")[0] || "Warrior";
-    return `${timeOfDay}, ${firstName} 👋`;
-  };
+  // Load leaderboard from cache on mount
+  useEffect(() => {
+    try {
+      const cached = localStorage.getItem(LEADERBOARD_CACHE_KEY);
+      if (cached) {
+        const { data, ts } = JSON.parse(cached);
+        if (Date.now() - ts < LEADERBOARD_TTL && data.length > 0) {
+          setLeaderboard(data);
+        }
+      }
+    } catch {}
+  }, []);
 
   const cachedStreak = (() => { try { return parseInt(localStorage.getItem('lbjj_streak_cache') || '0'); } catch { return 0; } })();
   const rawStreak = (member as any)?.currentStreak || 0;
@@ -511,7 +502,7 @@ export default function HomePage() {
       }
       // Update home SWR cache
       try {
-        const cacheData = { totalClasses: realTotal, classesToday: todayClasses.length, weeklyTraining: recentDays, checkedInClasses: todayClasses };
+        const cacheData = { totalClasses: realTotal, classesToday: todayClasses.length, weeklyTraining: recentDays, checkedInClasses: todayClasses, leaderboard: leaderboard.length > 0 ? leaderboard : undefined };
         localStorage.setItem(HOME_CACHE_KEY, JSON.stringify({ data: cacheData, ts: Date.now() }));
       } catch {}
       setHomeLoading(false);
@@ -872,6 +863,7 @@ export default function HomePage() {
             isMe: e.name === member.name || e.isMe,
           }));
           setLeaderboard(top5);
+          try { localStorage.setItem(LEADERBOARD_CACHE_KEY, JSON.stringify({ data: top5, ts: Date.now() })); } catch {}
         }).catch(() => {});
       }
 
@@ -894,12 +886,29 @@ export default function HomePage() {
   }, [member?.email]);
 
   // ─── Live stream status (poll every 30s) ───────────────────────────
-  const [stream, setStream] = useState<StreamStatus | null>(null);
+  const STREAM_CACHE_KEY = 'lbjj_stream_status';
+  const STREAM_TTL = 30_000;
+  const [stream, setStream] = useState<StreamStatus | null>(() => {
+    try {
+      const cached = localStorage.getItem(STREAM_CACHE_KEY);
+      if (cached) {
+        const { data, ts } = JSON.parse(cached);
+        if (Date.now() - ts < STREAM_TTL) return data;
+      }
+    } catch {}
+    return null;
+  });
   useEffect(() => {
     clearStreamCache();
-    getStreamStatus().then(setStream);
+    getStreamStatus().then(s => {
+      setStream(s);
+      try { localStorage.setItem(STREAM_CACHE_KEY, JSON.stringify({ data: s, ts: Date.now() })); } catch {}
+    });
     const interval = setInterval(() => {
-      getStreamStatus().then(setStream);
+      getStreamStatus().then(s => {
+        setStream(s);
+        try { localStorage.setItem(STREAM_CACHE_KEY, JSON.stringify({ data: s, ts: Date.now() })); } catch {}
+      });
     }, 30_000);
     return () => clearInterval(interval);
   }, []);
@@ -928,10 +937,10 @@ export default function HomePage() {
         }
       />
 
-      {/* Personalized greeting */}
+      {/* Greeting */}
       <div className="mx-5 mb-4 stagger-child">
         <h1 className="text-xl font-bold" style={{ color: "#F0F0F0" }} data-testid="text-greeting">
-          {getGreeting()}
+          Welcome back, {member?.name?.split(' ')[0] || 'Warrior'}
         </h1>
       </div>
 
@@ -976,41 +985,14 @@ export default function HomePage() {
             transition: 'border-radius 0.2s ease',
           }}
         >
-          {/* Avatar */}
-          <div
-            onClick={(e) => { e.stopPropagation(); avatarFileRef.current?.click(); }}
-            style={{
-              position: 'relative', display: 'inline-block',
-              flexShrink: 0, cursor: 'pointer',
-            }}
-          >
-            <div style={{
-              width: 52, height: 52, borderRadius: '50%',
-              background: profilePic ? 'none' : avatarBg, color: avatarFg,
-              fontSize: 16, fontWeight: 700,
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              textTransform: 'uppercase', letterSpacing: '-0.5px',
-              boxShadow: `0 0 0 2px ${avatarBg}30`,
-              overflow: 'hidden',
-            }}>
-              {profilePic ? (
-                <img src={profilePic} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-              ) : (
-                getInitials(member?.name || 'M')
-              )}
-            </div>
-            <div style={{
-              position: 'absolute', bottom: -2, right: -2,
-              width: 18, height: 18, borderRadius: '50%',
-              background: '#1A1A1A', border: '1px solid #2A2A2A',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              zIndex: 1,
-            }}>
-              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#C8A24C" strokeWidth="2">
-                <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
-                <circle cx="12" cy="13" r="4"/>
-              </svg>
-            </div>
+          {/* Avatar — LevelWidget portrait */}
+          <div style={{ flexShrink: 0 }}>
+            <LevelWidget
+              xp={(member as any)?.totalPoints || 0}
+              memberName={member?.name}
+              memberBelt={member?.belt}
+              size={52}
+            />
           </div>
 
           {/* Name + belt */}
@@ -1041,6 +1023,15 @@ export default function HomePage() {
               {member.email && member.email !== member.name && (
                 <div style={{ fontSize: 12, color: '#666' }}>Email <span style={{ color: '#999' }}>{member.email}</span></div>
               )}
+              <button
+                onClick={() => avatarFileRef.current?.click()}
+                style={{
+                  fontSize: 11, color: '#C8A24C', background: 'none', border: 'none',
+                  cursor: 'pointer', padding: '4px 0', fontWeight: 600,
+                }}
+              >
+                Change Photo
+              </button>
             </div>
 
             {/* Belt + Family row */}
@@ -1336,34 +1327,6 @@ export default function HomePage() {
           <ChevronRight size={14} color="#555" strokeWidth={2} />
         </a>
       </div>
-
-      {/* XP Level Widget — Diablo portrait style */}
-      {member && (
-        <div className="mx-5 mb-3 stagger-child">
-          <div style={{ display: 'flex', alignItems: 'flex-end', gap: 16, padding: '8px 0 4px' }}>
-            <LevelWidget
-              xp={(member as any)?.totalPoints || 0}
-              memberName={member.name}
-              memberBelt={member.belt}
-              size={72}
-            />
-            <div style={{ flex: 1 }}>
-              <div style={{ fontSize: 12, color: '#555', marginBottom: 2 }}>Welcome back</div>
-              <div style={{ fontSize: 20, fontWeight: 800, color: '#F0F0F0', marginBottom: 6 }}>
-                {member.name?.split(' ')[0] || 'Warrior'}
-              </div>
-              {(() => {
-                const { title } = getLevelFromXP((member as any)?.totalPoints || 0);
-                return (
-                  <div style={{ fontSize: 11, color: '#C8A24C', fontWeight: 600 }}>
-                    {title} · {((member as any)?.totalPoints || 0).toLocaleString()} XP
-                  </div>
-                );
-              })()}
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Streak freeze controls */}
       {freezeAvailable && (
