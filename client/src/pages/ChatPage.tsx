@@ -980,6 +980,18 @@ function MessageBubble({ msg, myName }: { msg: ChatMessage; myName: string }) {
         <span style={{ fontSize: 12, fontWeight: 700, color: rank.color }}>
           {msg.sender}
         </span>
+        {/* Belt + Level chip */}
+        <div style={{
+          display: 'inline-flex', alignItems: 'center', gap: 3,
+          padding: '1px 6px', borderRadius: 999,
+          background: `${getBeltColor(msg.senderBelt || 'white')}18`,
+          border: `1px solid ${getBeltColor(msg.senderBelt || 'white')}35`,
+        }}>
+          <div style={{ width: 6, height: 6, borderRadius: '50%', background: getBeltColor(msg.senderBelt || 'white'), flexShrink: 0 }} />
+          <span style={{ fontSize: 9, fontWeight: 700, color: getBeltColor(msg.senderBelt || 'white'), letterSpacing: '0.05em' }}>
+            LV{getActualLevel(beltToMinXP(msg.senderBelt || 'white', msg.senderRole || ''))}
+          </span>
+        </div>
         <BeltIcon belt={msg.senderBelt || 'white'} width={32} style={{ flexShrink: 0 }} />
         {isCoachMsg && (
           <span style={{ fontSize: 8, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", padding: "1px 5px", borderRadius: 4, backgroundColor: `${GOLD}18`, color: GOLD, border: `1px solid ${GOLD}30`, display: "flex", alignItems: "center", gap: 2 }}>

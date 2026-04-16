@@ -125,6 +125,7 @@ export default function BeltJourneyPage() {
   const [showAdd, setShowAdd] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [swipedId, setSwipedId] = useState<string | null>(null);
+  const [ceremonBelt, setCeremonyBelt] = useState<string | null>(null);
   const [newBelt, setNewBelt] = useState("white");
   const [newStripes, setNewStripes] = useState(0);
   const [newDate, setNewDate] = useState(() => new Date().toISOString().split("T")[0]);
@@ -192,6 +193,10 @@ export default function BeltJourneyPage() {
     setPromotions(prev => [...prev, promo].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()));
     setCelebrateId(promo.id);
     setTimeout(() => setCelebrateId(null), 1500);
+    // Belt ceremony overlay
+    setCeremonyBelt(newBelt);
+    // Haptic championship rhythm
+    (() => { try { navigator.vibrate?.([80, 400, 80, 150, 40, 80, 40]); } catch {} })();
     setSubmitting(false);
     resetForm();
   };
@@ -547,6 +552,42 @@ export default function BeltJourneyPage() {
           </div>
         </div>
       )}
+
+      {/* Belt ceremony overlay */}
+      {ceremonBelt && (() => {
+        const bColor = getBeltColor(ceremonBelt);
+        return (
+          <div
+            onClick={() => setCeremonyBelt(null)}
+            style={{
+              position: 'fixed', inset: 0, zIndex: 10001,
+              background: 'rgba(0,0,0,0.95)',
+              display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+              gap: 24, textAlign: 'center', padding: 40,
+              animation: 'badge-ceremony-enter 400ms cubic-bezier(0.34,1.56,0.64,1) both',
+            }}
+          >
+            <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.25em', textTransform: 'uppercase', color: bColor, marginBottom: 8 }}>
+              New Promotion
+            </div>
+            <div style={{ animation: 'badge-ceremony-badge-in 500ms cubic-bezier(0.34,1.56,0.64,1) 200ms both', transform: 'scale(0)' }}>
+              <BeltIcon belt={ceremonBelt} stripes={0} width={180} />
+            </div>
+            <div style={{ fontSize: 28, fontWeight: 900, color: bColor, animation: 'badge-ceremony-text-in 400ms ease 500ms both', opacity: 0 }}>
+              {BELT_LABELS[ceremonBelt] || ceremonBelt}
+            </div>
+            <div style={{ fontSize: 14, color: '#888', animation: 'badge-ceremony-text-in 400ms ease 650ms both', opacity: 0 }}>
+              Submitted for coach approval. Oss!
+            </div>
+            <button
+              onClick={e => { e.stopPropagation(); setCeremonyBelt(null); }}
+              style={{ marginTop: 8, padding: '12px 32px', borderRadius: 12, background: bColor, color: '#000', fontWeight: 800, fontSize: 16, border: 'none', cursor: 'pointer', letterSpacing: '0.05em', animation: 'badge-ceremony-text-in 400ms ease 800ms both', opacity: 0 }}
+            >
+              OSS!
+            </button>
+          </div>
+        );
+      })()}
     </div>
   );
 }

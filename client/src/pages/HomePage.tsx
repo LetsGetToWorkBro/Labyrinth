@@ -220,6 +220,7 @@ export default function HomePage() {
 
   // ─── Home loading skeleton state ─────────────────────────────────
   const [homeLoading, setHomeLoading] = useState(true);
+  const [checkinPhase, setCheckinPhase] = useState<'idle' | 'pressing' | 'success' | 'done'>('idle');
   const [homeLoadSlow, setHomeLoadSlow] = useState(false);
 
   // ─── Stale-while-revalidate home cache ─────────────────────────
@@ -666,7 +667,7 @@ export default function HomePage() {
           checkingInRef.current = false;
           return;
         }
-      } catch { checkingInRef.current = false; }
+      } catch { checkingInRef.current = false; setCheckinPhase('idle'); }
     }
 
     // Same logic as SchedulePage handleCheckIn
@@ -694,6 +695,10 @@ export default function HomePage() {
 
     // Trigger confetti
     triggerConfetti();
+
+    // Morph check-in button to success state
+    setCheckinPhase('success');
+    setTimeout(() => setCheckinPhase('done'), 1500);
 
     // Show success toast
     showPointsToast(10);
@@ -1298,26 +1303,56 @@ export default function HomePage() {
             {nextClass.isToday && (() => {
               const alreadyCheckedIn = checkedInClasses.includes(nextClass.name || '');
               return (
-                <button
-                  data-checkin-btn
-                  onClick={() => !alreadyCheckedIn && handleHomeCheckIn(nextClass)}
-                  disabled={alreadyCheckedIn}
-                  style={{
-                    flexShrink: 0, padding: '10px 14px', borderRadius: 10,
-                    background: alreadyCheckedIn ? '#333' : '#C8A24C',
-                    border: 'none',
-                    color: alreadyCheckedIn ? '#666' : '#000',
-                    fontWeight: 700, fontSize: 13,
-                    cursor: alreadyCheckedIn ? 'default' : 'pointer',
-                    display: 'flex', flexDirection: 'row', alignItems: 'center', gap: 5,
-                    opacity: alreadyCheckedIn ? 0.6 : 1,
-                  }}
-                >
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                    <polyline points="20 6 9 17 4 12"/>
-                  </svg>
-                  <span style={{ fontSize: 12, fontWeight: 700 }}>{alreadyCheckedIn ? 'Done' : 'Check In'}</span>
-                </button>
+                <div style={{ position: 'relative' }}>
+                  {/* Gold shimmer sweep on success */}
+                  {checkinPhase === 'success' && (
+                    <div style={{
+                      position: 'absolute', inset: 0, borderRadius: 10,
+                      background: 'linear-gradient(90deg, transparent 0%, rgba(200,162,76,0.3) 50%, transparent 100%)',
+                      backgroundSize: '200% 100%',
+                      animation: 'checkin-shimmer 600ms ease-out 400ms both',
+                      pointerEvents: 'none', zIndex: 1,
+                    }}/>
+                  )}
+                  <button
+                    data-checkin-btn
+                    data-phase={checkinPhase}
+                    onMouseDown={() => !alreadyCheckedIn && checkinPhase === 'idle' && setCheckinPhase('pressing')}
+                    onTouchStart={() => !alreadyCheckedIn && checkinPhase === 'idle' && setCheckinPhase('pressing')}
+                    onClick={() => {
+                      if (alreadyCheckedIn || checkinPhase !== 'idle' && checkinPhase !== 'pressing') return;
+                      setCheckinPhase('pressing');
+                      handleHomeCheckIn(nextClass);
+                    }}
+                    disabled={alreadyCheckedIn || checkinPhase === 'success' || checkinPhase === 'done'}
+                    style={{
+                      flexShrink: 0, padding: '10px 14px', borderRadius: 10,
+                      background: alreadyCheckedIn || checkinPhase === 'success' || checkinPhase === 'done' ? '#333' : '#C8A24C',
+                      border: 'none',
+                      color: alreadyCheckedIn ? '#666' : '#000',
+                      fontWeight: 700, fontSize: 13,
+                      cursor: alreadyCheckedIn ? 'default' : 'pointer',
+                      display: 'flex', flexDirection: 'row', alignItems: 'center', gap: 5,
+                      opacity: alreadyCheckedIn ? 0.6 : 1,
+                      transform: checkinPhase === 'pressing' ? 'scale(0.95) translateY(1px)' : checkinPhase === 'success' ? 'scale(1.02)' : 'scale(1)',
+                      transition: 'transform 120ms ease, background 200ms ease',
+                    }}
+                  >
+                    {checkinPhase === 'success' || checkinPhase === 'done' ? (
+                      <svg viewBox="0 0 24 24" width={16} height={16}>
+                        <polyline points="3,13 9,19 21,5" fill="none" stroke={alreadyCheckedIn ? '#666' : '#666'} strokeWidth={3} strokeLinecap="round" strokeLinejoin="round"
+                          style={{ strokeDasharray: 30, strokeDashoffset: 30, animation: 'checkin-draw 350ms ease-out 50ms forwards' }}/>
+                      </svg>
+                    ) : (
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                        <polyline points="20 6 9 17 4 12"/>
+                      </svg>
+                    )}
+                    <span style={{ fontSize: 12, fontWeight: 700 }}>
+                      {alreadyCheckedIn || checkinPhase === 'done' ? 'Done' : checkinPhase === 'success' ? '✓' : 'Check In'}
+                    </span>
+                  </button>
+                </div>
               );
             })()}
           </div>
@@ -1387,7 +1422,7 @@ export default function HomePage() {
           <span className="streak-icon" style={{
             display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
             color: '#C8A24C',
-            ...(streakCount > 0 ? { animation: 'flamePulse 2s ease-in-out infinite' } : {}),
+            ...(streakCount > 0 ? { animation: 'flame-idle 2.4s ease-in-out infinite' } : {}),
           }}>
             <svg width="24" height="24" viewBox="0 0 24 24" fill="#C8A24C" stroke="none">
               <path d="M12 2c0 0-5 5.5-5 10a5 5 0 0 0 10 0C17 7.5 12 2 12 2zm0 15a3 3 0 0 1-3-3c0-2.5 3-6 3-6s3 3.5 3 6a3 3 0 0 1-3 3z"/>
