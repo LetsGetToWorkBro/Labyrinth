@@ -50,10 +50,10 @@ const HOUSE_RULES = [
   { emoji: "📱", text: "No phone calls or loud music inside the sauna" },
   { emoji: "💧", text: "Stay hydrated — drink water before and after your session" },
   { emoji: "🛀", text: "Wipe down your spot when you're done" },
-  { emoji: "⚠️", text: "If you feel dizzy or unwell, exit immediately" },
+  { emoji: <WarningIcon size={14} color="#FF6B6B" />, text: "If you feel dizzy or unwell, exit immediately" },
   { emoji: "🔇", text: "Keep conversation low — respect others' quiet time" },
   { emoji: "⏰", text: "Limit sessions during peak hours so everyone gets a turn" },
-  { emoji: "🔥", text: "Recommended session: 15–20 minutes" },
+  { emoji: <FireIcon size={14} color="#E8660C" />, text: "Recommended session: 15–20 minutes" },
 ];
 
 // ── Session Timer Helpers ─────────────────────────────────────────────────────
@@ -458,7 +458,7 @@ export default function SaunaPage() {
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
               {HOUSE_RULES.map((rule, i) => (
                 <div key={i} style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
-                  <span style={{ fontSize: 14, flexShrink: 0, lineHeight: 1.6 }}>{rule.emoji}</span>
+                  <span style={{ flexShrink: 0, display: "inline-flex", alignItems: "center" }}>{rule.emoji}</span>
                   <span style={{ fontSize: 12, color: "#999", lineHeight: 1.6 }}>{rule.text}</span>
                 </div>
               ))}

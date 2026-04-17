@@ -302,7 +302,7 @@ function GamesHub({ stats, rank, nextRank, onPlay, onStartGame, showDifficulty, 
           {/* Stats row */}
           <div style={{ margin: '0 16px 12px', background: '#111', borderRadius: 12, padding: '10px 16px', display: 'flex', justifyContent: 'space-around', border: '1px solid #1A1A1A' }}>
             <StatItem label="Win Rate"    value={stats.wins + stats.losses > 0 ? `${Math.round(stats.wins / (stats.wins + stats.losses) * 100)}%` : '—'} />
-            <StatItem label="Best Streak" value={stats.bestStreak > 0 ? `🔥 ${stats.bestStreak}` : '0'} />
+            <StatItem label="Best Streak" value={stats.bestStreak > 0 ? stats.bestStreak.toString() : '0'} />
             <StatItem label="Rank"        value={rank.emoji} />
           </div>
 

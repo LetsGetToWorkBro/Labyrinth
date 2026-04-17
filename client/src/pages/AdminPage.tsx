@@ -9,10 +9,10 @@ import { EmptyState, SkeletonList, ErrorState as PageErrorState } from '@/compon
  * Secondary access: Ctrl+Shift+A keyboard shortcut (see App.tsx).
  *
  * Tabs:
- *   📊 Dashboard  — live KPIs from getDashboard
- *   👥 Members    — searchable table, inline belt/status edit
- *   📅 Trials     — upcoming trial bookings feed
- *   💬 Notes      — per-member comms & notes
+ *   [Dashboard]  — live KPIs from getDashboard
+ *   [Members]    — searchable table, inline belt/status edit
+ *   [Trials]     — upcoming trial bookings feed
+ *   [Notes]      — per-member comms & notes
  */
 
 import { useState, useEffect, useCallback, useRef } from "react";

@@ -1250,7 +1250,7 @@ export default function HomePage() {
       const classes = stats.classesAttended || 0;
       const achMilestones = [
         { key: 'ten_classes', label: 'Mat Initiate', need: Math.max(0, 10 - classes), unit: 'classes', icon: '🥋' },
-        { key: 'thirty_classes', label: 'Mat Warrior', need: Math.max(0, 30 - classes), unit: 'classes', icon: '⚔️' },
+        { key: 'thirty_classes', label: 'Mat Warrior', need: Math.max(0, 30 - classes), unit: 'classes', icon: <SwordsIcon size={16} color="#C8A24C" /> as React.ReactNode },
         { key: 'hundred_classes', label: 'Century Club', need: Math.max(0, 100 - classes), unit: 'classes', icon: '💯' },
       ];
       const nearestAch = achMilestones
@@ -1261,7 +1261,7 @@ export default function HomePage() {
       if (nearestAch && nearestAch.need < xpClassesEquivalent) {
         return { type: 'achievement' as const, label: nearestAch.label, need: nearestAch.need, unit: nearestAch.unit, icon: nearestAch.icon, xpToNext: xpNeeded, nextLevel: actualLvl + 1, nextTitle };
       }
-      return { type: 'xp' as const, label: nextTitle, need: xpNeeded, unit: 'XP', icon: '⚡', xpToNext: xpNeeded, nextLevel: actualLvl + 1, nextTitle };
+      return { type: 'xp' as const, label: nextTitle, need: xpNeeded, unit: 'XP', icon: <BoltIcon size={16} color="#C8A24C" /> as React.ReactNode, xpToNext: xpNeeded, nextLevel: actualLvl + 1, nextTitle };
     } catch { return null; }
   })();
 
@@ -2251,7 +2251,7 @@ export default function HomePage() {
                   <div style={{
                     width: 34, height: 34, borderRadius: 9, flexShrink: 0,
                     background: 'rgba(200,162,76,0.08)', border: '1px solid rgba(200,162,76,0.15)',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
                   }}>
                     {nextMilestoneData.icon}
                   </div>

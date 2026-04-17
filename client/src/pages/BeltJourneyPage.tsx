@@ -91,7 +91,7 @@ function RoadConnector({ fromBelt, toBelt, months, avgMonths }: { fromBelt: stri
         color: isEarly ? '#4CAF80' : '#555',
         letterSpacing: '0.06em',
       }}>
-        {months}mo {isEarly ? '· early ⚡' : ''}
+        {months}mo {isEarly ? <><span style={{marginLeft:2}}>· early </span><BoltIcon size={9} color="#4CAF80" style={{verticalAlign:'middle'}} /></> : ''}
       </div>
     </div>
   );
