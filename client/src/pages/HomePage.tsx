@@ -1,4 +1,4 @@
-import { FireIcon, CheckCircleFilledIcon, CalendarSparkIcon, MegaphoneIcon, TrophyIcon, StarIcon } from "@/components/icons/LbjjIcons";
+import { FireIcon, CheckCircleFilledIcon, CalendarSparkIcon, MegaphoneIcon, TrophyIcon, StarIcon, BoltIcon, GoldMedalIcon, SilverMedalIcon, ShieldIcon, SwordsIcon } from "@/components/icons/LbjjIcons";
 import { useAuth } from "@/lib/auth-context";
 import type { FamilyMember, PaymentCard } from "@/lib/api";
 import { beltSavePromotion, gasCall, getLeaderboard, getLeaderboardFresh, getMemberData, cachedGasCall, saveMemberStats, syncAchievements } from "@/lib/api";
@@ -1433,7 +1433,7 @@ export default function HomePage() {
               border: `1px solid ${isGameDay ? 'rgba(200,162,76,0.3)' : isPerfectWeek ? 'rgba(255,215,0,0.25)' : 'rgba(200,162,76,0.2)'}`,
               animation: isGameDay || isPerfectWeek ? 'xp-pulse 2s ease-in-out infinite' : undefined,
             }}>
-              <span style={{ fontSize: 9 }}>{isGameDay ? '⚔️' : isPerfectWeek ? '🏆' : comboMultiplier >= 3 ? '🔥' : '⚡'}</span>
+              <span style={{ display: 'inline-flex', alignItems: 'center' }}>{isGameDay ? <SwordsIcon size={10} /> : isPerfectWeek ? <TrophyIcon size={10} /> : comboMultiplier >= 3 ? <FireIcon size={10} /> : <BoltIcon size={10} />}</span>
               <span style={{ fontSize: 9, fontWeight: 800, letterSpacing: '0.12em', color: isGameDay ? '#C8A24C' : isPerfectWeek ? '#FFD700' : '#C8A24C' }}>
                 {narrative.accent}
               </span>
@@ -1452,9 +1452,9 @@ export default function HomePage() {
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 12 }}>
             {effectiveStreak > 0 && (
               <a href="/#/history" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 5 }}>
-                <span style={{ fontSize: 13, animation: 'flame-idle 2.4s ease-in-out infinite' }}>🔥</span>
+                <span style={{ display: 'inline-flex', alignItems: 'center', animation: 'flame-idle 2.4s ease-in-out infinite' }}><FireIcon size={13} /></span>
                 <span style={{ fontSize: 12, fontWeight: 700, color: '#C8A24C' }}>{effectiveStreak}-week streak</span>
-                {streakFreezeActive && <span style={{ fontSize: 11 }}>🛡️</span>}
+                {streakFreezeActive && <span style={{ display: 'inline-flex', alignItems: 'center' }}><ShieldIcon size={11} /></span>}
               </a>
             )}
             {comboMultiplier > 1 && (
@@ -1802,7 +1802,7 @@ export default function HomePage() {
             <a href="/#/schedule" style={{ textDecoration: 'none', flex: 1 }}>
               {isGameDay && (
                 <div style={{ fontSize: 9, fontWeight: 800, letterSpacing: '0.15em', color: '#FFD700', textTransform: 'uppercase', marginBottom: 4, display: 'flex', alignItems: 'center', gap: 5 }}>
-                  <span style={{ animation: 'xp-pulse 1.5s ease-in-out infinite', display: 'inline-block' }}>⚔️</span> Game Day
+                  <span style={{ animation: 'xp-pulse 1.5s ease-in-out infinite', display: 'inline-flex', alignItems: 'center' }}><SwordsIcon size={12} /></span> Game Day
                 </div>
               )}
               <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', color: isGameDay ? '#C8A24C' : '#C8A24C', textTransform: 'uppercase' as const, marginBottom: 4 }}>
@@ -1953,7 +1953,7 @@ export default function HomePage() {
           <div style={{ flex: 1 }}>
             <div style={{ fontSize: 20, fontWeight: 700, color: '#C8A24C', lineHeight: 1, display: 'flex', alignItems: 'center', gap: 4 }}>
               {displayStreak}
-              {streakFreezeActive && <span style={{ fontSize: 14 }}>🛡️</span>}
+              {streakFreezeActive && <span style={{ display: 'inline-flex', alignItems: 'center' }}><ShieldIcon size={14} /></span>}
             </div>
             <div style={{ fontSize: 11, color: '#666', marginTop: 2 }}>Week streak</div>
           </div>
@@ -2310,7 +2310,7 @@ export default function HomePage() {
             background: 'rgba(100,150,255,0.1)', border: '1px solid rgba(100,150,255,0.2)',
             animation: 'pulse 2s ease-in-out infinite',
           }}>
-            <span>⚡</span>
+            <span style={{ display: 'inline-flex', alignItems: 'center' }}><BoltIcon size={12} /></span>
             <span style={{ fontSize: 10, fontWeight: 700, color: 'rgba(130,170,255,0.9)', letterSpacing: '0.1em', textTransform: 'uppercase' }}>Flow State</span>
           </div>
         </div>
@@ -2365,7 +2365,7 @@ export default function HomePage() {
             background: 'rgba(200,162,76,0.08)', border: '1px solid rgba(200,162,76,0.2)',
             color: '#C8A24C', fontSize: 11, fontWeight: 600, cursor: 'pointer',
           }}>
-            🛡️ Freeze Streak (1 available this month)
+            <ShieldIcon size={12} style={{ verticalAlign: 'middle' }} /> Freeze Streak (1 available this month)
           </button>
         </div>
       )}
@@ -2890,7 +2890,7 @@ export default function HomePage() {
           >
             <div style={{ width: 36, height: 4, borderRadius: 2, background: '#2A2A2A', margin: '16px auto 20px' }} />
             <div style={{ padding: '0 20px' }}>
-              <div style={{ fontSize: 20, fontWeight: 800, color: '#F0F0F0', marginBottom: 4 }}>🏆 Milestones</div>
+              <div style={{ fontSize: 20, fontWeight: 800, color: '#F0F0F0', marginBottom: 4, display: 'flex', alignItems: 'center', gap: 6 }}><TrophyIcon size={20} /> Milestones</div>
               <div style={{ fontSize: 13, color: '#666', marginBottom: 24, lineHeight: 1.5 }}>
                 Milestones mark major moments in your journey. Each one represents real progress — sessions on the mat, consistency, and growth.
               </div>
@@ -2989,7 +2989,7 @@ export default function HomePage() {
                   background: dailyStreakTier === 'paragon' ? 'rgba(220,70,220,0.08)' : dailyStreakTier === 'legend' ? 'rgba(90,120,255,0.08)' : dailyStreakTier === 'diamond' ? 'rgba(60,200,200,0.08)' : 'rgba(255,100,10,0.08)',
                   border: `1px solid ${dailyStreakTier === 'paragon' ? 'rgba(220,70,220,0.3)' : dailyStreakTier === 'legend' ? 'rgba(90,120,255,0.3)' : dailyStreakTier === 'diamond' ? 'rgba(60,200,200,0.3)' : 'rgba(255,100,10,0.3)'}`,
                 }}>
-                  <div style={{ fontSize: 13, fontWeight: 700, color: '#F0F0F0' }}>🔥 Streak Power-Up Active</div>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: '#F0F0F0', display: 'flex', alignItems: 'center', gap: 6 }}><FireIcon size={13} /> Streak Power-Up Active</div>
                   <div style={{ fontSize: 12, color: '#888', marginTop: 4 }}>
                     Your {dailyStreakCount}-day streak unlocks a {dailyStreakTier === 'paragon' ? '3×' : dailyStreakTier === 'legend' ? '2×' : dailyStreakTier === 'diamond' ? '1.75×' : '1.5×'} XP multiplier on all training sessions.
                   </div>

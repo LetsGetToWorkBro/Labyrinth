@@ -1,4 +1,4 @@
-import { GoldMedalIcon, SilverMedalIcon, BronzeMedalIcon, FistIcon } from "@/components/icons/LbjjIcons";
+import { GoldMedalIcon, SilverMedalIcon, BronzeMedalIcon, FistIcon, TrophyIcon } from "@/components/icons/LbjjIcons";
 import { EmptyState } from '@/components/StateComponents';
 import { useState, useEffect, useMemo } from "react";
 import { ScreenHeader } from "@/components/ScreenHeader";
@@ -24,7 +24,7 @@ export default function CalendarPage() {
   const [resultPlace, setResultPlace] = useState<"Gold" | "Silver" | "Bronze" | "Competed">("Gold");
   const [resultNotes, setResultNotes] = useState("");
   const [resultSubmitting, setResultSubmitting] = useState(false);
-  const [celebration, setCelebration] = useState<{ emoji: string; place: string; name: string; tournament: string } | null>(null);
+  const [celebration, setCelebration] = useState<{ emoji: 'gold' | 'silver' | 'bronze' | 'trophy'; place: string; name: string; tournament: string } | null>(null);
 
   const [offline, setOffline] = useState(false);
 
@@ -196,9 +196,9 @@ export default function CalendarPage() {
     }
     // Show celebration for podium finishes
     if (resultPlace !== "Competed") {
-      const emojiMap: Record<string, string> = { Gold: "🥇", Silver: "🥈", Bronze: "🥉" };
+      const placeMap: Record<string, 'gold' | 'silver' | 'bronze' | 'trophy'> = { Gold: 'gold', Silver: 'silver', Bronze: 'bronze' };
       setCelebration({
-        emoji: emojiMap[resultPlace] || "🏆",
+        emoji: placeMap[resultPlace] || 'trophy',
         place: resultPlace.toUpperCase(),
         name: member.name?.split(" ")[0] || "You",
         tournament: logResultEvent.name,
@@ -634,7 +634,9 @@ export default function CalendarPage() {
               } as any} />
             );
           })}
-          <span style={{ fontSize: 72, animation: "celebratePulse 1s ease-in-out infinite" }}>{celebration.emoji}</span>
+          <span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", animation: "celebratePulse 1s ease-in-out infinite" }}>
+            {celebration.emoji === 'gold' ? <GoldMedalIcon size={72} /> : celebration.emoji === 'silver' ? <SilverMedalIcon size={72} /> : celebration.emoji === 'bronze' ? <BronzeMedalIcon size={72} /> : <TrophyIcon size={72} color="#FFD700" />}
+          </span>
           <h2 style={{ fontSize: 24, fontWeight: 800, color: "#C8A24C", margin: "16px 0 8px", textAlign: "center" }}>
             {celebration.name} won {celebration.place}!
           </h2>

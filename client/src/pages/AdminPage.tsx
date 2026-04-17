@@ -36,6 +36,7 @@ import {
   type MemberComm,
 } from "@/lib/api";
 import { getBeltColor } from "@/lib/constants";
+import { BeltDot } from "@/components/BeltBadge";
 import {
   LayoutDashboard, Users, CalendarDays, MessageSquare, Settings,
   RefreshCw, Search, ChevronDown, ChevronRight, Check,
@@ -190,7 +191,7 @@ function DashboardTab() {
       <Section title="Belt Distribution (All Members)">
         {Object.entries(beltCounts).map(([belt, count]) => (
           <div key={belt} style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
-            <div style={{ width: 10, height: 10, borderRadius: "50%", backgroundColor: getBeltColor(belt.toLowerCase()), flexShrink: 0 }} />
+            <BeltDot belt={belt} size={10} />
             <span style={{ fontSize: 12, color: "#999", flex: 1 }}>{belt}</span>
             <span style={{ fontSize: 12, fontWeight: 600, color: "#F0F0F0" }}>{count}</span>
           </div>
@@ -311,7 +312,7 @@ function MembersTab() {
       <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 14 }}>
         {Object.entries(beltDist).sort((a, b) => b[1] - a[1]).map(([belt, count]) => (
           <div key={belt} style={{ display: "flex", alignItems: "center", gap: 4, padding: "3px 8px", borderRadius: 6, backgroundColor: "#111", border: "1px solid #1A1A1A" }}>
-            <div style={{ width: 8, height: 8, borderRadius: "50%", backgroundColor: getBeltColor(belt.toLowerCase()) }} />
+            <BeltDot belt={belt} size={8} />
             <span style={{ fontSize: 11, color: "#999" }}>{belt}</span>
             <span style={{ fontSize: 11, fontWeight: 700, color: "#F0F0F0" }}>{count}</span>
           </div>
@@ -353,7 +354,7 @@ function MembersTab() {
                 {/* Row header */}
                 <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "11px 14px" }}>
                   {/* Belt dot */}
-                  <div style={{ width: 10, height: 10, borderRadius: "50%", backgroundColor: getBeltColor((m.Belt || "white").toLowerCase()), flexShrink: 0 }} />
+                  <BeltDot belt={m.Belt || "white"} size={10} />
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <p style={{ fontSize: 14, fontWeight: 600, color: "#F0F0F0", margin: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{m.Name}</p>
                     {m.Phone && (
@@ -718,7 +719,7 @@ function NotesTab() {
               onClick={() => selectMember(m)}
               style={{ display: "flex", alignItems: "center", gap: 10, padding: "11px 14px", backgroundColor: "#111", borderRadius: 12, border: "1px solid #1A1A1A", cursor: "pointer", textAlign: "left" }}
             >
-              <div style={{ width: 10, height: 10, borderRadius: "50%", backgroundColor: getBeltColor((m.Belt || "white").toLowerCase()), flexShrink: 0 }} />
+              <BeltDot belt={m.Belt || "white"} size={10} />
               <div style={{ flex: 1, minWidth: 0 }}>
                 <p style={{ fontSize: 13, fontWeight: 600, color: "#F0F0F0", margin: 0 }}>{m.Name}</p>
                 <p style={{ fontSize: 11, color: "#666", margin: "2px 0 0", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{m.Email}</p>

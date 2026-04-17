@@ -1,6 +1,6 @@
 import { CalendarSparkIcon, GamepadIcon, GoldMedalIcon, SilverMedalIcon, BronzeMedalIcon, TrophyIcon } from "@/components/icons/LbjjIcons";
 import { EmptyState } from '@/components/StateComponents';
-import { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { getLeaderboard, type LeaderboardEntry } from '@/lib/api';
 import { useAuth } from '@/lib/auth-context';
 import { ScreenHeader } from '@/components/ScreenHeader';
@@ -8,10 +8,10 @@ import { RefreshCw } from 'lucide-react';
 import { getActualLevel } from '@/lib/xp';
 
 const GOLD = '#C8A24C';
-const PODIUM_CONFIG: Record<number, { icon: string; borderColor: string; glow: string }> = {
-  1: { icon: '👑', borderColor: '#FFD700', glow: '0 0 20px rgba(255,215,0,0.25)' },
-  2: { icon: '🥈', borderColor: '#C0C0C0', glow: '0 0 12px rgba(192,192,192,0.15)' },
-  3: { icon: '🥉', borderColor: '#CD7F32', glow: '0 0 12px rgba(205,127,50,0.15)' },
+const PODIUM_CONFIG: Record<number, { icon: React.ReactNode; borderColor: string; glow: string }> = {
+  1: { icon: <TrophyIcon size={20} color="#FFD700" />, borderColor: '#FFD700', glow: '0 0 20px rgba(255,215,0,0.25)' },
+  2: { icon: <SilverMedalIcon size={20} />, borderColor: '#C0C0C0', glow: '0 0 12px rgba(192,192,192,0.15)' },
+  3: { icon: <BronzeMedalIcon size={20} />, borderColor: '#CD7F32', glow: '0 0 12px rgba(205,127,50,0.15)' },
 };
 
 
@@ -253,7 +253,7 @@ export default function LeaderboardPage() {
                 }}>
                   <div style={{ width: 36, textAlign: 'center', flexShrink: 0 }}>
                     {podiumCfg
-                      ? <span style={{ fontSize: 18 }}>{podiumCfg.icon}</span>
+                      ? <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>{podiumCfg.icon}</span>
                       : <span style={{ color: '#555', fontSize: 13, fontWeight: 700 }}>#{currentPos}</span>}
                     {rankDelta !== null && (
                       <div style={{ fontSize: 9, fontWeight: 700, color: rankDelta > 0 ? '#4CAF80' : '#E05555', lineHeight: 1, marginTop: 1 }}>

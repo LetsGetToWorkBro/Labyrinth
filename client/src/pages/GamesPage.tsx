@@ -1,4 +1,4 @@
-import { PawnIcon, TrophyIcon, FireIcon } from "@/components/icons/LbjjIcons";
+import { PawnIcon, TrophyIcon, FireIcon, GoldMedalIcon, SilverMedalIcon, BronzeMedalIcon } from "@/components/icons/LbjjIcons";
 import { EmptyState } from '@/components/StateComponents';
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { ChevronLeft } from 'lucide-react';
@@ -436,7 +436,7 @@ function GamesHub({ stats, rank, nextRank, onPlay, onStartGame, showDifficulty, 
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
               {leaderboard.map((entry, i) => {
-                const medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : null;
+                const medal = i === 0 ? <GoldMedalIcon size={20} aria-label="Gold" /> : i === 1 ? <SilverMedalIcon size={20} aria-label="Silver" /> : i === 2 ? <BronzeMedalIcon size={20} aria-label="Bronze" /> : null;
                 const isTop3 = i < 3;
                 return (
                   <div key={i} style={{
@@ -448,7 +448,7 @@ function GamesHub({ stats, rank, nextRank, onPlay, onStartGame, showDifficulty, 
                     {/* Rank number or medal */}
                     <div style={{ width: 28, textAlign: 'center', flexShrink: 0 }}>
                       {medal
-                        ? <span style={{ fontSize: 18 }}>{medal}</span>
+                        ? <span style={{ display: 'inline-flex', alignItems: 'center' }}>{medal}</span>
                         : <span style={{ color: '#555', fontSize: 13, fontWeight: 700 }}>#{entry.rank}</span>}
                     </div>
 

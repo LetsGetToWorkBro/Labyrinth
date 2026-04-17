@@ -1,9 +1,10 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { getMemberCheckIns } from '@/lib/api';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { Loader2, CalendarDays, Zap, Flame, Trophy, Star } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
 import { EmptyState, SkeletonStats } from '@/components/StateComponents';
+import { StarIcon, SwordsIcon, GoldMedalIcon, GrapplingIcon, TrophyIcon } from '@/components/icons/LbjjIcons';
 
 const GOLD = '#C8A24C';
 const VISIBLE_COUNT = 25;
@@ -22,14 +23,14 @@ function getBeltColor(belt?: string) {
 }
 
 // Class-type icon
-function classIcon(name: string): string {
+function classIcon(name: string): React.ReactNode {
   const n = (name || '').toLowerCase();
-  if (n.includes('nogi') || n.includes('no-gi')) return '🩱';
-  if (n.includes('kids') || n.includes('youth')) return '🌟';
-  if (n.includes('comp') || n.includes('advance')) return '⚔️';
-  if (n.includes('open') || n.includes('mat')) return '🟡';
-  if (n.includes('stripe') || n.includes('promotion')) return '🏅';
-  return '🥋';
+  if (n.includes('nogi') || n.includes('no-gi')) return <GrapplingIcon size={20} />;
+  if (n.includes('kids') || n.includes('youth')) return <StarIcon size={20} />;
+  if (n.includes('comp') || n.includes('advance')) return <SwordsIcon size={20} />;
+  if (n.includes('open') || n.includes('mat')) return <GrapplingIcon size={20} />;
+  if (n.includes('stripe') || n.includes('promotion')) return <GoldMedalIcon size={20} />;
+  return <GrapplingIcon size={20} />;
 }
 
 function formatDate(dateStr: string) {
@@ -228,7 +229,7 @@ export default function CheckInHistoryPage() {
           border: '1px solid #1A1A1A', textDecoration: 'none',
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <span style={{ fontSize: 20 }}>🏆</span>
+            <span style={{ display: 'inline-flex', alignItems: 'center' }}><TrophyIcon size={20} /></span>
             <div>
               <div style={{ fontSize: 13, fontWeight: 700, color: '#F0F0F0' }}>Class Leaderboard</div>
               <div style={{ fontSize: 11, color: '#555', marginTop: 1 }}>See where you rank this week</div>
@@ -280,7 +281,6 @@ export default function CheckInHistoryPage() {
                       width: 40, height: 40, borderRadius: 10, flexShrink: 0,
                       background: `${GOLD}10`, border: `1px solid ${GOLD}20`,
                       display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      fontSize: 18,
                     }}>
                       {icon}
                     </div>
