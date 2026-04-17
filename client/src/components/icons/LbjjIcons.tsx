@@ -685,3 +685,114 @@ export function PawnIcon(props: IconProps) {
     "0 0 24 24"
   );
 }
+
+/** Sun — 8 calibrated rays (cardinal longer, diagonal shorter). Morning greeting. */
+export function SunIcon(props: IconProps) {
+  return base(
+    props,
+    <>
+      <circle cx="12" cy="12" r="4" />
+      {/* Cardinal rays (longer) */}
+      <line x1="12" y1="2" x2="12" y2="4.5" />
+      <line x1="12" y1="19.5" x2="12" y2="22" />
+      <line x1="2" y1="12" x2="4.5" y2="12" />
+      <line x1="19.5" y1="12" x2="22" y2="12" />
+      {/* Diagonal rays (shorter) */}
+      <line x1="4.93" y1="4.93" x2="6.64" y2="6.64" />
+      <line x1="17.36" y1="17.36" x2="19.07" y2="19.07" />
+      <line x1="19.07" y1="4.93" x2="17.36" y2="6.64" />
+      <line x1="6.64" y1="17.36" x2="4.93" y2="19.07" />
+    </>,
+    "0 0 24 24"
+  );
+}
+
+/** Moon — crescent with small star detail upper-right for "night" at a glance. */
+export function MoonIcon(props: IconProps) {
+  return base(
+    props,
+    <>
+      <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
+      {/* Small star detail */}
+      <path d="M18.5 5.5l.5 1 1 .5-1 .5-.5 1-.5-1-1-.5 1-.5z" strokeWidth={1} />
+    </>,
+    "0 0 24 24"
+  );
+}
+
+/** Single sword — tapered blade, tsuba guard, wrapped grip, pommel. Game Day. */
+export function SwordIcon(props: IconProps) {
+  return base(
+    props,
+    <>
+      {/* Blade */}
+      <path d="M14.5 2.5L20 8l-9.5 9.5" strokeLinejoin="round" />
+      {/* Tip */}
+      <path d="M20 8l1.5 1.5-2 2L18 10z" strokeLinejoin="round" />
+      {/* Tsuba (guard) */}
+      <path d="M9.5 12.5l-1.5 1.5M7.5 12.5l-1 1" />
+      <path d="M8 13.5l2-2" />
+      {/* Grip + pommel */}
+      <path d="M5.5 16.5l-3 3" />
+      <circle cx="4" cy="19" r="1.2" fill="currentColor" stroke="none" />
+    </>,
+    "0 0 24 24"
+  );
+}
+
+/** Clock with hands near midnight — urgency. Countdown timer. */
+export function ClockCountdownIcon(props: IconProps) {
+  return base(
+    props,
+    <>
+      <circle cx="12" cy="12" r="9" />
+      {/* Tick marks at 12 o'clock */}
+      <line x1="12" y1="3.5" x2="12" y2="5" strokeWidth={2} />
+      {/* Hour hand pointing near 11 */}
+      <path d="M12 12L8.5 6" />
+      {/* Minute hand pointing near 12 */}
+      <path d="M12 12L12 7" />
+      {/* Center dot */}
+      <circle cx="12" cy="12" r="1.2" fill="currentColor" stroke="none" />
+    </>,
+    "0 0 24 24"
+  );
+}
+
+/** Shield with crystalline snowflake centered inside — streak freeze. */
+export function ShieldFreezeIcon(props: IconProps) {
+  return base(
+    props,
+    <>
+      <path d="M12 2l8 4v6c0 5-3.5 9.74-8 11-4.5-1.26-8-6-8-11V6l8-4z" />
+      {/* Snowflake — 3 spokes */}
+      <line x1="12" y1="8" x2="12" y2="16" />
+      <line x1="8.27" y1="10" x2="15.73" y2="14" />
+      <line x1="15.73" y1="10" x2="8.27" y2="14" />
+      {/* Branch nubs on center spoke */}
+      <line x1="10.5" y1="9.5" x2="12" y2="8" /><line x1="13.5" y1="9.5" x2="12" y2="8" />
+      <line x1="10.5" y1="14.5" x2="12" y2="16" /><line x1="13.5" y1="14.5" x2="12" y2="16" />
+    </>,
+    "0 0 24 24"
+  );
+}
+
+/** Gi kimono — proper collar + lapel construction. Replaces 🥋 emoji. */
+export function GiIcon(props: IconProps) {
+  return base(
+    props,
+    <>
+      {/* Body */}
+      <path d="M3 21V8l4-5h10l4 5v13" strokeLinejoin="round" />
+      {/* Left lapel */}
+      <path d="M7 3l5 7" />
+      {/* Right lapel */}
+      <path d="M17 3l-5 7" />
+      {/* Collar cross */}
+      <path d="M12 10v11" />
+      {/* Belt */}
+      <path d="M3 14h18" />
+    </>,
+    "0 0 24 24"
+  );
+}

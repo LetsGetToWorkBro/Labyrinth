@@ -1,4 +1,4 @@
-import { FireIcon, CheckCircleFilledIcon, CalendarSparkIcon, MegaphoneIcon, TrophyIcon, StarIcon, BoltIcon, GoldMedalIcon, SilverMedalIcon, ShieldIcon, SwordsIcon, AchievedIcon, ChartBarsIcon, GrapplingIcon } from "@/components/icons/LbjjIcons";
+import { FireIcon, CheckCircleFilledIcon, CalendarSparkIcon, MegaphoneIcon, TrophyIcon, StarIcon, BoltIcon, GoldMedalIcon, SilverMedalIcon, ShieldIcon, SwordsIcon, AchievedIcon, ChartBarsIcon, GrapplingIcon, SunIcon, MoonIcon, SwordIcon, ClockCountdownIcon, ShieldFreezeIcon, GiIcon } from "@/components/icons/LbjjIcons";
 import { useAuth } from "@/lib/auth-context";
 import type { FamilyMember, PaymentCard } from "@/lib/api";
 import { beltSavePromotion, gasCall, getLeaderboard, getLeaderboardFresh, getMemberData, cachedGasCall, saveMemberStats, syncAchievements } from "@/lib/api";
@@ -42,8 +42,11 @@ function showBadgeUnlock(badge: { key: string; label: string; icon: string; desc
   heading.textContent = 'New Badge Unlocked';
 
   const iconCircle = document.createElement('div');
-  iconCircle.style.cssText = `width:100px;height:100px;border-radius:50%;background:${color}22;border:3px solid ${color};display:flex;align-items:center;justify-content:center;margin:0 auto 20px;font-size:48px;box-shadow:0 0 30px ${color}66;animation:badgePulse 1s ease-in-out infinite alternate;`;
-  iconCircle.textContent = badge.icon;
+  iconCircle.style.cssText = `width:100px;height:100px;border-radius:50%;background:conic-gradient(${color} 0deg,transparent 60deg,${color} 180deg,transparent 240deg,${color} 360deg);padding:3px;display:flex;align-items:center;justify-content:center;margin:0 auto 20px;animation:badgePulse 1s ease-in-out infinite alternate,borderSpin 3s linear infinite;box-shadow:0 0 40px ${color}44;`;
+  const iconInner = document.createElement('div');
+  iconInner.style.cssText = `width:100%;height:100%;border-radius:50%;background:#1A1A1A;display:flex;align-items:center;justify-content:center;font-size:44px;`;
+  iconInner.textContent = badge.icon;
+  iconCircle.appendChild(iconInner);
 
   const labelEl = document.createElement('div');
   labelEl.style.cssText = 'font-size:22px;font-weight:800;color:#fff;margin-bottom:8px;';
@@ -68,6 +71,7 @@ function showBadgeUnlock(badge: { key: string; label: string; icon: string; desc
     @keyframes fadeInOverlay { from { opacity: 0; } to { opacity: 1; } }
     @keyframes slideUpCard { from { transform: translateY(40px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
     @keyframes badgePulse { from { box-shadow: 0 0 20px ${color}44; } to { box-shadow: 0 0 50px ${color}99; } }
+    @keyframes borderSpin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
   `;
   document.head.appendChild(style);
   document.body.appendChild(overlay);
@@ -77,70 +81,42 @@ function showBadgeUnlock(badge: { key: string; label: string; icon: string; desc
 }
 
 function triggerConfetti() {
+  // Burst ring
+  const ring = document.createElement('div');
+  const ringStyle = document.createElement('style');
+  ringStyle.textContent = `@keyframes burstRing{0%{transform:translate(-50%,-50%) scale(0);opacity:1}100%{transform:translate(-50%,-50%) scale(5);opacity:0}}`;
+  ring.style.cssText = `position:fixed;bottom:28%;left:50%;width:60px;height:60px;border-radius:50%;border:2px solid rgba(200,162,76,0.9);transform:translate(-50%,-50%) scale(0);pointer-events:none;z-index:9998;animation:burstRing 500ms var(--ease-out) forwards;`;
+  document.head.appendChild(ringStyle);
+  document.body.appendChild(ring);
+  setTimeout(() => { ring.remove(); ringStyle.remove(); }, 600);
+
   const container = document.createElement('div');
   container.style.cssText = 'position:fixed;inset:0;pointer-events:none;z-index:9999;overflow:hidden;';
   document.body.appendChild(container);
 
-  const colors = ['#C8A24C', '#E8C86C', '#FFD700', '#FFF8DC', '#ffffff'];
+  // ONE shared style tag for all confetti dots (uses CSS custom props)
+  const sharedStyle = document.createElement('style');
+  sharedStyle.textContent = `@keyframes confettiFly{0%{opacity:1}100%{opacity:0;transform:translate(var(--cx),var(--cy)) rotate(var(--cr));}}`;
+  document.head.appendChild(sharedStyle);
 
+  const colors = ['#C8A24C', '#E8C86C', '#FFD700', '#FFF8DC', '#ffffff'];
   for (let i = 0; i < 40; i++) {
     const dot = document.createElement('div');
     const size = Math.random() * 8 + 4;
-    const x = Math.random() * 100;
-    const duration = Math.random() * 800 + 600;
-    const delay = Math.random() * 300;
     const color = colors[Math.floor(Math.random() * colors.length)];
-    const endY = -(Math.random() * 60 + 40);
-    const endX = (Math.random() - 0.5) * 40;
-
-    dot.style.cssText = `
-      position:absolute; bottom:30%; left:${x}%;
-      width:${size}px; height:${size}px;
-      border-radius:${Math.random() > 0.5 ? '50%' : '2px'};
-      background:${color};
-      animation: confettiFly_${i} ${duration}ms ${delay}ms ease-out forwards;
-    `;
-
-    const style = document.createElement('style');
-    style.textContent = `
-      @keyframes confettiFly_${i} {
-        0% { transform: translate(0, 0) rotate(0deg); opacity: 1; }
-        100% { transform: translate(${endX}vw, ${endY}vh) rotate(${Math.random() * 720}deg); opacity: 0; }
-      }
-    `;
-    document.head.appendChild(style);
+    dot.style.cssText = `position:absolute;bottom:30%;left:${Math.random() * 100}%;width:${size}px;height:${size}px;border-radius:${Math.random() > 0.5 ? '50%' : '2px'};background:${color};--cx:${(Math.random() - 0.5) * 40}vw;--cy:${-(Math.random() * 60 + 40)}vh;--cr:${Math.random() * 720}deg;animation:confettiFly ${Math.random() * 800 + 600}ms ${Math.random() * 300}ms ease-out forwards;`;
     container.appendChild(dot);
   }
 
-  setTimeout(() => { container.remove(); }, 2000);
+  setTimeout(() => { container.remove(); sharedStyle.remove(); }, 2000);
 }
 
 function showPointsToast(points: number) {
   const el = document.createElement('div');
-  el.textContent = `+${points} pts`;
-  el.style.cssText = `
-    position: fixed;
-    bottom: 120px;
-    left: 50%;
-    transform: translateX(-50%);
-    background: rgba(200, 162, 76, 0.95);
-    color: #000;
-    font-weight: 700;
-    font-size: 18px;
-    padding: 8px 20px;
-    border-radius: 20px;
-    z-index: 9999;
-    pointer-events: none;
-    animation: pointsFloat 1.5s ease-out forwards;
-  `;
-
+  el.innerHTML = `<svg viewBox="0 0 16 16" width="14" height="14" fill="rgba(0,0,0,0.5)" style="flex-shrink:0"><path d="M8 1l1.5 3.5 3.5.5-2.5 2.5.6 3.5L8 9.5 4.9 11l.6-3.5L3 5l3.5-.5z"/></svg><span>+${points} pts</span>`;
   const style = document.createElement('style');
-  style.textContent = `
-    @keyframes pointsFloat {
-      0% { transform: translateX(-50%) translateY(0); opacity: 1; }
-      100% { transform: translateX(-50%) translateY(-60px); opacity: 0; }
-    }
-  `;
+  style.textContent = `@keyframes pointsFloat{0%{transform:translateX(-50%) translateY(0);opacity:1}100%{transform:translateX(-50%) translateY(-60px);opacity:0}}`;
+  el.style.cssText = `position:fixed;bottom:120px;left:50%;transform:translateX(-50%);display:flex;align-items:center;gap:6px;background:rgba(200,162,76,0.96);color:#000;font-weight:800;font-size:16px;padding:8px 18px;border-radius:24px;z-index:9999;pointer-events:none;box-shadow:0 4px 16px rgba(200,162,76,0.4),0 2px 4px rgba(0,0,0,0.3);animation:pointsFloat 1.5s ease-out forwards;`;
   document.head.appendChild(style);
   document.body.appendChild(el);
   setTimeout(() => { el.remove(); style.remove(); }, 1600);
@@ -792,6 +768,8 @@ export default function HomePage() {
 
     // Morph check-in button to success state
     setCheckinPhase('success');
+    const todayEl = document.getElementById('stat-today-value');
+    if (todayEl) { todayEl.classList.add('stat-pop'); setTimeout(() => todayEl.classList.remove('stat-pop'), 400); }
     setTimeout(() => setCheckinPhase('done'), 1500);
 
     // Play sounds
@@ -1091,6 +1069,7 @@ export default function HomePage() {
   // J1: Weekly report state
   const [showWeekReport, setShowWeekReport] = useState(false);
   const [weekReportDismissed, setWeekReportDismissed] = useState(false);
+  const [reportDismissing, setReportDismissing] = useState(false);
 
   const [stream, setStream] = useState<StreamStatus | null>(() => {
     try {
@@ -1391,7 +1370,7 @@ export default function HomePage() {
   const weekMultiplier = getWeekMultiplier(trainedCount);
 
   return (
-    <div className="app-content">
+    <div className={`app-content home-page-bg${isGameDay ? ' home-page-bg--gameday' : isFlowState ? ' home-page-bg--flow' : ''}`} style={{ minHeight: '100dvh' }}>
       <ScreenHeader
         title="Home"
         right={
@@ -1801,9 +1780,10 @@ export default function HomePage() {
           }}>
             <a href="/#/schedule" style={{ textDecoration: 'none', flex: 1 }}>
               {isGameDay && (
-                <div style={{ fontSize: 9, fontWeight: 800, letterSpacing: '0.15em', color: '#FFD700', textTransform: 'uppercase', marginBottom: 4, display: 'flex', alignItems: 'center', gap: 5 }}>
-                  <span style={{ animation: 'xp-pulse 1.5s ease-in-out infinite', display: 'inline-flex', alignItems: 'center' }}><SwordsIcon size={12} /></span> Game Day
-                </div>
+                <span className="gameday-label">
+                  <SwordIcon size={12} color="#FFD700" className="gameday-sword" />
+                  GAME DAY
+                </span>
               )}
               <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', color: isGameDay ? '#C8A24C' : '#C8A24C', textTransform: 'uppercase' as const, marginBottom: 4 }}>
                 {isGameDay ? nextClass.name : 'Next Class'}
@@ -1812,8 +1792,9 @@ export default function HomePage() {
               <div style={{ fontSize: 12, color: '#666' }}>{nextClass.dayLabel} · {formatClassTime(nextClass.time)}</div>
               {nextClass.instructor && <div style={{ fontSize: 11, color: '#555', marginTop: 1 }}>w/ {nextClass.instructor}</div>}
               {timeUntilClass && (
-                <div style={{ fontSize: 12, fontWeight: 600, color: isGameDay ? '#FFD700' : '#C8A24C', marginTop: 3 }}>
-                  ⏱ {timeUntilClass}
+                <div className="next-class-countdown" style={{ color: isGameDay ? '#FFD700' : 'var(--lbj-gold)' }}>
+                  <ClockCountdownIcon size={12} color="currentColor" aria-hidden="true" />
+                  <span style={{ fontVariantNumeric: 'tabular-nums' }}>{timeUntilClass}</span>
                 </div>
               )}
             </a>
@@ -1890,9 +1871,7 @@ export default function HomePage() {
                           style={{ strokeDasharray: 30, strokeDashoffset: 30, animation: 'checkin-draw 350ms ease-out 50ms forwards' }}/>
                       </svg>
                     ) : (
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                        <polyline points="20 6 9 17 4 12"/>
-                      </svg>
+                      <GiIcon size={14} color="currentColor" aria-hidden="true" />
                     )}
                     <span style={{ fontSize: 12, fontWeight: 700 }}>
                       {alreadyCheckedIn || checkinPhase === 'done' ? 'Done' : checkinPhase === 'success' ? 'OSS!' : 'Check In'}
@@ -1907,13 +1886,18 @@ export default function HomePage() {
 
       {/* Early check-in gate message */}
       {earlyCheckInMsg && (
-        <div style={{
-          margin: '-8px 20px 12px', padding: '10px 14px', borderRadius: 10,
-          background: 'rgba(200,162,76,0.08)', border: '1px solid rgba(200,162,76,0.2)',
-          display: 'flex', alignItems: 'center', gap: 10,
-        }}>
-          <span style={{ fontSize: 12, color: '#C8A24C', flex: 1, lineHeight: 1.4 }}>{earlyCheckInMsg}</span>
-          <button onClick={() => setEarlyCheckInMsg('')} style={{ background: 'none', border: 'none', color: '#555', cursor: 'pointer', fontSize: 14, padding: 0 }}>✕</button>
+        <div className="early-checkin-msg" role="alert">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none"
+               stroke="var(--lbj-warning)" strokeWidth="1.5" strokeLinecap="round" aria-hidden="true" style={{ flexShrink: 0, marginTop: 1 }}>
+            <path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/>
+            <line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
+          </svg>
+          <span style={{ flex: 1 }}>{earlyCheckInMsg}</span>
+          <button onClick={() => setEarlyCheckInMsg('')} aria-label="Dismiss" style={{ background: 'none', border: 'none', color: 'var(--lbj-text-faint)', cursor: 'pointer', padding: 0, display: 'flex', alignItems: 'center' }}>
+            <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+              <path d="M18 6L6 18M6 6l12 12"/>
+            </svg>
+          </button>
         </div>
       )}
 
@@ -2320,12 +2304,17 @@ export default function HomePage() {
           WEEKLY REPORT (Monday morning)
           ════════════════════════════════════════════════════ */}
       {showWeekReport && !weekReportDismissed && (
-        <div style={{
-          margin: '0 20px 16px', background: 'linear-gradient(135deg, #141414, #0F0F12)',
-          border: '1px solid #C8A24C25', borderRadius: 16, padding: 16,
-          animation: 'page-slide-in-right 400ms var(--ease-out) both', position: 'relative',
-        }} className="stagger-child reveal">
-          <button onClick={dismissReport} style={{ position: 'absolute', top: 12, right: 12, background: 'none', border: 'none', color: '#444', cursor: 'pointer', fontSize: 16 }}>✕</button>
+        <div style={{ margin: '0 20px 16px' }} className={`week-report-card stagger-child reveal${reportDismissing ? ' week-report-card--dismissing' : ''}`}>
+          <button
+            className="week-report-dismiss"
+            onClick={() => { setReportDismissing(true); setTimeout(dismissReport, 200); }}
+            aria-label="Dismiss weekly report"
+          >
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none"
+                 stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
+              <path d="M18 6L6 18M6 6l12 12"/>
+            </svg>
+          </button>
           <div style={{ fontSize: 9, fontWeight: 700, color: '#C8A24C', letterSpacing: '0.18em', textTransform: 'uppercase', marginBottom: 10 }}>Last Week</div>
           <div style={{ display: 'flex', gap: 20, marginBottom: 12 }}>
             <div style={{ textAlign: 'center' }}>
@@ -2355,17 +2344,13 @@ export default function HomePage() {
       {/* Streak freeze controls */}
       {freezeAvailable && (
         <div className="mx-5 mb-3" style={{ display: 'flex', justifyContent: 'center' }}>
-          <button onClick={() => {
+          <button className="freeze-btn" onClick={() => {
             const thisMonth = new Date().toISOString().slice(0, 7);
             localStorage.setItem('lbjj_streak_freeze_used', thisMonth);
             setFreezeAvailable(false); setFreezeUsed(true);
-          }} style={{
-            display: 'flex', alignItems: 'center', gap: 6,
-            padding: '6px 12px', borderRadius: 20,
-            background: 'rgba(200,162,76,0.08)', border: '1px solid rgba(200,162,76,0.2)',
-            color: '#C8A24C', fontSize: 11, fontWeight: 600, cursor: 'pointer',
           }}>
-            <ShieldIcon size={12} style={{ verticalAlign: 'middle' }} /> Freeze Streak (1 available this month)
+            <ShieldFreezeIcon size={14} color="#60A5FA" aria-hidden="true" />
+            Freeze Streak (1 available this month)
           </button>
         </div>
       )}
