@@ -242,7 +242,8 @@
   filter: grayscale(0.6);
 }
 .badge-unlocked {
-  box-shadow: 0 0 8px var(--color-gold-glow);
+  /* Persistent gold glow removed — the unlock animation handles the celebration.
+     Keep this selector so consumers can layer a hover/focus treatment later. */
 }
 
 /* ── Belt milestone overlay ── */

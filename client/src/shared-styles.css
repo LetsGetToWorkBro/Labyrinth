@@ -109,6 +109,15 @@
   --color-divider:         rgba(255, 255, 255, 0.08);
   --color-primary:         var(--lbj-gold);
 
+  /* Semantic status aliases — map to existing --lbj-* tokens.
+     Use these in new code; avoid introducing raw hex for status states. */
+  --color-success:         var(--lbj-success);
+  --color-success-muted:   var(--lbj-success-bg);
+  --color-warning:         var(--lbj-warning);
+  --color-warning-muted:   var(--lbj-warning-bg);
+  --color-error:           var(--lbj-error);
+  --color-error-muted:     var(--lbj-error-bg);
+
   /* --------------------------------------------------
      COLORS — Semantic (with paired backgrounds)
   -------------------------------------------------- */
@@ -221,7 +230,7 @@
   --shadow-card:  0 1px 3px rgba(0, 0, 0, 0.24),
                   0 0 0 1px rgba(255, 255, 255, 0.03) inset;
   --shadow-card-hover: 0 8px 24px rgba(0, 0, 0, 0.32),
-                       0 0 0 1px rgba(200, 162, 76, 0.10);
+                       0 0 0 1px rgba(255, 255, 255, 0.06);
   --shadow-modal: 0 24px 64px rgba(0, 0, 0, 0.55),
                   0 0 0 1px rgba(255, 255, 255, 0.05) inset;
   --shadow-gold:  0 4px 16px rgba(200, 162, 76, 0.15),
