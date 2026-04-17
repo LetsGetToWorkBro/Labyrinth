@@ -1,4 +1,4 @@
-// v2.1.0 — Apple Wallet integration
+// v2.1.1 — SVG audit complete
 import * as Sentry from "@sentry/react";
 import { NativeBiometric } from 'capacitor-native-biometric';
 import { Switch, Route, Router, useLocation } from "wouter";
