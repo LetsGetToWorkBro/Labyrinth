@@ -72,13 +72,9 @@ async function triggerBiometricPrompt(): Promise<'native' | 'webauthn' | 'failed
         }
       });
       if (assertion) return 'webauthn';
-    } catch (e: any) {
-      const msg = (e?.message || e?.name || '').toString().toLowerCase();
-      // NotAllowedError = user cancelled the browser dialog
-      if (msg.includes('notallowed') || msg.includes('cancel') || msg.includes('abort')) {
-        return 'failed';
-      }
-      // Any other error = not supported in this context — fall through
+    } catch {
+      // Any error (NotAllowed, Security, NotSupported, user cancel) = fail gracefully
+      return 'failed';
     }
   }
 
@@ -231,23 +227,32 @@ export default function LoginPage() {
   const handlePasskeyLogin = async () => {
     setPasskeyLoading(true);
     setLoginError("");
-    const result = await triggerBiometricPrompt();
-    if (result === 'failed') {
-      // Don't show error — just show password form gracefully
-      setShowPasswordForm(true);
-      setPasskeyLoading(false);
-      return;
-    }
-    // Native or WebAuthn proved identity — restore session
-    const savedEmail = localStorage.getItem('lbjj_passkey_email') || '';
-    if (savedEmail) {
-      const loginResult = await loginWithPasskey(savedEmail);
-      if (!loginResult.success) {
-        setEmail(savedEmail);
+    try {
+      const result = await triggerBiometricPrompt();
+      if (result === 'failed') {
         setShowPasswordForm(true);
-        setLoginError(loginResult.error || "Session expired. Please sign in with your password.");
+        setPasskeyLoading(false);
+        return;
       }
-    } else {
+      // Native or WebAuthn proved identity — restore session
+      const savedEmail = localStorage.getItem('lbjj_passkey_email') || '';
+      if (savedEmail) {
+        try {
+          const loginResult = await loginWithPasskey(savedEmail);
+          if (!loginResult.success) {
+            setEmail(savedEmail);
+            setShowPasswordForm(true);
+            setLoginError(loginResult.error || "Session expired. Please sign in with your password.");
+          }
+        } catch {
+          setEmail(savedEmail);
+          setShowPasswordForm(true);
+        }
+      } else {
+        setShowPasswordForm(true);
+      }
+    } catch {
+      // Any unexpected error — fall back to password form silently
       setShowPasswordForm(true);
     }
     setPasskeyLoading(false);
@@ -336,14 +341,26 @@ export default function LoginPage() {
         localStorage.removeItem('lbjj_saved_email');
       }
     } else {
-      const newAttempts = loginAttempts + 1;
-      setLoginAttempts(newAttempts);
-      if (newAttempts >= 5) {
-        setLockedUntil(Date.now() + 30_000);
-        setLoginAttempts(0);
-        setLoginError('Too many failed attempts. Please wait 30 seconds before trying again.');
+      // Distinguish network/server errors from bad credentials
+      const isNetworkErr = result.error && (
+        result.error.toLowerCase().includes('network') ||
+        result.error.toLowerCase().includes('timeout') ||
+        result.error.toLowerCase().includes('fetch') ||
+        result.error.toLowerCase().includes('connection') ||
+        result.error.toLowerCase().includes('failed to fetch')
+      );
+      if (isNetworkErr) {
+        setLoginError("Connection error. Check your internet and try again.");
       } else {
-        setLoginError("__CREDENTIAL_ERROR__");
+        const newAttempts = loginAttempts + 1;
+        setLoginAttempts(newAttempts);
+        if (newAttempts >= 5) {
+          setLockedUntil(Date.now() + 30_000);
+          setLoginAttempts(0);
+          setLoginError('Too many failed attempts. Please wait 30 seconds before trying again.');
+        } else {
+          setLoginError("__CREDENTIAL_ERROR__");
+        }
       }
       emailRef.current?.focus();
     }
