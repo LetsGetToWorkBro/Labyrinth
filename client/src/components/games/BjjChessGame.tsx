@@ -1,3 +1,10 @@
+import {
+  FireIcon, ShieldIcon, SwordsIcon, SweepIcon, BoltIcon, SubmissionIcon,
+  WarningIcon, StarIcon, GrapplingIcon, ScorpionIcon, HeelHookIcon,
+  FistIcon, EscapeIcon, PassIcon, MountIcon, TriangleIcon, ExhaustionIcon,
+  BerimsboloIcon, EagleIcon, SprawlIcon, StandingIcon, TrophyIcon,
+  GoldMedalIcon,
+} from "@/components/icons/LbjjIcons";
 import { useState, useEffect, useCallback } from "react";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -32,18 +39,19 @@ interface BJJMove {
 
 interface RoundPopup {
   message: string;
-  emoji: string;
+  emoji?: string;
+  icon?: string;
   type: "success" | "fail" | "critical" | "submission_win" | "submission_loss" | "exhaustion";
 }
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
 const BELT_RANKS: { rank: BeltRank; minWins: number; color: string; emoji: string }[] = [
-  { rank: "White Belt", minWins: 0, color: "#F0F0F0", emoji: "🤍" },
-  { rank: "Blue Belt", minWins: 3, color: "#3B6FD8", emoji: "💙" },
-  { rank: "Purple Belt", minWins: 6, color: "#8B4FBF", emoji: "💜" },
-  { rank: "Brown Belt", minWins: 10, color: "#8B5E3C", emoji: "🤎" },
-  { rank: "Black Belt", minWins: 15, color: "#555", emoji: "🖤" },
+  { rank: "White Belt", minWins: 0, color: "#F0F0F0", emoji: "white" },
+  { rank: "Blue Belt", minWins: 3, color: "#3B6FD8", emoji: "blue" },
+  { rank: "Purple Belt", minWins: 6, color: "#8B4FBF", emoji: "purple" },
+  { rank: "Brown Belt", minWins: 10, color: "#8B5E3C", emoji: "brown" },
+  { rank: "Black Belt", minWins: 15, color: "#555", emoji: "black" },
 ];
 
 function getRank(wins: number): typeof BELT_RANKS[0] {
@@ -66,13 +74,13 @@ function hasRank(wins: number, required: BeltRank): boolean {
 }
 
 const POSITION_EMOJIS: Record<Position, string> = {
-  "Standing": "🧍",
-  "Guard (Top)": "🛡️",
-  "Guard (Bottom)": "🛡️",
-  "Side Control": "⚔️",
-  "Mount": "🏔️",
-  "Back Mount": "🎯",
-  "Half Guard": "🤼",
+  "Standing": "standing",
+  "Guard (Top)": "shield",
+  "Guard (Bottom)": "shield",
+  "Side Control": "swords",
+  "Mount": "mount",
+  "Back Mount": "target",
+  "Half Guard": "grappling",
 };
 
 const DOMINANT_POSITIONS: Position[] = ["Side Control", "Mount", "Back Mount"];
@@ -88,83 +96,83 @@ function getPlayerMoves(position: Position, wins: number): BJJMove[] {
   switch (position) {
     case "Standing":
       moves.push(
-        { name: "Takedown", icon: "⚡", successRate: 65, resultOnSuccess: "Guard (Top)", resultOnFail: "Guard (Bottom)", staminaCost: 10 },
-        { name: "Pull Guard", icon: "🛡️", successRate: 85, resultOnSuccess: "Guard (Bottom)", resultOnFail: "Standing", staminaCost: 5 },
-        { name: "Sprawl", icon: "🦎", successRate: 70, resultOnSuccess: "Standing", resultOnFail: "Guard (Bottom)", staminaCost: 8 },
+        { name: "Takedown", icon: "bolt", successRate: 65, resultOnSuccess: "Guard (Top)", resultOnFail: "Guard (Bottom)", staminaCost: 10 },
+        { name: "Pull Guard", icon: "shield", successRate: 85, resultOnSuccess: "Guard (Bottom)", resultOnFail: "Standing", staminaCost: 5 },
+        { name: "Sprawl", icon: "sprawl", successRate: 70, resultOnSuccess: "Standing", resultOnFail: "Guard (Bottom)", staminaCost: 8 },
       );
       // Brown Belt special
       moves.push({
-        name: "Flying Triangle", icon: "🦅", successRate: 25, resultOnSuccess: "Guard (Bottom)", resultOnFail: "Guard (Bottom)",
+        name: "Flying Triangle", icon: "eagle", successRate: 25, resultOnSuccess: "Guard (Bottom)", resultOnFail: "Guard (Bottom)",
         staminaCost: 15, submissionChance: 25, submissionName: "Flying Triangle", requiredRank: "Brown Belt",
       });
       break;
 
     case "Guard (Top)":
       moves.push(
-        { name: "Pass Guard", icon: "➡️", successRate: 55, resultOnSuccess: "Side Control", resultOnFail: "Guard (Top)", staminaCost: 10 },
-        { name: "Stack Pass", icon: "💪", successRate: 50, resultOnSuccess: "Half Guard", resultOnFail: "Guard (Top)", staminaCost: 12 },
-        { name: "Stand Up", icon: "🧍", successRate: 70, resultOnSuccess: "Standing", resultOnFail: "Guard (Top)", staminaCost: 6 },
+        { name: "Pass Guard", icon: "pass", successRate: 55, resultOnSuccess: "Side Control", resultOnFail: "Guard (Top)", staminaCost: 10 },
+        { name: "Stack Pass", icon: "fist", successRate: 50, resultOnSuccess: "Half Guard", resultOnFail: "Guard (Top)", staminaCost: 12 },
+        { name: "Stand Up", icon: "standing", successRate: 70, resultOnSuccess: "Standing", resultOnFail: "Guard (Top)", staminaCost: 6 },
       );
       break;
 
     case "Guard (Bottom)":
       moves.push(
-        { name: "Sweep", icon: "🔄", successRate: 45, resultOnSuccess: "Guard (Top)", resultOnFail: "Guard (Bottom)", staminaCost: 10 },
-        { name: "Triangle", icon: "📐", successRate: 30, resultOnSuccess: "Guard (Bottom)", resultOnFail: "Guard (Bottom)",
+        { name: "Sweep", icon: "sweep", successRate: 45, resultOnSuccess: "Guard (Top)", resultOnFail: "Guard (Bottom)", staminaCost: 10 },
+        { name: "Triangle", icon: "triangle", successRate: 30, resultOnSuccess: "Guard (Bottom)", resultOnFail: "Guard (Bottom)",
           staminaCost: 12, submissionChance: 30, submissionName: "Triangle Choke" },
-        { name: "Stand Up", icon: "🧍", successRate: 60, resultOnSuccess: "Standing", resultOnFail: "Guard (Bottom)", staminaCost: 8 },
+        { name: "Stand Up", icon: "standing", successRate: 60, resultOnSuccess: "Standing", resultOnFail: "Guard (Bottom)", staminaCost: 8 },
       );
       // Purple Belt special
       moves.push({
-        name: "Berimbolo", icon: "🌀", successRate: 60, resultOnSuccess: "Back Mount", resultOnFail: "Guard (Bottom)",
+        name: "Berimbolo", icon: "berimbolo", successRate: 60, resultOnSuccess: "Back Mount", resultOnFail: "Guard (Bottom)",
         staminaCost: 14, requiredRank: "Purple Belt",
       });
       break;
 
     case "Side Control":
       moves.push(
-        { name: "Mount Advance", icon: "🏔️", successRate: 55, resultOnSuccess: "Mount", resultOnFail: "Half Guard", staminaCost: 8 },
-        { name: "Kimura", icon: "💀", successRate: 35, resultOnSuccess: "Side Control", resultOnFail: "Guard (Bottom)",
+        { name: "Mount Advance", icon: "mount", successRate: 55, resultOnSuccess: "Mount", resultOnFail: "Half Guard", staminaCost: 8 },
+        { name: "Kimura", icon: "submission", successRate: 35, resultOnSuccess: "Side Control", resultOnFail: "Guard (Bottom)",
           staminaCost: 10, submissionChance: 35, submissionName: "Kimura" },
-        { name: "Escape", icon: "↩️", successRate: 40, resultOnSuccess: "Guard (Bottom)", resultOnFail: "Side Control", staminaCost: 12 },
+        { name: "Escape", icon: "escape", successRate: 40, resultOnSuccess: "Guard (Bottom)", resultOnFail: "Side Control", staminaCost: 12 },
       );
       break;
 
     case "Mount":
       moves.push(
-        { name: "Armbar", icon: "💀", successRate: 45, resultOnSuccess: "Mount", resultOnFail: "Guard (Bottom)",
+        { name: "Armbar", icon: "submission", successRate: 45, resultOnSuccess: "Mount", resultOnFail: "Guard (Bottom)",
           staminaCost: 10, submissionChance: 45, submissionName: "Armbar" },
-        { name: "Choke", icon: "💀", successRate: 40, resultOnSuccess: "Mount", resultOnFail: "Half Guard",
+        { name: "Choke", icon: "submission", successRate: 40, resultOnSuccess: "Mount", resultOnFail: "Half Guard",
           staminaCost: 10, submissionChance: 40, submissionName: "Cross Collar Choke" },
-        { name: "S-Mount", icon: "🦂", successRate: 50, resultOnSuccess: "Mount", resultOnFail: "Side Control", staminaCost: 8 },
-        { name: "Escape", icon: "↩️", successRate: 35, resultOnSuccess: "Guard (Bottom)", resultOnFail: "Mount", staminaCost: 12 },
+        { name: "S-Mount", icon: "scorpion", successRate: 50, resultOnSuccess: "Mount", resultOnFail: "Side Control", staminaCost: 8 },
+        { name: "Escape", icon: "escape", successRate: 35, resultOnSuccess: "Guard (Bottom)", resultOnFail: "Mount", staminaCost: 12 },
       );
       // Blue Belt special
       moves.push({
-        name: "Ezekiel Choke", icon: "🤜", successRate: 35, resultOnSuccess: "Mount", resultOnFail: "Half Guard",
+        name: "Ezekiel Choke", icon: "fist", successRate: 35, resultOnSuccess: "Mount", resultOnFail: "Half Guard",
         staminaCost: 10, submissionChance: 35, submissionName: "Ezekiel Choke", requiredRank: "Blue Belt",
       });
       break;
 
     case "Back Mount":
       moves.push(
-        { name: "RNC", icon: "💀", successRate: 55, resultOnSuccess: "Back Mount", resultOnFail: "Guard (Top)",
+        { name: "RNC", icon: "submission", successRate: 55, resultOnSuccess: "Back Mount", resultOnFail: "Guard (Top)",
           staminaCost: 10, submissionChance: 55, submissionName: "Rear Naked Choke" },
-        { name: "Armbar", icon: "💀", successRate: 40, resultOnSuccess: "Back Mount", resultOnFail: "Side Control",
+        { name: "Armbar", icon: "submission", successRate: 40, resultOnSuccess: "Back Mount", resultOnFail: "Side Control",
           staminaCost: 10, submissionChance: 40, submissionName: "Armbar from Back" },
-        { name: "Escape", icon: "↩️", successRate: 30, resultOnSuccess: "Guard (Bottom)", resultOnFail: "Back Mount", staminaCost: 14 },
+        { name: "Escape", icon: "escape", successRate: 30, resultOnSuccess: "Guard (Bottom)", resultOnFail: "Back Mount", staminaCost: 14 },
       );
       break;
 
     case "Half Guard":
       moves.push(
-        { name: "Pass to Side", icon: "➡️", successRate: 55, resultOnSuccess: "Side Control", resultOnFail: "Half Guard", staminaCost: 10 },
-        { name: "Recover Guard", icon: "🛡️", successRate: 50, resultOnSuccess: "Guard (Bottom)", resultOnFail: "Half Guard", staminaCost: 8 },
-        { name: "Sweep", icon: "🔄", successRate: 40, resultOnSuccess: "Guard (Top)", resultOnFail: "Half Guard", staminaCost: 10 },
+        { name: "Pass to Side", icon: "pass", successRate: 55, resultOnSuccess: "Side Control", resultOnFail: "Half Guard", staminaCost: 10 },
+        { name: "Recover Guard", icon: "shield", successRate: 50, resultOnSuccess: "Guard (Bottom)", resultOnFail: "Half Guard", staminaCost: 8 },
+        { name: "Sweep", icon: "sweep", successRate: 40, resultOnSuccess: "Guard (Top)", resultOnFail: "Half Guard", staminaCost: 10 },
       );
       // Black Belt special
       moves.push({
-        name: "Heel Hook", icon: "🦶", successRate: 45, resultOnSuccess: "Half Guard", resultOnFail: "Guard (Bottom)",
+        name: "Heel Hook", icon: "heelhook", successRate: 45, resultOnSuccess: "Half Guard", resultOnFail: "Guard (Bottom)",
         staminaCost: 12, submissionChance: 45, submissionName: "Heel Hook", requiredRank: "Black Belt",
       });
       break;
@@ -178,42 +186,42 @@ function getAIMoves(position: Position): BJJMove[] {
   switch (position) {
     case "Standing":
       return [
-        { name: "Takedown", icon: "⚡", successRate: 50, resultOnSuccess: "Guard (Top)", resultOnFail: "Standing", staminaCost: 10 },
-        { name: "Pull Guard", icon: "🛡️", successRate: 70, resultOnSuccess: "Guard (Bottom)", resultOnFail: "Standing", staminaCost: 5 },
+        { name: "Takedown", icon: "bolt", successRate: 50, resultOnSuccess: "Guard (Top)", resultOnFail: "Standing", staminaCost: 10 },
+        { name: "Pull Guard", icon: "shield", successRate: 70, resultOnSuccess: "Guard (Bottom)", resultOnFail: "Standing", staminaCost: 5 },
       ];
     case "Guard (Top)":
       return [
-        { name: "Pass Guard", icon: "➡️", successRate: 45, resultOnSuccess: "Side Control", resultOnFail: "Guard (Top)", staminaCost: 10 },
-        { name: "Stand Up", icon: "🧍", successRate: 60, resultOnSuccess: "Standing", resultOnFail: "Guard (Top)", staminaCost: 6 },
+        { name: "Pass Guard", icon: "pass", successRate: 45, resultOnSuccess: "Side Control", resultOnFail: "Guard (Top)", staminaCost: 10 },
+        { name: "Stand Up", icon: "standing", successRate: 60, resultOnSuccess: "Standing", resultOnFail: "Guard (Top)", staminaCost: 6 },
       ];
     case "Guard (Bottom)":
       return [
-        { name: "Sweep", icon: "🔄", successRate: 35, resultOnSuccess: "Guard (Top)", resultOnFail: "Guard (Bottom)", staminaCost: 10 },
-        { name: "Triangle", icon: "📐", successRate: 20, resultOnSuccess: "Guard (Bottom)", resultOnFail: "Guard (Bottom)",
+        { name: "Sweep", icon: "sweep", successRate: 35, resultOnSuccess: "Guard (Top)", resultOnFail: "Guard (Bottom)", staminaCost: 10 },
+        { name: "Triangle", icon: "triangle", successRate: 20, resultOnSuccess: "Guard (Bottom)", resultOnFail: "Guard (Bottom)",
           staminaCost: 12, submissionChance: 20, submissionName: "Triangle Choke" },
       ];
     case "Side Control":
       return [
-        { name: "Mount", icon: "🏔️", successRate: 40, resultOnSuccess: "Mount", resultOnFail: "Side Control", staminaCost: 8 },
-        { name: "Kimura", icon: "💀", successRate: 25, resultOnSuccess: "Side Control", resultOnFail: "Guard (Bottom)",
+        { name: "Mount", icon: "mount", successRate: 40, resultOnSuccess: "Mount", resultOnFail: "Side Control", staminaCost: 8 },
+        { name: "Kimura", icon: "submission", successRate: 25, resultOnSuccess: "Side Control", resultOnFail: "Guard (Bottom)",
           staminaCost: 10, submissionChance: 25, submissionName: "Kimura" },
       ];
     case "Mount":
       return [
-        { name: "Armbar", icon: "💀", successRate: 35, resultOnSuccess: "Mount", resultOnFail: "Guard (Bottom)",
+        { name: "Armbar", icon: "submission", successRate: 35, resultOnSuccess: "Mount", resultOnFail: "Guard (Bottom)",
           staminaCost: 10, submissionChance: 35, submissionName: "Armbar" },
-        { name: "Choke", icon: "💀", successRate: 30, resultOnSuccess: "Mount", resultOnFail: "Half Guard",
+        { name: "Choke", icon: "submission", successRate: 30, resultOnSuccess: "Mount", resultOnFail: "Half Guard",
           staminaCost: 10, submissionChance: 30, submissionName: "Cross Collar Choke" },
       ];
     case "Back Mount":
       return [
-        { name: "RNC", icon: "💀", successRate: 45, resultOnSuccess: "Back Mount", resultOnFail: "Guard (Top)",
+        { name: "RNC", icon: "submission", successRate: 45, resultOnSuccess: "Back Mount", resultOnFail: "Guard (Top)",
           staminaCost: 10, submissionChance: 45, submissionName: "Rear Naked Choke" },
       ];
     case "Half Guard":
       return [
-        { name: "Pass", icon: "➡️", successRate: 40, resultOnSuccess: "Side Control", resultOnFail: "Half Guard", staminaCost: 10 },
-        { name: "Sweep", icon: "🔄", successRate: 30, resultOnSuccess: "Guard (Top)", resultOnFail: "Half Guard", staminaCost: 10 },
+        { name: "Pass", icon: "pass", successRate: 40, resultOnSuccess: "Side Control", resultOnFail: "Half Guard", staminaCost: 10 },
+        { name: "Sweep", icon: "sweep", successRate: 30, resultOnSuccess: "Guard (Top)", resultOnFail: "Half Guard", staminaCost: 10 },
       ];
     default:
       return [];
@@ -235,6 +243,39 @@ const CRITICAL_BONUS = 25;
 const MOMENTUM_BONUS = 20;
 
 // ── Component ─────────────────────────────────────────────────────────────────
+
+
+// ─── Icon render helper ──────────────────────────────────────────────────────
+const ICON_SIZE = 20;
+function GameIcon({ id, size = ICON_SIZE }: { id: string; size?: number }) {
+  const s = size;
+  const c = "currentColor";
+  switch (id) {
+    case "bolt":       return <BoltIcon size={s} color="#F5C518" />;
+    case "shield":     return <ShieldIcon size={s} color={c} />;
+    case "sprawl":     return <SprawlIcon size={s} color={c} />;
+    case "eagle":      return <EagleIcon size={s} color={c} />;
+    case "pass":       return <PassIcon size={s} color={c} />;
+    case "fist":       return <FistIcon size={s} color={c} />;
+    case "standing":   return <StandingIcon size={s} color={c} />;
+    case "sweep":      return <SweepIcon size={s} color={c} />;
+    case "triangle":   return <TriangleIcon size={s} color={c} />;
+    case "berimbolo":  return <BerimsboloIcon size={s} color={c} />;
+    case "mount":      return <MountIcon size={s} color={c} />;
+    case "submission": return <SubmissionIcon size={s} color="#E05555" />;
+    case "escape":     return <EscapeIcon size={s} color={c} />;
+    case "scorpion":   return <ScorpionIcon size={s} color={c} />;
+    case "heelhook":   return <HeelHookIcon size={s} color={c} />;
+    case "swords":     return <SwordsIcon size={s} color={c} />;
+    case "grappling":  return <GrapplingIcon size={s} color={c} />;
+    case "exhaustion": return <ExhaustionIcon size={s} color="#E05555" />;
+    case "trophy":     return <TrophyIcon size={s} color="#C8A24C" />;
+    case "check":      return <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke="#4CAF80" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5"/></svg>;
+    case "x":          return <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke="#E05555" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6L6 18M6 6l12 12"/></svg>;
+    case "target":     return <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="1.5" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2" fill={c} stroke="none"/></svg>;
+    default:           return <span style={{ fontSize: s * 0.7 }}>•</span>;
+  }
+}
 
 export default function BjjChessGame({ onBack, onGameEnd }: Props) {
   // Game state
@@ -299,7 +340,7 @@ export default function BjjChessGame({ onBack, onGameEnd }: Props) {
         result: "loss", finisher: "Exhaustion Tap", rounds: round,
         playerStaminaLeft: 0, aiStaminaLeft: aiStamina, maxMomentum, type: "exhaustion",
       });
-      showPopup({ message: "You're gassed! Exhaustion tap!", emoji: "😵", type: "exhaustion" });
+      showPopup({ message: "You're gassed! Exhaustion tap!", icon: "exhaustion", type: "exhaustion" });
       onGameEnd?.("loss");
       setProcessing(false);
       return;
@@ -341,7 +382,7 @@ export default function BjjChessGame({ onBack, onGameEnd }: Props) {
         });
         showPopup({
           message: `${move.submissionName}! TAP TAP TAP!`,
-          emoji: "🏆",
+          icon: "trophy",
           type: "submission_win",
         });
         onGameEnd?.("win");
@@ -377,7 +418,7 @@ export default function BjjChessGame({ onBack, onGameEnd }: Props) {
           result: "win", finisher: "Opponent Exhaustion", rounds: round,
           playerStaminaLeft: newPlayerStamina, aiStaminaLeft: 0, maxMomentum, type: "exhaustion",
         });
-        showPopup({ message: "Opponent gassed out!", emoji: "💪", type: "submission_win" });
+        showPopup({ message: "Opponent gassed out!", icon: "fist", type: "submission_win" });
         onGameEnd?.("win");
         setProcessing(false);
         return;
@@ -397,7 +438,7 @@ export default function BjjChessGame({ onBack, onGameEnd }: Props) {
             result: "loss", finisher: aiMove.submissionName, rounds: round,
             playerStaminaLeft: newPlayerStamina, aiStaminaLeft: newAiStamina, maxMomentum, type: "submission",
           });
-          showPopup({ message: `Caught in ${aiMove.submissionName}!`, emoji: "💀", type: "submission_loss" });
+          showPopup({ message: `Caught in ${aiMove.submissionName}!`, icon: "submission", type: "submission_loss" });
           onGameEnd?.("loss");
           setProcessing(false);
           return;
@@ -425,11 +466,11 @@ export default function BjjChessGame({ onBack, onGameEnd }: Props) {
     if (playerSuccess) {
       showPopup({
         message: isCritical ? `CRITICAL ${move.name}! → ${newPos}` : `${move.name} → ${newPos}`,
-        emoji: isCritical ? "⚡" : "✅",
+        icon: isCritical ? "bolt" : "check",
         type: isCritical ? "critical" : "success",
       });
     } else {
-      showPopup({ message: `${move.name} defended!`, emoji: "❌", type: "fail" });
+      showPopup({ message: `${move.name} defended!`, icon: "x", type: "fail" });
     }
 
     setTimeout(() => {
@@ -512,7 +553,7 @@ export default function BjjChessGame({ onBack, onGameEnd }: Props) {
             </button>
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
               <span style={{ fontSize: 11, color: suddenDeath ? "#E05555" : "#666", fontWeight: suddenDeath ? 700 : 400 }}>
-                {suddenDeath ? "⚠️ SUDDEN DEATH" : `Round ${round}/${MAX_ROUNDS}`}
+                <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}>{suddenDeath ? <><WarningIcon size={13} color="#E05555" aria-hidden="true" /> SUDDEN DEATH</> : `Round ${round}/${MAX_ROUNDS}`}</span>
               </span>
               <span style={{
                 fontSize: 10, fontWeight: 700, padding: "2px 8px", borderRadius: 6,
@@ -549,7 +590,7 @@ export default function BjjChessGame({ onBack, onGameEnd }: Props) {
                 fontSize: 14, opacity: i < momentum ? 1 : 0.2,
                 filter: i < momentum ? "none" : "grayscale(1)",
                 transition: "all 0.3s",
-              }}>⭐</span>
+              }}><StarIcon size={14} color="#C8A24C" /></span>
             ))}
             {momentum >= 3 && (
               <span style={{ fontSize: 9, color: "#C8A24C", fontWeight: 700, marginLeft: 4, alignSelf: "center" }}>
@@ -581,7 +622,7 @@ export default function BjjChessGame({ onBack, onGameEnd }: Props) {
           transition: "border-color 0.3s",
         }}>
           <div style={{ fontSize: 44, marginBottom: 6, lineHeight: 1 }}>
-            {POSITION_EMOJIS[position] || "🥋"}
+            <GameIcon id={POSITION_EMOJIS[position] || "shield"} size={32} />
           </div>
           <div style={{
             fontSize: 22, fontWeight: 800, letterSpacing: 0.5, lineHeight: 1.2,
@@ -595,7 +636,7 @@ export default function BjjChessGame({ onBack, onGameEnd }: Props) {
             {position}
           </div>
           <div style={{ fontSize: 11, color: "#666", marginTop: 4 }}>
-            {isDominant(position) ? "⚔️ Dominant position" : "Neutral ground"}
+            <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>{isDominant(position) ? <><SwordsIcon size={13} color="#C8A24C" aria-hidden="true" /> Dominant position</> : "Neutral ground"}</span>
           </div>
         </div>
 
@@ -614,7 +655,9 @@ export default function BjjChessGame({ onBack, onGameEnd }: Props) {
               fontSize: 14, fontWeight: 700, display: "flex", alignItems: "center", gap: 6,
               color: popup.type === "success" || popup.type === "submission_win" || popup.type === "critical" ? "#C8A24C" : "#E05555",
             }}>
-              <span style={{ fontSize: 18 }}>{popup.emoji}</span>
+              <span style={{ fontSize: 18, display: "flex", alignItems: "center" }}>
+                {popup.icon ? <GameIcon id={popup.icon} size={20} /> : popup.emoji}
+              </span>
               {popup.message}
             </div>
           </div>
@@ -656,7 +699,7 @@ export default function BjjChessGame({ onBack, onGameEnd }: Props) {
                     {/* Top row */}
                     <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
                       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                        <span style={{ fontSize: 18 }}>{isLocked ? "🔒" : move.icon}</span>
+                        <span style={{ fontSize: 18, display: "flex", alignItems: "center" }}>{isLocked ? <svg width={20} height={20} viewBox="0 0 24 24" fill="none" stroke="#555" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg> : <GameIcon id={move.icon} />}</span>
                         <span style={{ fontSize: 14, fontWeight: 600, color: isLocked ? "#444" : "#F0F0F0" }}>
                           {move.name}
                         </span>
@@ -665,13 +708,13 @@ export default function BjjChessGame({ onBack, onGameEnd }: Props) {
                             fontSize: 9, fontWeight: 800, color: "#C8A24C",
                             background: "rgba(200,162,76,0.12)", padding: "2px 6px", borderRadius: 4,
                           }}>
-                            ⚡ FINISH
+                            FINISH
                           </span>
                         )}
                       </div>
                       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                         <span style={{ fontSize: 10, color: "#666", fontWeight: 600 }}>
-                          -{move.staminaCost} ⚡
+                          -{move.staminaCost} <BoltIcon size={11} color="#F5C518" aria-hidden="true" />
                         </span>
                         {!isLocked && (
                           <span style={{ fontSize: 14, fontWeight: 700, color: getBarColor(move.successRate) }}>
@@ -694,7 +737,7 @@ export default function BjjChessGame({ onBack, onGameEnd }: Props) {
                     {/* Locked label */}
                     {isLocked && move.requiredRank && (
                       <div style={{ fontSize: 10, color: "#555", marginTop: 2 }}>
-                        🔒 Unlock at {move.requiredRank}
+                        Unlock at {move.requiredRank}
                       </div>
                     )}
 

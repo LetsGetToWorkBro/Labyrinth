@@ -1,3 +1,4 @@
+import { GoldMedalIcon, StarIcon } from "@/components/icons/LbjjIcons";
 import { useState, useEffect, useMemo, useRef } from "react";
 import { useAuth } from "@/lib/auth-context";
 import { getActualLevel, getLevelFromXP } from "@/lib/xp";
@@ -273,8 +274,8 @@ export default function StatsPage() {
                   <div className="flex items-center gap-4 text-xs" style={{ color: "#999" }}>
                     <span>{a.wins}W - {a.losses}L</span>
                     <span>{a.winRate}% Win</span>
-                    {a.golds > 0 && <span style={{ color: "#C8A24C" }}>{a.golds} 🥇</span>}
-                    {a.rating > 0 && <span>⭐ {a.rating.toLocaleString()}</span>}
+                    {a.golds > 0 && <span style={{ color: "#C8A24C", display: "inline-flex", alignItems: "center", gap: 4 }}>{a.golds} <GoldMedalIcon size={15} aria-hidden="true" /></span>}
+                    {a.rating > 0 && <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}><StarIcon size={13} color="#C8A24C" aria-hidden="true" /> {a.rating.toLocaleString()}</span>}
                   </div>
                 </div>
                 {a.profileUrl && <ExternalLink size={14} style={{ color: "#444", flexShrink: 0 }} />}

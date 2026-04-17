@@ -1,7 +1,19 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 28">
-  <rect x="0" y="4" width="88" height="20" rx="2" fill="#F0F0F0"/>
-  <rect x="82" y="2" width="12" height="24" rx="1" fill="#1a1a1a"/>
-  <ellipse cx="94" cy="14" rx="6" ry="10" fill="#1a1a1a"/>
-  <path d="M94 4 Q100 4 102 8 L108 12 Q110 14 108 16 L102 20 Q100 24 94 24" fill="#1a1a1a" opacity="0.9"/>
-  <circle cx="97" cy="14" r="3.5" fill="none" stroke="#F0F0F0" stroke-width="1.5" opacity="0.6"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 28" role="img" aria-label="White belt">
+  <!-- Belt body -->
+  <rect x="0" y="5" width="84" height="18" rx="2" fill="#F0F0F0"/>
+  <!-- Belt body edge stitching -->
+  <line x1="3" y1="7" x2="81" y2="7" stroke="#D8D8D8" stroke-width="0.5" stroke-dasharray="3 2"/>
+  <line x1="3" y1="21" x2="81" y2="21" stroke="#D8D8D8" stroke-width="0.5" stroke-dasharray="3 2"/>
+  <!-- Center stripe texture -->
+  <rect x="0" y="12.5" width="84" height="3" fill="#E4E4E4" opacity="0.6"/>
+  <!-- Knot block -->
+  <rect x="80" y="3" width="16" height="22" rx="2" fill="#F0F0F0" stroke="#D0D0D0" stroke-width="0.8"/>
+  <!-- Knot fold lines -->
+  <line x1="84" y1="3" x2="84" y2="25" stroke="#D8D8D8" stroke-width="0.5"/>
+  <line x1="92" y1="3" x2="92" y2="25" stroke="#D8D8D8" stroke-width="0.5"/>
+  <!-- Black tip panel -->
+  <rect x="96" y="5" width="20" height="18" rx="1.5" fill="#1a1a1a"/>
+  <!-- Tip stitching -->
+  <line x1="98" y1="7" x2="114" y2="7" stroke="#333" stroke-width="0.5" stroke-dasharray="2 2"/>
+  <line x1="98" y1="21" x2="114" y2="21" stroke="#333" stroke-width="0.5" stroke-dasharray="2 2"/>
 </svg>

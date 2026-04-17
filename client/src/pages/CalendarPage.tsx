@@ -1,3 +1,4 @@
+import { GoldMedalIcon, SilverMedalIcon, BronzeMedalIcon, FistIcon } from "@/components/icons/LbjjIcons";
 import { useState, useEffect, useMemo } from "react";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { BeltDot } from "@/components/BeltBadge";
@@ -545,10 +546,10 @@ export default function CalendarPage() {
             <label style={{ display: "block", fontSize: 12, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.06em", color: "#666", marginBottom: 8 }}>Result</label>
             <div style={{ display: "flex", gap: 8, marginBottom: 16, flexWrap: "wrap" }}>
               {([
-                { value: "Gold", emoji: "🥇" },
-                { value: "Silver", emoji: "🥈" },
-                { value: "Bronze", emoji: "🥉" },
-                { value: "Competed", emoji: "💪" },
+                { value: "Gold", emoji: "gold" },
+                { value: "Silver", emoji: "silver" },
+                { value: "Bronze", emoji: "bronze" },
+                { value: "Competed", emoji: "fist" },
               ] as const).map(r => (
                 <button
                   key={r.value}
@@ -562,7 +563,7 @@ export default function CalendarPage() {
                     cursor: "pointer", textAlign: "center",
                   }}
                 >
-                  <span style={{ fontSize: 20, display: "block", marginBottom: 4 }}>{r.emoji}</span>
+                  <span style={{ fontSize: 20, display: "flex", justifyContent: "center", marginBottom: 4 }}>{r.emoji === "gold" ? <GoldMedalIcon size={24} /> : r.emoji === "silver" ? <SilverMedalIcon size={24} /> : r.emoji === "bronze" ? <BronzeMedalIcon size={24} /> : <FistIcon size={24} />}</span>
                   {r.value}
                 </button>
               ))}

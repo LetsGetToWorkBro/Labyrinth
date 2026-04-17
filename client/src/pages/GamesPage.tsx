@@ -1,3 +1,4 @@
+import { PawnIcon, TrophyIcon, FireIcon } from "@/components/icons/LbjjIcons";
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { ChevronLeft } from 'lucide-react';
 import logoImg from '@assets/maze-gold-md.png';
@@ -263,7 +264,7 @@ function GamesHub({ stats, rank, nextRank, onPlay, onStartGame, showDifficulty, 
               color: hubTab === t ? GOLD : '#666',
             }}
           >
-            {t === 'play' ? '♟️ Play' : '🏆 Leaderboard'}
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>{t === 'play' ? <><PawnIcon size={14} /> Play</> : <><TrophyIcon size={14} /> Leaderboard</>}</span>
           </button>
         ))}
       </div>
@@ -282,7 +283,7 @@ function GamesHub({ stats, rank, nextRank, onPlay, onStartGame, showDifficulty, 
                 <div style={{ color: rank.color, fontSize: 17, fontWeight: 700 }}>{rank.name}</div>
                 <div style={{ color: '#999', fontSize: 12, marginTop: 2 }}>
                   {stats.wins}W · {stats.losses}L · {stats.wins + stats.losses > 0 ? Math.round(stats.wins / (stats.wins + stats.losses) * 100) : 0}% win rate
-                  {stats.streak >= 2 && <span style={{ color: GOLD }}> · 🔥 {stats.streak}</span>}
+                  {stats.streak >= 2 && <span style={{ color: GOLD, display: 'inline-flex', alignItems: 'center', gap: 3 }}> · <FireIcon size={13} color={GOLD} aria-hidden="true" /> {stats.streak}</span>}
                 </div>
                 {nextRank && (
                   <div style={{ marginTop: 6 }}>

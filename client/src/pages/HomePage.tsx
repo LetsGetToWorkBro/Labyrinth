@@ -1,3 +1,4 @@
+import { FireIcon, CheckCircleFilledIcon, CalendarSparkIcon, MegaphoneIcon, TrophyIcon, StarIcon } from "@/components/icons/LbjjIcons";
 import { useAuth } from "@/lib/auth-context";
 import type { FamilyMember, PaymentCard } from "@/lib/api";
 import { beltSavePromotion, gasCall, getLeaderboard, getLeaderboardFresh, getMemberData, cachedGasCall, saveMemberStats, syncAchievements } from "@/lib/api";
@@ -2379,7 +2380,10 @@ export default function HomePage() {
       {nextTournament && tournamentDaysUntil <= 60 && (
         <div className="mx-5 mb-4">
           <div style={{ background: 'linear-gradient(135deg, #141414, #1A1A0A)', border: '1px solid rgba(200,162,76,0.19)', borderRadius: 14, padding: 16, position: 'relative' }}>
-            <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', color: '#C8A24C', textTransform: 'uppercase' as const, marginBottom: 6 }}>🏆 Upcoming Tournament</div>
+            <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', color: '#C8A24C', textTransform: 'uppercase' as const, marginBottom: 6, display: 'flex', alignItems: 'center', gap: 5 }}>
+                <TrophyIcon size={11} color="#C8A24C" aria-hidden="true" />
+                Upcoming Tournament
+              </div>
             <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10 }}>
               <div style={{ flex: 1 }}>
                 <div style={{ fontSize: 16, fontWeight: 700, color: '#F0F0F0', marginBottom: 4 }}>{nextTournament.name}</div>
@@ -2545,7 +2549,10 @@ export default function HomePage() {
       {pinnedAnnouncement && (
         <div className="mx-5 mb-4 stagger-child">
           <div style={{ background: '#111', borderRadius: 14, border: '1px solid #1A1A1A', padding: '12px 14px', borderLeft: '3px solid #C8A24C' }}>
-            <div style={{ fontSize: 10, fontWeight: 700, color: '#C8A24C', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 6 }}>📢 Announcement</div>
+            <div style={{ fontSize: 10, fontWeight: 700, color: '#C8A24C', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 6, display: 'flex', alignItems: 'center', gap: 5 }}>
+                <MegaphoneIcon size={11} color="#C8A24C" aria-hidden="true" />
+                Announcement
+              </div>
             <div style={{ fontSize: 13, color: '#CCC', lineHeight: 1.5 }}>{pinnedAnnouncement.message}</div>
           </div>
         </div>

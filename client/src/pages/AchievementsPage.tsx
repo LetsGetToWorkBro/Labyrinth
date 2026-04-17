@@ -1,3 +1,4 @@
+import { AchievedIcon, LockIcon } from "@/components/icons/LbjjIcons";
 import { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { useHashLocation } from 'wouter/use-hash-location';
@@ -338,7 +339,11 @@ export default function AchievementsPage() {
                 border: isSelectedEarned ? '1px solid rgba(76,175,128,0.3)' : '1px solid #222',
                 marginBottom: 12,
               }}>
-                {isSelectedEarned ? '✅ Achieved!' : '🔒 Not yet achieved'}
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+                {isSelectedEarned
+                  ? <><AchievedIcon size={13} color="#4CAF80" aria-hidden="true" /> Achieved!</>
+                  : <><LockIcon size={13} color="#666" aria-hidden="true" /> Not yet achieved</>}
+              </span>
               </div>
               {isSelectedEarned && (() => {
                 const date = getEarnedDate(selectedAchievement.key);

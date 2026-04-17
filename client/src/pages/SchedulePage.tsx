@@ -1,3 +1,4 @@
+import { CheckCircleFilledIcon, TrophyIcon, LockIcon } from "@/components/icons/LbjjIcons";
 import { useState, useEffect, useRef, useCallback } from "react";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { CLASS_SCHEDULE, CLASS_TYPE_COLORS, DAYS_ORDER } from "@/lib/constants";
@@ -376,7 +377,7 @@ export default function SchedulePage() {
           alignItems: "center",
           gap: 12,
         }}>
-          <span style={{ fontSize: 22 }}>🏆</span>
+          <TrophyIcon size={22} color="#C8A24C" aria-hidden="true" />
           <div style={{ flex: 1 }}>
             <p style={{ fontSize: 14, fontWeight: 600, color: "#E0E0E0", margin: 0 }}>Compete at a Tournament</p>
             <p style={{ fontSize: 12, color: "#666", margin: "2px 0 0" }}>View upcoming events and registration links</p>
@@ -629,7 +630,7 @@ function ClassCard({ cls, isToday, stream, checkedInClasses, markClassCheckedIn 
 
             {checkInDone ? (
               <div style={{ textAlign: 'center', padding: '32px 0' }}>
-                <div style={{ fontSize: 48, marginBottom: 12 }}>✓</div>
+                <div style={{ marginBottom: 12, display: "flex", justifyContent: "center" }}><CheckCircleFilledIcon size={56} color="#4CAF50" aria-label="Checked in" /></div>
                 <div style={{ fontSize: 18, fontWeight: 700, color: '#4CAF50' }}>Checked In!</div>
                 <div style={{ fontSize: 14, color: '#888', marginTop: 6 }}>{cls.name}</div>
               </div>

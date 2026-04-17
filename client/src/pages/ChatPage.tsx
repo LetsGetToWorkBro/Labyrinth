@@ -8,6 +8,7 @@
  * - Unauthenticated users can read public channels (no token) but must log in to send
  */
 
+import { BeltDot, TrophyIcon, StarIcon, FireIcon } from "@/components/icons/LbjjIcons";
 import { useState, useRef, useEffect, useCallback } from "react";
 import { createPortal } from "react-dom";
 import { ListSkeleton } from "@/components/LoadingSkeleton";
@@ -390,7 +391,7 @@ export default function ChatPage() {
       if (document.hidden && notifPermRef.current === 'granted') {
         const latest = msgs[msgs.length - 1];
         try {
-          new Notification('💬 ' + latest.sender, {
+          new Notification('New message from ' + latest.sender, {
             body: latest.text.substring(0, 80),
             icon: '/maze-gold-md.png',
             tag: 'lbjj-chat',
@@ -529,7 +530,7 @@ export default function ChatPage() {
               onClick={() => Notification.requestPermission().then(p => { notifPermRef.current = p; })}
               style={{ fontSize: 12, padding: '4px 8px', borderRadius: 6, background: 'rgba(200,162,76,0.1)', border: '1px solid rgba(200,162,76,0.2)', color: '#C8A24C', cursor: 'pointer', flexShrink: 0 }}
             >
-              🔔 Notify
+              Notify
             </button>
           )}
         </div>
@@ -663,8 +664,7 @@ export default function ChatPage() {
                     fontSize: 28,
                     animation: 'badge-appear 400ms cubic-bezier(0.34,1.56,0.64,1) both',
                   }}>
-                    💬
-                  </div>
+                              </div>
                   <div>
                     <p style={{ fontSize: 15, fontWeight: 700, color: '#E0E0E0', margin: '0 0 6px' }}>
                       Nothing here yet

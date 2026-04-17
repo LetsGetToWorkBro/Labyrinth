@@ -65,15 +65,15 @@ type NavOption = {
 };
 
 const ALL_NAV_OPTIONS: NavOption[] = [
-  { path: '/',         label: 'Home',     Icon: Home,           emoji: '🏠' },
-  { path: '/chat',     label: 'Chat',     Icon: MessageCircle,  emoji: '💬' },
-  { path: '/achievements', label: 'Progress', Icon: Trophy,      emoji: '🏆' },
-  { path: '/schedule', label: 'Schedule', Icon: CalendarDays,   emoji: '📅' },
-  { path: '/more',     label: 'More',     Icon: MoreHorizontal, emoji: '⋯', customIcon: 'maze'  },
-  { path: '/games',    label: 'Games',    Icon: Gamepad2,       emoji: '🎮' },
-  { path: '/stats',    label: 'Stats',    Icon: BarChart2,      emoji: '📊' },
-  { path: '/calendar', label: 'Events',   Icon: Trophy,         emoji: '🏆' },
-  { path: '/sauna',    label: 'Sauna',    Icon: Thermometer,    emoji: '🧖' },
+  { path: '/',         label: 'Home',     Icon: Home,           emoji: '' },
+  { path: '/chat',     label: 'Chat',     Icon: MessageCircle,  emoji: '' },
+  { path: '/achievements', label: 'Progress', Icon: Trophy,      emoji: '' },
+  { path: '/schedule', label: 'Schedule', Icon: CalendarDays,   emoji: '' },
+  { path: '/more',     label: 'More',     Icon: MoreHorizontal, emoji: '', customIcon: 'maze'  },
+  { path: '/games',    label: 'Games',    Icon: Gamepad2,       emoji: '' },
+  { path: '/stats',    label: 'Stats',    Icon: BarChart2,      emoji: '' },
+  { path: '/calendar', label: 'Events',   Icon: Trophy,         emoji: '' },
+  { path: '/sauna',    label: 'Sauna',    Icon: Thermometer,    emoji: '' },
 ];
 
 const DEFAULT_NAV_PATHS = ['/', '/chat', '/achievements', '/schedule', '/more'];
@@ -1144,7 +1144,7 @@ function ResetPasswordPage() {
         <h2 style={{ color: '#C8A24C', fontWeight: 700, fontSize: 20, marginBottom: 8, textAlign: 'center' }}>Set New Password</h2>
         {done ? (
           <div style={{ textAlign: 'center' }}>
-            <p style={{ color: '#4CAF80', marginBottom: 16 }}>✓ Password updated successfully!</p>
+            <p style={{ color: '#4CAF80', marginBottom: 16, display: 'flex', alignItems: 'center', gap: 6, justifyContent: 'center' }}>Password updated successfully!</p>
             <button onClick={() => navigate('/')} style={{ background: '#C8A24C', color: '#0A0A0A', border: 'none', borderRadius: 10, padding: '12px 24px', fontWeight: 700, cursor: 'pointer' }}>Sign In</button>
           </div>
         ) : (

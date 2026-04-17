@@ -1,3 +1,4 @@
+import { CalendarSparkIcon, GamepadIcon, GoldMedalIcon, SilverMedalIcon, BronzeMedalIcon, TrophyIcon } from "@/components/icons/LbjjIcons";
 import { useState, useEffect, useCallback } from 'react';
 import { getLeaderboard, type LeaderboardEntry } from '@/lib/api';
 import { useAuth } from '@/lib/auth-context';
@@ -127,8 +128,8 @@ export default function LeaderboardPage() {
       {/* Classes / Games tabs */}
       <div style={{ display: 'flex', margin: '0 20px 12px', gap: 4, padding: 4, backgroundColor: '#111', borderRadius: 12, border: '1px solid #1A1A1A', alignItems: 'center' }}>
         {([
-          { key: 'classes' as Tab, label: 'Classes', icon: '📅' },
-          { key: 'games' as Tab, label: 'Games', icon: '🎮' },
+          { key: 'classes' as Tab, label: 'Classes', icon: <CalendarSparkIcon size={14} /> },
+          { key: 'games' as Tab, label: 'Games', icon: <GamepadIcon size={14} /> },
         ]).map(t => (
           <button key={t.key} onClick={() => setTab(t.key)}
             style={{
@@ -139,7 +140,7 @@ export default function LeaderboardPage() {
               display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
             }}
           >
-            <span style={{ fontSize: 14 }}>{t.icon}</span> {t.label}
+            <span style={{ fontSize: 14, display: "flex", alignItems: "center" }}>{t.icon}</span> {t.label}
           </button>
         ))}
       </div>
@@ -223,7 +224,7 @@ export default function LeaderboardPage() {
           </div>
         ) : filteredEntries.length === 0 ? (
           <div style={{ background: '#111', borderRadius: 12, padding: '40px 20px', textAlign: 'center', border: '1px solid #1A1A1A' }}>
-            <div style={{ fontSize: 40, marginBottom: 12 }}>{tab === 'classes' ? '📅' : '🎮'}</div>
+            <div style={{ marginBottom: 12, display: 'flex', justifyContent: 'center' }}>{tab === 'classes' ? <CalendarSparkIcon size={40} color="#555" /> : <GamepadIcon size={40} color="#555" />}</div>
             <div style={{ color: '#888', fontSize: 14, fontWeight: 600, marginBottom: 6 }}>No entries yet</div>
             <div style={{ color: '#555', fontSize: 13 }}>
               {tab === 'classes'

@@ -1,3 +1,4 @@
+import { WarningIcon } from "@/components/icons/LbjjIcons";
 /**
  * AdminPage.tsx — Labyrinth BJJ Admin Panel
  *
@@ -151,7 +152,7 @@ function DashboardTab() {
 
       {/* Overdue payments */}
       {data.overduePayments?.length > 0 && (
-        <Section title={`⚠ Overdue (${data.overduePayments.length})`} accent="#E05555">
+        <Section title={`Overdue (${data.overduePayments.length})`} accent="#E05555">
           {data.overduePayments.slice(0, 5).map((p, i) => (
             <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 0", borderBottom: "1px solid #111" }}>
               <div>
