@@ -303,7 +303,11 @@ export function normalizeAdminRole(profile: any): MemberProfile {
   // GAS returns "TRUE"/"FALSE" strings from sheet cells
   const coerceBool = (val: any): boolean => {
     if (typeof val === 'boolean') return val;
-    if (typeof val === 'string') return val.toUpperCase() === 'TRUE';
+    if (typeof val === 'string') {
+      const v = val.trim().toLowerCase();
+      return v === 'true' || v === '1' || v === 'yes' || v === 'y';
+    }
+    if (typeof val === 'number') return val !== 0;
     return !!val;
   };
 

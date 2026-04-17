@@ -204,9 +204,13 @@ export function MegaphoneIcon(props: IconProps) {
   return base(
     props,
     <>
-      <path d="M3 11v2a1 1 0 0 0 1 1h2l3 4v-9L6 12H4a1 1 0 0 0-1-1z" />
-      <path d="M9 9l9-5v14L9 13" />
-      <path d="M13 9v6" strokeWidth={1} opacity={0.5} />
+      {/* Bullhorn body */}
+      <path d="M3 9h3l8-5v14l-8-5H3a1 1 0 0 1-1-1v-3a1 1 0 0 1 1-1z" />
+      {/* Handle / tail */}
+      <path d="M6 13v4a1 1 0 0 0 1 1h2a1 1 0 0 0 1-1v-4" />
+      {/* Sound waves */}
+      <path d="M17 9a4 4 0 0 1 0 6" strokeLinecap="round" />
+      <path d="M19.5 7a7 7 0 0 1 0 10" strokeLinecap="round" strokeWidth={1.5} />
     </>,
     "0 0 24 24"
   );

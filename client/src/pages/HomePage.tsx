@@ -10,6 +10,7 @@ import { ALL_ACHIEVEMENTS, checkAndUnlockAchievements } from "@/lib/achievements
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { validateGeoIfRequired } from "@/lib/geo";
 import { LevelWidget } from "@/components/LevelWidget";
+import { ProfileRing } from "@/components/ProfileRing";
 import { getLevelFromXP, getActualLevel, XP_LEVELS } from "@/lib/xp";
 import {
   CreditCard, FileText, ChevronRight, ChevronDown, LogOut,
@@ -211,6 +212,9 @@ export default function HomePage() {
   const [showStreakInfo, setShowStreakInfo] = useState(false);
   const [showMilestoneInfo, setShowMilestoneInfo] = useState(false);
   const [showNarrativeInfo, setShowNarrativeInfo] = useState(false);
+  const [showWeekStats, setShowWeekStats] = useState(false);
+  const [showSeasonModal, setShowSeasonModal] = useState(false);
+  const [showGameDayInfo, setShowGameDayInfo] = useState(false);
   const [techniqueOverride, setTechniqueOverride] = useState<string | null>(() => { try { return localStorage.getItem('lbjj_technique_override'); } catch { return null; } });
   const [showTechniqueEditor, setShowTechniqueEditor] = useState(false);
   const [techniqueCustomName, setTechniqueCustomName] = useState('');
@@ -263,6 +267,20 @@ export default function HomePage() {
     } catch { return null; }
   });
   const avatarFileRef = useRef<HTMLInputElement>(null);
+
+  // Sync profilePic from GAS profile if localStorage is empty
+  useEffect(() => {
+    const remote = (member as any)?.profilePicBase64;
+    if (remote && !profilePic) {
+      try {
+        localStorage.setItem('lbjj_profile_picture', remote);
+        const stats = JSON.parse(localStorage.getItem('lbjj_game_stats_v2') || '{}');
+        stats.profilePic = remote;
+        localStorage.setItem('lbjj_game_stats_v2', JSON.stringify(stats));
+      } catch {}
+      setProfilePic(remote);
+    }
+  }, [member, profilePic]);
 
   // ─── Deduplicated getMemberCheckIns (fires once per mount) ────
   const checkInsCache = useRef<any[] | null>(null);
@@ -1405,12 +1423,15 @@ export default function HomePage() {
 
           {/* Accent chip */}
           {narrative.accent && (
-            <div style={{
+            <div
+              onClick={isGameDay ? (e) => { e.stopPropagation(); haptic(); setShowGameDayInfo(true); } : undefined}
+              style={{
               display: 'inline-flex', alignItems: 'center', gap: 5,
               padding: '3px 9px', borderRadius: 999, marginBottom: 10,
               background: isGameDay ? 'rgba(200,162,76,0.15)' : isPerfectWeek ? 'rgba(255,215,0,0.12)' : 'rgba(200,162,76,0.1)',
               border: `1px solid ${isGameDay ? 'rgba(200,162,76,0.3)' : isPerfectWeek ? 'rgba(255,215,0,0.25)' : 'rgba(200,162,76,0.2)'}`,
               animation: isGameDay || isPerfectWeek ? 'xp-pulse 2s ease-in-out infinite' : undefined,
+              cursor: isGameDay ? 'pointer' : 'default',
             }}>
               <span style={{ display: 'inline-flex', alignItems: 'center' }}>{isGameDay ? <SwordsIcon size={9} /> : isPerfectWeek ? <TrophyIcon size={9} color="#FFD700" /> : comboMultiplier >= 3 ? <FireIcon size={9} color="#F97316" /> : <BoltIcon size={9} />}</span>
               <span style={{ fontSize: 9, fontWeight: 800, letterSpacing: '0.12em', color: isGameDay ? '#C8A24C' : isPerfectWeek ? '#FFD700' : '#C8A24C' }}>
@@ -1545,6 +1566,18 @@ export default function HomePage() {
                   <span style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.12em', textTransform: 'uppercase', color: headerColor }}>
                     This Week
                   </span>
+                  <button
+                    type="button"
+                    onClick={(e) => { e.stopPropagation(); haptic(); setShowWeekStats(true); }}
+                    aria-label="Your week stats"
+                    style={{
+                      width: 18, height: 18, padding: 0, borderRadius: '50%',
+                      background: 'rgba(200,162,76,0.08)', border: '1px solid rgba(200,162,76,0.25)',
+                      color: '#C8A24C', fontSize: 10, fontWeight: 800, lineHeight: 1,
+                      display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                      cursor: 'pointer', marginLeft: 4,
+                    }}
+                  >i</button>
                   {/* Daily streak power badge */}
                   {dailyStreakTier !== 'none' && (
                     <div style={{
@@ -2181,7 +2214,7 @@ export default function HomePage() {
           <div style={{ background: '#0D0D0D', border: '1px solid #1A1A1A', borderRadius: 16, overflow: 'hidden' }}>
             {/* Season row */}
             {trainingSeasonData && (
-              <div style={{ padding: '14px 16px', display: 'flex', alignItems: 'center', gap: 14,
+              <div onClick={() => { haptic(); setShowSeasonModal(true); }} style={{ padding: '14px 16px', display: 'flex', alignItems: 'center', gap: 14, cursor: 'pointer',
                 borderBottom: nextMilestoneData && nextMilestoneData.need > 0 ? '1px solid #141414' : 'none' }}>
                 <div style={{ position: 'relative', flexShrink: 0 }}>
                   <svg width={52} height={52} viewBox="0 0 64 64">
@@ -2879,36 +2912,45 @@ export default function HomePage() {
               <div style={{ fontSize: 13, color: '#666', marginBottom: 24, lineHeight: 1.5 }}>
                 Milestones mark major moments in your journey. Each one represents real progress — sessions on the mat, consistency, and growth.
               </div>
-              {[
-                { icon: <GrapplingIcon size={28} />, label: 'First Class', desc: "Show up. That's the hardest part.", xp: 100 },
-                { icon: <FireIcon size={28} color="#F97316" />, label: '10 Classes', desc: "You've found your rhythm on the mat.", xp: 250 },
-                { icon: <BoltIcon size={28} color="#22D3EE" />, label: '25 Classes', desc: "Commitment is becoming habit.", xp: 500 },
-                { icon: <StarIcon size={28} color="#60A5FA" />, label: '50 Classes', desc: "You're building something real.", xp: 1000 },
-                { icon: <StarIcon size={28} color="#FFD700" />, label: '100 Classes', desc: "This is who you are now.", xp: 2500 },
-                { icon: <TrophyIcon size={28} color="#A855F7" />, label: '200 Classes', desc: "Elite. The mat is home.", xp: 5000 },
-                { icon: <TrophyIcon size={28} color="#F472B6" />, label: '365 Classes', desc: "A full year of dedication. Legendary.", xp: 10000 },
-                { icon: <AchievedIcon size={28} color="#C8A24C" />, label: 'First Stripe', desc: "Your coach sees your progress.", xp: 300 },
-                { icon: <GoldMedalIcon size={28} />, label: 'First Belt Promotion', desc: "A new chapter begins.", xp: 1500 },
-                { icon: <FireIcon size={28} color="#F97316" />, label: '7-Day Streak', desc: "Fire mode activated.", xp: 200 },
-                { icon: <BoltIcon size={28} color="#A855F7" />, label: '30-Day Streak', desc: "Paragon-level consistency.", xp: 1000 },
-              ].map((m, i) => (
-                <div key={i} style={{
-                  display: 'flex', alignItems: 'center', gap: 14,
-                  padding: '14px 0',
-                  borderBottom: i < 10 ? '1px solid #1A1A1A' : 'none',
-                }}>
-                  <div style={{ width: 40, display: 'flex', justifyContent: 'center', alignItems: 'center', flexShrink: 0 }}>{m.icon}</div>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: 14, fontWeight: 700, color: '#F0F0F0' }}>{m.label}</div>
-                    <div style={{ fontSize: 12, color: '#666', marginTop: 2 }}>{m.desc}</div>
+              {(() => {
+                const items: Array<{ icon: React.ReactNode; label: string; desc: string; xp: number; tag?: string }> = [
+                  { icon: <GrapplingIcon size={28} />, label: 'First Class', desc: "Show up. That's the hardest part.", xp: 100 },
+                  { icon: <FireIcon size={28} color="#F97316" />, label: '10 Classes', desc: "You've found your rhythm on the mat.", xp: 250 },
+                  { icon: <BoltIcon size={28} color="#22D3EE" />, label: '25 Classes', desc: "Commitment is becoming habit.", xp: 500 },
+                  { icon: <StarIcon size={28} color="#60A5FA" />, label: '50 Classes', desc: "You're building something real.", xp: 1000 },
+                  { icon: <StarIcon size={28} color="#FFD700" />, label: '100 Classes', desc: "This is who you are now.", xp: 2500 },
+                  { icon: <TrophyIcon size={28} color="#A855F7" />, label: '200 Classes', desc: "Elite. The mat is home.", xp: 5000 },
+                  { icon: <TrophyIcon size={28} color="#F472B6" />, label: '365 Classes', desc: "A full year of dedication. Legendary.", xp: 10000 },
+                  { icon: <AchievedIcon size={28} color="#C8A24C" />, label: 'First Stripe', desc: "Your coach sees your progress.", xp: 300 },
+                  { icon: <GoldMedalIcon size={28} />, label: 'First Belt Promotion', desc: "A new chapter begins.", xp: 1500 },
+                  { icon: <FireIcon size={28} color="#F97316" />, label: '7-Day Streak', desc: "Fire mode activated.", xp: 200 },
+                  { icon: <BoltIcon size={28} color="#A855F7" />, label: '30-Day Streak', desc: "Paragon-level consistency.", xp: 1000 },
+                  { icon: <ProfileRing tier="bronze" size={32}><div style={{ width: 26, height: 26, borderRadius: '50%', background: '#CD7F32' }} /></ProfileRing>, label: 'Bronze Portrait', desc: 'Unlock the bronze ring frame — reach Level 2.', xp: 0, tag: 'RING' },
+                  { icon: <ProfileRing tier="silver" size={32}><div style={{ width: 26, height: 26, borderRadius: '50%', background: '#9CA3AF' }} /></ProfileRing>, label: 'Silver Portrait', desc: 'Double-ring silver frame — reach Level 5.', xp: 0, tag: 'RING' },
+                  { icon: <ProfileRing tier="gold" size={32}><div style={{ width: 26, height: 26, borderRadius: '50%', background: '#C8A24C' }} /></ProfileRing>, label: 'Gold Portrait', desc: 'Gold crown ring — reach Level 10.', xp: 0, tag: 'RING' },
+                  { icon: <ProfileRing tier="paragon" size={32}><div style={{ width: 26, height: 26, borderRadius: '50%', background: '#DC46DC' }} /></ProfileRing>, label: 'Paragon Portrait', desc: 'The animated paragon frame — reach Level 30. Rarest on the mat.', xp: 0, tag: 'RING' },
+                ];
+                return items.map((m, i) => (
+                  <div key={i} style={{
+                    display: 'flex', alignItems: 'center', gap: 14,
+                    padding: '14px 0',
+                    borderBottom: i < items.length - 1 ? '1px solid #1A1A1A' : 'none',
+                  }}>
+                    <div style={{ width: 40, display: 'flex', justifyContent: 'center', alignItems: 'center', flexShrink: 0 }}>{m.icon}</div>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontSize: 14, fontWeight: 700, color: '#F0F0F0' }}>{m.label}</div>
+                      <div style={{ fontSize: 12, color: '#666', marginTop: 2 }}>{m.desc}</div>
+                    </div>
+                    <div style={{
+                      fontSize: 11, fontWeight: 700,
+                      color: m.tag ? '#DC46DC' : '#C8A24C',
+                      background: m.tag ? 'rgba(220,70,220,0.1)' : 'rgba(200,162,76,0.1)',
+                      border: `1px solid ${m.tag ? 'rgba(220,70,220,0.3)' : 'rgba(200,162,76,0.2)'}`,
+                      borderRadius: 8, padding: '3px 8px', whiteSpace: 'nowrap',
+                    }}>{m.tag ? m.tag : `+${m.xp.toLocaleString()} XP`}</div>
                   </div>
-                  <div style={{
-                    fontSize: 11, fontWeight: 700, color: '#C8A24C',
-                    background: 'rgba(200,162,76,0.1)', border: '1px solid rgba(200,162,76,0.2)',
-                    borderRadius: 8, padding: '3px 8px', whiteSpace: 'nowrap',
-                  }}>+{m.xp.toLocaleString()} XP</div>
-                </div>
-              ))}
+                ));
+              })()}
               <button
                 onClick={() => setShowMilestoneInfo(false)}
                 style={{
@@ -3147,6 +3189,170 @@ export default function HomePage() {
                   color: '#888', fontSize: 14, fontWeight: 600, cursor: 'pointer',
                 }}
               >Cancel</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Week Stats Modal ───────────────────────── */}
+      {showWeekStats && (
+        <div
+          onClick={() => setShowWeekStats(false)}
+          style={{ position: 'fixed', inset: 0, zIndex: 1200, display: 'flex', alignItems: 'flex-end', animation: 'fadeInOverlay 0.2s ease' }}
+        >
+          <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(6px)' }} />
+          <div
+            onClick={e => e.stopPropagation()}
+            style={{
+              position: 'relative', width: '100%', background: '#111',
+              borderRadius: '22px 22px 0 0', borderTop: '1px solid #222',
+              maxHeight: '88vh', overflowY: 'auto',
+              paddingBottom: 'max(32px, calc(env(safe-area-inset-bottom, 0px) + 32px))',
+              animation: 'modalSlideUp 0.28s cubic-bezier(0.32,0,0.12,1)',
+              zIndex: 1201,
+            }}
+          >
+            <div style={{ width: 36, height: 4, borderRadius: 2, background: '#2A2A2A', margin: '16px auto 20px' }} />
+            <div style={{ padding: '0 20px' }}>
+              <div style={{ fontSize: 20, fontWeight: 800, color: '#F0F0F0', marginBottom: 4, display: 'flex', alignItems: 'center', gap: 8 }}><ChartBarsIcon size={20} color="#C8A24C" /> Your Week</div>
+              <div style={{ fontSize: 13, color: '#666', marginBottom: 24 }}>A snapshot of where you stand right now.</div>
+              {[
+                { label: 'Classes This Week', value: weekDots.filter(d => d.trained).length, unit: 'classes', icon: <GrapplingIcon size={24} /> },
+                { label: 'Current Streak', value: dailyStreakCount, unit: 'days', icon: <FireIcon size={24} color="#F97316" /> },
+                { label: 'XP This Week', value: weekDots.filter(d => d.trained).length * 50, unit: 'XP', icon: <BoltIcon size={24} color="#C8A24C" /> },
+                { label: 'Week Multiplier', value: isEliteWeek ? '3×' : isPerfectWeek ? '2×' : trainedCount >= 3 ? '1.5×' : '1×', unit: '', icon: <TrophyIcon size={24} color="#C8A24C" /> },
+              ].map((s, i) => (
+                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '14px 16px', borderRadius: 14, background: 'rgba(255,255,255,0.03)', border: '1px solid #1A1A1A', marginBottom: 10 }}>
+                  <div style={{ width: 36, display: 'flex', justifyContent: 'center' }}>{s.icon}</div>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontSize: 11, color: '#555', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em' }}>{s.label}</div>
+                    <div style={{ fontSize: 22, fontWeight: 800, color: '#F0F0F0', marginTop: 2 }}>
+                      {s.value}{s.unit ? <span style={{ fontSize: 13, color: '#666', fontWeight: 500, marginLeft: 4 }}>{s.unit}</span> : null}
+                    </div>
+                  </div>
+                </div>
+              ))}
+              <button onClick={() => setShowWeekStats(false)} style={{ marginTop: 20, width: '100%', padding: '13px', borderRadius: 12, background: '#1A1A1A', border: '1px solid #2A2A2A', color: '#888', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>Close</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Game Day Info Modal ───────────────────────── */}
+      {showGameDayInfo && (
+        <div
+          onClick={() => setShowGameDayInfo(false)}
+          style={{ position: 'fixed', inset: 0, zIndex: 1200, display: 'flex', alignItems: 'flex-end', animation: 'fadeInOverlay 0.2s ease' }}
+        >
+          <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(6px)' }} />
+          <div
+            onClick={e => e.stopPropagation()}
+            style={{
+              position: 'relative', width: '100%', background: '#111',
+              borderRadius: '22px 22px 0 0', borderTop: '1px solid #222',
+              maxHeight: '80vh', overflowY: 'auto',
+              paddingBottom: 'max(32px, calc(env(safe-area-inset-bottom, 0px) + 32px))',
+              animation: 'modalSlideUp 0.28s cubic-bezier(0.32,0,0.12,1)',
+              zIndex: 1201,
+            }}
+          >
+            <div style={{ width: 36, height: 4, borderRadius: 2, background: '#2A2A2A', margin: '16px auto 20px' }} />
+            <div style={{ padding: '0 20px' }}>
+              <div style={{ fontSize: 22, fontWeight: 900, color: '#F0F0F0', marginBottom: 6, display: 'flex', alignItems: 'center', gap: 8 }}><SwordsIcon size={22} color="#C8A24C" /> Game Day</div>
+              <div style={{ fontSize: 14, color: '#888', lineHeight: 1.55, marginBottom: 22 }}>
+                Today there's a BJJ chess game session scheduled. Show up, play your positions, earn bonus XP. Win matches to climb the game leaderboard.
+              </div>
+              <div style={{ fontSize: 11, fontWeight: 700, color: '#C8A24C', letterSpacing: '0.12em', marginBottom: 10, textTransform: 'uppercase' }}>XP Breakdown</div>
+              {[
+                { label: 'Check in for a class', xp: '+10 XP' },
+                { label: 'Win a match', xp: '+25 XP' },
+                { label: 'Win a tournament', xp: '+150 XP' },
+              ].map((b, i) => (
+                <div key={i} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 14px', borderRadius: 12, background: 'rgba(200,162,76,0.06)', border: '1px solid rgba(200,162,76,0.15)', marginBottom: 8 }}>
+                  <div style={{ fontSize: 14, color: '#F0F0F0', fontWeight: 600 }}>{b.label}</div>
+                  <div style={{ fontSize: 12, fontWeight: 800, color: '#C8A24C' }}>{b.xp}</div>
+                </div>
+              ))}
+              <button onClick={() => setShowGameDayInfo(false)} style={{ marginTop: 18, width: '100%', padding: '13px', borderRadius: 12, background: '#1A1A1A', border: '1px solid #2A2A2A', color: '#888', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>Close</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Season Modal ───────────────────────── */}
+      {showSeasonModal && trainingSeasonData && (
+        <div
+          onClick={() => setShowSeasonModal(false)}
+          style={{ position: 'fixed', inset: 0, zIndex: 1200, display: 'flex', alignItems: 'flex-end', animation: 'fadeInOverlay 0.2s ease' }}
+        >
+          <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(6px)' }} />
+          <div
+            onClick={e => e.stopPropagation()}
+            style={{
+              position: 'relative', width: '100%', background: '#111',
+              borderRadius: '22px 22px 0 0', borderTop: '1px solid #222',
+              maxHeight: '85vh', overflowY: 'auto',
+              paddingBottom: 'max(32px, calc(env(safe-area-inset-bottom, 0px) + 32px))',
+              animation: 'modalSlideUp 0.28s cubic-bezier(0.32,0,0.12,1)',
+              zIndex: 1201,
+            }}
+          >
+            <div style={{ width: 36, height: 4, borderRadius: 2, background: '#2A2A2A', margin: '16px auto 20px' }} />
+            <div style={{ padding: '0 20px' }}>
+              <div style={{ fontSize: 20, fontWeight: 800, color: '#F0F0F0', marginBottom: 4, display: 'flex', alignItems: 'center', gap: 8 }}>
+                <CalendarSparkIcon size={20} color="#C8A24C" /> {trainingSeasonData.monthName} Season
+              </div>
+              <div style={{ fontSize: 13, color: '#666', marginBottom: 20 }}>Monthly class goal progress and tier rewards.</div>
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 20, padding: '14px 16px', background: '#1A1A1A', borderRadius: 14 }}>
+                <svg width={64} height={64} viewBox="0 0 64 64">
+                  <circle cx={32} cy={32} r={26} fill="none" stroke="#1E1E1E" strokeWidth={6} />
+                  <circle cx={32} cy={32} r={26} fill="none" stroke="#C8A24C" strokeWidth={6}
+                    strokeDasharray={`${2 * Math.PI * 26}`}
+                    strokeDashoffset={`${2 * Math.PI * 26 * (1 - trainingSeasonData.progress)}`}
+                    strokeLinecap="round" transform="rotate(-90 32 32)"
+                    style={{ transition: 'stroke-dashoffset 1.2s cubic-bezier(0.4,0,0.2,1)' }} />
+                  <text x={32} y={36} textAnchor="middle" fill="#C8A24C" fontSize={14} fontWeight={800}>{trainingSeasonData.thisMonthClasses}</text>
+                </svg>
+                <div>
+                  <div style={{ fontSize: 13, color: '#888' }}>Classes this month</div>
+                  <div style={{ fontSize: 22, fontWeight: 900, color: '#F0F0F0' }}>
+                    {trainingSeasonData.thisMonthClasses} <span style={{ fontSize: 14, color: '#444' }}>/ {trainingSeasonData.goalClasses}</span>
+                  </div>
+                  <div style={{ fontSize: 12, color: '#C8A24C', marginTop: 4 }}>{Math.round(trainingSeasonData.progress * 100)}% of monthly goal</div>
+                </div>
+              </div>
+
+              <div style={{ fontSize: 13, fontWeight: 700, color: '#888', marginBottom: 10, textTransform: 'uppercase', letterSpacing: '0.08em' }}>Season Goals</div>
+              {[
+                { classes: 4,  label: 'Active',     xp: 50,  color: '#22D3EE' },
+                { classes: 8,  label: 'Consistent', xp: 150, color: '#60A5FA' },
+                { classes: 12, label: 'Dedicated',  xp: 300, color: '#C8A24C' },
+                { classes: 16, label: 'Elite',      xp: 500, color: '#F472B6' },
+                { classes: 20, label: 'Warrior',    xp: 800, color: '#A855F7' },
+              ].map(t => {
+                const done = trainingSeasonData.thisMonthClasses >= t.classes;
+                return (
+                  <div key={t.classes} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 0', borderBottom: '1px solid #1A1A1A' }}>
+                    <div style={{
+                      width: 28, height: 28, borderRadius: '50%',
+                      background: done ? `${t.color}22` : '#1A1A1A',
+                      border: `1px solid ${done ? t.color : '#222'}`,
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    }}>
+                      {done
+                        ? <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={t.color} strokeWidth="2.5" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+                        : <span style={{ fontSize: 11, fontWeight: 700, color: '#333' }}>{t.classes}</span>}
+                    </div>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontSize: 14, fontWeight: 700, color: done ? '#F0F0F0' : '#555' }}>{t.label}</div>
+                      <div style={{ fontSize: 11, color: done ? t.color : '#333' }}>{t.classes} classes</div>
+                    </div>
+                    <div style={{ fontSize: 12, fontWeight: 700, color: done ? '#C8A24C' : '#333', background: 'rgba(200,162,76,0.08)', padding: '3px 8px', borderRadius: 8 }}>+{t.xp} XP</div>
+                  </div>
+                );
+              })}
+              <button onClick={() => setShowSeasonModal(false)} style={{ marginTop: 20, width: '100%', padding: '13px', borderRadius: 12, background: '#1A1A1A', border: '1px solid #2A2A2A', color: '#888', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>Close</button>
             </div>
           </div>
         </div>

@@ -169,6 +169,16 @@ export default function WaiverPage() {
       }
       if (tab === "waiver") setWaiverJustSigned(true);
       else                  setAgreementJustSigned(true);
+      // Update cached profile in localStorage so other pages see the signed status immediately
+      try {
+        const cached = localStorage.getItem('lbjj_member_profile');
+        if (cached) {
+          const p = JSON.parse(cached);
+          if (tab === "waiver") p.waiverSigned = true;
+          else                  p.agreementSigned = true;
+          localStorage.setItem('lbjj_member_profile', JSON.stringify(p));
+        }
+      } catch {}
       clearCanvas();
       setConfirmed(false);
       refreshProfile().catch(() => {});

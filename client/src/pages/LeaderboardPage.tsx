@@ -9,9 +9,9 @@ import { getActualLevel } from '@/lib/xp';
 
 const GOLD = '#C8A24C';
 const PODIUM_CONFIG: Record<number, { icon: React.ReactNode; borderColor: string; glow: string }> = {
-  1: { icon: <TrophyIcon size={20} color="#FFD700" />, borderColor: '#FFD700', glow: '0 0 20px rgba(255,215,0,0.25)' },
-  2: { icon: <SilverMedalIcon size={20} />, borderColor: '#C0C0C0', glow: '0 0 12px rgba(192,192,192,0.15)' },
-  3: { icon: <BronzeMedalIcon size={20} />, borderColor: '#CD7F32', glow: '0 0 12px rgba(205,127,50,0.15)' },
+  1: { icon: <GoldMedalIcon size={22} />, borderColor: '#FFD700', glow: '0 0 20px rgba(255,215,0,0.3)' },
+  2: { icon: <SilverMedalIcon size={22} />, borderColor: '#C0C0C0', glow: '0 0 12px rgba(192,192,192,0.15)' },
+  3: { icon: <BronzeMedalIcon size={22} />, borderColor: '#CD7F32', glow: '0 0 12px rgba(205,127,50,0.15)' },
 };
 
 
