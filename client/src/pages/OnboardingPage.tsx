@@ -1,3 +1,4 @@
+// v2 — bulletproof navigation
 import { useState, useEffect, useRef } from "react";
 import { useAuth } from "@/lib/auth-context";
 import { BeltIcon } from "@/components/BeltIcon";
