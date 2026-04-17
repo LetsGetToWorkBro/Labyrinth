@@ -1621,3 +1621,97 @@ html[data-nav="tab"] ::view-transition-new(root) {
 }
 
 /* ── END MICRO-INTERACTIONS ──────────────────────────────────────── */
+
+/* ═══════════════════════════════════════════════════════════════════
+   SCROLL REVEAL SYSTEM
+   Driven by IntersectionObserver in lib/reveal.ts
+   Only animates opacity + transform (no reflow).
+   ═══════════════════════════════════════════════════════════════════ */
+
+/* Base reveal — single element */
+.reveal {
+  opacity: 0;
+  transform: translateY(16px);
+  transition:
+    opacity  500ms cubic-bezier(0.16, 1, 0.3, 1),
+    transform 500ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+.reveal.visible {
+  opacity: 1;
+  transform: none;
+}
+
+/* Reveal from right (hero images, media) */
+.reveal-right {
+  opacity: 0;
+  transform: translateX(20px);
+  transition:
+    opacity  500ms cubic-bezier(0.16, 1, 0.3, 1),
+    transform 500ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+.reveal-right.visible {
+  opacity: 1;
+  transform: none;
+}
+
+/* Reveal with subtle scale (images, media blocks) */
+.reveal-scale {
+  opacity: 0;
+  transform: translateY(12px) scale(0.98);
+  transition:
+    opacity   500ms cubic-bezier(0.16, 1, 0.3, 1),
+    transform 500ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+.reveal-scale.visible {
+  opacity: 1;
+  transform: none;
+}
+
+/* Stagger container — children get .visible added with 60ms offsets */
+.reveal-stagger > * {
+  opacity: 0;
+  transform: translateY(12px);
+  transition:
+    opacity  500ms cubic-bezier(0.16, 1, 0.3, 1),
+    transform 500ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+.reveal-stagger > *.visible {
+  opacity: 1;
+  transform: none;
+}
+
+/* Individual items inside a stagger container */
+.reveal-item {
+  opacity: 0;
+  transform: translateY(12px);
+  transition:
+    opacity  500ms cubic-bezier(0.16, 1, 0.3, 1),
+    transform 500ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+.reveal-item.visible {
+  opacity: 1;
+  transform: none;
+}
+
+/* Hero sequence — explicit delay variants */
+.reveal-delay-0   { transition-delay: 0ms; }
+.reveal-delay-100 { transition-delay: 100ms; }
+.reveal-delay-150 { transition-delay: 150ms; }
+.reveal-delay-200 { transition-delay: 200ms; }
+.reveal-delay-300 { transition-delay: 300ms; }
+.reveal-delay-400 { transition-delay: 400ms; }
+
+/* Accessibility: users who prefer no motion get instant display */
+@media (prefers-reduced-motion: reduce) {
+  .reveal,
+  .reveal-right,
+  .reveal-scale,
+  .reveal-stagger > *,
+  .reveal-item {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+}
+
+/* ── END SCROLL REVEAL ───────────────────────────────────────────── */

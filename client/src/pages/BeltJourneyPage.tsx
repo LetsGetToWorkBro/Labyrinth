@@ -549,7 +549,7 @@ export default function BeltJourneyPage() {
                 const isCurrent = i === promotions.length - 1;
 
                 return (
-                  <div key={promo.id}>
+                  <div key={promo.id} className="reveal-item" style={{ transitionDelay: `${i * 60}ms` }}>
                     {/* Swipe container */}
                     <div
                       onTouchStart={e => { (e.currentTarget as any)._sx = e.touches[0].clientX; }}
@@ -736,7 +736,7 @@ function EditForm({
       {/* Belt selector */}
       <div>
         <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: '#555', marginBottom: 10 }}>Belt</div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
+        <div className="reveal-stagger" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
           {beltOptions.map(b => (
             <button key={b} onClick={() => setBelt(b)} style={{
               display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5,

@@ -273,7 +273,7 @@ export default function AchievementsPage() {
       </div>
 
       {/* Achievement grid */}
-      <div style={{
+      <div className="reveal-stagger" style={{
         display: 'grid',
         gridTemplateColumns: 'repeat(3, 1fr)',
         gap: 10,

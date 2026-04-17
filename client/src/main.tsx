@@ -3,6 +3,7 @@ import * as Sentry from "@sentry/react";
 import { createRoot } from "react-dom/client";
 import App from "./App";
 import "./index.css";
+import { initReveal } from "./lib/reveal";
 
 Sentry.init({
   dsn: import.meta.env.VITE_SENTRY_DSN,
@@ -22,4 +23,8 @@ if (!window.location.hash) {
   window.location.hash = "#/";
 }
 
-createRoot(document.getElementById("root")!).render(<App />);
+const root = createRoot(document.getElementById("root")!);
+root.render(<App />);
+
+// Init scroll-reveal after first paint
+requestAnimationFrame(() => initReveal());

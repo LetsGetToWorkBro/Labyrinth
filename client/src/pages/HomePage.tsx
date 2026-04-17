@@ -1545,7 +1545,7 @@ export default function HomePage() {
         const milestoneAt = [3, 5, 7];
 
         return (
-          <div className="mx-5 mb-4 stagger-child" onClick={() => { haptic(); setShowStreakInfo(true); }} style={{ cursor: 'pointer' }}>
+          <div className="mx-5 mb-4 stagger-child reveal" onClick={() => { haptic(); setShowStreakInfo(true); }} style={{ cursor: 'pointer' }}>
             <div style={{
               background: cardBg,
               border: `1px solid ${cardBorder}`,
@@ -2009,7 +2009,7 @@ export default function HomePage() {
 
             {/* Rival callout — if not #1 */}
             {rival && myLeaderboardRank > 1 && (
-              <div style={{ padding: '10px 14px', borderBottom: '1px solid #111', background: 'rgba(224,85,85,0.04)' }}>
+              <div className="reveal" style={{ padding: '10px 14px', borderBottom: '1px solid #111', background: 'rgba(224,85,85,0.04)' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                   <div style={{ fontSize: 9, fontWeight: 700, color: '#E05555', letterSpacing: '0.12em', textTransform: 'uppercase', flexShrink: 0 }}>Your Rival</div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 7, flex: 1 }}>
@@ -2076,7 +2076,7 @@ export default function HomePage() {
           XP PROGRESS WIDGET
           ════════════════════════════════════════════════════ */}
       {member && (
-        <div className="mx-5 mb-4 stagger-child" style={{ position: 'relative' }} onClick={() => { haptic(); setShowRankInfo(true); }}>
+        <div className="mx-5 mb-4 stagger-child reveal" style={{ position: 'relative' }} onClick={() => { haptic(); setShowRankInfo(true); }}>
           <div style={{
             position: 'absolute', inset: -1, borderRadius: 17,
             background: 'linear-gradient(135deg, rgba(200,162,76,0.25), transparent, rgba(200,162,76,0.08))',
@@ -2303,7 +2303,7 @@ export default function HomePage() {
           FLOW STATE / COMBO (ambient chips — only if notable)
           ════════════════════════════════════════════════════ */}
       {isFlowState && (
-        <div style={{ margin: '0 20px 10px', display: 'flex' }} className="stagger-child">
+        <div style={{ margin: '0 20px 10px', display: 'flex' }} className="stagger-child reveal">
           <div style={{
             display: 'inline-flex', alignItems: 'center', gap: 6,
             padding: '4px 10px', borderRadius: 999,
@@ -2324,7 +2324,7 @@ export default function HomePage() {
           margin: '0 20px 16px', background: 'linear-gradient(135deg, #141414, #0F0F12)',
           border: '1px solid #C8A24C25', borderRadius: 16, padding: 16,
           animation: 'page-slide-in-right 400ms var(--ease-out) both', position: 'relative',
-        }} className="stagger-child">
+        }} className="stagger-child reveal">
           <button onClick={dismissReport} style={{ position: 'absolute', top: 12, right: 12, background: 'none', border: 'none', color: '#444', cursor: 'pointer', fontSize: 16 }}>✕</button>
           <div style={{ fontSize: 9, fontWeight: 700, color: '#C8A24C', letterSpacing: '0.18em', textTransform: 'uppercase', marginBottom: 10 }}>Last Week</div>
           <div style={{ display: 'flex', gap: 20, marginBottom: 12 }}>
@@ -2378,7 +2378,7 @@ export default function HomePage() {
           TOURNAMENT COUNTDOWN
           ════════════════════════════════════════════════════ */}
       {nextTournament && tournamentDaysUntil <= 60 && (
-        <div className="mx-5 mb-4">
+        <div className="mx-5 mb-4 reveal">
           <div style={{ background: 'linear-gradient(135deg, #141414, #1A1A0A)', border: '1px solid rgba(200,162,76,0.19)', borderRadius: 14, padding: 16, position: 'relative' }}>
             <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', color: '#C8A24C', textTransform: 'uppercase' as const, marginBottom: 6, display: 'flex', alignItems: 'center', gap: 5 }}>
                 <TrophyIcon size={11} color="#C8A24C" aria-hidden="true" />

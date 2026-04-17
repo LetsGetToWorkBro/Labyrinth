@@ -243,7 +243,8 @@ export default function LeaderboardPage() {
               const prevPos = entry.name ? prevPositions[entry.name] : undefined;
               const rankDelta = prevPos !== undefined && prevPos !== currentPos ? prevPos - currentPos : null;
               return (
-                <div key={i} style={{
+                <div key={i} className="reveal-item" style={{
+                  transitionDelay: `${Math.min(i, 8) * 50}ms`,
                   background: isMe ? `${GOLD}14` : isTop3 ? `${GOLD}0A` : '#111',
                   borderRadius: 12, padding: '12px 14px',
                   border: `1px solid ${isMe ? GOLD + '40' : podiumCfg ? podiumCfg.borderColor + '40' : '#1A1A1A'}`,

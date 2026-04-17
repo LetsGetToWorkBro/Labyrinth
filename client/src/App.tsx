@@ -764,7 +764,7 @@ function AccountPage() {
               ))}
             </div>
           ) : badges.length > 0 ? (
-            <div style={{ display: 'flex', gap: 10, overflowX: 'auto', paddingBottom: 4 }}>
+            <div className="reveal-stagger" style={{ display: 'flex', gap: 10, overflowX: 'auto', paddingBottom: 4 }}>
               {badges.map(b => (
                 <div key={b.key} style={{
                   flexShrink: 0, textAlign: 'center',

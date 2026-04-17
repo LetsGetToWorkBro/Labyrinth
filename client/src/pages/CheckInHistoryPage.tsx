@@ -147,7 +147,7 @@ export default function CheckInHistoryPage() {
       />
 
       {/* ── Hero stats row ── */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, padding: '0 20px 16px' }}>
+      <div className="reveal-stagger" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, padding: '0 20px 16px' }}>
         {/* Total */}
         <div style={{
           gridColumn: '1 / -1',
@@ -215,7 +215,7 @@ export default function CheckInHistoryPage() {
       </div>
 
       {/* ── Leaderboard link ── */}
-      <div style={{ padding: '0 20px 16px' }}>
+      <div className="reveal" style={{ padding: '0 20px 16px' }}>
         <a href="/#/leaderboard" style={{
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
           padding: '12px 16px', background: '#111', borderRadius: 12,
@@ -260,6 +260,7 @@ export default function CheckInHistoryPage() {
               return (
                 <div
                   key={i}
+                  className="reveal-item"
                   onClick={() => setExpandedId(isExpanded ? null : `${i}`)}
                   style={{
                     background: '#111', borderRadius: 12,
