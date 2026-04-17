@@ -316,7 +316,7 @@ function GamesHub({ stats, rank, nextRank, onPlay, onStartGame, showDifficulty, 
           {/* Game Card */}
           <div style={{ margin: '0 16px 12px', background: '#1A1A1A', borderRadius: 16, padding: '18px', border: '1px solid #222' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 10 }}>
-              <div style={{ width: 42, height: 42, borderRadius: 11, background: 'linear-gradient(135deg, #C8A24C22, #C8A24C44)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, flexShrink: 0 }}>♟️</div>
+              <div style={{ width: 42, height: 42, borderRadius: 11, background: 'linear-gradient(135deg, #C8A24C22, #C8A24C44)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}><PawnIcon size={20} color="#C8A24C" /></div>
               <div>
                 <div style={{ color: '#F0F0F0', fontSize: 15, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 6 }}>
                   BJJ Position Chess
