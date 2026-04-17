@@ -1431,6 +1431,9 @@ function AppShell() {
     setShowPasskeySetup(false);
   };
 
+  // Must be declared before any conditional returns (Rules of Hooks)
+  const onboardingDoneRef = useRef<boolean>(!!(() => { try { return localStorage.getItem('lbjj_onboarding_done'); } catch { return null; } })());
+
   // Reset password page is public — show without auth check
   if (location.startsWith('/reset')) {
     return (
@@ -1458,11 +1461,6 @@ function AppShell() {
 
   const GOLD = "#C8A24C";
 
-  // ── Onboarding overlay for first-time users ──────────────────
-  // Use a ref so this only reads localStorage once — prevents the onboarding
-  // component from being unmounted mid-navigation when the key is set
-  const onboardingDoneRef = useRef<boolean>(!!(() => { try { return localStorage.getItem('lbjj_onboarding_done'); } catch { return null; } })());
-  const onboardingDone = onboardingDoneRef.current;
 
   return (
     <div className="app-shell">
