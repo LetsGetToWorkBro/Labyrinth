@@ -162,12 +162,15 @@ export default function OnboardingPage() {
 
   const complete = () => {
     localStorage.setItem(ONBOARDING_KEY, "1");
-    setTimeout(() => { window.location.hash = "#/"; }, 50);
+    // Force a full navigation — hash = "#/" alone won't reload if already at "#/"
+    setTimeout(() => {
+      window.location.href = window.location.origin + window.location.pathname + '#/';
+    }, 80);
   };
 
   const skip = () => {
     localStorage.setItem(ONBOARDING_KEY, "1");
-    window.location.hash = "#/";
+    window.location.href = window.location.origin + window.location.pathname + '#/';
   };
 
   const next = () => setStep((s) => Math.min(s + 1, 5));
@@ -276,19 +279,16 @@ export default function OnboardingPage() {
         {step === 0 && (
           <>
             <div style={{
-              width: 100, height: 100, borderRadius: '50%',
-              background: 'radial-gradient(circle, #1A1510, #0A0A0A)',
-              border: '1px solid #C8A24C20',
+              width: 100, height: 100,
               display: 'flex', alignItems: 'center', justifyContent: 'center',
-              boxShadow: '0 0 50px rgba(200,162,76,0.15)',
-              animation: 'ring-pulse 3s ease-in-out infinite, badge-appear 600ms cubic-bezier(0.34,1.56,0.64,1) both',
+              animation: 'badge-appear 600ms cubic-bezier(0.34,1.56,0.64,1) both',
             }}>
               <img
                 src={logoMaze}
                 alt="Labyrinth"
                 style={{
-                  width: 64, height: 64, objectFit: "contain",
-                  filter: "brightness(1.1) drop-shadow(0 0 12px rgba(200,162,76,0.4))",
+                  width: 90, height: 90, objectFit: "contain",
+                  filter: "drop-shadow(0 0 16px rgba(200,162,76,0.5))",
                 }}
               />
             </div>

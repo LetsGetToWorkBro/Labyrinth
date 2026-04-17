@@ -28,30 +28,34 @@ const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 //      the app checks the token).
 
 async function triggerBiometricPrompt(): Promise<'native' | 'webauthn' | 'token-fallback' | 'failed'> {
-  // 1. Try native Capacitor biometric
-  try {
-    const { isAvailable } = await NativeBiometric.isAvailable({ useFallback: true });
-    if (isAvailable) {
-      await NativeBiometric.verifyIdentity({
-        reason: 'Sign in to Labyrinth BJJ',
-        title: 'Biometric Sign In',
-        useFallback: true,
-      });
-      return 'native';
+  // Detect Capacitor native context
+  const isNative = typeof (window as any).Capacitor !== 'undefined' && (window as any).Capacitor?.isNativePlatform?.();
+
+  // 1. Try native Capacitor biometric (only when running as native app)
+  if (isNative) {
+    try {
+      const { isAvailable } = await NativeBiometric.isAvailable({ useFallback: true });
+      if (isAvailable) {
+        await NativeBiometric.verifyIdentity({
+          reason: 'Sign in to Labyrinth BJJ',
+          title: 'Biometric Sign In',
+          useFallback: true,
+        });
+        return 'native';
+      }
+    } catch (e: any) {
+      const msg = (e?.message || e?.code || '').toString().toLowerCase();
+      if (
+        msg.includes('cancel') ||
+        msg.includes('dismiss') ||
+        msg.includes('user_cancel') ||
+        msg.includes('authentication_failed') ||
+        msg.includes('lockout')
+      ) {
+        return 'failed';
+      }
+      // Not available — fall through to WebAuthn
     }
-  } catch (e: any) {
-    // BIOMETRIC_DISMISSED or BIOMETRIC_AUTHENTICATION_FAILED = user cancelled
-    const msg = (e?.message || e?.code || '').toString().toLowerCase();
-    if (
-      msg.includes('cancel') ||
-      msg.includes('dismiss') ||
-      msg.includes('user_cancel') ||
-      msg.includes('authentication_failed') ||
-      msg.includes('lockout')
-    ) {
-      return 'failed'; // deliberate cancellation — don't silently fall through
-    }
-    // Otherwise it's a "not available" error — fall through to WebAuthn
   }
 
   // 2. Try WebAuthn (web browser / Safari)
@@ -542,13 +546,13 @@ export default function LoginPage() {
                       </Field>
                       <Field label="Password" htmlFor="login-password">
                         <div style={{ position: "relative" }}>
-                          <input id="login-password" ref={passwordRef} type="password" name="password" value={password}
+                          <input id="login-password" ref={passwordRef} type={showPw ? "text" : "password"} name="password" value={password}
                             onChange={e => { setPassword(e.target.value); if (loginError) setLoginError(""); }}
                             placeholder="Your password" autoComplete="current-password"
                             enterKeyHint="go" readOnly={loginLoading}
                             aria-invalid={hasError || undefined}
                             aria-describedby={loginError ? 'login-error' : undefined}
-                            style={{ ...inputStyle, paddingRight: 44, WebkitTextSecurity: showPw ? 'none' : undefined, ...(hasError ? { borderColor: 'rgba(224,85,85,0.5)' } : {}) } as React.CSSProperties}
+                            style={{ ...inputStyle, paddingRight: 44, ...(hasError ? { borderColor: 'rgba(224,85,85,0.5)' } : {}) }}
                             data-testid="input-password" />
                           <button type="button" onClick={() => setShowPw(!showPw)} aria-label={showPw ? "Hide password" : "Show password"}
                             style={{ position: "absolute", right: 0, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", color: "#555", cursor: "pointer", padding: 0, width: 44, height: 44, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
@@ -577,7 +581,7 @@ export default function LoginPage() {
                           aria-checked={rememberMe}
                           onClick={e => { e.stopPropagation(); setRememberMe(v => !v); }}
                           style={{
-                            width: 40, height: 22, borderRadius: 11, border: 'none',
+                            width: 32, height: 18, borderRadius: 9, border: 'none',
                             background: rememberMe ? '#C8A24C' : '#2A2A2A',
                             position: 'relative', cursor: 'pointer',
                             transition: 'background 0.2s ease', flexShrink: 0,
@@ -585,9 +589,9 @@ export default function LoginPage() {
                           }}
                         >
                           <div style={{
-                            width: 16, height: 16, borderRadius: '50%',
+                            width: 12, height: 12, borderRadius: '50%',
                             background: '#FFF', position: 'absolute',
-                            top: 3, left: rememberMe ? 21 : 3,
+                            top: 3, left: rememberMe ? 17 : 3,
                             transition: 'left 0.2s ease',
                             boxShadow: '0 1px 3px rgba(0,0,0,0.3)',
                           }}/>
