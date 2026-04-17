@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, useCallback, useEffect } from "react";
 import type { MemberProfile, FamilyMember } from "./api";
-import { setToken, setMemberData, clearAuth, memberLogin as apiLogin, memberGetProfile, memberSwitchProfile as apiSwitchProfile, setActiveLocation, gasCall, normalizeAdminRole } from "./api";
+import { setToken, setMemberData, clearAuth, memberLogin as apiLogin, memberGetProfile, memberSwitchProfile as apiSwitchProfile, setActiveLocation, gasCall, normalizeAdminRole, syncAchievements } from "./api";
+import { ALL_ACHIEVEMENTS } from "./achievements";
 import { getSavedLocationId } from "./locations";
 
 function sanitizeProfileForStorage(profile: any) {
@@ -127,6 +128,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setMemberData(result.member);
         localStorage.setItem('lbjj_member_profile', JSON.stringify(sanitizeProfileForStorage(result.member)));
         setFamilyMembers(result.member.familyMembers || []);
+        // Sync locally-earned achievements to GAS on login (fire-and-forget)
+        try {
+          const earned: string[] = JSON.parse(localStorage.getItem('lbjj_achievements') || '[]');
+          if (earned.length > 0) {
+            const toSync = earned.map((key: string) => {
+              const def = ALL_ACHIEVEMENTS.find(a => a.key === key);
+              return def ? { key, label: def.label, icon: def.icon, earnedAt: new Date().toISOString() } : null;
+            }).filter(Boolean) as Array<{ key: string; label: string; icon: string; earnedAt: string }>;
+            syncAchievements(toSync).catch(() => {});
+          }
+        } catch {}
         return { success: true };
       }
       return { success: false, error: result.error || "Invalid credentials" };

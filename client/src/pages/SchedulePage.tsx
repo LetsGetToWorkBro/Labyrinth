@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { CLASS_SCHEDULE, CLASS_TYPE_COLORS, DAYS_ORDER } from "@/lib/constants";
 import type { ClassScheduleItem } from "@/lib/constants";
-import { getScheduleClasses, gasCall, getMemberData } from "@/lib/api";
+import { getScheduleClasses, gasCall, getMemberData, saveMemberStats, syncAchievements, getLeaderboardFresh } from "@/lib/api";
 import { Clock, ChevronRight, X, User, CheckCircle } from "lucide-react";
 import { checkAndUnlockAchievements, ALL_ACHIEVEMENTS } from "@/lib/achievements";
 import { validateGeoIfRequired } from "@/lib/geo";
@@ -476,6 +476,40 @@ function ClassCard({ cls, isToday, stream, checkedInClasses, markClassCheckedIn 
         }
         // Save successful check-in to dedup state
         markClassCheckedIn(cls.name || '');
+
+        // ── Persist stats to GAS after server confirms ──────────────────────
+        const statsAfter = (() => { try { return JSON.parse(localStorage.getItem('lbjj_game_stats_v2') || '{}'); } catch { return {}; } })();
+        saveMemberStats({
+          xp:        statsAfter.xp || 0,
+          streak:    result?.currentStreak ?? (statsAfter.currentStreak || 0),
+          maxStreak: statsAfter.maxStreak || 0,
+        }).catch(() => {});
+
+        // Persist streak from GAS response to localStorage
+        if (result?.currentStreak !== undefined) {
+          try {
+            const stored = JSON.parse(localStorage.getItem('lbjj_member_profile') || '{}');
+            stored.currentStreak = result.currentStreak;
+            localStorage.setItem('lbjj_member_profile', JSON.stringify(stored));
+            localStorage.setItem('lbjj_streak_cache', String(result.currentStreak));
+          } catch {}
+        }
+
+        // ── Sync achievements to GAS ─────────────────────────────────────────
+        const earned: string[] = (() => { try { return JSON.parse(localStorage.getItem('lbjj_achievements') || '[]'); } catch { return []; } })();
+        if (earned.length > 0) {
+          const toSync = earned.map((key: string) => {
+            const def = ALL_ACHIEVEMENTS.find(a => a.key === key);
+            return def ? { key, label: def.label, icon: def.icon, earnedAt: new Date().toISOString() } : null;
+          }).filter(Boolean) as Array<{ key: string; label: string; icon: string; earnedAt: string }>;
+          syncAchievements(toSync).catch(() => {});
+        }
+
+        // Trigger background leaderboard refresh so home screen is current
+        setTimeout(() => {
+          try { localStorage.removeItem('lbjj_home_leaderboard'); } catch {}
+          getLeaderboardFresh().catch(() => {});
+        }, 3500);
       }).catch(() => {});
     }
 

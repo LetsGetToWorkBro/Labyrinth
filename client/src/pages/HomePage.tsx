@@ -1,6 +1,6 @@
 import { useAuth } from "@/lib/auth-context";
 import type { FamilyMember, PaymentCard } from "@/lib/api";
-import { beltSavePromotion, gasCall, getLeaderboard, getMemberData, cachedGasCall } from "@/lib/api";
+import { beltSavePromotion, gasCall, getLeaderboard, getLeaderboardFresh, getMemberData, cachedGasCall, saveMemberStats, syncAchievements } from "@/lib/api";
 import { BeltIcon } from "@/components/BeltIcon";
 import { ADULT_BELT_OPTIONS } from "@/components/BeltIcon";
 import { getBeltColor, CLASS_SCHEDULE } from "@/lib/constants";
@@ -850,10 +850,70 @@ export default function HomePage() {
       try { localStorage.setItem('lbjj_streak_cache', String(res.currentStreak)); } catch {}
     }
 
-    // Bust leaderboard cache so next render fetches fresh data from GAS
-    // This ensures all members' check-ins show on the leaderboard immediately
+    // ── Optimistic leaderboard injection ──────────────────────────────────────
+    // Insert/update the current user's entry immediately so the board reflects
+    // the check-in without waiting for the GAS cache to refresh.
+    setLeaderboard(prev => {
+      if (!prev || !memberProfile) return prev;
+      const myName = memberProfile.name || '';
+      const myBelt = (memberProfile.belt || 'white').toLowerCase();
+      const existing = prev.find((e: any) => e.name === myName || e.isMe);
+      const newCount = (existing?.classCount || 0) + 1;
+      const newScore = newCount * 10;
+      const updated = existing
+        ? prev.map((e: any) => e.name === myName || e.isMe
+            ? { ...e, classCount: newCount, score: newScore, isMe: true }
+            : e)
+        : [...prev, { name: myName, belt: myBelt, classCount: newCount, score: newScore, isMe: true, rank: prev.length + 1 }];
+      // Re-sort by score
+      const sorted = [...updated].sort((a: any, b: any) => b.score - a.score || a.name.localeCompare(b.name));
+      sorted.forEach((e: any, i) => { e.rank = i + 1; });
+      const top5 = sorted.slice(0, 5);
+      try { localStorage.setItem(LEADERBOARD_CACHE_KEY, JSON.stringify({ data: top5, ts: Date.now() })); } catch {}
+      return top5;
+    });
+
+    // ── Persist XP + streak to GAS (fire-and-forget) ──────────────────────────
+    // saveMemberStats writes TotalPoints + CurrentStreak + MaxStreak to the
+    // Members sheet so data survives across devices and sessions.
+    const statsToSync = (() => {
+      try { return JSON.parse(localStorage.getItem('lbjj_game_stats_v2') || '{}'); } catch { return {}; }
+    })();
+    saveMemberStats({
+      xp:        statsToSync.xp        || 0,
+      streak:    statsToSync.currentStreak || 0,
+      maxStreak: statsToSync.maxStreak  || 0,
+    }).catch(() => {});
+
+    // ── Sync newly-earned achievements to GAS MemberBadges sheet ──────────────
+    const allEarned: string[] = (() => {
+      try { return JSON.parse(localStorage.getItem('lbjj_achievements') || '[]'); } catch { return []; }
+    })();
+    if (allEarned.length > 0) {
+      // Import ALL_ACHIEVEMENTS is already at top of file
+      const achievementsToSync = allEarned.map((key: string) => {
+        const def = ALL_ACHIEVEMENTS.find(a => a.key === key);
+        return def ? { key, label: def.label, icon: def.icon, earnedAt: new Date().toISOString() } : null;
+      }).filter(Boolean) as Array<{ key: string; label: string; icon: string; earnedAt: string }>;
+      syncAchievements(achievementsToSync).catch(() => {});
+    }
+
+    // Bust leaderboard cache so next full fetch gets fresh GAS data
     try { localStorage.removeItem(LEADERBOARD_CACHE_KEY); } catch {}
     try { localStorage.removeItem('lbjj_home_cache'); } catch {}
+
+    // Trigger a background fresh leaderboard fetch after 3s so GAS has time to write
+    setTimeout(() => {
+      getLeaderboardFresh().then(data => {
+        if (!data || data.length === 0) return;
+        const top5 = data.slice(0, 5).map((e: any) => ({
+          ...e,
+          isMe: e.name === memberProfile?.name || e.isMe,
+        }));
+        setLeaderboard(top5);
+        try { localStorage.setItem(LEADERBOARD_CACHE_KEY, JSON.stringify({ data: top5, ts: Date.now() })); } catch {}
+      }).catch(() => {});
+    }, 3000);
 
     checkingInRef.current = false;
   }, [member, setMember]);
@@ -967,16 +1027,27 @@ export default function HomePage() {
   // ─── Deferred non-critical data (leaderboard + announcements) ────
   useEffect(() => {
     const load = () => {
-      // leaderboard
+      // Leaderboard: always fetch fresh from GAS on mount/login
+      // getLeaderboardFresh clears sessionStorage cache so we never show stale data.
       if (member) {
-        getLeaderboard().then(data => {
-          const top5 = (data || []).slice(0, 5).map((e: any) => ({
+        getLeaderboardFresh().then(data => {
+          if (!data || data.length === 0) return;
+          const top5 = data.slice(0, 5).map((e: any) => ({
             ...e,
             isMe: e.name === member.name || e.isMe,
           }));
           setLeaderboard(top5);
           try { localStorage.setItem(LEADERBOARD_CACHE_KEY, JSON.stringify({ data: top5, ts: Date.now() })); } catch {}
-        }).catch(() => {});
+        }).catch(() => {
+          // Fallback to cached getLeaderboard if fresh call fails
+          getLeaderboard().then(data => {
+            const top5 = (data || []).slice(0, 5).map((e: any) => ({
+              ...e,
+              isMe: e.name === member.name || e.isMe,
+            }));
+            setLeaderboard(top5);
+          }).catch(() => {});
+        });
       }
 
       // announcements (pinned announcement now loaded separately)

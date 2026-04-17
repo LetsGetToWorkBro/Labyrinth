@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import { useHashLocation } from 'wouter/use-hash-location';
 import { ALL_ACHIEVEMENTS, ACHIEVEMENT_CATEGORIES, checkAndUnlockAchievements } from '@/lib/achievements';
 import type { Achievement } from '@/lib/achievements';
-import { gasCall } from '@/lib/api';
+import { gasCall, syncAchievements } from '@/lib/api';
 import { useAuth } from '@/lib/auth-context';
 import { AchievementBadge } from '@/lib/achievement-icons';
 
@@ -55,14 +55,26 @@ export default function AchievementsPage() {
     const local: string[] = (() => { try { return JSON.parse(localStorage.getItem('lbjj_achievements') || '[]'); } catch { return []; } })();
     setEarnedKeys(local);
 
-    // Also fetch from GAS and merge
+    // Sync local achievements UP to GAS MemberBadges sheet (fire-and-forget)
+    // This ensures achievements persist across devices and sessions
+    if (local.length > 0) {
+      const toSync = local.map((key: string) => {
+        const def = ALL_ACHIEVEMENTS.find(a => a.key === key);
+        return def ? { key, label: def.label, icon: def.icon, earnedAt: new Date().toISOString() } : null;
+      }).filter(Boolean) as Array<{ key: string; label: string; icon: string; earnedAt: string }>;
+      syncAchievements(toSync).catch(() => {});
+    }
+
+    // Fetch from GAS and merge server-side badges DOWN (covers multi-device unlocks)
     if (member?.email) {
       gasCall('getMemberBadges', { email: member.email }).then((res: any) => {
         if (res?.badges && Array.isArray(res.badges)) {
-          const serverKeys = res.badges.map((b: any) => b.key);
+          const serverKeys = res.badges.map((b: any) => b.key || b.BadgeKey);
           const merged = Array.from(new Set([...local, ...serverKeys]));
-          setEarnedKeys(merged);
-          localStorage.setItem('lbjj_achievements', JSON.stringify(merged));
+          if (merged.length > local.length) {
+            setEarnedKeys(merged);
+            localStorage.setItem('lbjj_achievements', JSON.stringify(merged));
+          }
         }
       }).catch(() => {});
     }

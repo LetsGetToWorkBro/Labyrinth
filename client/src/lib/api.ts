@@ -840,6 +840,9 @@ export async function getScheduleClasses(): Promise<any[]> {
 
 export async function getLeaderboard(): Promise<LeaderboardEntry[]> {
   try {
+    // Always bypass sessionStorage cache — GAS now reads live data without server cache
+    const cacheKey = `gas_getLeaderboard_${JSON.stringify({ type: 'weekly' })}`;
+    try { sessionStorage.removeItem(cacheKey); } catch {}
     const result = await gasCall("getLeaderboard", { type: 'weekly' });
     // Handle both leaderboard.gs format and legacy format
     const entries = result?.leaderboard || result?.scores || result?.entries || [];
@@ -901,4 +904,65 @@ export async function chatGetChannelMembers(channelId: string): Promise<ChannelM
     try { sessionStorage.setItem(cacheKey, JSON.stringify({ data: members, ts: Date.now() })); } catch {}
     return members;
   } catch { return []; }
+}
+
+// ─── Member Stats Sync ───────────────────────────────────────────────────────
+// Writes XP + streak back to the Members sheet so data persists across devices.
+// Called after every check-in and on app boot (if token valid).
+
+export async function saveMemberStats(data: {
+  xp: number;
+  streak: number;
+  maxStreak: number;
+}): Promise<{ success: boolean; totalPoints?: number; currentStreak?: number; maxStreak?: number }> {
+  const token = getToken() || localStorage.getItem('lbjj_session_token') || '';
+  if (!token) return { success: false };
+  try {
+    const result = await gasCall('saveMemberStats', { token, ...data });
+    return result;
+  } catch (err) {
+    console.warn('saveMemberStats failed (non-critical):', err);
+    return { success: false };
+  }
+}
+
+// ─── Achievement Sync ─────────────────────────────────────────────────────────
+// Upserts locally-earned achievements to the MemberBadges sheet on GAS.
+// Idempotent — GAS deduplicates by (email, key).
+
+export async function syncAchievements(achievements: Array<{
+  key: string;
+  label: string;
+  icon: string;
+  earnedAt?: string;
+  triggerValue?: string | number;
+}>): Promise<{ success: boolean; written?: number }> {
+  const token = getToken() || localStorage.getItem('lbjj_session_token') || '';
+  if (!token || achievements.length === 0) return { success: false };
+  try {
+    const result = await gasCall('syncAchievements', { token, achievements });
+    return result;
+  } catch (err) {
+    console.warn('syncAchievements failed (non-critical):', err);
+    return { success: false };
+  }
+}
+
+// ─── Leaderboard (force-fresh) ────────────────────────────────────────────────
+// Bypasses client-side sessionStorage cache and requests a live read from GAS.
+// Used after check-in to reflect the user's new check-in immediately.
+
+export async function getLeaderboardFresh(): Promise<LeaderboardEntry[]> {
+  try {
+    // Invalidate sessionStorage cache for this action
+    try {
+      const key = `gas_getLeaderboard_${JSON.stringify({ type: 'weekly' })}`;
+      sessionStorage.removeItem(key);
+    } catch {}
+    const result = await gasCall('getLeaderboard', { type: 'weekly', forceRefresh: true });
+    return result?.leaderboard || result?.scores || result?.entries || [];
+  } catch (err) {
+    console.error('getLeaderboardFresh failed:', err);
+    return [];
+  }
 }
