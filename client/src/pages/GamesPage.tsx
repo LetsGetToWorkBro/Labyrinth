@@ -133,6 +133,23 @@ function GamesPage() {
       }).catch(() => {});
     }
 
+    try { localStorage.setItem('lbjj_game_played_' + new Date().toISOString().split('T')[0], '1'); } catch {}
+
+    if (result.result === 'win') {
+      const winXP = 25;
+      try {
+        const gStats = JSON.parse(localStorage.getItem('lbjj_game_stats_v2') || '{}');
+        gStats.xp = (gStats.xp || 0) + winXP;
+        gStats.totalXP = (gStats.totalXP || 0) + winXP;
+        localStorage.setItem('lbjj_game_stats_v2', JSON.stringify(gStats));
+      } catch {}
+      const winEl = document.createElement('div');
+      winEl.textContent = '+25 XP';
+      winEl.style.cssText = `position:fixed;bottom:140px;left:50%;transform:translateX(-50%);background:rgba(200,162,76,0.95);color:#000;font-weight:800;font-size:16px;padding:8px 20px;border-radius:20px;z-index:9999;pointer-events:none;animation:pointsFloat 1.5s ease-out forwards;`;
+      document.body.appendChild(winEl);
+      setTimeout(() => winEl.remove(), 1500);
+    }
+
     // Check and unlock local achievements after game
     const profile = (() => { try { return JSON.parse(localStorage.getItem('lbjj_member_profile') || '{}'); } catch { return {}; } })();
     const gameStatsLocal = (() => { try { return JSON.parse(localStorage.getItem('lbjj_game_stats_v2') || '{}'); } catch { return {}; } })();

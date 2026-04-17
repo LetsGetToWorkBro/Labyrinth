@@ -421,7 +421,18 @@ function ClassCard({ cls, isToday, stream, checkedInClasses, markClassCheckedIn 
       const raw = localStorage.getItem('lbjj_game_stats_v2');
       const stats = raw ? JSON.parse(raw) : {};
       stats.classesAttended = (stats.classesAttended || 0) + 1;
-      const xpGain = 10;
+      const comboMultiplier = (() => {
+        try {
+          const weekly2: string[] = JSON.parse(localStorage.getItem('lbjj_weekly_training') || '[]');
+          const today2 = new Date().toISOString().split('T')[0];
+          const yesterday2 = new Date(Date.now() - 86400000).toISOString().split('T')[0];
+          const twoDaysAgo2 = new Date(Date.now() - 2 * 86400000).toISOString().split('T')[0];
+          if (weekly2.includes(today2) && weekly2.includes(yesterday2) && weekly2.includes(twoDaysAgo2)) return 3;
+          if (weekly2.includes(today2) && weekly2.includes(yesterday2)) return 2;
+          return 1;
+        } catch { return 1; }
+      })();
+      const xpGain = 10 * comboMultiplier;
       stats.xp = (stats.xp || 0) + xpGain;
       stats.totalXP = (stats.totalXP || 0) + xpGain;
       localStorage.setItem('lbjj_game_stats_v2', JSON.stringify(stats));
@@ -440,6 +451,16 @@ function ClassCard({ cls, isToday, stream, checkedInClasses, markClassCheckedIn 
       const cutoff = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
       localStorage.setItem('lbjj_weekly_training', JSON.stringify(weekly.filter((d: string) => d >= cutoff)));
     }
+
+    // Update season check-in history for April ring on HomePage
+    try {
+      const history: string[] = JSON.parse(localStorage.getItem('lbjj_checkin_history') || '[]');
+      if (!history.includes(today)) {
+        history.push(today);
+        const cutoff = new Date(Date.now() - 400*24*60*60*1000).toISOString().split('T')[0];
+        localStorage.setItem('lbjj_checkin_history', JSON.stringify(history.filter((d: string) => d >= cutoff)));
+      }
+    } catch {}
 
     // Check and unlock local achievements after check-in
     const member = getMemberData();

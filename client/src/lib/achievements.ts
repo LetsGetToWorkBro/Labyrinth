@@ -152,6 +152,36 @@ export function checkAndUnlockAchievements(profile: any, stats: any): string[] {
     if (level >= 30) unlock('level_30');
   }
 
+  // Weekly training achievements
+  const weekly: string[] = (() => { try { return JSON.parse(localStorage.getItem('lbjj_weekly_training') || '[]'); } catch { return []; } })();
+  const now = new Date();
+  const weekStart = new Date(now); weekStart.setDate(now.getDate() - now.getDay()); weekStart.setHours(0,0,0,0);
+  const thisWeekCount = weekly.filter(d => new Date(d) >= weekStart).length;
+  if (thisWeekCount >= 3) unlock('three_in_week');
+  if (thisWeekCount >= 5) unlock('perfect_week');
+
+  // Time-based
+  const hour = new Date().getHours();
+  if (hour < 7) unlock('early_bird');
+  if (hour >= 19) unlock('night_owl');
+  if (hour >= 0 && hour < 3) unlock('game_midnight');
+
+  // Belt stripe
+  const stripes = profile.stripes || profile.Stripes || 0;
+  if (stripes > 0) unlock('first_stripe');
+
+  // First message sent
+  if (localStorage.getItem('lbjj_first_message_sent')) unlock('first_message');
+
+  // Game achievements
+  const gameStreak = stats.streak || stats.currentGameStreak || 0;
+  if (gameStreak >= 3) unlock('game_streak_3');
+  if ((stats.wins || 0) >= 10) unlock('game_win_10');
+
+  // Game AND class same day
+  const today = new Date().toISOString().split('T')[0];
+  if (weekly.includes(today) && localStorage.getItem('lbjj_game_played_' + today)) unlock('game_and_class');
+
   localStorage.setItem('lbjj_achievements', JSON.stringify(earned));
   return newlyEarned;
 }

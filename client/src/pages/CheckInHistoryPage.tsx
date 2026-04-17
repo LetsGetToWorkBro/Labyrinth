@@ -123,7 +123,7 @@ export default function CheckInHistoryPage() {
 
   const thisWeekCount = checkIns.filter(c => new Date(c.timestamp || c.date || 0) >= thisWeekStart).length;
   const thisMonthCount = checkIns.filter(c => new Date(c.timestamp || c.date || 0) >= thisMonthStart).length;
-  const totalXP = checkIns.length * XP_PER_CLASS;
+  const totalXP = (() => { try { return Math.max(JSON.parse(localStorage.getItem('lbjj_game_stats_v2') || '{}').xp || 0, checkIns.length * XP_PER_CLASS); } catch { return checkIns.length * XP_PER_CLASS; } })();
 
   // Best week
   const weekGroups = groupByWeek(checkIns);

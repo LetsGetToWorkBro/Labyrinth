@@ -181,7 +181,7 @@ export default function WaiverPage() {
       } catch {}
       clearCanvas();
       setConfirmed(false);
-      refreshProfile().catch(() => {});
+      setTimeout(() => refreshProfile().catch(() => {}), 1500);
     } catch (err: any) {
       setSignError("Connection error. Please check your internet and try again.");
     }

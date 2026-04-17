@@ -110,7 +110,13 @@ export default function StatsPage() {
   const uniqueBelts = useMemo(() => Array.from(new Set(athletes.map(a => a.belt.toLowerCase()).filter(Boolean))), [athletes]);
   const uniqueTiers = useMemo(() => Array.from(new Set(athletes.map(a => a.tier).filter(Boolean))), [athletes]);
 
-  const memberXP = (() => { try { return parseInt(localStorage.getItem('lbjj_member_xp') || '0'); } catch { return 0; } })();
+  const memberXP = (() => {
+    try {
+      const stats = JSON.parse(localStorage.getItem('lbjj_game_stats_v2') || '{}');
+      const gasXP = (member as any)?.totalPoints || 0;
+      return Math.max(stats.xp || stats.totalXP || 0, gasXP);
+    } catch { return (member as any)?.totalPoints || 0; }
+  })();
 
   if (loading) {
     return (

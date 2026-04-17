@@ -458,6 +458,7 @@ export default function ChatPage() {
     const result = await chatSendMessage(activeChannelId, inputText.trim(), localStorage.getItem('lbjj_profile_picture') || undefined);
     setSending(false);
     if (result.success) {
+      try { localStorage.setItem('lbjj_first_message_sent', '1'); } catch {}
       setInputText("");
       // Optimistic local append
       const optimistic: ChatMessage = {
