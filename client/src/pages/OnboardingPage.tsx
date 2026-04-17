@@ -161,16 +161,14 @@ export default function OnboardingPage() {
   if (localStorage.getItem(ONBOARDING_KEY)) return null;
 
   const complete = () => {
+    // Navigate first, then set key — prevents component unmounting before navigation fires
+    window.location.href = window.location.origin + window.location.pathname + '#/';
     localStorage.setItem(ONBOARDING_KEY, "1");
-    // Force a full navigation — hash = "#/" alone won't reload if already at "#/"
-    setTimeout(() => {
-      window.location.href = window.location.origin + window.location.pathname + '#/';
-    }, 80);
   };
 
   const skip = () => {
-    localStorage.setItem(ONBOARDING_KEY, "1");
     window.location.href = window.location.origin + window.location.pathname + '#/';
+    localStorage.setItem(ONBOARDING_KEY, "1");
   };
 
   const next = () => setStep((s) => Math.min(s + 1, 5));
@@ -223,7 +221,10 @@ export default function OnboardingPage() {
         Haptics.impact({ style: ImpactStyle.Heavy });
       });
     } catch {}
-    setTimeout(complete, 400);
+    setTimeout(() => {
+      window.location.href = window.location.origin + window.location.pathname + '#/';
+      localStorage.setItem(ONBOARDING_KEY, "1");
+    }, 400);
   };
 
   return (
