@@ -562,6 +562,10 @@ export default function HomePage() {
         const stats = JSON.parse(localStorage.getItem('lbjj_game_stats_v2') || '{}');
         stats.classesAttended = realTotal;
         stats.totalXP = derivedXP;
+        // BUG 11: write derived XP to stats.xp so check-ins increment from correct base
+        if (derivedXP > (stats.xp || 0)) {
+          stats.xp = derivedXP;
+        }
         // Persist streak so it survives across sessions even if GAS is slow
         if (gasStreak > 0) stats.currentStreak = gasStreak;
         localStorage.setItem('lbjj_game_stats_v2', JSON.stringify(stats));
@@ -753,7 +757,11 @@ export default function HomePage() {
       const raw = localStorage.getItem('lbjj_game_stats_v2');
       const stats = raw ? JSON.parse(raw) : {};
       stats.classesAttended = (stats.classesAttended || 0) + 1;
+      const xpGain = 10 * (comboMultiplier || 1);
+      stats.xp = (stats.xp || 0) + xpGain;
+      stats.totalXP = (stats.totalXP || 0) + xpGain;
       localStorage.setItem('lbjj_game_stats_v2', JSON.stringify(stats));
+      setMemberXP(prev => prev + xpGain);
     } catch {}
     setTotalClasses(prev => prev + 1);
 
@@ -795,11 +803,12 @@ export default function HomePage() {
     setTimeout(() => soundSystem.play('xpEarn'), 300);
 
     // Show success toast
-    showPointsToast(10);
+    const xpGainForToast = 10 * (comboMultiplier || 1);
+    showPointsToast(xpGainForToast);
 
     // Show XP gain floating toast
     const xpEl = document.createElement('div');
-    xpEl.textContent = '+10 XP';
+    xpEl.textContent = `+${xpGainForToast} XP`;
     xpEl.style.cssText = `
       position: fixed; bottom: 140px; left: 50%; transform: translateX(-50%);
       background: rgba(200,162,76,0.95); color: #000; font-weight: 800; font-size: 16px;
@@ -887,10 +896,11 @@ export default function HomePage() {
     const statsToSync = (() => {
       try { return JSON.parse(localStorage.getItem('lbjj_game_stats_v2') || '{}'); } catch { return {}; }
     })();
+    const currentStreakVal = (res?.currentStreak ?? dailyStreakCount ?? parseInt(localStorage.getItem('lbjj_streak_cache') || '0')) || 0;
     saveMemberStats({
-      xp:        statsToSync.xp        || 0,
-      streak:    statsToSync.currentStreak || 0,
-      maxStreak: statsToSync.maxStreak  || 0,
+      xp:        statsToSync.xp        || statsToSync.totalXP || 0,
+      streak:    currentStreakVal,
+      maxStreak: Math.max(statsToSync.maxStreak || 0, currentStreakVal),
     }).catch(() => {});
 
     // ── Sync newly-earned achievements to GAS MemberBadges sheet ──────────────

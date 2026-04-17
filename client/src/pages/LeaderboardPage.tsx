@@ -99,9 +99,11 @@ export default function LeaderboardPage() {
         })
       : entries;
     if (sortBy === 'level') {
-      result = [...result].sort((a, b) =>
-        getActualLevel(b.totalPoints || 0) - getActualLevel(a.totalPoints || 0)
-      );
+      result = [...result].sort((a, b) => {
+        const axp = a.totalPoints || ((a.classCount || 0) * 10);
+        const bxp = b.totalPoints || ((b.classCount || 0) * 10);
+        return getActualLevel(bxp) - getActualLevel(axp);
+      });
     }
     return result;
   })();

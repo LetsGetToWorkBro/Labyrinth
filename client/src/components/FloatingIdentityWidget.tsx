@@ -20,7 +20,25 @@ export function FloatingIdentityWidget() {
   const [avatarSrc, setAvatarSrc] = useState<string | null>(null);
   const [animateBar, setAnimateBar] = useState(false);
   const expandRef = useRef<HTMLDivElement>(null);
-  const xp = (member as any)?.totalPoints || member?.totalPoints || 0;
+  const [localXP, setLocalXP] = useState<number>(() => {
+    try {
+      const stats = JSON.parse(localStorage.getItem('lbjj_game_stats_v2') || '{}');
+      const gasXP = (member as any)?.totalPoints || 0;
+      return Math.max(stats.xp || 0, stats.totalXP || 0, gasXP);
+    } catch { return (member as any)?.totalPoints || 0; }
+  });
+  useEffect(() => {
+    const sync = () => {
+      try {
+        const stats = JSON.parse(localStorage.getItem('lbjj_game_stats_v2') || '{}');
+        setLocalXP(prev => Math.max(prev, stats.xp || 0, stats.totalXP || 0, (member as any)?.totalPoints || 0));
+      } catch {}
+    };
+    window.addEventListener('storage', sync);
+    const t = setInterval(sync, 4000);
+    return () => { window.removeEventListener('storage', sync); clearInterval(t); };
+  }, [member]);
+  const xp = localXP;
   const { level, title, progress, xpForNext, xpForLevel } = getLevelFromXP(xp);
   const ringTier = getRingTier(level);
   const xpIntoLevel = xp - xpForLevel;

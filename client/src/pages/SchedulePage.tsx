@@ -421,6 +421,9 @@ function ClassCard({ cls, isToday, stream, checkedInClasses, markClassCheckedIn 
       const raw = localStorage.getItem('lbjj_game_stats_v2');
       const stats = raw ? JSON.parse(raw) : {};
       stats.classesAttended = (stats.classesAttended || 0) + 1;
+      const xpGain = 10;
+      stats.xp = (stats.xp || 0) + xpGain;
+      stats.totalXP = (stats.totalXP || 0) + xpGain;
       localStorage.setItem('lbjj_game_stats_v2', JSON.stringify(stats));
     } catch (_) {}
 
@@ -480,10 +483,11 @@ function ClassCard({ cls, isToday, stream, checkedInClasses, markClassCheckedIn 
 
         // ── Persist stats to GAS after server confirms ──────────────────────
         const statsAfter = (() => { try { return JSON.parse(localStorage.getItem('lbjj_game_stats_v2') || '{}'); } catch { return {}; } })();
+        const currentStreakForSync = result?.currentStreak ?? parseInt(localStorage.getItem('lbjj_streak_cache') || '0') ?? (statsAfter.currentStreak || 0);
         saveMemberStats({
-          xp:        statsAfter.xp || 0,
-          streak:    result?.currentStreak ?? (statsAfter.currentStreak || 0),
-          maxStreak: statsAfter.maxStreak || 0,
+          xp:        statsAfter.xp || statsAfter.totalXP || 0,
+          streak:    currentStreakForSync,
+          maxStreak: Math.max(statsAfter.maxStreak || 0, currentStreakForSync),
         }).catch(() => {});
 
         // Persist streak from GAS response to localStorage

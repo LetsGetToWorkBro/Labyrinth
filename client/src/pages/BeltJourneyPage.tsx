@@ -465,12 +465,8 @@ export default function BeltJourneyPage() {
 
   const deletePromotion = async (id: string) => {
     setEditingId(null);
-    // Optimistically remove and cache remaining list immediately
-    setPromotions(prev => {
-      const updated = prev.filter(p => p.id !== id);
-      try { localStorage.setItem('lbjj_belt_promotions_cache', JSON.stringify(updated)); } catch {}
-      return updated;
-    });
+    // Await GAS delete BEFORE cache update so re-fetches don't race with a stale server record
+    try { await beltDeletePromotion(id); } catch {}
     // Track in deleted IDs so re-fetch filters it out during GAS sync lag
     try {
       const deletedRaw = localStorage.getItem('lbjj_belt_deleted_ids') || '[]';
@@ -478,8 +474,9 @@ export default function BeltJourneyPage() {
       if (!deleted.includes(id)) deleted.push(id);
       localStorage.setItem('lbjj_belt_deleted_ids', JSON.stringify(deleted));
     } catch {}
-    // Fire GAS delete (best-effort — UI already updated)
-    try { await beltDeletePromotion(id); } catch {}
+    const filtered = promotions.filter(p => p.id !== id);
+    setPromotions(filtered);
+    try { localStorage.setItem('lbjj_belt_promotions_cache', JSON.stringify(filtered)); } catch {}
   };
 
   const startEdit = (p: BeltPromotion) => {

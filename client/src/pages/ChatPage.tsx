@@ -107,6 +107,24 @@ function MemberMiniProfile({ member, onClose }: { member: ChannelMember; onClose
           </div>
         </div>
         <XPBar xp={member.totalPoints || 0} compact />
+        {member.lastSeen && (() => {
+          const diff = Date.now() - new Date(member.lastSeen).getTime();
+          const isOnline = diff < 5 * 60 * 1000;
+          return (
+            <div style={{ display:'flex', alignItems:'center', gap:6, marginTop:10 }}>
+              <div style={{ width:8, height:8, borderRadius:'50%', background: isOnline ? '#34D399' : '#555' }}/>
+              <span style={{ fontSize:11, color: isOnline ? '#34D399' : '#666' }}>
+                {isOnline ? 'Online now' : `Last seen ${Math.floor(diff/60000)}m ago`}
+              </span>
+            </div>
+          );
+        })()}
+        {member.badgeCount && member.badgeCount > 0 ? (
+          <div style={{ display:'flex', alignItems:'center', gap:6, marginTop:12, padding:'8px 12px', background:'rgba(200,162,76,0.06)', border:'1px solid rgba(200,162,76,0.12)', borderRadius:10 }}>
+            <TrophyIcon size={14} color="#C8A24C" />
+            <span style={{ fontSize:12, color:'#C8A24C', fontWeight:600 }}>{member.badgeCount} achievement{member.badgeCount !== 1 ? 's' : ''} unlocked</span>
+          </div>
+        ) : null}
         <button onClick={onClose} style={{
           marginTop: 16, width: '100%', padding: 12, borderRadius: 12,
           background: '#1A1A1A', border: '1px solid #222',
