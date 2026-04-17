@@ -476,7 +476,7 @@ function AccountPage() {
             const memberLevel = getActualLevel(memberXP);
             const ringTier = getRingTier(memberLevel);
             return (
-              <ProfileRing tier={ringTier} size={88} level={memberLevel > 1 ? memberLevel : undefined}>
+              <ProfileRing tier={ringTier} size={88}>
                 <div
                   onClick={() => fileInputRef.current?.click()}
                   style={{

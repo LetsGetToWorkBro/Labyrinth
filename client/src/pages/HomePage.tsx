@@ -2206,85 +2206,92 @@ export default function HomePage() {
         }
       `}</style>
 
-      {/* ════════════════════════════════════════════════════
-          SEASON PROGRESS + NEXT MILESTONE (combined)
-          ════════════════════════════════════════════════════ */}
+            {/* SEASON + MILESTONE — 2-column square tiles */}
       {(trainingSeasonData || (nextMilestoneData && nextMilestoneData.need > 0)) && (
-        <div className="mx-5 mb-4 stagger-child">
-          <div style={{ background: '#0D0D0D', border: '1px solid #1A1A1A', borderRadius: 16, overflow: 'hidden' }}>
-            {/* Season row */}
-            {trainingSeasonData && (
-              <div onClick={() => { haptic(); setShowSeasonModal(true); }} style={{ padding: '14px 16px', display: 'flex', alignItems: 'center', gap: 14, cursor: 'pointer',
-                borderBottom: nextMilestoneData && nextMilestoneData.need > 0 ? '1px solid #141414' : 'none' }}>
-                <div style={{ position: 'relative', flexShrink: 0 }}>
-                  <svg width={52} height={52} viewBox="0 0 64 64">
-                    <circle cx={32} cy={32} r={26} fill="none" stroke="#1A1A1A" strokeWidth={5}/>
-                    <circle cx={32} cy={32} r={26} fill="none"
-                      stroke="url(#season-grad2)"
-                      strokeWidth={5} strokeLinecap="round"
-                      strokeDasharray={`${2 * Math.PI * 26}`}
-                      strokeDashoffset={`${2 * Math.PI * 26 * (1 - trainingSeasonData.progress)}`}
-                      transform="rotate(-90 32 32)"
-                      style={{ transition: 'stroke-dashoffset 1.2s cubic-bezier(0.4,0,0.2,1)' }}
-                    />
-                    <defs>
-                      <linearGradient id="season-grad2" x1="0%" y1="0%" x2="100%" y2="0%">
-                        <stop offset="0%" stopColor="#8B6914"/>
-                        <stop offset="100%" stopColor="#FFD700"/>
-                      </linearGradient>
-                    </defs>
-                    <text x={32} y={36} textAnchor="middle" fill="#F0F0F0" fontSize={14} fontWeight={800} fontFamily="sans-serif">
-                      {trainingSeasonData.thisMonthClasses}
-                    </text>
-                  </svg>
-                </div>
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: '#C8A24C', marginBottom: 3 }}>
-                    {trainingSeasonData.monthName} Season
-                  </div>
-                  <div style={{ fontSize: 14, fontWeight: 800, color: '#F0F0F0', marginBottom: 3 }}>
-                    {trainingSeasonData.thisMonthClasses} / {trainingSeasonData.goalClasses} classes
-                  </div>
-                  <div style={{ height: 3, borderRadius: 2, background: '#1A1A1A', overflow: 'hidden' }}>
-                    <div style={{
-                      height: '100%',
-                      width: `${Math.min(100, trainingSeasonData.progress * 100)}%`,
-                      background: 'linear-gradient(90deg, #8B6914, #FFD700)',
-                      borderRadius: 2, transition: 'width 1.2s cubic-bezier(0.4,0,0.2,1)',
-                    }}/>
-                  </div>
-                  <div style={{ fontSize: 10, color: '#555', marginTop: 4 }}>
-                    {trainingSeasonData.thisMonthClasses >= trainingSeasonData.goalClasses
-                      ? <><TrophyIcon size={10} color="#C8A24C" style={{ verticalAlign: 'middle', marginRight: 3 }} /> Season complete.</>
-                      : `${trainingSeasonData.goalClasses - trainingSeasonData.thisMonthClasses} more to complete`}
-                  </div>
+        <div className="mx-5 mb-4 stagger-child" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+
+          {/* LEFT: Season tile */}
+          {trainingSeasonData ? (
+            <div
+              onClick={() => { haptic(); setShowSeasonModal(true); }}
+              style={{
+                background: '#0D0D0D', border: '1px solid #1A1A1A', borderRadius: 16,
+                padding: '14px 12px 12px', cursor: 'pointer', display: 'flex',
+                flexDirection: 'column', alignItems: 'center', gap: 6, minHeight: 130,
+              }}
+            >
+              <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: '#C8A24C', alignSelf: 'flex-start' }}>
+                {trainingSeasonData.monthName} Season
+              </div>
+              <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <svg width={62} height={62} viewBox="0 0 64 64">
+                  <circle cx={32} cy={32} r={26} fill="none" stroke="#1A1A1A" strokeWidth={5}/>
+                  <circle cx={32} cy={32} r={26} fill="none"
+                    stroke="url(#sg-sq)" strokeWidth={5} strokeLinecap="round"
+                    strokeDasharray={`${2 * Math.PI * 26}`}
+                    strokeDashoffset={`${2 * Math.PI * 26 * (1 - trainingSeasonData.progress)}`}
+                    transform="rotate(-90 32 32)"
+                    style={{ transition: 'stroke-dashoffset 1.2s cubic-bezier(0.4,0,0.2,1)' }}
+                  />
+                  <defs>
+                    <linearGradient id="sg-sq" x1="0%" y1="0%" x2="100%" y2="0%">
+                      <stop offset="0%" stopColor="#8B6914"/><stop offset="100%" stopColor="#FFD700"/>
+                    </linearGradient>
+                  </defs>
+                  <text x={32} y={37} textAnchor="middle" fill="#F0F0F0" fontSize={16} fontWeight={900} fontFamily="sans-serif">
+                    {trainingSeasonData.thisMonthClasses}
+                  </text>
+                </svg>
+              </div>
+              <div style={{ fontSize: 13, fontWeight: 800, color: '#F0F0F0', textAlign: 'center' }}>
+                {trainingSeasonData.thisMonthClasses}<span style={{ color: '#444', fontWeight: 400, fontSize: 11 }}> / {trainingSeasonData.goalClasses}</span>
+              </div>
+              <div style={{ width: '100%', height: 3, borderRadius: 2, background: '#1A1A1A', overflow: 'hidden' }}>
+                <div style={{ height: '100%', width: `${Math.min(100, trainingSeasonData.progress * 100)}%`, background: 'linear-gradient(90deg, #8B6914, #FFD700)', borderRadius: 2, transition: 'width 1.2s cubic-bezier(0.4,0,0.2,1)' }}/>
+              </div>
+              <div style={{ fontSize: 9, color: '#555', textAlign: 'center' }}>
+                {trainingSeasonData.thisMonthClasses >= trainingSeasonData.goalClasses ? 'Season complete ✓' : `${trainingSeasonData.goalClasses - trainingSeasonData.thisMonthClasses} more to complete`}
+              </div>
+            </div>
+          ) : <div />}
+
+          {/* RIGHT: Next Milestone tile */}
+          {nextMilestoneData && nextMilestoneData.need > 0 ? (
+            <div
+              onClick={() => { haptic(); setShowMilestoneInfo(true); }}
+              style={{
+                background: '#0D0D0D', border: '1px solid rgba(200,162,76,0.12)', borderRadius: 16,
+                padding: '14px 12px 12px', cursor: 'pointer', display: 'flex',
+                flexDirection: 'column', alignItems: 'center', gap: 6, minHeight: 130,
+              }}
+            >
+              <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: '#444', alignSelf: 'flex-start' }}>
+                Next Milestone
+              </div>
+              <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <div style={{
+                  width: 54, height: 54, borderRadius: 14,
+                  background: 'rgba(200,162,76,0.08)', border: '1px solid rgba(200,162,76,0.18)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                }}>
+                  {React.cloneElement(nextMilestoneData.icon as React.ReactElement<any>, { size: 26 })}
                 </div>
               </div>
-            )}
-            {/* Next milestone row */}
-            {nextMilestoneData && nextMilestoneData.need > 0 && (
-              <div onClick={() => { haptic(); setShowMilestoneInfo(true); }} style={{ cursor: 'pointer' }}>
-                <div style={{ padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 12 }}>
-                  <div style={{
-                    width: 34, height: 34, borderRadius: 9, flexShrink: 0,
-                    background: 'rgba(200,162,76,0.08)', border: '1px solid rgba(200,162,76,0.15)',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  }}>
-                    {nextMilestoneData.icon}
-                  </div>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#444', marginBottom: 2 }}>Next Milestone</div>
-                    <div style={{ fontSize: 12, fontWeight: 700, color: '#F0F0F0' }}>
-                      {nextMilestoneData.type === 'achievement'
-                        ? `${nextMilestoneData.need} more ${nextMilestoneData.unit} → \"${nextMilestoneData.label}\"`
-                        : `${nextMilestoneData.need.toLocaleString()} XP to Level ${nextMilestoneData.nextLevel}`}
-                    </div>
-                  </div>
-                  <ChevronRight size={14} color="#444" />
-                </div>
+              <div style={{ fontSize: 12, fontWeight: 800, color: '#F0F0F0', textAlign: 'center', lineHeight: 1.25 }}>
+                {nextMilestoneData.label}
               </div>
-            )}
-          </div>
+              <div style={{ fontSize: 10, fontWeight: 700, color: '#C8A24C', textAlign: 'center' }}>
+                {nextMilestoneData.type === 'achievement'
+                  ? `${nextMilestoneData.need} ${nextMilestoneData.unit} away`
+                  : `${nextMilestoneData.need.toLocaleString()} XP away`}
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 2, fontSize: 9, color: '#333' }}>
+                <span>View all</span>
+                <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M9 18l6-6-6-6"/></svg>
+              </div>
+            </div>
+          ) : <div />}
+
         </div>
       )}
 
