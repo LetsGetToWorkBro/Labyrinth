@@ -48,6 +48,7 @@ import { Redirect } from "wouter";
 import { gasCall, cachedGasCall, beltSavePromotion, updatePresence } from "@/lib/api";
 import { getBeltColor } from "@/lib/constants";
 import { ProfileRing } from "@/components/ProfileRing";
+import { FloatingIdentityWidget } from "@/components/FloatingIdentityWidget";
 import { getRingTier, getActualLevel } from "@/lib/xp";
 import { XPBar } from "@/components/XPBar";
 import { soundSystem } from '@/lib/sounds';
@@ -1551,6 +1552,7 @@ function AppShell() {
           </Switch>
         </Suspense>
       </div>
+      <FloatingIdentityWidget />
       <TabBar />
       {/* Global level-up overlay */}
       {levelUpState && (
