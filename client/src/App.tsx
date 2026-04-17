@@ -1459,7 +1459,10 @@ function AppShell() {
   const GOLD = "#C8A24C";
 
   // ── Onboarding overlay for first-time users ──────────────────
-  const onboardingDone = !!(() => { try { return localStorage.getItem('lbjj_onboarding_done'); } catch { return null; } })();
+  // Use a ref so this only reads localStorage once — prevents the onboarding
+  // component from being unmounted mid-navigation when the key is set
+  const onboardingDoneRef = useRef<boolean>(!!(() => { try { return localStorage.getItem('lbjj_onboarding_done'); } catch { return null; } })());
+  const onboardingDone = onboardingDoneRef.current;
 
   return (
     <div className="app-shell">

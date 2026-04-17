@@ -156,19 +156,28 @@ export default function OnboardingPage() {
   const [xpAnimated, setXpAnimated] = useState(0);
   const [tabsVisible, setTabsVisible] = useState<boolean[]>([false, false, false, false, false]);
   const [ctaTapped, setCtaTapped] = useState(false);
+  const [completing, setCompleting] = useState(false);
 
-  // Already completed — render nothing
-  if (localStorage.getItem(ONBOARDING_KEY)) return null;
+  // Already completed — render nothing (but not mid-completion)
+  if (!completing && localStorage.getItem(ONBOARDING_KEY)) return null;
 
   const complete = () => {
-    // Navigate first, then set key — prevents component unmounting before navigation fires
-    window.location.href = window.location.origin + window.location.pathname + '#/';
+    // Set completing=true so the null-return guard doesn't unmount us
+    // before window.location.href fires
+    setCompleting(true);
     localStorage.setItem(ONBOARDING_KEY, "1");
+    // Small delay to let the state update render, then navigate
+    requestAnimationFrame(() => {
+      window.location.href = window.location.origin + window.location.pathname + '#/';
+    });
   };
 
   const skip = () => {
-    window.location.href = window.location.origin + window.location.pathname + '#/';
+    setCompleting(true);
     localStorage.setItem(ONBOARDING_KEY, "1");
+    requestAnimationFrame(() => {
+      window.location.href = window.location.origin + window.location.pathname + '#/';
+    });
   };
 
   const next = () => setStep((s) => Math.min(s + 1, 5));
@@ -221,10 +230,7 @@ export default function OnboardingPage() {
         Haptics.impact({ style: ImpactStyle.Heavy });
       });
     } catch {}
-    setTimeout(() => {
-      window.location.href = window.location.origin + window.location.pathname + '#/';
-      localStorage.setItem(ONBOARDING_KEY, "1");
-    }, 400);
+    setTimeout(() => { complete(); }, 400);
   };
 
   return (
