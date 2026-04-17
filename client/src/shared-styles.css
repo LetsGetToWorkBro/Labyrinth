@@ -149,8 +149,8 @@
   /* --------------------------------------------------
      TYPOGRAPHY
   -------------------------------------------------- */
-  --font-display: 'General Sans', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  --font-body:    'Inter', 'General Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-display: 'Satoshi', 'General Sans', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-body:    'Satoshi', 'Inter', 'General Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   --font-mono:    'SF Mono', 'Menlo', 'Consolas', monospace;
 
   /* Type scale — 12px minimum floor enforced */
@@ -164,6 +164,11 @@
   --text-3xl:  22px;   /* page titles */
   --text-4xl:  28px;   /* stat values (large) */
   --text-5xl:  36px;   /* hero/display numbers */
+
+  /* Text color levels (dark theme) */
+  --color-text:       #F0F0F0;
+  --color-text-muted: #A0A0A8;
+  --color-text-faint: #707078;
 
   /* --------------------------------------------------
      SPACING — 4px grid
@@ -300,12 +305,12 @@ body {
 }
 
 /* Heading scale */
-h1, .h1 { font-family: var(--font-display); font-size: var(--text-5xl); font-weight: 700; letter-spacing: -0.5px; line-height: 1.1; }
-h2, .h2 { font-family: var(--font-display); font-size: var(--text-4xl); font-weight: 700; letter-spacing: -0.4px; line-height: 1.15; }
-h3, .h3 { font-family: var(--font-display); font-size: var(--text-3xl); font-weight: 700; letter-spacing: -0.3px; line-height: 1.2; }
-h4, .h4 { font-family: var(--font-display); font-size: var(--text-2xl); font-weight: 600; letter-spacing: -0.2px; }
-h5, .h5 { font-family: var(--font-body);    font-size: var(--text-xl);  font-weight: 600; }
-h6, .h6 { font-family: var(--font-body);    font-size: var(--text-lg);  font-weight: 600; }
+h1, .h1 { font-family: var(--font-display); font-size: var(--text-5xl); font-weight: 700; letter-spacing: -0.02em; line-height: 1.1; }
+h2, .h2 { font-family: var(--font-display); font-size: var(--text-4xl); font-weight: 700; letter-spacing: -0.02em; line-height: 1.15; }
+h3, .h3 { font-family: var(--font-display); font-size: var(--text-3xl); font-weight: 700; letter-spacing: -0.02em; line-height: 1.2; }
+h4, .h4 { font-family: var(--font-display); font-size: var(--text-2xl); font-weight: 700; letter-spacing: -0.02em; line-height: 1.2; }
+h5, .h5 { font-family: var(--font-body);    font-size: var(--text-xl);  font-weight: 700; line-height: 1.2; }
+h6, .h6 { font-family: var(--font-body);    font-size: var(--text-lg);  font-weight: 700; line-height: 1.2; }
 
 /* Page title (used by Admin CRM) */
 .page-title {
@@ -329,6 +334,7 @@ h6, .h6 { font-family: var(--font-body);    font-size: var(--text-lg);  font-wei
 .label-uppercase {
   font-size: var(--text-xs);  /* 12px — minimum */
   font-weight: 700;
+  line-height: 1.2;
   text-transform: uppercase;
   letter-spacing: 0.5px;
   color: var(--lbj-text-muted);
@@ -615,6 +621,7 @@ h6, .h6 { font-family: var(--font-body);    font-size: var(--text-lg);  font-wei
 .form-label {
   font-size: var(--text-xs);    /* 12px minimum */
   font-weight: 600;
+  line-height: 1.2;
   text-transform: uppercase;
   letter-spacing: 0.5px;
   color: var(--lbj-text-muted);
@@ -760,6 +767,7 @@ select {
   top: 0;
   font-size: var(--text-xs);   /* 12px — raised from 11px */
   font-weight: 700;
+  line-height: 1.2;
   text-transform: uppercase;
   letter-spacing: 0.5px;
   color: var(--lbj-text-muted);
@@ -907,6 +915,7 @@ select {
 .card-title {
   font-size: var(--text-xs);    /* 12px minimum */
   font-weight: 700;
+  line-height: 1.2;
   text-transform: uppercase;
   letter-spacing: 0.5px;
   color: var(--lbj-text-muted);
@@ -924,6 +933,7 @@ select {
 .stat-label {
   font-size: var(--text-xs);    /* 12px */
   font-weight: 700;
+  line-height: 1.2;
   text-transform: uppercase;
   letter-spacing: 0.5px;
   color: var(--lbj-text-muted);
@@ -954,14 +964,15 @@ select {
   border-radius: 50%;
   background: var(--lbj-gold);
   color: #0A0A0A;
-  font-size: 13px;
+  font-size: var(--text-sm);
   font-weight: 700;
+  line-height: 1.2;
   font-family: var(--font-body);
   display: flex;
   align-items: center;
   justify-content: center;
   text-transform: uppercase;
-  letter-spacing: -0.5px;
+  letter-spacing: -0.02em;
   flex-shrink: 0;
   user-select: none;
 }
@@ -969,7 +980,7 @@ select {
 .member-avatar.lg {
   width: 52px;
   height: 52px;
-  font-size: 18px;
+  font-size: var(--text-xl);
 }
 
 
