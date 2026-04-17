@@ -41,6 +41,7 @@ import {
   Gamepad2, BarChart2, Trophy, Thermometer,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
+import { TrophyIcon, AchievedIcon, CalendarSparkIcon, GamepadIcon, GoldMedalIcon, SaunaIcon, ChartBarsIcon, MegaphoneIcon, ShieldIcon, ChevronRightIcon } from "@/components/icons/LbjjIcons";
 import { useEffect, useCallback, useState, useRef } from "react";
 import { useHashLocation as useHashLoc } from "wouter/use-hash-location";
 import { Redirect } from "wouter";
@@ -929,21 +930,21 @@ function MorePage() {
     {
       label: 'Train',
       items: [
-        { href: '/#/achievements', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#C8A24C" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></svg>, label: 'Achievements', desc: 'Unlock badges and track your progress' },
-        { href: '/#/belt', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#C8A24C" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M2 12h20"/><path d="M2 8c0 0 4-2 10-2s10 2 10 2"/><path d="M2 16c0 0 4 2 10 2s10-2 10-2"/><rect x="9" y="10" width="6" height="4" rx="1"/></svg>, label: 'Belt Journey', desc: 'Track your progression and submit promotion requests' },
-        { href: '/#/history',  icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#C8A24C" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/><path d="M8 14h.01M12 14h.01M16 14h.01M8 18h.01M12 18h.01"/></svg>, label: 'Class History', desc: 'Your attendance record' },
-        { href: '/#/games',    icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#C8A24C" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="6" width="20" height="12" rx="4"/><path d="M12 12h.01M7 12h.01M17 12h.01M12 8v8"/></svg>, label: 'Games', desc: 'Challenge your teammates' },
-        { href: '/#/leaderboard', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#C8A24C" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></svg>, label: 'Leaderboard', desc: 'Weekly class attendance rankings' },
+        { href: '/#/achievements', icon: <TrophyIcon size={20} color="#C8A24C" />, label: 'Achievements', desc: 'Unlock badges and track your progress' },
+        { href: '/#/belt', icon: <AchievedIcon size={20} color="#C8A24C" />, label: 'Belt Journey', desc: 'Track your progression and submit promotion requests' },
+        { href: '/#/history',  icon: <CalendarSparkIcon size={20} color="#C8A24C" />, label: 'Class History', desc: 'Your attendance record' },
+        { href: '/#/games',    icon: <GamepadIcon size={20} color="#C8A24C" />, label: 'Games', desc: 'Challenge your teammates' },
+        { href: '/#/leaderboard', icon: <GoldMedalIcon size={20} />, label: 'Leaderboard', desc: 'Weekly class attendance rankings' },
         { href: '/#/live', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#C8A24C" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="5 3 19 12 5 21 5 3"/><circle cx="19" cy="12" r="2" fill="#C8A24C" stroke="none"/></svg>, label: 'Live & Archive', desc: 'Watch live classes and recordings' },
-        { href: '/#/schedule', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#C8A24C" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>, label: 'Class Schedule', desc: 'View and bookmark classes' },
+        { href: '/#/schedule', icon: <CalendarSparkIcon size={20} color="#C8A24C" />, label: 'Class Schedule', desc: 'View and bookmark classes' },
       ]
     },
     {
       label: 'Manage',
       items: [
-        { href: '/#/sauna',    icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#C8A24C" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 14.76V3.5a2.5 2.5 0 0 0-5 0v11.26a4.5 4.5 0 1 0 5 0z"/></svg>, label: 'Sauna Dashboard', desc: 'Check in/out, active sessions' },
-        { href: '/#/stats',    icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#C8A24C" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20V10"/><path d="M18 20V4"/><path d="M6 20v-4"/></svg>, label: 'Academy Stats', desc: 'Rankings, athletes, jits.gg' },
-        { href: '/#/calendar', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#C8A24C" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></svg>, label: 'Tournament Calendar', desc: 'Events and registrations' },
+        { href: '/#/sauna',    icon: <SaunaIcon size={20} color="#C8A24C" />, label: 'Sauna Dashboard', desc: 'Check in/out, active sessions' },
+        { href: '/#/stats',    icon: <ChartBarsIcon size={20} color="#C8A24C" />, label: 'Academy Stats', desc: 'Rankings, athletes, jits.gg' },
+        { href: '/#/calendar', icon: <TrophyIcon size={20} color="#C8A24C" />, label: 'Tournament Calendar', desc: 'Events and registrations' },
       ]
     },
     {
@@ -956,8 +957,8 @@ function MorePage() {
     ...(isAdmin ? [{
       label: 'Admin',
       items: [
-        { href: '/#/messages', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#C8A24C" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg>, label: 'Message Blast', desc: 'Email or text all members' },
-        { href: '/#/admin',    icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#C8A24C" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>, label: 'Admin Panel', desc: 'Member management & stats' },
+        { href: '/#/messages', icon: <MegaphoneIcon size={20} color="#C8A24C" />, label: 'Message Blast', desc: 'Email or text all members' },
+        { href: '/#/admin',    icon: <ShieldIcon size={20} color="#C8A24C" />, label: 'Admin Panel', desc: 'Member management & stats' },
       ]
     }] : []),
   ];
@@ -1010,9 +1011,9 @@ function MorePage() {
                     <p className="text-sm font-medium" style={{ color: "#F0F0F0" }}>{item.label}</p>
                     <p className="text-xs" style={{ color: "#888" }}>{item.desc}</p>
                   </div>
-                  <svg width="14" height="14" viewBox="0 0 14 14" fill="none" style={{ transition: 'transform 80ms cubic-bezier(0.16, 1, 0.3, 1)' }}>
-                    <path d="M5 3l4 4-4 4" stroke="#444" strokeWidth="1.5" strokeLinecap="round" />
-                  </svg>
+                  <span style={{ display: 'inline-flex', alignItems: 'center', transition: 'transform 80ms cubic-bezier(0.16, 1, 0.3, 1)' }}>
+                    <ChevronRightIcon size={16} color="#555" />
+                  </span>
                 </a>
               ))}
             </div>

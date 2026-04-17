@@ -1,4 +1,4 @@
-import { CalendarSparkIcon, GamepadIcon, GoldMedalIcon, SilverMedalIcon, BronzeMedalIcon, TrophyIcon } from "@/components/icons/LbjjIcons";
+import { CalendarSparkIcon, GamepadIcon, GoldMedalIcon, SilverMedalIcon, BronzeMedalIcon, TrophyIcon, BoltIcon } from "@/components/icons/LbjjIcons";
 import { EmptyState } from '@/components/StateComponents';
 import React, { useState, useEffect, useCallback } from 'react';
 import { getLeaderboard, type LeaderboardEntry } from '@/lib/api';
@@ -148,7 +148,7 @@ export default function LeaderboardPage() {
 
       {/* Sort by toggle */}
       <div style={{ margin: '0 20px 8px', display: 'flex', gap: 6 }}>
-        {([{ key: 'classes', label: '# Classes' }, { key: 'level', label: '⚡ Level' }] as { key: SortBy; label: string }[]).map(s => (
+        {([{ key: 'classes', label: '# Classes' as any }, { key: 'level', label: (<><BoltIcon size={12} color="#C8A24C" style={{ verticalAlign: 'middle', marginRight: 3 }} />Level</>) as any }] as { key: SortBy; label: React.ReactNode }[]).map(s => (
           <button key={s.key} onClick={() => setSortBy(s.key)}
             style={{ padding: '4px 12px', borderRadius: 16, fontSize: 11, fontWeight: 600, border: 'none', cursor: 'pointer',
               background: sortBy === s.key ? GOLD : '#1A1A1A',

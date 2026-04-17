@@ -1,4 +1,4 @@
-import { PawnIcon, TrophyIcon, FireIcon, GoldMedalIcon, SilverMedalIcon, BronzeMedalIcon } from "@/components/icons/LbjjIcons";
+import { PawnIcon, TrophyIcon, FireIcon, GoldMedalIcon, SilverMedalIcon, BronzeMedalIcon, WarningIcon, LockIcon, ExhaustionIcon, SubmissionIcon, ShieldIcon, BoltIcon } from "@/components/icons/LbjjIcons";
 import { EmptyState } from '@/components/StateComponents';
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { ChevronLeft } from 'lucide-react';
@@ -366,7 +366,7 @@ function GamesHub({ stats, rank, nextRank, onPlay, onStartGame, showDifficulty, 
                 {stats.records.slice(0, 5).map((m, i) => (
                   <div key={i} style={{ background: '#111', borderRadius: 10, padding: '10px 14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderLeft: `3px solid ${m.result === 'win' ? GOLD : '#E05555'}`, border: '1px solid #1A1A1A', borderLeftWidth: 3, borderLeftColor: m.result === 'win' ? GOLD : '#E05555' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                      <span style={{ fontSize: 16 }}>{m.result === 'win' ? '🏆' : '💀'}</span>
+                      <span style={{ display: 'inline-flex', alignItems: 'center' }}>{m.result === 'win' ? <TrophyIcon size={16} color="#C8A24C" /> : <SubmissionIcon size={16} />}</span>
                       <div>
                         <div style={{ color: m.result === 'win' ? GOLD : '#E05555', fontSize: 12, fontWeight: 700 }}>{m.result === 'win' ? 'Victory' : 'Defeat'}</div>
                         <div style={{ color: '#666', fontSize: 11 }}>{m.finisher || '—'} · R{m.rounds || '—'} · {m.difficulty || '—'}</div>
@@ -943,7 +943,7 @@ function BJJChessGame({ difficulty, rank, wins, onGameEnd, onExit }: BJJChessGam
               color: '#E05555', fontSize: 13, fontWeight: 700, marginTop: 8,
               animation: 'staminaPulse 0.8s ease infinite',
             }}>
-              ⚠️ SUDDEN DEATH
+              <span style={{ display: 'inline-flex', alignItems: 'center', verticalAlign: 'middle', marginRight: 4 }}><WarningIcon size={14} color="#E05555" /></span>SUDDEN DEATH
             </div>
           )}
         </div>
@@ -1114,7 +1114,7 @@ function BJJChessGame({ difficulty, rank, wins, onGameEnd, onExit }: BJJChessGam
                   <span style={{ color: '#999' }}>{entry.actor === 'player' ? 'You' : 'AI'}</span>
                   <span>→ {entry.moveName}</span>
                   <span>{entry.success ? '✅' : '❌'}</span>
-                  {entry.isCrit && <span style={{ color: '#C8A24C' }}>⚡</span>}
+                  {entry.isCrit && <span style={{ display: 'inline-flex', alignItems: 'center' }}><BoltIcon size={14} color="#C8A24C" /></span>}
                   <span style={{ color: '#666' }}>→ {entry.resultPosition}</span>
                 </div>
               ))
@@ -1187,7 +1187,7 @@ function MoveCard({ move, available, rotation, disabled, onClick }: MoveCardProp
       }}
     >
       <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-        <span style={{ fontSize: 18 }}>{!available ? '🔒' : move.icon}</span>
+        <span style={{ display: 'inline-flex', alignItems: 'center', fontSize: 18 }}>{!available ? <LockIcon size={16} /> : move.icon}</span>
         <div>
           <div style={{
             color: !available ? '#666' : isSubmission ? '#C8A24C' : '#F0F0F0',
@@ -1210,7 +1210,7 @@ function MoveCard({ move, available, rotation, disabled, onClick }: MoveCardProp
       </div>
       <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
         <span style={{ color: '#E05555', fontSize: 11, fontWeight: 600 }}>
-          -{move.staminaCost}⚡
+          -{move.staminaCost}<BoltIcon size={12} color="#E05555" style={{ verticalAlign: 'middle' }} />
         </span>
         <span style={{
           color: move.successRate >= 60 ? '#4CAF50' : move.successRate >= 40 ? '#C8A24C' : '#E05555',
@@ -1345,12 +1345,12 @@ function GameEndScreen({ result, rank, wins, onPlayAgain, onExit }: GameEndScree
     }}>
       {/* Trophy/Skull */}
       <div style={{
-        fontSize: 80,
+        display: 'flex', justifyContent: 'center',
         marginBottom: 20,
         animation: isWin ? 'victoryBurst 0.8s ease' : 'popupIn 0.5s ease',
         filter: isWin ? 'drop-shadow(0 0 30px rgba(200,162,76,0.4))' : 'none',
       }}>
-        {isWin ? '🏆' : '💀'}
+        {isWin ? <TrophyIcon size={80} color="#C8A24C" /> : <SubmissionIcon size={80} />}
       </div>
 
       {/* Result text */}

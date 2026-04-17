@@ -9,7 +9,7 @@
  */
 
 import { BeltDot, TrophyIcon, StarIcon, FireIcon } from "@/components/icons/LbjjIcons";
-import { useState, useRef, useEffect, useCallback } from "react";
+import React, { useState, useRef, useEffect, useCallback } from "react";
 import { createPortal } from "react-dom";
 import { ListSkeleton } from "@/components/LoadingSkeleton";
 import { EmptyState, SkeletonMessages } from '@/components/StateComponents';
@@ -46,7 +46,7 @@ function isKidsBelt(belt: string): boolean {
 }
 
 // ── G2: SystemMessage ──
-function SystemMessage({ text, icon, color }: { text: string; icon: string; color: string }) {
+function SystemMessage({ text, icon, color }: { text: string; icon: React.ReactNode; color: string }) {
   return (
     <div style={{ textAlign: 'center', padding: '8px 20px', margin: '6px 0' }}>
       <div style={{
@@ -55,7 +55,7 @@ function SystemMessage({ text, icon, color }: { text: string; icon: string; colo
         background: `${color}12`,
         border: `1px solid ${color}25`,
       }}>
-        <span style={{ fontSize: 14 }}>{icon}</span>
+        <span style={{ fontSize: 14, display: 'inline-flex', alignItems: 'center' }}>{icon}</span>
         <span style={{ fontSize: 12, fontWeight: 600, color: '#888' }}>{text}</span>
       </div>
     </div>
@@ -668,7 +668,7 @@ export default function ChatPage() {
               if ((msg as any).sender === 'system' || (msg as any).type === 'system') {
                 const txt = msg.text || '';
                 const emojiMatch = txt.match(/^(\S{1,2})/);
-                const icon = emojiMatch && emojiMatch[1].codePointAt(0)! > 127 ? emojiMatch[1] : '🏆';
+                const icon: React.ReactNode = emojiMatch && emojiMatch[1].codePointAt(0)! > 127 ? emojiMatch[1] : <TrophyIcon size={14} color="#C8A24C" />;
                 const color = '#C8A24C';
                 return (
                   <div key={msg.id} className="chat-message-entry" style={isNew ? { animation: 'chat-msg-enter 160ms cubic-bezier(0.16, 1, 0.3, 1) both' } : undefined}>

@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { getSaunaMembers, getSaunaStatus, saunaCheckin, saunaCheckout } from "@/lib/api";
 import type { SaunaMember, SaunaStatus } from "@/lib/api";
+import { SaunaIcon, FireIcon, WarningIcon, CheckCircleFilledIcon } from "@/components/icons/LbjjIcons";
 
 // ── Progress Ring ─────────────────────────────────────────────────────────────
 
@@ -154,7 +155,7 @@ export default function SaunaPage() {
       {/* Header */}
       <div style={{ padding: "max(16px, env(safe-area-inset-top, 16px)) 20px 6px 20px" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 4 }}>
-          <span style={{ fontSize: 28 }}>🔥</span>
+          <span style={{ display: 'inline-flex', alignItems: 'center' }}><FireIcon size={28} color="#F97316" /></span>
           <div>
             <h1 style={{ fontSize: 22, fontWeight: 800, color: "#F0F0F0", letterSpacing: -0.3, margin: 0 }}>
               Sauna
@@ -166,13 +167,13 @@ export default function SaunaPage() {
             padding: "4px 10px", borderRadius: 8,
             background: "rgba(76,175,128,0.1)", border: "1px solid rgba(76,175,128,0.15)",
           }}>
-            <span style={{ fontSize: 12 }}>🧖</span>
+            <span style={{ display: 'inline-flex', alignItems: 'center' }}><SaunaIcon size={14} color="#4CAF80" /></span>
             <span style={{ fontSize: 12, fontWeight: 600, color: "#4CAF80" }}>Ready</span>
           </div>
         </div>
         {error && (
           <div style={{ fontSize: 12, color: "#E08228", marginTop: 4, marginBottom: 4 }}>
-            ⚠️ Unable to connect — showing cached data
+            <WarningIcon size={14} color="#E08228" style={{ verticalAlign: 'middle', marginRight: 3 }} /> Unable to connect — showing cached data
           </div>
         )}
       </div>
@@ -184,7 +185,7 @@ export default function SaunaPage() {
           background: "#111", border: "1px solid #1A1A1A",
         }}>
           <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6 }}>
-            <span style={{ fontSize: 14 }}>🔥</span>
+            <span style={{ display: 'inline-flex', alignItems: 'center' }}><FireIcon size={14} color="#F97316" /></span>
             <span style={{ fontSize: 12, color: "#666", fontWeight: 600, letterSpacing: 0.5 }}>CURRENTLY IN</span>
           </div>
           <div style={{ fontSize: 28, fontWeight: 800, color: activeSessions.length > 0 ? "#C8A24C" : "#F0F0F0" }}>
@@ -196,7 +197,7 @@ export default function SaunaPage() {
           background: "#111", border: "1px solid #1A1A1A",
         }}>
           <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6 }}>
-            <span style={{ fontSize: 14 }}>✅</span>
+            <span style={{ display: 'inline-flex', alignItems: 'center' }}><CheckCircleFilledIcon size={16} /></span>
             <span style={{ fontSize: 12, color: "#666", fontWeight: 600, letterSpacing: 0.5 }}>SESSIONS TODAY</span>
           </div>
           <div style={{ fontSize: 28, fontWeight: 800, color: "#F0F0F0" }}>
@@ -334,7 +335,7 @@ export default function SaunaPage() {
               opacity: actionLoading ? 0.7 : 1,
             }}
           >
-            {actionLoading ? "Checking in..." : "🔥 Check In"}
+            {actionLoading ? "Checking in..." : <><FireIcon size={14} color="#F97316" style={{ verticalAlign: 'middle', marginRight: 4 }} />Check In</>}
           </button>
         )}
       </div>
@@ -346,7 +347,7 @@ export default function SaunaPage() {
           marginBottom: 10,
         }}>
           <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-            <span style={{ fontSize: 14 }}>🔥</span>
+            <span style={{ display: 'inline-flex', alignItems: 'center' }}><FireIcon size={14} color="#F97316" /></span>
             <span style={{ fontSize: 12, color: "#666", fontWeight: 600, letterSpacing: 1.5 }}>
               IN THE SAUNA
             </span>
@@ -366,7 +367,7 @@ export default function SaunaPage() {
             padding: "24px 16px", borderRadius: 12, textAlign: "center",
             background: "#111", border: "1px solid #1A1A1A",
           }}>
-            <div style={{ fontSize: 28, marginBottom: 6 }}>🧖</div>
+            <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 6 }}><SaunaIcon size={28} color="#C8A24C" /></div>
             <div style={{ fontSize: 13, color: "#666" }}>Sauna is empty</div>
             <div style={{ fontSize: 12, color: "#444", marginTop: 2 }}>
               {loading ? "Loading..." : "Check someone in above"}
@@ -398,7 +399,7 @@ export default function SaunaPage() {
                     </div>
                     {mins >= 20 && (
                       <div style={{ display: "flex", alignItems: "center", gap: 4, marginTop: 3 }}>
-                        <span style={{ fontSize: 12 }}>⚠️</span>
+                        <span style={{ display: 'inline-flex', alignItems: 'center' }}><WarningIcon size={14} color="#E05555" /></span>
                         <span style={{ fontSize: 12, color: "#E05555", fontWeight: 600 }}>Over recommended time</span>
                       </div>
                     )}
