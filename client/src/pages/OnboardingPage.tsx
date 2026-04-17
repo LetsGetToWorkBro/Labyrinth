@@ -162,7 +162,7 @@ export default function OnboardingPage() {
 
   const complete = () => {
     localStorage.setItem(ONBOARDING_KEY, "1");
-    window.location.hash = "#/";
+    setTimeout(() => { window.location.hash = "#/"; }, 50);
   };
 
   const skip = () => {
@@ -288,7 +288,7 @@ export default function OnboardingPage() {
                 alt="Labyrinth"
                 style={{
                   width: 64, height: 64, objectFit: "contain",
-                  filter: "sepia(1) saturate(2) hue-rotate(5deg) brightness(1.1)",
+                  filter: "brightness(1.1) drop-shadow(0 0 12px rgba(200,162,76,0.4))",
                 }}
               />
             </div>
@@ -385,14 +385,16 @@ export default function OnboardingPage() {
         {/* ── Step 3: Achievement tile flips locked → unlocked ── */}
         {step === 3 && (
           <>
-            <div style={{ position: 'relative' }}>
-              <FlipAchievementTile achievement={firstStepAchievement} delay={500} />
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', width: '100%', position: 'relative' }}>
+              <div style={{ display: 'flex', justifyContent: 'center', width: '100%' }}>
+                <FlipAchievementTile achievement={firstStepAchievement} delay={500} />
+              </div>
               {/* "UNLOCKED" label fades in after flip */}
               <div style={{
                 marginTop: 10, fontSize: 10, fontWeight: 800, letterSpacing: '0.2em',
                 textTransform: 'uppercase', color: firstStepAchievement.color,
                 animation: 'badge-ceremony-text-in 400ms ease 1300ms both',
-                opacity: 0,
+                opacity: 0, textAlign: 'center', width: '100%',
               }}>
                 Achievement Unlocked
               </div>
@@ -444,7 +446,7 @@ export default function OnboardingPage() {
                 );
               })}
             </div>
-            <button onClick={next} style={goldButtonStyle}>I'm ready</button>
+            <button onClick={complete} style={goldButtonStyle}>Enter the Labyrinth</button>
           </>
         )}
 
@@ -464,7 +466,7 @@ export default function OnboardingPage() {
                 alt="Labyrinth"
                 style={{
                   width: 80, height: 80, objectFit: "contain",
-                  filter: "sepia(1) saturate(3) hue-rotate(5deg) brightness(1.2)",
+                  filter: "brightness(1.2) drop-shadow(0 0 16px rgba(200,162,76,0.5))",
                   animation: 'badge-appear 500ms cubic-bezier(0.34,1.56,0.64,1) both',
                 }}
               />

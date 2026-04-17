@@ -58,6 +58,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (savedToken && savedProfileRaw) {
       try {
         const savedProfile = JSON.parse(savedProfileRaw);
+        // Attach locally cached profile picture if present
+        const cachedPic = localStorage.getItem('lbjj_profile_picture');
+        if (cachedPic && !savedProfile.profilePic) {
+          savedProfile.profilePic = cachedPic;
+        }
         // Optimistically authenticate — show home screen immediately
         setToken(savedToken);
         setMemberData(savedProfile);

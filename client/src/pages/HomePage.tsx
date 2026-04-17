@@ -243,6 +243,7 @@ export default function HomePage() {
   // ─── Home loading skeleton state ─────────────────────────────────
   const [homeLoading, setHomeLoading] = useState(true);
   const [checkinPhase, setCheckinPhase] = useState<'idle' | 'pressing' | 'success' | 'done'>('idle');
+  const [earlyCheckInMsg, setEarlyCheckInMsg] = useState('');
   const [homeLoadSlow, setHomeLoadSlow] = useState(false);
 
   // ─── Stale-while-revalidate home cache ─────────────────────────
@@ -320,6 +321,16 @@ export default function HomePage() {
         const stats = JSON.parse(localStorage.getItem('lbjj_game_stats_v2') || '{}');
         stats.profilePic = base64;
         localStorage.setItem('lbjj_game_stats_v2', JSON.stringify(stats));
+      } catch {}
+      // Sync to GAS so photo persists across devices/sessions
+      try {
+        const memberEmail = member?.email || '';
+        if (memberEmail) {
+          gasCall('updateMemberProfileApp', {
+            memberEmail,
+            profilePicBase64: base64,
+          }).catch(() => {});
+        }
       } catch {}
     };
     img.src = URL.createObjectURL(file);
@@ -1825,6 +1836,32 @@ export default function HomePage() {
                     onTouchStart={() => !alreadyCheckedIn && checkinPhase === 'idle' && setCheckinPhase('pressing')}
                     onClick={() => {
                       if (alreadyCheckedIn || (checkinPhase !== 'idle' && checkinPhase !== 'pressing')) return;
+
+                      // Early gate check
+                      const windowMinutes = parseInt(localStorage.getItem('lbjj_checkin_window_minutes') || '60');
+                      const gateEnabled = localStorage.getItem('lbjj_checkin_gate_enabled') !== 'false';
+
+                      if (gateEnabled && windowMinutes > 0 && nextClass.time) {
+                        const [timePart, meridiem] = (nextClass.time || '').split(' ');
+                        const [hourStr, minStr] = timePart.split(':');
+                        let hour = parseInt(hourStr);
+                        const min = parseInt(minStr || '0');
+                        if (meridiem?.toLowerCase() === 'pm' && hour !== 12) hour += 12;
+                        if (meridiem?.toLowerCase() === 'am' && hour === 12) hour = 0;
+                        const now = new Date();
+                        const classTime = new Date(now);
+                        classTime.setHours(hour, min, 0, 0);
+                        const minutesUntil = (classTime.getTime() - now.getTime()) / 60000;
+
+                        if (minutesUntil > windowMinutes) {
+                          const hrs = Math.floor(minutesUntil / 60);
+                          const mins = Math.round(minutesUntil % 60);
+                          const timeStr = hrs > 0 ? `${hrs}h ${mins}m` : `${mins} minutes`;
+                          setEarlyCheckInMsg(`Class starts in ${timeStr}. Check-in opens ${windowMinutes >= 60 ? (windowMinutes/60)+'h' : windowMinutes+'min'} before class.`);
+                          return;
+                        }
+                      }
+
                       setCheckinPhase('pressing');
                       handleHomeCheckIn(nextClass);
                     }}
@@ -1843,6 +1880,7 @@ export default function HomePage() {
                       transform: checkinPhase === 'pressing' ? 'scale(0.95) translateY(1px)' : checkinPhase === 'success' ? 'scale(1.02)' : 'scale(1)',
                       transition: 'transform 120ms ease, background 200ms ease',
                       boxShadow: isGameDay && !alreadyCheckedIn ? '0 0 20px rgba(200,162,76,0.5)' : 'none',
+                      animation: nextClass.isToday && !alreadyCheckedIn && checkinPhase === 'idle' ? (isGameDay ? 'checkin-pulse-game 2s ease-in-out infinite' : 'checkin-pulse 2s ease-in-out infinite') : undefined,
                     }}
                   >
                     {checkinPhase === 'success' || checkinPhase === 'done' ? (
@@ -1863,6 +1901,18 @@ export default function HomePage() {
               );
             })()}
           </div>
+        </div>
+      )}
+
+      {/* Early check-in gate message */}
+      {earlyCheckInMsg && (
+        <div style={{
+          margin: '-8px 20px 12px', padding: '10px 14px', borderRadius: 10,
+          background: 'rgba(200,162,76,0.08)', border: '1px solid rgba(200,162,76,0.2)',
+          display: 'flex', alignItems: 'center', gap: 10,
+        }}>
+          <span style={{ fontSize: 12, color: '#C8A24C', flex: 1, lineHeight: 1.4 }}>{earlyCheckInMsg}</span>
+          <button onClick={() => setEarlyCheckInMsg('')} style={{ background: 'none', border: 'none', color: '#555', cursor: 'pointer', fontSize: 14, padding: 0 }}>✕</button>
         </div>
       )}
 
@@ -2519,8 +2569,8 @@ export default function HomePage() {
 
       {/* Rank request modal */}
       {showRankRequest && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', zIndex: 1000, display: 'flex', alignItems: 'flex-end', justifyContent: 'center', animation: 'fadeInOverlay 0.25s ease-out' }}>
-          <div style={{ width: '100%', maxWidth: 480, background: '#0F0F0F', borderRadius: '24px 24px 0 0', padding: '24px 20px', maxHeight: '90vh', overflowY: 'auto' }}>
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', zIndex: 1000, display: 'flex', alignItems: 'flex-end', justifyContent: 'center', animation: 'fadeInOverlay 0.25s ease-out', touchAction: 'none' as any }} onTouchMove={e => e.stopPropagation()}>
+          <div style={{ width: '100%', maxWidth: 480, background: '#0F0F0F', borderRadius: '24px 24px 0 0', padding: '24px 20px', maxHeight: '90vh', overflowY: 'auto', touchAction: 'pan-y' as any }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
               <h2 style={{ fontSize: 18, fontWeight: 800, color: '#F0F0F0', margin: 0 }}>Request Belt Update</h2>
               <button onClick={() => setShowRankRequest(false)} style={{ background: 'none', border: 'none', color: '#666', cursor: 'pointer', fontSize: 22, lineHeight: 1 }}>✕</button>
@@ -2579,11 +2629,12 @@ export default function HomePage() {
           ════════════════════════════════════════════════════ */}
       {showRankInfo && (
         <div
-          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.88)', zIndex: 1100, display: 'flex', alignItems: 'flex-end', justifyContent: 'center', animation: 'fadeInOverlay 0.2s ease-out' }}
+          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.88)', zIndex: 1100, display: 'flex', alignItems: 'flex-end', justifyContent: 'center', animation: 'fadeInOverlay 0.2s ease-out', touchAction: 'none' as any }}
           onClick={() => setShowRankInfo(false)}
+          onTouchMove={e => e.stopPropagation()}
         >
           <div
-            style={{ width: '100%', maxWidth: 480, background: 'linear-gradient(180deg, #111108 0%, #0D0D0D 100%)', borderRadius: '24px 24px 0 0', padding: '0 0 max(32px, calc(env(safe-area-inset-bottom) + 32px))', maxHeight: '92vh', overflowY: 'auto', overscrollBehavior: 'contain', WebkitOverflowScrolling: 'touch' as any, animation: 'modalSlideUp 0.32s cubic-bezier(0.34,1.28,0.64,1)' }}
+            style={{ width: '100%', maxWidth: 480, background: 'linear-gradient(180deg, #111108 0%, #0D0D0D 100%)', borderRadius: '24px 24px 0 0', padding: '0 0 max(32px, calc(env(safe-area-inset-bottom) + 32px))', maxHeight: '92vh', overflowY: 'auto', overscrollBehavior: 'contain', WebkitOverflowScrolling: 'touch' as any, animation: 'modalSlideUp 0.32s cubic-bezier(0.34,1.28,0.64,1)', touchAction: 'pan-y' as any }}
             onClick={e => e.stopPropagation()}
           >
             {/* Drag handle */}
@@ -2698,11 +2749,12 @@ export default function HomePage() {
         ];
         return (
           <div
-            style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.88)', zIndex: 1100, display: 'flex', alignItems: 'flex-end', justifyContent: 'center', animation: 'fadeInOverlay 0.2s ease-out' }}
+            style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.88)', zIndex: 1100, display: 'flex', alignItems: 'flex-end', justifyContent: 'center', animation: 'fadeInOverlay 0.2s ease-out', touchAction: 'none' as any }}
             onClick={() => setShowStreakInfo(false)}
+            onTouchMove={(e: React.TouchEvent) => e.stopPropagation()}
           >
             <div
-              style={{ width: '100%', maxWidth: 480, background: isActive ? (isEliteWeek ? 'linear-gradient(180deg, #120820, #0D0D0D)' : isPerfectWeek ? 'linear-gradient(180deg, #141008, #0D0D0D)' : 'linear-gradient(180deg, #110A04, #0D0D0D)') : 'linear-gradient(180deg, #111, #0D0D0D)', borderRadius: '24px 24px 0 0', padding: '0 0 max(32px, calc(env(safe-area-inset-bottom) + 32px))', maxHeight: '92vh', overflowY: 'auto', overscrollBehavior: 'contain', WebkitOverflowScrolling: 'touch' as any, animation: 'modalSlideUp 0.32s cubic-bezier(0.34,1.28,0.64,1)' }}
+              style={{ width: '100%', maxWidth: 480, background: isActive ? (isEliteWeek ? 'linear-gradient(180deg, #120820, #0D0D0D)' : isPerfectWeek ? 'linear-gradient(180deg, #141008, #0D0D0D)' : 'linear-gradient(180deg, #110A04, #0D0D0D)') : 'linear-gradient(180deg, #111, #0D0D0D)', borderRadius: '24px 24px 0 0', padding: '0 0 max(32px, calc(env(safe-area-inset-bottom) + 32px))', maxHeight: '92vh', overflowY: 'auto', overscrollBehavior: 'contain', WebkitOverflowScrolling: 'touch' as any, animation: 'modalSlideUp 0.32s cubic-bezier(0.34,1.28,0.64,1)', touchAction: 'pan-y' as any }}
               onClick={e => e.stopPropagation()}
             >
               {/* Drag handle */}
@@ -2813,7 +2865,8 @@ export default function HomePage() {
       {showMilestoneInfo && (
         <div
           onClick={() => setShowMilestoneInfo(false)}
-          style={{ position: 'fixed', inset: 0, zIndex: 1200, display: 'flex', alignItems: 'flex-end', animation: 'fadeInOverlay 0.2s ease' }}
+          style={{ position: 'fixed', inset: 0, zIndex: 1200, display: 'flex', alignItems: 'flex-end', animation: 'fadeInOverlay 0.2s ease', touchAction: 'none' as any }}
+          onTouchMove={e => e.stopPropagation()}
         >
           <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.65)', backdropFilter: 'blur(6px)' }} />
           <div
@@ -2823,6 +2876,7 @@ export default function HomePage() {
               borderRadius: '22px 22px 0 0', borderTop: '1px solid #222',
               maxHeight: '88vh', overflowY: 'auto', overscrollBehavior: 'contain',
               WebkitOverflowScrolling: 'touch' as any,
+              touchAction: 'pan-y' as any,
               paddingBottom: 'max(32px, calc(env(safe-area-inset-bottom, 0px) + 32px))',
               animation: 'modalSlideUp 0.28s cubic-bezier(0.32,0,0.12,1)',
             }}
@@ -2880,7 +2934,8 @@ export default function HomePage() {
       {showNarrativeInfo && (
         <div
           onClick={() => setShowNarrativeInfo(false)}
-          style={{ position: 'fixed', inset: 0, zIndex: 1200, display: 'flex', alignItems: 'flex-end', animation: 'fadeInOverlay 0.2s ease' }}
+          style={{ position: 'fixed', inset: 0, zIndex: 1200, display: 'flex', alignItems: 'flex-end', animation: 'fadeInOverlay 0.2s ease', touchAction: 'none' as any }}
+          onTouchMove={e => e.stopPropagation()}
         >
           <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.65)', backdropFilter: 'blur(6px)' }} />
           <div
@@ -2890,6 +2945,7 @@ export default function HomePage() {
               borderRadius: '22px 22px 0 0', borderTop: '1px solid #222',
               maxHeight: '88vh', overflowY: 'auto', overscrollBehavior: 'contain',
               WebkitOverflowScrolling: 'touch' as any,
+              touchAction: 'pan-y' as any,
               paddingBottom: 'max(32px, calc(env(safe-area-inset-bottom, 0px) + 32px))',
               animation: 'modalSlideUp 0.28s cubic-bezier(0.32,0,0.12,1)',
             }}
@@ -2949,7 +3005,8 @@ export default function HomePage() {
       {showTechniqueEditor && member?.isAdmin && (
         <div
           onClick={() => setShowTechniqueEditor(false)}
-          style={{ position: 'fixed', inset: 0, zIndex: 1200, display: 'flex', alignItems: 'flex-end', animation: 'fadeInOverlay 0.2s ease' }}
+          style={{ position: 'fixed', inset: 0, zIndex: 1200, display: 'flex', alignItems: 'flex-end', animation: 'fadeInOverlay 0.2s ease', touchAction: 'none' as any }}
+          onTouchMove={e => e.stopPropagation()}
         >
           <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.65)', backdropFilter: 'blur(6px)' }} />
           <div
@@ -2959,6 +3016,7 @@ export default function HomePage() {
               borderRadius: '22px 22px 0 0', borderTop: '1px solid #222',
               maxHeight: '90vh', overflowY: 'auto', overscrollBehavior: 'contain',
               WebkitOverflowScrolling: 'touch' as any,
+              touchAction: 'pan-y' as any,
               paddingBottom: 'max(32px, calc(env(safe-area-inset-bottom, 0px) + 32px))',
               animation: 'modalSlideUp 0.28s cubic-bezier(0.32,0,0.12,1)',
             }}

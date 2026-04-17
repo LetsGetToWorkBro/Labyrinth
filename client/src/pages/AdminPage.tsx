@@ -733,6 +733,22 @@ function NotesTab() {
 // ─── Settings Tab ────────────────────────────────────────────
 
 function SettingsTab() {
+  // Check-in gate settings
+  const [checkinWindowMinutes, setCheckinWindowMinutes] = useState(() =>
+    parseInt(localStorage.getItem('lbjj_checkin_window_minutes') || '60')
+  );
+  const [checkinGateEnabled, setCheckinGateEnabled] = useState(() =>
+    localStorage.getItem('lbjj_checkin_gate_enabled') !== 'false'
+  );
+  const [checkinSettingsSaved, setCheckinSettingsSaved] = useState(false);
+
+  const saveCheckinSettings = () => {
+    localStorage.setItem('lbjj_checkin_window_minutes', String(checkinWindowMinutes));
+    localStorage.setItem('lbjj_checkin_gate_enabled', String(checkinGateEnabled));
+    setCheckinSettingsSaved(true);
+    setTimeout(() => setCheckinSettingsSaved(false), 2000);
+  };
+
   const [geoEnabled, setGeoEnabled] = useState(false);
   const [gymLat, setGymLat] = useState('');
   const [gymLng, setGymLng] = useState('');
@@ -839,6 +855,81 @@ function SettingsTab() {
 
   return (
     <div style={{ padding: '16px 20px' }}>
+
+      {/* ── Check-In Window Settings ──────────────────────────────── */}
+      <div style={{ marginBottom: 24 }}>
+        <div style={{ fontSize: 14, fontWeight: 700, color: '#F0F0F0', marginBottom: 4 }}>Check-In Window</div>
+        <div style={{ fontSize: 12, color: '#666', marginBottom: 16 }}>
+          Control how early members can check into class.
+        </div>
+
+        {/* Gate toggle */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 14px', background: '#111', borderRadius: 10, border: '1px solid #1A1A1A', marginBottom: 12 }}>
+          <div>
+            <div style={{ fontSize: 13, fontWeight: 600, color: '#F0F0F0' }}>Enable Check-In Time Gate</div>
+            <div style={{ fontSize: 11, color: '#555' }}>Block early check-ins outside the window</div>
+          </div>
+          <button
+            onClick={() => setCheckinGateEnabled(v => !v)}
+            style={{
+              width: 44, height: 24, borderRadius: 12, border: 'none', cursor: 'pointer',
+              background: checkinGateEnabled ? '#C8A24C' : '#333',
+              position: 'relative', transition: 'background 0.2s',
+            }}
+          >
+            <div style={{
+              width: 18, height: 18, borderRadius: '50%', background: '#FFF',
+              position: 'absolute', top: 3,
+              left: checkinGateEnabled ? 23 : 3,
+              transition: 'left 0.2s',
+            }}/>
+          </button>
+        </div>
+
+        {/* Window slider */}
+        <div style={{ opacity: checkinGateEnabled ? 1 : 0.5, transition: 'opacity 0.2s', pointerEvents: checkinGateEnabled ? 'auto' : 'none' }}>
+          <label style={{ fontSize: 10, color: '#666', display: 'block', marginBottom: 4 }}>CHECK-IN OPENS X MINUTES BEFORE CLASS</label>
+          <input
+            type="range"
+            min="15" max="240" step="15"
+            value={checkinWindowMinutes}
+            onChange={e => setCheckinWindowMinutes(parseInt(e.target.value))}
+            style={{ width: '100%', accentColor: '#C8A24C', marginBottom: 4 }}
+          />
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: '#444', marginBottom: 10 }}>
+            <span>15 min</span>
+            <span style={{ color: '#C8A24C', fontWeight: 600 }}>{checkinWindowMinutes >= 60 ? `${checkinWindowMinutes/60}h` : `${checkinWindowMinutes}min`} before class</span>
+            <span>4h</span>
+          </div>
+
+          {/* Preset buttons */}
+          <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
+            {[30, 60, 120].map(mins => (
+              <button
+                key={mins}
+                onClick={() => setCheckinWindowMinutes(mins)}
+                style={{
+                  flex: 1, padding: '7px 0', borderRadius: 8, border: '1px solid',
+                  borderColor: checkinWindowMinutes === mins ? '#C8A24C' : '#222',
+                  background: checkinWindowMinutes === mins ? 'rgba(200,162,76,0.12)' : '#111',
+                  color: checkinWindowMinutes === mins ? '#C8A24C' : '#666',
+                  fontWeight: 600, fontSize: 11, cursor: 'pointer',
+                }}
+              >
+                {mins >= 60 ? `${mins/60}hr` : `${mins}min`}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <button
+          onClick={saveCheckinSettings}
+          style={{ width: '100%', padding: '12px', borderRadius: 10, background: '#C8A24C', color: '#000', fontWeight: 700, fontSize: 13, border: 'none', cursor: 'pointer' }}
+        >
+          {checkinSettingsSaved ? 'Saved ✓' : 'Save Check-In Settings'}
+        </button>
+      </div>
+
       <div style={{ marginBottom: 24 }}>
         <div style={{ fontSize: 14, fontWeight: 700, color: '#F0F0F0', marginBottom: 4 }}>Check-In Geo Lock</div>
         <div style={{ fontSize: 12, color: '#666', marginBottom: 16 }}>
