@@ -162,22 +162,28 @@ export default function OnboardingPage() {
   if (!completing && localStorage.getItem(ONBOARDING_KEY)) return null;
 
   const complete = () => {
-    // Set completing=true so the null-return guard doesn't unmount us
-    // before window.location.href fires
-    setCompleting(true);
     localStorage.setItem(ONBOARDING_KEY, "1");
-    // Small delay to let the state update render, then navigate
-    requestAnimationFrame(() => {
-      window.location.href = window.location.origin + window.location.pathname + '#/';
-    });
+    setCompleting(true);
+    // Use replace() for reliability on iOS PWA, with reload() fallback
+    setTimeout(() => {
+      try {
+        window.location.replace(window.location.origin + window.location.pathname + '#/');
+      } catch {
+        window.location.reload();
+      }
+    }, 50);
   };
 
   const skip = () => {
-    setCompleting(true);
     localStorage.setItem(ONBOARDING_KEY, "1");
-    requestAnimationFrame(() => {
-      window.location.href = window.location.origin + window.location.pathname + '#/';
-    });
+    setCompleting(true);
+    setTimeout(() => {
+      try {
+        window.location.replace(window.location.origin + window.location.pathname + '#/');
+      } catch {
+        window.location.reload();
+      }
+    }, 50);
   };
 
   const next = () => setStep((s) => Math.min(s + 1, 5));
