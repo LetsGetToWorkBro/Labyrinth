@@ -160,6 +160,7 @@ export default function LoginPage() {
   const [loginAttempts, setLoginAttempts] = useState(0);
   const [lockedUntil, setLockedUntil]   = useState<number | null>(null);
   const emailRef = useRef<HTMLInputElement>(null);
+  const passwordRef = useRef<HTMLInputElement>(null);
 
   // Forgot password state
   const [showForgot, setShowForgot]     = useState(false);
@@ -280,20 +281,25 @@ export default function LoginPage() {
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    // Browser autofill may not fire onChange — read DOM value as fallback
+    const emailVal   = email   || (emailRef.current?.value   || '').trim();
+    const passwordVal = password || (passwordRef.current?.value || '').trim();
+    if (emailVal   !== email)    setEmail(emailVal);
+    if (passwordVal !== password) setPassword(passwordVal);
     // Brute-force lockout check
     if (lockedUntil && Date.now() < lockedUntil) {
       const secsLeft = Math.ceil((lockedUntil - Date.now()) / 1000);
       setLoginError(`Too many failed attempts. Try again in ${secsLeft}s`);
       return;
     }
-    if (!email && !password) { setLoginError("Please enter your email and password."); emailRef.current?.focus(); return; }
-    if (!email) { setLoginError("Please enter your email address."); emailRef.current?.focus(); return; }
-    if (!password) { setLoginError("Please enter your password."); return; }
+    if (!emailVal && !passwordVal) { setLoginError("Please enter your email and password."); emailRef.current?.focus(); return; }
+    if (!emailVal) { setLoginError("Please enter your email address."); emailRef.current?.focus(); return; }
+    if (!passwordVal) { setLoginError("Please enter your password."); return; }
     // Make sure the location is set before logging in
     setActiveLocation(selectedLocationId);
     setLoginLoading(true);
     setLoginError("");
-    const result = await login(email, password);
+    const result = await login(emailVal, passwordVal);
     setLoginLoading(false);
     if (result.success) {
       // Reset throttle on success
@@ -536,7 +542,7 @@ export default function LoginPage() {
                       </Field>
                       <Field label="Password" htmlFor="login-password">
                         <div style={{ position: "relative" }}>
-                          <input id="login-password" type="password" name="password" value={password}
+                          <input id="login-password" ref={passwordRef} type="password" name="password" value={password}
                             onChange={e => { setPassword(e.target.value); if (loginError) setLoginError(""); }}
                             placeholder="Your password" autoComplete="current-password"
                             enterKeyHint="go" readOnly={loginLoading}
@@ -558,16 +564,18 @@ export default function LoginPage() {
                       </button>
 
                       {/* Remember Me — custom toggle */}
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-                        <label htmlFor="remember-me" style={{ fontSize: 13, color: '#888', cursor: 'pointer', userSelect: 'none' }}>
+                      <div
+                        onClick={() => setRememberMe(v => !v)}
+                        style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12, cursor: 'pointer' }}>
+                        <span style={{ fontSize: 13, color: '#888', userSelect: 'none' }}>
                           Remember me
-                        </label>
+                        </span>
                         <button
                           id="remember-me"
                           type="button"
                           role="checkbox"
                           aria-checked={rememberMe}
-                          onClick={() => setRememberMe(v => !v)}
+                          onClick={e => { e.stopPropagation(); setRememberMe(v => !v); }}
                           style={{
                             width: 40, height: 22, borderRadius: 11, border: 'none',
                             background: rememberMe ? '#C8A24C' : '#2A2A2A',
