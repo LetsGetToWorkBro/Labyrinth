@@ -233,7 +233,7 @@ export default function LeaderboardPage() {
             </div>
           </div>
         ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+          <div className="stagger-list" style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
             {filteredEntries.map((entry, i) => {
               const podiumCfg = PODIUM_CONFIG[i + 1];
               const isTop3 = i < 3;

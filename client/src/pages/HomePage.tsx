@@ -1789,7 +1789,7 @@ export default function HomePage() {
           NEXT CLASS / GAME DAY CARD
           ════════════════════════════════════════════════════ */}
       {nextClass && (
-        <div className="mx-5 mb-4 stagger-child">
+        <div className="mx-5 mb-4 stagger-child" data-card-interactive="true">
           <div style={{
             background: isGameDay ? 'linear-gradient(135deg, #141008, #1A1402)' : '#141414',
             border: isGameDay ? '1px solid rgba(200,162,76,0.4)' : '1px solid #1A1A1A',

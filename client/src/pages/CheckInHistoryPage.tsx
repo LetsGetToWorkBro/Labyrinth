@@ -250,7 +250,7 @@ export default function CheckInHistoryPage() {
             </div>
           </div>
         ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+          <div className="stagger-list" style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
             {displayedCheckIns.map((ci, i) => {
               const dateKey = (ci.timestamp || ci.date || ci.checkInDate || ci.classDate || '').toString();
               const name = ci.className || ci.class || ci.classType || 'Class';

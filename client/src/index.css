@@ -1221,3 +1221,403 @@ html[data-nav="tab"] ::view-transition-new(root) {
   50%  { box-shadow: 0 0 0 12px rgba(200,162,76,0); }
   100% { box-shadow: 0 0 0 0 rgba(200,162,76,0); }
 }
+
+/* ═══════════════════════════════════════════════════════════════════
+   MICRO-INTERACTIONS SYSTEM
+   Visual layer only — no logic changes.
+   All animations wrapped in prefers-reduced-motion: no-preference.
+   ═══════════════════════════════════════════════════════════════════ */
+
+/* ── 1. BUTTON STATES ───────────────────────────────────────────── */
+
+/* Hover lift + shadow (all buttons that aren't inline/ghost) */
+@media (prefers-reduced-motion: no-preference) {
+  button:not(:disabled):not([role="checkbox"]):not([role="switch"]):not(.tab-item):not(.more-menu-row):not([data-no-lift]),
+  a.btn:not(:disabled) {
+    transition:
+      transform 180ms var(--ease-out),
+      box-shadow 180ms var(--ease-out),
+      background-color 120ms var(--ease-out),
+      border-color 120ms var(--ease-out),
+      opacity 100ms var(--ease-out);
+  }
+
+  button:not(:disabled):not([role="checkbox"]):not([role="switch"]):not(.tab-item):not(.more-menu-row):not([data-no-lift]):hover,
+  a.btn:not(:disabled):hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+  }
+
+  button:not(:disabled):not([role="checkbox"]):not([role="switch"]):not(.tab-item):not(.more-menu-row):not([data-no-lift]):active,
+  a.btn:not(:disabled):active {
+    transform: translateY(1px) scale(0.98);
+    box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+    transition-duration: 80ms;
+  }
+
+  /* Gold/primary buttons get a stronger lift */
+  button[style*="#C8A24C"]:not(:disabled):hover,
+  button[style*="background: #C8A24C"]:not(:disabled):hover,
+  button[style*="background:#C8A24C"]:not(:disabled):hover,
+  .btn-primary:hover:not(:disabled) {
+    transform: translateY(-1px);
+    box-shadow: 0 6px 20px rgba(200,162,76,0.35);
+  }
+  button[style*="#C8A24C"]:not(:disabled):active,
+  .btn-primary:active:not(:disabled) {
+    transform: translateY(1px) scale(0.97);
+    box-shadow: 0 1px 4px rgba(200,162,76,0.2);
+  }
+}
+
+/* ── Loading state: 3-dot pulse helper ── */
+@keyframes btn-dot-pulse {
+  0%, 80%, 100% { transform: scale(0.6); opacity: 0.4; }
+  40%           { transform: scale(1);   opacity: 1; }
+}
+
+.btn-loading-dots {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+.btn-loading-dots span {
+  width: 5px; height: 5px;
+  border-radius: 50%;
+  background: currentColor;
+  display: inline-block;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .btn-loading-dots span:nth-child(1) { animation: btn-dot-pulse 1.2s ease-in-out -0.32s infinite; }
+  .btn-loading-dots span:nth-child(2) { animation: btn-dot-pulse 1.2s ease-in-out -0.16s infinite; }
+  .btn-loading-dots span:nth-child(3) { animation: btn-dot-pulse 1.2s ease-in-out 0s infinite; }
+}
+
+/* ── Success state: checkmark morph ── */
+@keyframes btn-success-in {
+  from { transform: scale(0) rotate(-45deg); opacity: 0; }
+  60%  { transform: scale(1.2) rotate(0deg); opacity: 1; }
+  to   { transform: scale(1) rotate(0deg);   opacity: 1; }
+}
+.btn-success-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .btn-success-check svg,
+  .btn-success-check .check-icon {
+    animation: btn-success-in 300ms cubic-bezier(0.34, 1.56, 0.64, 1) both;
+  }
+}
+
+/* ── 2. FORM INPUTS ─────────────────────────────────────────────── */
+
+@media (prefers-reduced-motion: no-preference) {
+
+  /* Focus ring transition */
+  input, textarea, select {
+    transition:
+      border-color 160ms var(--ease-out),
+      box-shadow 160ms var(--ease-out),
+      background-color 120ms var(--ease-out);
+  }
+  input:focus, textarea:focus, select:focus {
+    border-color: var(--lbj-gold, #C8A24C) !important;
+    box-shadow: 0 0 0 3px rgba(200,162,76,0.15);
+    outline: none;
+  }
+
+  /* Valid/success state */
+  input:valid:not(:placeholder-shown):not([type="password"]):not([type="email"]) {
+    border-color: var(--color-success, #4CAF80) !important;
+  }
+}
+
+/* Error shake keyframe */
+@keyframes input-shake {
+  0%  { transform: translateX(0); }
+  15% { transform: translateX(-4px); }
+  30% { transform: translateX(4px); }
+  45% { transform: translateX(-4px); }
+  60% { transform: translateX(4px); }
+  75% { transform: translateX(-2px); }
+  90% { transform: translateX(2px); }
+  100%{ transform: translateX(0); }
+}
+
+@keyframes error-message-in {
+  from { opacity: 0; transform: translateY(-4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  /* Apply to inputs that have aria-invalid="true" */
+  input[aria-invalid="true"],
+  .input-error {
+    border-color: var(--lbj-error, #E05555) !important;
+    animation: input-shake 300ms var(--ease-in-out);
+  }
+
+  /* Error message slide-in */
+  .error-message, [role="alert"][data-field-error] {
+    animation: error-message-in 200ms var(--ease-out) both;
+  }
+}
+
+/* ── 3. CARDS ───────────────────────────────────────────────────── */
+
+@media (prefers-reduced-motion: no-preference) {
+  .card-interactive,
+  [data-card-interactive] {
+    transition:
+      transform 200ms var(--ease-out),
+      box-shadow 200ms var(--ease-out),
+      border-color 200ms var(--ease-out);
+    cursor: pointer;
+  }
+  .card-interactive:hover,
+  [data-card-interactive]:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-card-hover, 0 8px 24px rgba(0,0,0,0.32));
+    border-color: rgba(255,255,255,0.08);
+  }
+  .card-interactive:active,
+  [data-card-interactive]:active {
+    transform: scale(0.98) translateY(0);
+    transition-duration: 80ms;
+  }
+}
+
+/* ── 4. NAVIGATION / ACTIVE UNDERLINE ───────────────────────────── */
+
+/* Animated underline — slides in from left */
+.nav-link {
+  position: relative;
+  overflow: hidden;
+}
+.nav-link::after {
+  content: '';
+  position: absolute;
+  bottom: 0; left: 0;
+  height: 2px;
+  width: 100%;
+  background: var(--lbj-gold, #C8A24C);
+  border-radius: 1px;
+  transform: translateX(-100%);
+  transition: transform 220ms var(--ease-out);
+}
+.nav-link.active::after,
+.nav-link[aria-current="page"]::after {
+  transform: translateX(0);
+}
+
+/* Belt filter pill tabs — active indicator slide */
+@media (prefers-reduced-motion: no-preference) {
+  .belt-tab, [data-belt-tab] {
+    transition:
+      background-color 160ms var(--ease-out),
+      border-color 160ms var(--ease-out),
+      color 160ms var(--ease-out),
+      transform 120ms var(--ease-out);
+  }
+  .belt-tab:active, [data-belt-tab]:active {
+    transform: scale(0.95);
+  }
+}
+
+/* ── 5. TOGGLES / CHECKBOXES ────────────────────────────────────── */
+
+@media (prefers-reduced-motion: no-preference) {
+  /* Any button acting as a toggle (role="checkbox"/"switch") */
+  button[role="checkbox"],
+  button[role="switch"] {
+    transition: background-color 200ms var(--ease-out);
+  }
+  button[role="checkbox"] > div,
+  button[role="switch"] > div {
+    transition: left 200ms cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+  /* Tap feedback */
+  button[role="checkbox"]:active,
+  button[role="switch"]:active {
+    transform: scale(0.95);
+    transition-duration: 80ms;
+  }
+}
+
+/* ── 6. MODALS & SHEETS ─────────────────────────────────────────── */
+
+/* Backdrop fade */
+@keyframes overlay-in  { from { opacity: 0; } to { opacity: 1; } }
+@keyframes overlay-out { from { opacity: 1; } to { opacity: 0; } }
+
+/* Sheet slide up (mobile bottom sheet) */
+@keyframes sheet-up   { from { transform: translateY(48px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+@keyframes sheet-down { from { transform: translateY(0);    opacity: 1; } to { transform: translateY(48px); opacity: 0; } }
+
+/* Dialog scale (desktop / center modals) */
+@keyframes dialog-in  { from { transform: scale(0.95) translateY(8px); opacity: 0; } to { transform: scale(1) translateY(0); opacity: 1; } }
+@keyframes dialog-out { from { transform: scale(1) translateY(0); opacity: 1; } to { transform: scale(0.95) translateY(8px); opacity: 0; } }
+
+@media (prefers-reduced-motion: no-preference) {
+  .modal-enter {
+    animation: sheet-up 250ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+  .modal-exit {
+    animation: sheet-down 180ms cubic-bezier(0.4, 0, 1, 1) both;
+  }
+  .dialog-enter {
+    animation: dialog-in 250ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+  .dialog-exit {
+    animation: dialog-out 180ms cubic-bezier(0.4, 0, 1, 1) both;
+  }
+}
+
+/* ── 7. PAGE TRANSITIONS ────────────────────────────────────────── */
+
+@keyframes page-out-up  { from { opacity: 1; transform: translateY(0); } to { opacity: 0; transform: translateY(-8px); } }
+@keyframes page-in-up   { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+
+@media (prefers-reduced-motion: no-preference) {
+  .page-exit  { animation: page-out-up 200ms var(--ease-in) both; }
+  .page-enter { animation: page-in-up  200ms var(--ease-out) 100ms both; }
+
+  /* App-content default enter */
+  .app-content {
+    animation: page-in-up 220ms var(--ease-out) both;
+  }
+}
+
+/* ── 8. NUMBER / STAT VALUE FLIP ────────────────────────────────── */
+
+@keyframes num-flip-in  { from { opacity: 0; transform: translateY(6px);  } to { opacity: 1; transform: translateY(0); } }
+@keyframes num-flip-out { from { opacity: 1; transform: translateY(0); } to { opacity: 0; transform: translateY(-6px); } }
+
+@media (prefers-reduced-motion: no-preference) {
+  .num-flip {
+    display: inline-block;
+    animation: num-flip-in 300ms var(--ease-out) both;
+  }
+  .num-flip-change {
+    animation: num-flip-out 150ms var(--ease-in) forwards,
+               num-flip-in  200ms var(--ease-out) 150ms both;
+  }
+}
+
+/* ── 9. LIST / STAGGER REVEALS ───────────────────────────────────── */
+
+@keyframes list-item-in {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .stagger-list > *:nth-child(1)  { animation: list-item-in 240ms var(--ease-out) 0ms   both; }
+  .stagger-list > *:nth-child(2)  { animation: list-item-in 240ms var(--ease-out) 50ms  both; }
+  .stagger-list > *:nth-child(3)  { animation: list-item-in 240ms var(--ease-out) 100ms both; }
+  .stagger-list > *:nth-child(4)  { animation: list-item-in 240ms var(--ease-out) 150ms both; }
+  .stagger-list > *:nth-child(5)  { animation: list-item-in 240ms var(--ease-out) 200ms both; }
+  .stagger-list > *:nth-child(6)  { animation: list-item-in 240ms var(--ease-out) 250ms both; }
+  .stagger-list > *:nth-child(7)  { animation: list-item-in 240ms var(--ease-out) 300ms both; }
+  .stagger-list > *:nth-child(8)  { animation: list-item-in 240ms var(--ease-out) 350ms both; }
+  .stagger-list > *:nth-child(n+9){ animation: list-item-in 240ms var(--ease-out) 400ms both; }
+}
+
+/* ── 10. DROPDOWN / SELECT OPEN ────────────────────────────────── */
+
+@keyframes dropdown-in {
+  from { opacity: 0; transform: translateY(-6px) scaleY(0.95); transform-origin: top center; }
+  to   { opacity: 1; transform: translateY(0)    scaleY(1);    transform-origin: top center; }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .dropdown-menu, [data-radix-popper-content-wrapper] {
+    animation: dropdown-in 160ms var(--ease-out) both;
+  }
+}
+
+/* ── 11. FOCUS RINGS (accessible + stylish) ─────────────────────── */
+
+@media (prefers-reduced-motion: no-preference) {
+  :focus-visible {
+    outline: 2px solid var(--lbj-gold, #C8A24C);
+    outline-offset: 2px;
+    transition: outline-offset 100ms var(--ease-out);
+  }
+}
+
+/* ── 12. RIPPLE EFFECT (tap feedback on mobile) ─────────────────── */
+
+@keyframes ripple {
+  to { transform: scale(4); opacity: 0; }
+}
+
+.ripple-container {
+  position: relative;
+  overflow: hidden;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .ripple {
+    position: absolute;
+    border-radius: 50%;
+    width: 40px; height: 40px;
+    margin-top: -20px; margin-left: -20px;
+    background: rgba(255,255,255,0.08);
+    animation: ripple 500ms var(--ease-out) forwards;
+    pointer-events: none;
+  }
+}
+
+/* ── 13. SKELETON SHIMMER (already exists, enhancing) ───────────── */
+
+@media (prefers-reduced-motion: no-preference) {
+  .skeleton {
+    background: linear-gradient(
+      90deg,
+      var(--color-surface-2, #1A1A1A) 25%,
+      var(--color-surface-offset, #252525) 50%,
+      var(--color-surface-2, #1A1A1A) 75%
+    );
+    background-size: 200% 100%;
+    animation: shimmer 1.4s ease-in-out infinite;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .skeleton {
+    background: var(--color-surface-2, #1A1A1A);
+    animation: none;
+  }
+}
+
+/* ── 14. TOOLTIP FADE ────────────────────────────────────────────── */
+
+@keyframes tooltip-in  { from { opacity: 0; transform: translateY(3px); } to { opacity: 1; transform: translateY(0); } }
+@media (prefers-reduced-motion: no-preference) {
+  [data-tooltip]::after {
+    animation: tooltip-in 150ms var(--ease-out) both;
+  }
+}
+
+/* ── 15. CHIP / PILL SELECTION ────────────────────────────────────── */
+
+@media (prefers-reduced-motion: no-preference) {
+  .chip, .filter-pill, [data-chip] {
+    transition:
+      background-color 160ms var(--ease-out),
+      border-color 160ms var(--ease-out),
+      color 160ms var(--ease-out),
+      transform 120ms var(--ease-out),
+      box-shadow 160ms var(--ease-out);
+  }
+  .chip:active, .filter-pill:active, [data-chip]:active {
+    transform: scale(0.93);
+    transition-duration: 60ms;
+  }
+  .chip.selected, .filter-pill.selected, [data-chip].selected {
+    box-shadow: 0 0 0 2px var(--lbj-gold, #C8A24C);
+  }
+}
+
+/* ── END MICRO-INTERACTIONS ──────────────────────────────────────── */
