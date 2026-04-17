@@ -232,6 +232,13 @@ export default function HomePage() {
   const [profileExpanded, setProfileExpanded] = useState(false);
   const [showRankInfo, setShowRankInfo] = useState(false);
   const [showStreakInfo, setShowStreakInfo] = useState(false);
+  const [showMilestoneInfo, setShowMilestoneInfo] = useState(false);
+  const [showNarrativeInfo, setShowNarrativeInfo] = useState(false);
+  const [techniqueOverride, setTechniqueOverride] = useState<string | null>(() => { try { return localStorage.getItem('lbjj_technique_override'); } catch { return null; } });
+  const [showTechniqueEditor, setShowTechniqueEditor] = useState(false);
+  const [techniqueCustomName, setTechniqueCustomName] = useState('');
+  const [techniqueCustomTip, setTechniqueCustomTip] = useState('');
+  const [techniqueCustomCat, setTechniqueCustomCat] = useState('Custom');
 
   // ─── Home loading skeleton state ─────────────────────────────────
   const [homeLoading, setHomeLoading] = useState(true);
@@ -418,6 +425,34 @@ export default function HomePage() {
   const cachedStreak = (() => { try { return parseInt(localStorage.getItem('lbjj_streak_cache') || '0'); } catch { return 0; } })();
   const rawStreak = (member as any)?.currentStreak || 0;
   const streakCount = rawStreak > 0 ? rawStreak : cachedStreak;
+
+  // Daily streak — consecutive calendar days trained (drives 7/14/21/30 day powers)
+  const dailyStreakCount = (() => {
+    try {
+      const history: string[] = JSON.parse(localStorage.getItem('lbjj_checkin_history') || '[]');
+      const sorted = Array.from(new Set(history)).sort().reverse(); // most recent first
+      if (sorted.length === 0) return 0;
+      let streak = 0;
+      let checkDate = new Date();
+      checkDate.setHours(0, 0, 0, 0);
+      for (let i = 0; i < 60; i++) {
+        const dateStr = checkDate.toISOString().split('T')[0];
+        if (sorted.includes(dateStr)) {
+          streak++;
+          checkDate.setDate(checkDate.getDate() - 1);
+        } else if (i === 0) {
+          // today not trained yet — still count from yesterday
+          checkDate.setDate(checkDate.getDate() - 1);
+        } else {
+          break;
+        }
+      }
+      return streak;
+    } catch { return 0; }
+  })();
+
+  // Daily streak tier: 7 = fire, 14 = diamond, 21 = legend, 30 = paragon
+  const dailyStreakTier = dailyStreakCount >= 30 ? 'paragon' : dailyStreakCount >= 21 ? 'legend' : dailyStreakCount >= 14 ? 'diamond' : dailyStreakCount >= 7 ? 'fire' : 'none';
 
   // ─── Streak freeze mechanic ─────────────────────────────────────
   const [freezeAvailable, setFreezeAvailable] = useState(false);
@@ -729,6 +764,16 @@ export default function HomePage() {
       weekly.push(today);
       localStorage.setItem('lbjj_weekly_training', JSON.stringify(weekly.filter((d: string) => d >= new Date(Date.now() - 14*24*60*60*1000).toISOString().split('T')[0])));
     }
+    // Update season (monthly) check-in history so the April session counter increments
+    try {
+      const history: string[] = JSON.parse(localStorage.getItem('lbjj_checkin_history') || '[]');
+      if (!history.includes(today)) {
+        history.push(today);
+        // Keep last 400 days max to avoid localStorage bloat
+        const cutoff = new Date(Date.now() - 400 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+        localStorage.setItem('lbjj_checkin_history', JSON.stringify(history.filter((d: string) => d >= cutoff)));
+      }
+    } catch {}
 
     // Trigger confetti
     triggerConfetti();
@@ -804,6 +849,11 @@ export default function HomePage() {
       } catch {}
       try { localStorage.setItem('lbjj_streak_cache', String(res.currentStreak)); } catch {}
     }
+
+    // Bust leaderboard cache so next render fetches fresh data from GAS
+    // This ensures all members' check-ins show on the leaderboard immediately
+    try { localStorage.removeItem(LEADERBOARD_CACHE_KEY); } catch {}
+    try { localStorage.removeItem('lbjj_home_cache'); } catch {}
 
     checkingInRef.current = false;
   }, [member, setMember]);
@@ -1032,8 +1082,18 @@ export default function HomePage() {
     } catch { return { classes: 0, xpEarned: 0, gymRank: 0 }; }
   })();
 
-  // M2: Technique of the day
+  // M2: Technique of the day (admin-overridable via techniqueOverride state)
   const techniqueOfDay = (() => {
+    // If admin set a custom technique, show that instead
+    if (techniqueOverride) {
+      try {
+        const custom = JSON.parse(techniqueOverride);
+        if (custom.name) return custom;
+      } catch {
+        // plain string override
+        return { name: techniqueOverride, category: 'Custom', tip: 'Coach-selected technique for today.' };
+      }
+    }
     const techniques = [
       { name: 'Double Leg Takedown', category: 'Takedowns', tip: 'Level change fast, drive through the hips.' },
       { name: 'Armbar from Guard', category: 'Submissions', tip: 'Hip out, control the arm tight to your chest.' },
@@ -1261,7 +1321,7 @@ export default function HomePage() {
       {/* ════════════════════════════════════════════════════
           NARRATIVE HERO — "Where am I right now?"
           ════════════════════════════════════════════════════ */}
-      <div style={{ margin: '0 20px 18px' }} className="stagger-child">
+      <div style={{ margin: '0 20px 18px', cursor: 'pointer' }} className="stagger-child" onClick={() => { haptic(); setShowNarrativeInfo(true); }}>
         <div style={{
           background: isGameDay
             ? 'linear-gradient(135deg, #141008, #1A1500)'
@@ -1365,17 +1425,38 @@ export default function HomePage() {
       {(() => {
         const anyTrained = weekDots.some(d => d.trained);
         const isMaxed = isEliteWeek;
-        const cardBg = isEliteWeek
+        // Daily streak overrides weekly card appearance at 7/14/21/30 day milestones
+        const dsCardBg = dailyStreakTier === 'paragon'
+          ? 'linear-gradient(135deg, #1A0A1A, #250A25)' // deep purple
+          : dailyStreakTier === 'legend'
+            ? 'linear-gradient(135deg, #0A0A1A, #151530)' // midnight blue
+            : dailyStreakTier === 'diamond'
+              ? 'linear-gradient(135deg, #0A1A1A, #0A2525)' // teal-black
+              : dailyStreakTier === 'fire'
+                ? 'linear-gradient(135deg, #1A0A00, #200A00)' // deep ember
+                : null;
+        const dsCardBorder = dailyStreakTier === 'paragon' ? 'rgba(220,70,220,0.6)'
+          : dailyStreakTier === 'legend' ? 'rgba(90,120,255,0.6)'
+          : dailyStreakTier === 'diamond' ? 'rgba(60,200,200,0.6)'
+          : dailyStreakTier === 'fire' ? 'rgba(255,100,10,0.6)'
+          : null;
+        const dsHeaderColor = dailyStreakTier === 'paragon' ? '#E060E0'
+          : dailyStreakTier === 'legend' ? '#7090FF'
+          : dailyStreakTier === 'diamond' ? '#40CCCC'
+          : dailyStreakTier === 'fire' ? '#FF6010'
+          : null;
+
+        const cardBg = dsCardBg || (isEliteWeek
           ? 'linear-gradient(135deg, #120820, #1A0A2A)'
           : isPerfectWeek
             ? 'linear-gradient(135deg, #141008, #1A1500)'
-            : 'linear-gradient(135deg, #0D0D0D, #111)';
-        const cardBorder = isEliteWeek
+            : 'linear-gradient(135deg, #0D0D0D, #111)');
+        const cardBorder = dsCardBorder || (isEliteWeek
           ? 'rgba(168,85,247,0.45)'
           : isPerfectWeek
             ? 'rgba(255,215,0,0.4)'
-            : anyTrained ? 'rgba(200,162,76,0.15)' : 'rgba(200,162,76,0.08)';
-        const headerColor = isEliteWeek ? '#A855F7' : isPerfectWeek ? '#FFD700' : '#C8A24C';
+            : anyTrained ? 'rgba(200,162,76,0.15)' : 'rgba(200,162,76,0.08)');
+        const headerColor = dsHeaderColor || (isEliteWeek ? '#A855F7' : isPerfectWeek ? '#FFD700' : '#C8A24C');
 
         // Milestones on the journey: day 3 = combo, day 5 = perfect, day 7 = legend
         const milestoneAt = [3, 5, 7];
@@ -1402,6 +1483,23 @@ export default function HomePage() {
                   <span style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.12em', textTransform: 'uppercase', color: headerColor }}>
                     This Week
                   </span>
+                  {/* Daily streak power badge */}
+                  {dailyStreakTier !== 'none' && (
+                    <div style={{
+                      display: 'inline-flex', alignItems: 'center', gap: 3,
+                      padding: '1px 7px', borderRadius: 999, marginLeft: 4,
+                      background: dsCardBorder ? `${dsCardBorder.replace('0.6', '0.15')}` : 'rgba(255,100,10,0.15)',
+                      border: `1px solid ${dsCardBorder || 'rgba(255,100,10,0.4)'}`,
+                      animation: 'xp-pulse 2s ease-in-out infinite',
+                    }}>
+                      <span style={{ fontSize: 10 }}>
+                        {dailyStreakTier === 'paragon' ? '⚡' : dailyStreakTier === 'legend' ? '🌟' : dailyStreakTier === 'diamond' ? '💎' : '🔥'}
+                      </span>
+                      <span style={{ fontSize: 8, fontWeight: 800, color: dsHeaderColor || '#FF6010', letterSpacing: '0.08em' }}>
+                        {dailyStreakCount}D
+                      </span>
+                    </div>
+                  )}
                 </div>
                 {/* Current multiplier badge — glows when active */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
@@ -1517,7 +1615,7 @@ export default function HomePage() {
                             <polyline points="20 6 9 17 4 12"/>
                           </svg>
                         ) : d.isToday ? (
-                          <div style={{ width: 6, height: 6, borderRadius: '50%', background: beltColor }} />
+                          <div style={{ width: 8, height: 8, borderRadius: '50%', background: beltColor, animation: 'todayDotPulse 1.4s ease-in-out infinite', boxShadow: `0 0 6px ${beltColor}` }} />
                         ) : (
                           <div style={{ width: 4, height: 4, borderRadius: '50%', background: '#2A2A2A', opacity: !anyTrained ? 0.4 : 1 }} />
                         )}
@@ -1890,17 +1988,28 @@ export default function HomePage() {
               </div>
             </div>
             <div style={{ height: 14, borderRadius: 7, background: '#0A0A0A', overflow: 'hidden', position: 'relative', border: '1px solid #1A1A1A', boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.5)' }}>
-              <div style={{
-                height: '100%', width: `${getLevelFromXP(memberXP).progress * 100}%`,
-                background: 'linear-gradient(90deg, #6B4A00 0%, #C8A24C 40%, #FFD700 70%, #FFF8DC 85%, #FFD700 100%)',
-                backgroundSize: '300% 100%', animation: 'xp-shimmer 2s linear infinite',
-                borderRadius: 7, transition: 'width 1.5s cubic-bezier(0.4,0,0.2,1)',
-                boxShadow: '0 0 10px rgba(255,215,0,0.6), 0 0 20px rgba(200,162,76,0.3)',
-              }}/>
-              <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '45%', background: 'linear-gradient(180deg, rgba(255,255,255,0.12) 0%, transparent 100%)', borderRadius: '7px 7px 0 0', pointerEvents: 'none' }}/>
-              {[25, 50, 75].map(pct => (
-                <div key={pct} style={{ position: 'absolute', top: 0, bottom: 0, left: `${pct}%`, width: 1, background: 'rgba(0,0,0,0.3)' }}/>
-              ))}
+              {(() => {
+                const pct = getLevelFromXP(memberXP).progress * 100;
+                const visibleWidth = pct < 1 ? 20 : pct; // min 20px-equivalent so bar always shows
+                return (
+                  <>
+                    <div style={{
+                      height: '100%', width: `${Math.max(visibleWidth, 4)}%`,
+                      background: pct < 1
+                        ? 'linear-gradient(90deg, rgba(200,162,76,0.4), rgba(200,162,76,0.15))'
+                        : 'linear-gradient(90deg, #6B4A00 0%, #C8A24C 40%, #FFD700 70%, #FFF8DC 85%, #FFD700 100%)',
+                      backgroundSize: '300% 100%',
+                      animation: pct < 1 ? 'xpBarShimmer 2s ease-in-out infinite alternate' : 'xp-shimmer 2s linear infinite',
+                      borderRadius: 7, transition: 'width 1.5s cubic-bezier(0.4,0,0.2,1)',
+                      boxShadow: pct < 1 ? '0 0 8px rgba(200,162,76,0.3)' : '0 0 10px rgba(255,215,0,0.6), 0 0 20px rgba(200,162,76,0.3)',
+                    }}/>
+                    <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '45%', background: 'linear-gradient(180deg, rgba(255,255,255,0.12) 0%, transparent 100%)', borderRadius: '7px 7px 0 0', pointerEvents: 'none' }}/>
+                    {[25, 50, 75].map(p => (
+                      <div key={p} style={{ position: 'absolute', top: 0, bottom: 0, left: `${p}%`, width: 1, background: 'rgba(0,0,0,0.3)' }}/>
+                    ))}
+                  </>
+                );
+              })()}
             </div>
             <div style={{ marginTop: 8, display: 'flex', gap: 12, justifyContent: 'center' }}>
               {[
@@ -1943,6 +2052,18 @@ export default function HomePage() {
         @keyframes streakBarFill {
           from { width: 0%; }
           to { width: var(--bar-width); }
+        }
+        @keyframes todayDotPulse {
+          0%, 100% { transform: scale(1); opacity: 1; }
+          50% { transform: scale(1.4); opacity: 0.6; }
+        }
+        @keyframes xpBarShimmer {
+          0% { background-position: -200% center; }
+          100% { background-position: 200% center; }
+        }
+        @keyframes fadeInOverlay {
+          from { opacity: 0; }
+          to { opacity: 1; }
         }
       `}</style>
 
@@ -2003,7 +2124,7 @@ export default function HomePage() {
             )}
             {/* Next milestone row */}
             {nextMilestoneData && nextMilestoneData.need > 0 && (
-              <a href={nextMilestoneData.type === 'achievement' ? '/#/achievements' : undefined} style={{ textDecoration: 'none', display: 'block' }}>
+              <div onClick={() => { haptic(); setShowMilestoneInfo(true); }} style={{ cursor: 'pointer' }}>
                 <div style={{ padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 12 }}>
                   <div style={{
                     width: 34, height: 34, borderRadius: 9, flexShrink: 0,
@@ -2016,13 +2137,13 @@ export default function HomePage() {
                     <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#444', marginBottom: 2 }}>Next Milestone</div>
                     <div style={{ fontSize: 12, fontWeight: 700, color: '#F0F0F0' }}>
                       {nextMilestoneData.type === 'achievement'
-                        ? `${nextMilestoneData.need} more ${nextMilestoneData.unit} → "${nextMilestoneData.label}"`
+                        ? `${nextMilestoneData.need} more ${nextMilestoneData.unit} → \"${nextMilestoneData.label}\"`
                         : `${nextMilestoneData.need.toLocaleString()} XP to Level ${nextMilestoneData.nextLevel}`}
                     </div>
                   </div>
                   <ChevronRight size={14} color="#444" />
                 </div>
-              </a>
+              </div>
             )}
           </div>
         </div>
@@ -2032,14 +2153,20 @@ export default function HomePage() {
           TECHNIQUE OF THE DAY
           ════════════════════════════════════════════════════ */}
       {techniqueOfDay && (
-        <div style={{
-          margin: '0 20px 14px', padding: '14px 16px',
-          background: 'linear-gradient(135deg, #0D0D0D, #0A0A10)',
-          border: '1px solid #C8A24C14', borderRadius: 14,
-        }} className="stagger-child">
+        <div
+          style={{
+            margin: '0 20px 14px', padding: '14px 16px',
+            background: 'linear-gradient(135deg, #0D0D0D, #0A0A10)',
+            border: '1px solid #C8A24C14', borderRadius: 14,
+            cursor: member?.isAdmin ? 'pointer' : 'default',
+          }}
+          className="stagger-child"
+          onClick={member?.isAdmin ? () => { haptic(); setShowTechniqueEditor(true); } : undefined}
+        >
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-            <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.15em', textTransform: 'uppercase', color: '#C8A24C' }}>
+            <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.15em', textTransform: 'uppercase', color: '#C8A24C', display: 'flex', alignItems: 'center', gap: 6 }}>
               Technique of the Day
+              {member?.isAdmin && <span style={{ fontSize: 8, color: '#444', background: '#1A1A1A', padding: '1px 5px', borderRadius: 4, border: '1px solid #2A2A2A' }}>✏️ Edit</span>}
             </div>
             <div style={{ fontSize: 9, fontWeight: 700, color: '#444', letterSpacing: '0.08em', textTransform: 'uppercase', padding: '2px 8px', borderRadius: 999, background: '#111', border: '1px solid #222' }}>
               {techniqueOfDay.category}
@@ -2130,30 +2257,55 @@ export default function HomePage() {
           ════════════════════════════════════════════════════ */}
       {nextTournament && tournamentDaysUntil <= 60 && (
         <div className="mx-5 mb-4">
-          <a href="/#/calendar" style={{ textDecoration: 'none', display: 'block' }}>
-            <div style={{ background: 'linear-gradient(135deg, #141414, #1A1A0A)', border: '1px solid rgba(200,162,76,0.19)', borderRadius: 14, padding: 16 }}>
-              <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', color: '#C8A24C', textTransform: 'uppercase' as const, marginBottom: 6 }}>🏆 Upcoming Tournament</div>
-              <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10 }}>
-                <div>
-                  <div style={{ fontSize: 16, fontWeight: 700, color: '#F0F0F0', marginBottom: 4 }}>{nextTournament.name}</div>
-                  <div style={{ fontSize: 13, color: '#888' }}>{tournamentDaysUntil === 0 ? 'Today!' : tournamentDaysUntil === 1 ? 'Tomorrow' : `${tournamentDaysUntil} days away`}</div>
-                </div>
-                <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                  <div style={{ fontSize: 28, fontWeight: 900, color: '#FFD700' }}>{tournamentDaysUntil}</div>
-                  <div style={{ fontSize: 9, color: '#555', textTransform: 'uppercase' }}>Days Out</div>
-                </div>
+          <div style={{ background: 'linear-gradient(135deg, #141414, #1A1A0A)', border: '1px solid rgba(200,162,76,0.19)', borderRadius: 14, padding: 16, position: 'relative' }}>
+            <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', color: '#C8A24C', textTransform: 'uppercase' as const, marginBottom: 6 }}>🏆 Upcoming Tournament</div>
+            <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10 }}>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: 16, fontWeight: 700, color: '#F0F0F0', marginBottom: 4 }}>{nextTournament.name}</div>
+                <div style={{ fontSize: 13, color: '#888' }}>{tournamentDaysUntil === 0 ? 'Today!' : tournamentDaysUntil === 1 ? 'Tomorrow' : `${tournamentDaysUntil} days away`}</div>
+                {nextTournament.location && (
+                  <div style={{ fontSize: 11, color: '#666', marginTop: 4 }}>{nextTournament.location}</div>
+                )}
               </div>
+              <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                <div style={{ fontSize: 28, fontWeight: 900, color: '#FFD700' }}>{tournamentDaysUntil}</div>
+                <div style={{ fontSize: 9, color: '#555', textTransform: 'uppercase' }}>Days Out</div>
+              </div>
+            </div>
+            {/* Map + Website buttons tucked in bottom-right corner */}
+            <div style={{ display: 'flex', gap: 6, marginTop: 12, justifyContent: 'flex-end' }}>
               {nextTournament.location && (
-                <a href={`https://maps.google.com/?q=${encodeURIComponent(nextTournament.location)}`}
+                <a
+                  href={`https://maps.google.com/?q=${encodeURIComponent(nextTournament.location)}`}
                   target="_blank" rel="noopener noreferrer"
-                  style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 10, textDecoration: 'none' }}
-                  onClick={e => e.stopPropagation()}>
-                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#C8A24C" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
-                  <span style={{ fontSize: 12, color: '#C8A24C', fontWeight: 500 }}>{nextTournament.location}</span>
+                  style={{
+                    display: 'inline-flex', alignItems: 'center', gap: 4,
+                    padding: '5px 10px', borderRadius: 8,
+                    background: 'rgba(200,162,76,0.1)', border: '1px solid rgba(200,162,76,0.25)',
+                    color: '#C8A24C', fontSize: 11, fontWeight: 600, textDecoration: 'none',
+                  }}
+                >
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+                  Map
+                </a>
+              )}
+              {nextTournament.link && (
+                <a
+                  href={nextTournament.link}
+                  target="_blank" rel="noopener noreferrer"
+                  style={{
+                    display: 'inline-flex', alignItems: 'center', gap: 4,
+                    padding: '5px 10px', borderRadius: 8,
+                    background: 'rgba(200,162,76,0.1)', border: '1px solid rgba(200,162,76,0.25)',
+                    color: '#C8A24C', fontSize: 11, fontWeight: 600, textDecoration: 'none',
+                  }}
+                >
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+                  Website
                 </a>
               )}
             </div>
-          </a>
+          </div>
         </div>
       )}
 
@@ -2360,7 +2512,7 @@ export default function HomePage() {
           onClick={() => setShowRankInfo(false)}
         >
           <div
-            style={{ width: '100%', maxWidth: 480, background: 'linear-gradient(180deg, #111108 0%, #0D0D0D 100%)', borderRadius: '24px 24px 0 0', padding: '0 0 32px', maxHeight: '88vh', overflowY: 'auto', animation: 'modalSlideUp 0.32s cubic-bezier(0.34,1.28,0.64,1)' }}
+            style={{ width: '100%', maxWidth: 480, background: 'linear-gradient(180deg, #111108 0%, #0D0D0D 100%)', borderRadius: '24px 24px 0 0', padding: '0 0 max(32px, calc(env(safe-area-inset-bottom) + 32px))', maxHeight: '92vh', overflowY: 'auto', overscrollBehavior: 'contain', WebkitOverflowScrolling: 'touch' as any, animation: 'modalSlideUp 0.32s cubic-bezier(0.34,1.28,0.64,1)' }}
             onClick={e => e.stopPropagation()}
           >
             {/* Drag handle */}
@@ -2479,7 +2631,7 @@ export default function HomePage() {
             onClick={() => setShowStreakInfo(false)}
           >
             <div
-              style={{ width: '100%', maxWidth: 480, background: isActive ? (isEliteWeek ? 'linear-gradient(180deg, #120820, #0D0D0D)' : isPerfectWeek ? 'linear-gradient(180deg, #141008, #0D0D0D)' : 'linear-gradient(180deg, #110A04, #0D0D0D)') : 'linear-gradient(180deg, #111, #0D0D0D)', borderRadius: '24px 24px 0 0', padding: '0 0 32px', maxHeight: '88vh', overflowY: 'auto', animation: 'modalSlideUp 0.32s cubic-bezier(0.34,1.28,0.64,1)' }}
+              style={{ width: '100%', maxWidth: 480, background: isActive ? (isEliteWeek ? 'linear-gradient(180deg, #120820, #0D0D0D)' : isPerfectWeek ? 'linear-gradient(180deg, #141008, #0D0D0D)' : 'linear-gradient(180deg, #110A04, #0D0D0D)') : 'linear-gradient(180deg, #111, #0D0D0D)', borderRadius: '24px 24px 0 0', padding: '0 0 max(32px, calc(env(safe-area-inset-bottom) + 32px))', maxHeight: '92vh', overflowY: 'auto', overscrollBehavior: 'contain', WebkitOverflowScrolling: 'touch' as any, animation: 'modalSlideUp 0.32s cubic-bezier(0.34,1.28,0.64,1)' }}
               onClick={e => e.stopPropagation()}
             >
               {/* Drag handle */}
@@ -2585,6 +2737,299 @@ export default function HomePage() {
           </div>
         );
       })()}
+
+      {/* ── Milestone Info Modal ─────────────────────────────────── */}
+      {showMilestoneInfo && (
+        <div
+          onClick={() => setShowMilestoneInfo(false)}
+          style={{ position: 'fixed', inset: 0, zIndex: 1200, display: 'flex', alignItems: 'flex-end', animation: 'fadeInOverlay 0.2s ease' }}
+        >
+          <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.65)', backdropFilter: 'blur(6px)' }} />
+          <div
+            onClick={e => e.stopPropagation()}
+            style={{
+              position: 'relative', width: '100%', background: '#111',
+              borderRadius: '22px 22px 0 0', borderTop: '1px solid #222',
+              maxHeight: '88vh', overflowY: 'auto', overscrollBehavior: 'contain',
+              WebkitOverflowScrolling: 'touch' as any,
+              paddingBottom: 'max(32px, calc(env(safe-area-inset-bottom, 0px) + 32px))',
+              animation: 'modalSlideUp 0.28s cubic-bezier(0.32,0,0.12,1)',
+            }}
+          >
+            <div style={{ width: 36, height: 4, borderRadius: 2, background: '#2A2A2A', margin: '16px auto 20px' }} />
+            <div style={{ padding: '0 20px' }}>
+              <div style={{ fontSize: 20, fontWeight: 800, color: '#F0F0F0', marginBottom: 4 }}>🏆 Milestones</div>
+              <div style={{ fontSize: 13, color: '#666', marginBottom: 24, lineHeight: 1.5 }}>
+                Milestones mark major moments in your journey. Each one represents real progress — sessions on the mat, consistency, and growth.
+              </div>
+              {[
+                { icon: '🥋', label: 'First Class', desc: "Show up. That's the hardest part.", xp: 100 },
+                { icon: '🔥', label: '10 Classes', desc: "You've found your rhythm on the mat.", xp: 250 },
+                { icon: '⚡', label: '25 Classes', desc: "Commitment is becoming habit.", xp: 500 },
+                { icon: '💎', label: '50 Classes', desc: "You're building something real.", xp: 1000 },
+                { icon: '🌟', label: '100 Classes', desc: "This is who you are now.", xp: 2500 },
+                { icon: '👑', label: '200 Classes', desc: "Elite. The mat is home.", xp: 5000 },
+                { icon: '🔱', label: '365 Classes', desc: "A full year of dedication. Legendary.", xp: 10000 },
+                { icon: '🏅', label: 'First Stripe', desc: "Your coach sees your progress.", xp: 300 },
+                { icon: '🥇', label: 'First Belt Promotion', desc: "A new chapter begins.", xp: 1500 },
+                { icon: '⭐', label: '7-Day Streak', desc: "Fire mode activated.", xp: 200 },
+                { icon: '💫', label: '30-Day Streak', desc: "Paragon-level consistency.", xp: 1000 },
+              ].map((m, i) => (
+                <div key={i} style={{
+                  display: 'flex', alignItems: 'center', gap: 14,
+                  padding: '14px 0',
+                  borderBottom: i < 10 ? '1px solid #1A1A1A' : 'none',
+                }}>
+                  <div style={{ fontSize: 28, width: 40, textAlign: 'center', flexShrink: 0 }}>{m.icon}</div>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontSize: 14, fontWeight: 700, color: '#F0F0F0' }}>{m.label}</div>
+                    <div style={{ fontSize: 12, color: '#666', marginTop: 2 }}>{m.desc}</div>
+                  </div>
+                  <div style={{
+                    fontSize: 11, fontWeight: 700, color: '#C8A24C',
+                    background: 'rgba(200,162,76,0.1)', border: '1px solid rgba(200,162,76,0.2)',
+                    borderRadius: 8, padding: '3px 8px', whiteSpace: 'nowrap',
+                  }}>+{m.xp.toLocaleString()} XP</div>
+                </div>
+              ))}
+              <button
+                onClick={() => setShowMilestoneInfo(false)}
+                style={{
+                  marginTop: 20, width: '100%', padding: '13px',
+                  borderRadius: 12, background: '#1A1A1A', border: '1px solid #2A2A2A',
+                  color: '#888', fontSize: 14, fontWeight: 600, cursor: 'pointer',
+                }}
+              >Close</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Narrative / Weekly Stats Modal ───────────────────────── */}
+      {showNarrativeInfo && (
+        <div
+          onClick={() => setShowNarrativeInfo(false)}
+          style={{ position: 'fixed', inset: 0, zIndex: 1200, display: 'flex', alignItems: 'flex-end', animation: 'fadeInOverlay 0.2s ease' }}
+        >
+          <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.65)', backdropFilter: 'blur(6px)' }} />
+          <div
+            onClick={e => e.stopPropagation()}
+            style={{
+              position: 'relative', width: '100%', background: '#111',
+              borderRadius: '22px 22px 0 0', borderTop: '1px solid #222',
+              maxHeight: '88vh', overflowY: 'auto', overscrollBehavior: 'contain',
+              WebkitOverflowScrolling: 'touch' as any,
+              paddingBottom: 'max(32px, calc(env(safe-area-inset-bottom, 0px) + 32px))',
+              animation: 'modalSlideUp 0.28s cubic-bezier(0.32,0,0.12,1)',
+            }}
+          >
+            <div style={{ width: 36, height: 4, borderRadius: 2, background: '#2A2A2A', margin: '16px auto 20px' }} />
+            <div style={{ padding: '0 20px' }}>
+              <div style={{ fontSize: 20, fontWeight: 800, color: '#F0F0F0', marginBottom: 4 }}>📊 Your Week</div>
+              <div style={{ fontSize: 13, color: '#666', marginBottom: 24 }}>A snapshot of where you stand right now.</div>
+              {[
+                { label: 'Classes This Week', value: weeklyTraining().filter(Boolean).length, unit: 'classes', icon: '🥋' },
+                { label: 'Current Streak', value: dailyStreakCount, unit: 'days', icon: dailyStreakTier === 'paragon' ? '⚡' : dailyStreakTier === 'legend' ? '🌟' : dailyStreakTier === 'diamond' ? '💎' : '🔥' },
+                { label: 'Streak Tier', value: dailyStreakTier === 'paragon' ? 'Paragon' : dailyStreakTier === 'legend' ? 'Legend' : dailyStreakTier === 'diamond' ? 'Diamond' : dailyStreakTier === 'fire' ? 'Fire' : 'None', unit: '', icon: '🏆' },
+                { label: 'XP This Week', value: weeklyTraining().filter(Boolean).length * 50, unit: 'XP', icon: '⭐' },
+              ].map((stat, i) => (
+                <div key={i} style={{
+                  display: 'flex', alignItems: 'center', gap: 14,
+                  padding: '14px 16px', borderRadius: 14,
+                  background: 'rgba(255,255,255,0.03)',
+                  border: '1px solid #1A1A1A',
+                  marginBottom: 10,
+                }}>
+                  <div style={{ fontSize: 24, width: 36, textAlign: 'center' }}>{stat.icon}</div>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontSize: 11, color: '#555', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em' }}>{stat.label}</div>
+                    <div style={{ fontSize: 22, fontWeight: 800, color: '#F0F0F0', marginTop: 2 }}>
+                      {stat.value}{stat.unit ? <span style={{ fontSize: 13, color: '#666', fontWeight: 500, marginLeft: 4 }}>{stat.unit}</span> : null}
+                    </div>
+                  </div>
+                </div>
+              ))}
+              {dailyStreakTier !== 'none' && (
+                <div style={{
+                  marginTop: 8, padding: '14px 16px', borderRadius: 14,
+                  background: dailyStreakTier === 'paragon' ? 'rgba(220,70,220,0.08)' : dailyStreakTier === 'legend' ? 'rgba(90,120,255,0.08)' : dailyStreakTier === 'diamond' ? 'rgba(60,200,200,0.08)' : 'rgba(255,100,10,0.08)',
+                  border: `1px solid ${dailyStreakTier === 'paragon' ? 'rgba(220,70,220,0.3)' : dailyStreakTier === 'legend' ? 'rgba(90,120,255,0.3)' : dailyStreakTier === 'diamond' ? 'rgba(60,200,200,0.3)' : 'rgba(255,100,10,0.3)'}`,
+                }}>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: '#F0F0F0' }}>🔥 Streak Power-Up Active</div>
+                  <div style={{ fontSize: 12, color: '#888', marginTop: 4 }}>
+                    Your {dailyStreakCount}-day streak unlocks a {dailyStreakTier === 'paragon' ? '3×' : dailyStreakTier === 'legend' ? '2×' : dailyStreakTier === 'diamond' ? '1.75×' : '1.5×'} XP multiplier on all training sessions.
+                  </div>
+                </div>
+              )}
+              <button
+                onClick={() => setShowNarrativeInfo(false)}
+                style={{
+                  marginTop: 20, width: '100%', padding: '13px',
+                  borderRadius: 12, background: '#1A1A1A', border: '1px solid #2A2A2A',
+                  color: '#888', fontSize: 14, fontWeight: 600, cursor: 'pointer',
+                }}
+              >Close</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Technique Editor Modal ───────────────────────────────── */}
+      {showTechniqueEditor && member?.isAdmin && (
+        <div
+          onClick={() => setShowTechniqueEditor(false)}
+          style={{ position: 'fixed', inset: 0, zIndex: 1200, display: 'flex', alignItems: 'flex-end', animation: 'fadeInOverlay 0.2s ease' }}
+        >
+          <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.65)', backdropFilter: 'blur(6px)' }} />
+          <div
+            onClick={e => e.stopPropagation()}
+            style={{
+              position: 'relative', width: '100%', background: '#111',
+              borderRadius: '22px 22px 0 0', borderTop: '1px solid #222',
+              maxHeight: '90vh', overflowY: 'auto', overscrollBehavior: 'contain',
+              WebkitOverflowScrolling: 'touch' as any,
+              paddingBottom: 'max(32px, calc(env(safe-area-inset-bottom, 0px) + 32px))',
+              animation: 'modalSlideUp 0.28s cubic-bezier(0.32,0,0.12,1)',
+            }}
+          >
+            <div style={{ width: 36, height: 4, borderRadius: 2, background: '#2A2A2A', margin: '16px auto 20px' }} />
+            <div style={{ padding: '0 20px' }}>
+              <div style={{ fontSize: 20, fontWeight: 800, color: '#F0F0F0', marginBottom: 4 }}>✏️ Set Technique of the Day</div>
+              <div style={{ fontSize: 13, color: '#666', marginBottom: 20 }}>Choose from the preset list or write your own custom technique.</div>
+
+              {/* Custom entry */}
+              <div style={{ marginBottom: 20 }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: '#888', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 8 }}>Custom Technique</div>
+                <input
+                  value={techniqueCustomName}
+                  onChange={e => setTechniqueCustomName(e.target.value)}
+                  placeholder="Technique name (e.g. Inside Heel Hook)"
+                  style={{
+                    width: '100%', padding: '12px 14px', borderRadius: 12,
+                    background: '#1A1A1A', border: '1px solid #2A2A2A',
+                    color: '#F0F0F0', fontSize: 14, outline: 'none',
+                    marginBottom: 10, boxSizing: 'border-box' as any,
+                  }}
+                />
+                <input
+                  value={techniqueCustomTip}
+                  onChange={e => setTechniqueCustomTip(e.target.value)}
+                  placeholder="Coach tip (e.g. Control the outside first)"
+                  style={{
+                    width: '100%', padding: '12px 14px', borderRadius: 12,
+                    background: '#1A1A1A', border: '1px solid #2A2A2A',
+                    color: '#F0F0F0', fontSize: 14, outline: 'none',
+                    marginBottom: 10, boxSizing: 'border-box' as any,
+                  }}
+                />
+                <select
+                  value={techniqueCustomCat}
+                  onChange={e => setTechniqueCustomCat(e.target.value)}
+                  style={{
+                    width: '100%', padding: '12px 14px', borderRadius: 12,
+                    background: '#1A1A1A', border: '1px solid #2A2A2A',
+                    color: '#F0F0F0', fontSize: 14, outline: 'none',
+                    boxSizing: 'border-box' as any, appearance: 'none' as any,
+                  }}
+                >
+                  {['Submissions', 'Guard', 'Passing', 'Sweeps', 'Takedowns', 'Escapes', 'Leg Locks', 'Custom'].map(cat => (
+                    <option key={cat} value={cat}>{cat}</option>
+                  ))}
+                </select>
+                <button
+                  disabled={!techniqueCustomName.trim()}
+                  onClick={() => {
+                    if (!techniqueCustomName.trim()) return;
+                    const val = JSON.stringify({ name: techniqueCustomName.trim(), tip: techniqueCustomTip.trim() || 'Focus on precision.', category: techniqueCustomCat });
+                    try { localStorage.setItem('lbjj_technique_override', val); } catch {}
+                    setTechniqueOverride(val);
+                    setTechniqueCustomName(''); setTechniqueCustomTip(''); setTechniqueCustomCat('Custom');
+                    setShowTechniqueEditor(false);
+                  }}
+                  style={{
+                    marginTop: 10, width: '100%', padding: '13px',
+                    borderRadius: 12,
+                    background: techniqueCustomName.trim() ? 'rgba(200,162,76,0.15)' : '#1A1A1A',
+                    border: `1px solid ${techniqueCustomName.trim() ? 'rgba(200,162,76,0.4)' : '#2A2A2A'}`,
+                    color: techniqueCustomName.trim() ? '#C8A24C' : '#555',
+                    fontSize: 14, fontWeight: 700, cursor: techniqueCustomName.trim() ? 'pointer' : 'not-allowed',
+                    transition: 'all 0.2s',
+                  }}
+                >Set Custom Technique</button>
+              </div>
+
+              {/* Preset picker */}
+              <div style={{ fontSize: 11, fontWeight: 700, color: '#888', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 12 }}>— Or Pick a Preset —</div>
+              {[
+                { name: 'Double Leg Takedown', category: 'Takedowns', tip: 'Level change fast, drive through the hips.' },
+                { name: 'Armbar from Guard', category: 'Submissions', tip: 'Hip out, control the arm tight to your chest.' },
+                { name: 'Rear Naked Choke', category: 'Submissions', tip: 'Seat belt grip first, sink the hook before the choke.' },
+                { name: 'Triangle Choke', category: 'Submissions', tip: 'Cut the angle 45 degrees before squeezing.' },
+                { name: 'Butterfly Guard Sweep', category: 'Sweeps', tip: 'Break their posture down before the lift.' },
+                { name: 'Knee Slice Pass', category: 'Passing', tip: 'Chest heavy, hip switch at the moment of pass.' },
+                { name: 'Guillotine Choke', category: 'Submissions', tip: 'Hips in, pull up, not out.' },
+                { name: 'Spider Guard Control', category: 'Guard', tip: 'Maintain frames, use legs as pistons.' },
+                { name: 'Half Guard Sweep', category: 'Sweeps', tip: 'Get the underhook before you go to your knees.' },
+                { name: 'Bow and Arrow Choke', category: 'Submissions', tip: 'Control the collar deep, far leg for the finish.' },
+                { name: 'De La Riva Hook', category: 'Guard', tip: 'DLR hook on the outside of the knee, not the ankle.' },
+                { name: 'Leg Lock Entry', category: 'Leg Locks', tip: 'Get the outside position before the heel hook.' },
+                { name: 'Kimura Trap', category: 'Submissions', tip: 'Control the wrist, shoulder up first.' },
+                { name: 'X-Guard Sweep', category: 'Sweeps', tip: 'Extend both legs together to break their base.' },
+                { name: 'Omoplata', category: 'Submissions', tip: 'Hip escape to prevent roll, sit up to finish.' },
+                { name: 'Berimbolo', category: 'Guard', tip: 'Invert tight, get the back before they can react.' },
+                { name: 'Torreando Pass', category: 'Passing', tip: 'Control both pants, step around, dont step in.' },
+                { name: 'Arm Drag to Back', category: 'Takedowns', tip: 'Pull the arm, step behind in the same motion.' },
+                { name: 'North South Escape', category: 'Escapes', tip: 'Bridge and shrimp simultaneously, not sequentially.' },
+                { name: 'Single Leg X Guard', category: 'Guard', tip: 'Keep the knee shield active until you establish X.' },
+                { name: 'Uchi Mata', category: 'Takedowns', tip: 'Kuzushi first — break their balance before the lift.' },
+                { name: 'Clock Choke', category: 'Submissions', tip: 'Walk feet toward their head to tighten the choke.' },
+              ].map((t, i) => (
+                <button
+                  key={i}
+                  onClick={() => {
+                    const val = JSON.stringify(t);
+                    try { localStorage.setItem('lbjj_technique_override', val); } catch {}
+                    setTechniqueOverride(val);
+                    setShowTechniqueEditor(false);
+                  }}
+                  style={{
+                    width: '100%', padding: '12px 14px', borderRadius: 12,
+                    background: 'rgba(255,255,255,0.03)', border: '1px solid #1A1A1A',
+                    color: '#F0F0F0', fontSize: 13, textAlign: 'left' as any,
+                    cursor: 'pointer', marginBottom: 8,
+                    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                  }}
+                >
+                  <span style={{ fontWeight: 600 }}>{t.name}</span>
+                  <span style={{ fontSize: 10, color: '#555', background: '#1A1A1A', borderRadius: 6, padding: '2px 7px' }}>{t.category}</span>
+                </button>
+              ))}
+              {techniqueOverride && (
+                <button
+                  onClick={() => {
+                    try { localStorage.removeItem('lbjj_technique_override'); } catch {}
+                    setTechniqueOverride(null);
+                    setShowTechniqueEditor(false);
+                  }}
+                  style={{
+                    marginTop: 8, width: '100%', padding: '13px',
+                    borderRadius: 12, background: 'rgba(224,85,85,0.08)', border: '1px solid rgba(224,85,85,0.2)',
+                    color: '#E05555', fontSize: 13, fontWeight: 600, cursor: 'pointer',
+                  }}
+                >Reset to Daily Auto-Rotation</button>
+              )}
+              <button
+                onClick={() => setShowTechniqueEditor(false)}
+                style={{
+                  marginTop: 10, width: '100%', padding: '13px',
+                  borderRadius: 12, background: '#1A1A1A', border: '1px solid #2A2A2A',
+                  color: '#888', fontSize: 14, fontWeight: 600, cursor: 'pointer',
+                }}
+              >Cancel</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

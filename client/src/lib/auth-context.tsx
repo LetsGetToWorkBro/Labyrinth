@@ -81,7 +81,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
         // Background validation — if invalid, log out silently
         gasCall('memberGetProfile', { token: savedToken }).then((res: any) => {
-          if (res?.success === false && !res?.member) {
+          // Detect explicit invalid session (success:false with no usable member)
+          const raw = res?.member || (res && typeof res === 'object' && res.name ? res : null);
+          if (res?.success === false && !raw) {
             // Session invalid — log out
             clearAuth();
             localStorage.removeItem('lbjj_session_token');
@@ -89,17 +91,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             setIsAuthenticated(false);
             setMemberState(null);
             setFamilyMembers([]);
-          } else {
-            // Refresh member data from server — use normalizeAdminRole to coerce
-            // GAS string booleans ("TRUE"/"FALSE") to real booleans for waiverSigned etc.
-            const raw = res?.member || res;
-            if (raw && typeof raw === 'object' && raw.name) {
-              const normalized = normalizeAdminRole(raw);
-              setMemberState(normalized);
-              setMemberData(normalized);
-              localStorage.setItem('lbjj_member_profile', JSON.stringify(sanitizeProfileForStorage(normalized)));
-              if (normalized.familyMembers) setFamilyMembers(normalized.familyMembers);
-            }
+            return;
+          }
+          if (raw && typeof raw === 'object' && (raw.name || raw.email)) {
+            // Always run through normalizeAdminRole so waiverSigned/agreementSigned
+            // GAS strings ("TRUE"/"FALSE"/1/0) get coerced to booleans
+            const normalized = normalizeAdminRole(raw);
+            setMemberState(normalized);
+            setMemberData(normalized);
+            localStorage.setItem('lbjj_member_profile', JSON.stringify(sanitizeProfileForStorage(normalized)));
+            if (normalized.familyMembers) setFamilyMembers(normalized.familyMembers);
           }
         }).catch(() => {
           // Network error during validation — keep optimistic state (user may be offline)

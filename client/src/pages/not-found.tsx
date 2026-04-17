@@ -1,6 +1,13 @@
+import { useEffect } from "react";
 import { AlertCircle } from "lucide-react";
 
 export default function NotFound() {
+  // Auto-redirect home after 2.5s to recover from stray hash navigations
+  useEffect(() => {
+    const t = setTimeout(() => { window.location.hash = '/'; }, 2500);
+    return () => clearTimeout(t);
+  }, []);
+
   return (
     <div style={{
       minHeight: "100dvh",
@@ -16,8 +23,9 @@ export default function NotFound() {
       <AlertCircle size={40} style={{ color: "#E05555" }} />
       <h1 style={{ fontSize: 24, fontWeight: 700, color: "#F0F0F0", margin: 0 }}>404 Page Not Found</h1>
       <p style={{ fontSize: 14, color: "#666", margin: 0 }}>
-        The page you're looking for doesn't exist.
+        The page you&apos;re looking for doesn&apos;t exist.
       </p>
+      <p style={{ fontSize: 12, color: "#444", margin: 0 }}>Redirecting home...</p>
       <a
         href="/#/"
         style={{
@@ -31,7 +39,7 @@ export default function NotFound() {
           textDecoration: "none",
         }}
       >
-        Go Home
+        Go Home Now
       </a>
     </div>
   );

@@ -1181,3 +1181,24 @@ html[data-nav="tab"] ::view-transition-new(root) {
   from { opacity: 0; transform: translateX(-50%) scaleX(0.3); }
   to   { opacity: 0.55; transform: translateX(-50%) scaleX(1); }
 }
+
+/* ── Global keyframes used across pages ─────────────────────────────── */
+@keyframes todayDotPulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.5; transform: scale(1.5); }
+}
+
+@keyframes xpBarShimmer {
+  0% { opacity: 0.5; }
+  100% { opacity: 1; }
+}
+
+@keyframes fadeInOverlay {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes modalSlideUp {
+  from { transform: translateY(40px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}

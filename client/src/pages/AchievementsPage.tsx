@@ -290,7 +290,7 @@ export default function AchievementsPage() {
       {/* Achievement detail modal */}
       {selectedAchievement && (
         <div
-          style={{ position: 'fixed', inset: 0, zIndex: 200, display: 'flex', alignItems: 'flex-end' }}
+          style={{ position: 'fixed', inset: 0, zIndex: 1200, display: 'flex', alignItems: 'flex-end' }}
           onClick={() => setSelectedAchievement(null)}
         >
           <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)' }} />
@@ -300,7 +300,9 @@ export default function AchievementsPage() {
               position: 'relative', width: '100%',
               background: '#111', borderRadius: '20px 20px 0 0',
               padding: '24px 20px', borderTop: '1px solid #1A1A1A',
-              paddingBottom: 'max(24px, calc(env(safe-area-inset-bottom, 0px) + 24px))',
+              paddingBottom: 'max(32px, calc(env(safe-area-inset-bottom, 0px) + 32px))',
+              maxHeight: '88vh', overflowY: 'auto', overscrollBehavior: 'contain',
+              WebkitOverflowScrolling: 'touch',
             }}
           >
             <div style={{ width: 36, height: 4, borderRadius: 2, background: '#2A2A2A', margin: '0 auto 20px' }} />

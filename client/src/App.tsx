@@ -160,6 +160,8 @@ function TabBar() {
                 style={{
                   width: 24, height: 24,
                   objectFit: 'contain',
+                  // mix-blend-mode: screen makes white pixels transparent on dark bg
+                  mixBlendMode: 'screen' as const,
                   filter: isActive
                     ? 'brightness(1.3) sepia(1) saturate(6) hue-rotate(3deg) drop-shadow(0 0 4px rgba(200,162,76,0.6))'
                     : 'invert(1) brightness(0.45)',

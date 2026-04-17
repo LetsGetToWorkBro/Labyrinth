@@ -750,25 +750,43 @@ function SettingsTab() {
   const searchAddress = async () => {
     if (!addressQuery.trim()) return;
     setGeocoding(true);
+    let found = false;
+    // Primary: Nominatim (OpenStreetMap, no CORS issues, no API key)
     try {
-      // Photon geocoder — powered by OpenStreetMap, better results, free, no API key
       const res = await fetch(
-        `https://photon.komoot.io/api/?q=${encodeURIComponent(addressQuery)}&limit=3&lang=en`
+        `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(addressQuery)}&format=json&limit=3&addressdetails=1`,
+        { headers: { 'Accept-Language': 'en' } }
       );
       const data = await res.json();
-      const features = data?.features || [];
-      if (features.length > 0) {
-        const [lng, lat] = features[0].geometry.coordinates;
-        setGymLat(parseFloat(lat).toFixed(6));
-        setGymLng(parseFloat(lng).toFixed(6));
-        const p = features[0].properties;
-        const matched = [p.name, p.street, p.city, p.state].filter(Boolean).join(', ');
-        setAddressQuery(matched);
-      } else {
-        alert('Address not found. Try adding city and state (e.g. "2500 Main St, Fulshear TX").');
+      if (Array.isArray(data) && data.length > 0) {
+        const r = data[0];
+        setGymLat(parseFloat(r.lat).toFixed(6));
+        setGymLng(parseFloat(r.lon).toFixed(6));
+        setAddressQuery(r.display_name.split(',').slice(0, 3).join(',').trim());
+        found = true;
       }
-    } catch {
-      alert('Search failed. Check your connection and try again.');
+    } catch { /* try fallback */ }
+    // Fallback: Photon (Komoot)
+    if (!found) {
+      try {
+        const res = await fetch(
+          `https://photon.komoot.io/api/?q=${encodeURIComponent(addressQuery)}&limit=3&lang=en`
+        );
+        const data = await res.json();
+        const features = data?.features || [];
+        if (features.length > 0) {
+          const [lng, lat] = features[0].geometry.coordinates;
+          setGymLat(parseFloat(lat).toFixed(6));
+          setGymLng(parseFloat(lng).toFixed(6));
+          const p = features[0].properties;
+          const matched = [p.name, p.street, p.city, p.state].filter(Boolean).join(', ');
+          setAddressQuery(matched);
+          found = true;
+        }
+      } catch { /* both failed */ }
+    }
+    if (!found) {
+      alert('Address not found. Try: "2500 Main St, Fulshear, TX 77441"');
     }
     setGeocoding(false);
   };
@@ -852,7 +870,7 @@ function SettingsTab() {
         </div>
 
         {/* Coordinates */}
-        <div style={{ opacity: geoEnabled ? 1 : 0.4, transition: 'opacity 0.2s' }}>
+        <div style={{ opacity: geoEnabled ? 1 : 0.5, transition: 'opacity 0.2s', pointerEvents: geoEnabled ? 'auto' : 'none' }}>
           {/* Address search */}
           <div style={{ marginBottom: 10 }}>
             <label style={{ fontSize: 10, color: '#666', display: 'block', marginBottom: 4 }}>SEARCH GYM ADDRESS</label>

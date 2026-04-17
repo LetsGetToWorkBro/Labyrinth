@@ -28,51 +28,60 @@ class SoundSystem {
       try { localStorage.setItem('lbjj_sound_enabled', 'true'); } catch {}
     }
 
-    // Register one-time unlock on any user gesture (required by iOS/Android)
-    // We do this regardless of enabled state so it's ready when toggled on
+    // Register one-time unlock on any user gesture (required by iOS/Safari/Android)
+    // We attach to the document body directly in capture phase — most reliable approach
     if (typeof window !== 'undefined') {
-      const unlock = () => {
+      const unlockHandler = () => {
         this._unlock();
-        window.removeEventListener('touchstart', unlock, true);
-        window.removeEventListener('mousedown', unlock, true);
+        // Remove all unlock listeners once fired
+        document.removeEventListener('touchstart', unlockHandler, true);
+        document.removeEventListener('touchend',   unlockHandler, true);
+        document.removeEventListener('mousedown',  unlockHandler, true);
+        document.removeEventListener('click',      unlockHandler, true);
+        document.removeEventListener('keydown',    unlockHandler, true);
       };
-      window.addEventListener('touchstart', unlock, { once: true, passive: true, capture: true });
-      window.addEventListener('mousedown',   unlock, { once: true, passive: true, capture: true });
+      document.addEventListener('touchstart', unlockHandler, { capture: true, passive: true });
+      document.addEventListener('touchend',   unlockHandler, { capture: true, passive: true });
+      document.addEventListener('mousedown',  unlockHandler, { capture: true, passive: true });
+      document.addEventListener('click',      unlockHandler, { capture: true, passive: true });
+      document.addEventListener('keydown',    unlockHandler, { capture: true });
     }
   }
 
-  // Play a silent 0-duration buffer to unlock the audio context on iOS/Safari
+  // Play a silent buffer to unlock the audio context on iOS/Safari.
+  // Must be called synchronously inside a user-gesture event handler.
   private _unlock() {
     if (this._unlocked) return;
+    this._unlocked = true; // set immediately so play() doesn't re-queue
     try {
-      const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
-      if (AudioContext) {
-        const ctx = new AudioContext();
+      const AC = window.AudioContext || (window as any).webkitAudioContext;
+      if (AC) {
+        const ctx = new AC();
+        // Tiny silent buffer — this is the critical unlock gesture for Safari
         const buf = ctx.createBuffer(1, 1, 22050);
         const src = ctx.createBufferSource();
         src.buffer = buf;
         src.connect(ctx.destination);
         src.start(0);
-        ctx.resume().then(() => {
-          this._unlocked = true;
-          // Preload all sounds now that the context is live
+        // Resume (needed for Chrome autoplay policy)
+        const doResume = ctx.resume ? ctx.resume() : Promise.resolve();
+        doResume.finally(() => {
           this._preloadAll();
-          // Fire any sound that was queued before unlock
           if (this._pendingPlay) {
             const key = this._pendingPlay;
             this._pendingPlay = null;
-            setTimeout(() => this.play(key), 50);
+            setTimeout(() => this.play(key), 80);
           }
-        }).catch(() => {
-          this._unlocked = true;
-          this._preloadAll();
         });
       } else {
-        this._unlocked = true;
         this._preloadAll();
+        if (this._pendingPlay) {
+          const key = this._pendingPlay;
+          this._pendingPlay = null;
+          setTimeout(() => this.play(key), 80);
+        }
       }
     } catch {
-      this._unlocked = true;
       this._preloadAll();
     }
   }

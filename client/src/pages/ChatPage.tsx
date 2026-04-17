@@ -364,12 +364,20 @@ export default function ChatPage() {
     setOnlineLoading(false);
   }, []);
 
-  // Silently pre-fetch online members on mount
+  // ── Presence: update on mount + poll every 60s ───────────────
   useEffect(() => {
-    if (isAuthenticated) {
+    if (!isAuthenticated) return;
+    // Announce self as online immediately
+    updatePresence().catch(() => {});
+    // Silently pre-fetch the online list
+    loadOnlineMembers(true);
+    // Poll presence + online list every 60s
+    const interval = setInterval(() => {
+      updatePresence().catch(() => {});
       loadOnlineMembers(true);
-    }
-  }, [isAuthenticated]);
+    }, 60000);
+    return () => clearInterval(interval);
+  }, [isAuthenticated, loadOnlineMembers]);
 
   // ── Load messages for active channel ─────────────────────────
   const loadMessages = useCallback(async (channelId: string) => {
@@ -469,23 +477,33 @@ export default function ChatPage() {
           </button>
           <div style={{ flex: 1, display: "flex", alignItems: "center", gap: 8 }}>
             <h2 style={{ color: "#F0F0F0", fontSize: 16, fontWeight: 700, margin: 0 }}>{activeChannel.name}</h2>
-            {member && (
-              <button
-                onClick={() => { updatePresence(); setShowOnlineTab(true); loadOnlineMembers(); }}
-                style={{
-                  display: 'inline-flex', alignItems: 'center', gap: 6,
-                  padding: '5px 12px 5px 8px', borderRadius: 20,
-                  background: 'rgba(76,175,128,0.1)',
-                  border: '1px solid rgba(76,175,128,0.25)',
-                  cursor: 'pointer',
-                }}
-              >
-                <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#4CAF80', boxShadow: '0 0 5px #4CAF80' }}/>
-                <span style={{ fontSize: 11, fontWeight: 700, color: '#4CAF80', letterSpacing: '0.05em', textTransform: 'uppercase' }}>
-                  Members Online
-                </span>
-              </button>
-            )}
+            {member && (() => {
+              const now = Date.now();
+              const onlineCount = onlineMembers.filter(m => m.lastSeen && (now - new Date(m.lastSeen).getTime()) < 300000).length;
+              return (
+                <button
+                  onClick={() => { updatePresence(); setShowOnlineTab(true); loadOnlineMembers(); }}
+                  style={{
+                    display: 'inline-flex', alignItems: 'center', gap: 6,
+                    padding: '5px 12px 5px 8px', borderRadius: 20,
+                    background: 'rgba(76,175,128,0.12)',
+                    border: '1px solid rgba(76,175,128,0.3)',
+                    cursor: 'pointer',
+                    boxShadow: onlineCount > 0 ? '0 0 8px rgba(76,175,128,0.15)' : 'none',
+                    transition: 'all 0.2s',
+                  }}
+                >
+                  <div style={{
+                    width: 8, height: 8, borderRadius: '50%', background: '#4CAF80',
+                    boxShadow: '0 0 6px #4CAF80',
+                    animation: 'todayDotPulse 2s ease-in-out infinite',
+                  }}/>
+                  <span style={{ fontSize: 11, fontWeight: 700, color: '#4CAF80', letterSpacing: '0.04em' }}>
+                    {onlineCount > 0 ? `${onlineCount} Online` : 'Members'}
+                  </span>
+                </button>
+              );
+            })()}
           </div>
           <button
             onClick={() => { setShowMembers(true); loadChannelMembers(activeChannel.id); }}

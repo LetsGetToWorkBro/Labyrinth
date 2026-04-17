@@ -481,6 +481,9 @@ function ClassCard({ cls, isToday, stream, checkedInClasses, markClassCheckedIn 
 
     markClassCheckedIn(cls.name || '');
     setCheckInDone(true);
+    // Bust leaderboard + home cache so fresh data loads on return to home
+    try { localStorage.removeItem('lbjj_home_leaderboard'); } catch {}
+    try { localStorage.removeItem('lbjj_home_cache'); } catch {}
     triggerConfetti();
     setTimeout(() => {
       setShowDetail(false);
