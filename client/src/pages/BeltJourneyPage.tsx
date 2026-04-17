@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { SkeletonBeltJourney } from '@/components/StateComponents';
 import { BeltIcon, ADULT_BELT_OPTIONS, KIDS_BELT_OPTIONS, BELT_DISPLAY_NAMES } from "@/components/BeltIcon";

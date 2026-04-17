@@ -42,7 +42,7 @@ import {
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { TrophyIcon, AchievedIcon, CalendarSparkIcon, GamepadIcon, GoldMedalIcon, SaunaIcon, ChartBarsIcon, MegaphoneIcon, ShieldIcon, ChevronRightIcon } from "@/components/icons/LbjjIcons";
-import { useEffect, useCallback, useState, useRef } from "react";
+import React, { useEffect, useCallback, useState, useRef } from "react";
 import { useHashLocation as useHashLoc } from "wouter/use-hash-location";
 import { Redirect } from "wouter";
 import { gasCall, cachedGasCall, beltSavePromotion, updatePresence } from "@/lib/api";

@@ -19,7 +19,7 @@ import {
   memberGetCards, memberSetDefaultCard, memberRemoveCard,
   memberAddCard, memberCreateSetupLink,
 } from "@/lib/api";
-import { useState, useEffect, useCallback, useRef } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { soundSystem } from '@/lib/sounds';
 import { StatSkeleton, ListSkeleton } from "@/components/LoadingSkeleton";
 import { getStreamStatus, clearStreamCache } from "@/lib/streaming";

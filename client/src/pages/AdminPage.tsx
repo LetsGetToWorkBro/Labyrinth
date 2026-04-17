@@ -15,7 +15,7 @@ import { EmptyState, SkeletonList, ErrorState as PageErrorState } from '@/compon
  *   [Notes]      — per-member comms & notes
  */
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { ListSkeleton } from "@/components/LoadingSkeleton";
 import { useAuth } from "@/lib/auth-context";
 import {

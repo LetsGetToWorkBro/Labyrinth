@@ -1,5 +1,5 @@
 import { GoldMedalIcon, StarIcon } from "@/components/icons/LbjjIcons";
-import { useState, useEffect, useMemo, useRef } from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
 import { useAuth } from "@/lib/auth-context";
 import { getActualLevel, getLevelFromXP } from "@/lib/xp";
 import { getBeltColor } from "@/lib/constants";
