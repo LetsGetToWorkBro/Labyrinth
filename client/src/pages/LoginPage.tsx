@@ -27,7 +27,7 @@ const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 //      as most "biometric" apps — the biometric just unlocks the device;
 //      the app checks the token).
 
-async function triggerBiometricPrompt(): Promise<'native' | 'webauthn' | 'token-fallback' | 'failed'> {
+async function triggerBiometricPrompt(): Promise<'native' | 'webauthn' | 'failed'> {
   // Detect Capacitor native context
   const isNative = typeof (window as any).Capacitor !== 'undefined' && (window as any).Capacitor?.isNativePlatform?.();
 
@@ -81,11 +81,6 @@ async function triggerBiometricPrompt(): Promise<'native' | 'webauthn' | 'token-
       // Any other error = not supported in this context — fall through
     }
   }
-
-  // 3. Token-only fallback — if device has a saved session, allow it.
-  // The device lock screen IS the biometric gate in this model.
-  const hasToken = !!localStorage.getItem('lbjj_session_token');
-  if (hasToken) return 'token-fallback';
 
   return 'failed';
 }
@@ -184,18 +179,24 @@ export default function LoginPage() {
   // Biometric / Passkey state
   const supportsPasskey = typeof window !== 'undefined' && !!window.PublicKeyCredential;
   const [hasPasskey] = useState(() => localStorage.getItem('lbjj_passkey_registered') === 'true');
+  const isNativePlatform = typeof (window as any).Capacitor !== 'undefined' && (window as any).Capacitor?.isNativePlatform?.();
+  const hasTruePasskey = hasPasskey && (isNativePlatform || !!localStorage.getItem('lbjj_passkey_id'));
   const [passkeyLoading, setPasskeyLoading] = useState(false);
   const [showPasskeyPrompt, setShowPasskeyPrompt] = useState(false);
   const [passkeyRegistering, setPasskeyRegistering] = useState(false);
-  const [showPasswordForm, setShowPasswordForm] = useState(!hasPasskey);
+  const [showPasswordForm, setShowPasswordForm] = useState(!hasTruePasskey);
 
   const [biometricLabel, setBiometricLabel] = useState('Sign in with Biometrics');
 
   useEffect(() => {
+    const isNative = typeof (window as any).Capacitor !== 'undefined' && (window as any).Capacitor?.isNativePlatform?.();
     const ua = navigator.userAgent;
-    if (/iPhone|iPad|iPod/.test(ua)) setBiometricLabel('Sign in with Face ID / Touch ID');
-    else if (/Android/.test(ua)) setBiometricLabel('Sign in with Fingerprint / Face');
-    else setBiometricLabel('Sign in with Biometrics');
+    if (isNative) {
+      if (/iPhone|iPad|iPod/.test(ua)) setBiometricLabel('Sign in with Face ID');
+      else setBiometricLabel('Sign in with Biometrics');
+    } else {
+      setBiometricLabel('Sign in with Saved Credentials');
+    }
   }, []);
 
   // Detect slow login (> 8s)
@@ -232,11 +233,12 @@ export default function LoginPage() {
     setLoginError("");
     const result = await triggerBiometricPrompt();
     if (result === 'failed') {
-      setLoginError("Biometric authentication failed. Try again or use password.");
+      // Don't show error — just show password form gracefully
+      setShowPasswordForm(true);
       setPasskeyLoading(false);
       return;
     }
-    // Native, WebAuthn, or token-fallback all proved identity — restore session
+    // Native or WebAuthn proved identity — restore session
     const savedEmail = localStorage.getItem('lbjj_passkey_email') || '';
     if (savedEmail) {
       const loginResult = await loginWithPasskey(savedEmail);
@@ -247,7 +249,6 @@ export default function LoginPage() {
       }
     } else {
       setShowPasswordForm(true);
-      setLoginError("No saved account found. Please sign in with your password first.");
     }
     setPasskeyLoading(false);
   };
@@ -389,6 +390,9 @@ export default function LoginPage() {
   };
 
   const hasError = !!loginError;
+  const displayError = loginError === "__CREDENTIAL_ERROR__"
+    ? "Incorrect email or password. Please try again."
+    : loginError;
 
   return (
     <div style={{
@@ -494,7 +498,7 @@ export default function LoginPage() {
               {!showForgot && (
                 <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
                   {/* Biometric button — shown prominently ABOVE email for returning passkey users */}
-                  {supportsPasskey && hasPasskey && !showPasswordForm && (
+                  {hasTruePasskey && !showPasswordForm && (
                     <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
                       <button
                         type="button"
@@ -520,18 +524,27 @@ export default function LoginPage() {
                         type="button"
                         onClick={() => setShowPasswordForm(true)}
                         style={{
-                          background: "none", border: "none", color: "#888", fontSize: 13,
-                          cursor: "pointer", padding: "4px 0", textDecoration: "underline",
+                          background: "transparent",
+                          border: "1px solid #2A2A2A",
+                          color: "#C8C8C8",
+                          fontSize: 13,
+                          fontWeight: 600,
+                          cursor: "pointer",
+                          padding: "12px 16px",
+                          borderRadius: 10,
                           textAlign: "center",
+                          minHeight: 44,
+                          fontFamily: "inherit",
+                          transition: "border-color 0.15s, color 0.15s",
                         }}
                       >
-                        Use email & password instead
+                        Use email &amp; password instead
                       </button>
                     </div>
                   )}
 
-                  {/* Password form — shown by default when no passkey, or when user clicks through */}
-                  {(showPasswordForm || !hasPasskey || !supportsPasskey) && (
+                  {/* Password form — shown by default when no true passkey, or when user clicks through */}
+                  {(showPasswordForm || !hasTruePasskey) && (
                     <form onSubmit={handleLogin} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
                       <Field label="Email" htmlFor="login-email">
                         <input id="login-email" ref={emailRef} type="email" name="email" value={email}
@@ -569,8 +582,7 @@ export default function LoginPage() {
 
                       {/* Remember Me — custom toggle */}
                       <div
-                        onClick={() => setRememberMe(v => !v)}
-                        style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12, cursor: 'pointer' }}>
+                        style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
                         <span style={{ fontSize: 13, color: '#888', userSelect: 'none' }}>
                           Remember me
                         </span>
@@ -579,7 +591,7 @@ export default function LoginPage() {
                           type="button"
                           role="checkbox"
                           aria-checked={rememberMe}
-                          onClick={e => { e.stopPropagation(); setRememberMe(v => !v); }}
+                          onClick={() => { setRememberMe(v => !v); }}
                           style={{
                             width: 32, height: 18, borderRadius: 9, border: 'none',
                             background: rememberMe ? '#C8A24C' : '#2A2A2A',
@@ -614,9 +626,12 @@ export default function LoginPage() {
                       </button>
 
                       {loginLoading && loginSlow && (
-                        <p style={{ fontSize: 11, color: '#888', textAlign: 'center', margin: '8px 0 0' }}>
-                          This is taking longer than usual. Still trying…
-                        </p>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, margin: '8px 0 0' }}>
+                          <Loader2 size={14} className="animate-spin" style={{ color: '#C8A24C' }} />
+                          <p style={{ fontSize: 12, color: '#C8C8C8', margin: 0 }}>
+                            This is taking longer than usual. Still trying…
+                          </p>
+                        </div>
                       )}
 
                       {/* Error banner — below Sign In button */}
@@ -630,7 +645,7 @@ export default function LoginPage() {
                                 reset your password
                               </button>.
                             </>
-                          ) : loginError}
+                          ) : displayError}
                         </div>
                       )}
                     </form>
