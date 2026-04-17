@@ -239,7 +239,8 @@ export default function OnboardingPage() {
         padding: "0 24px",
         paddingTop: "max(40px, env(safe-area-inset-top, 40px))",
         paddingBottom: "max(40px, env(safe-area-inset-bottom, 40px))",
-        overflow: "hidden",
+        overflowY: "auto",
+        overflowX: "hidden",
       }}
     >
       {/* Progress dots */}
@@ -523,8 +524,9 @@ export default function OnboardingPage() {
               onClick={skip}
               style={{
                 background: "none", border: "none",
-                color: "#333", fontSize: 13, cursor: "pointer",
-                padding: "8px 16px",
+                color: "#555", fontSize: 13, cursor: "pointer",
+                padding: "12px 20px", minHeight: 44, minWidth: 80,
+                WebkitTapHighlightColor: 'transparent',
               }}
             >
               Skip
@@ -554,4 +556,6 @@ const goldButtonStyle: React.CSSProperties = {
   cursor: "pointer",
   minWidth: 200,
   letterSpacing: '0.02em',
+  touchAction: 'manipulation' as any,
+  WebkitTapHighlightColor: 'transparent',
 };
