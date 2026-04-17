@@ -756,7 +756,7 @@ function SettingsTab() {
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [detecting, setDetecting] = useState(false);
-  const [addressQuery, setAddressQuery] = useState('');
+  const [addressQuery, setAddressQuery] = useState('2500 William Tracy Blvd, Fulshear, TX 77441');
   const [geocoding, setGeocoding] = useState(false);
 
   // Pinned announcement state
@@ -946,15 +946,15 @@ function SettingsTab() {
           <button
             onClick={() => setGeoEnabled(v => !v)}
             style={{
-              width: 44, height: 24, borderRadius: 12, border: 'none', cursor: 'pointer',
+              width: 32, height: 18, borderRadius: 9, border: 'none', cursor: 'pointer',
               background: geoEnabled ? '#C8A24C' : '#333',
-              position: 'relative', transition: 'background 0.2s',
+              position: 'relative', transition: 'background 0.2s', flexShrink: 0,
             }}
           >
             <div style={{
-              width: 18, height: 18, borderRadius: '50%', background: '#FFF',
+              width: 12, height: 12, borderRadius: '50%', background: '#FFF',
               position: 'absolute', top: 3,
-              left: geoEnabled ? 23 : 3,
+              left: geoEnabled ? 17 : 3,
               transition: 'left 0.2s',
             }}/>
           </button>
@@ -1001,10 +1001,17 @@ function SettingsTab() {
           {gymLat && gymLng && (
             <div style={{ marginBottom: 10, borderRadius: 12, overflow: 'hidden', border: '1px solid #1A1A1A', position: 'relative' }}>
               <img
-                src={`https://staticmap.openstreetmap.de/staticmap.php?center=${gymLat},${gymLng}&zoom=15&size=320x160&markers=${gymLat},${gymLng},red-pushpin`}
+                src={`https://maps.geoapify.com/v1/staticmap?style=osm-bright-smooth&width=640&height=320&center=lonlat:${gymLng},${gymLat}&zoom=15&marker=lonlat:${gymLng},${gymLat};type:material;color:%23C8A24C;size:large&apiKey=e9e00c76e0d04afc9f12f4d05ab3b5cd`}
                 alt="Gym location map"
                 style={{ width: '100%', height: 160, objectFit: 'cover', display: 'block' }}
-                onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                onError={(e) => {
+                  const img = e.target as HTMLImageElement;
+                  if (!img.src.includes('openstreetmap.de')) {
+                    img.src = 'https://staticmap.openstreetmap.de/staticmap.php?center=' + gymLat + ',' + gymLng + '&zoom=15&size=640x320&markers=' + gymLat + ',' + gymLng + ',red-pushpin';
+                  } else {
+                    img.style.display = 'none';
+                  }
+                }}
               />
               <div style={{
                 position: 'absolute', inset: 0,

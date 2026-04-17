@@ -751,7 +751,10 @@ function AccountPage() {
         <div style={{ marginTop: 24 }}>
           <button type="button" onClick={() => navigate('/achievements')} style={{ background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left', width: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, padding: 0 }}>
             <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#666' }}>Achievements</div>
-            <div style={{ fontSize: 11, color: '#C8A24C' }}>View All →</div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              {!badgesLoading && <span style={{ fontSize: 11, fontWeight: 700, color: '#C8A24C', background: 'rgba(200,162,76,0.1)', border: '1px solid rgba(200,162,76,0.2)', borderRadius: 20, padding: '2px 8px' }}>{badges.length} earned</span>}
+              <span style={{ fontSize: 11, color: '#555' }}>View All →</span>
+            </div>
           </button>
 
           {badgesLoading ? (

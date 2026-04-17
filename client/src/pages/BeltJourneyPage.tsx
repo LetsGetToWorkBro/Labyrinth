@@ -412,20 +412,26 @@ export default function BeltJourneyPage() {
   useEffect(() => {
     if (!isAuthenticated) return;
     setLoading(true);
+    // Show cached list immediately while fetching (prevents delete flicker)
+    try {
+      const cached = localStorage.getItem('lbjj_belt_promotions_cache');
+      if (cached) setPromotions(JSON.parse(cached));
+    } catch {}
+
     beltGetPromotions().then(list => {
-      // Filter out IDs that were locally deleted (handles GAS sync lag)
       let deletedIds: string[] = [];
       try { deletedIds = JSON.parse(localStorage.getItem('lbjj_belt_deleted_ids') || '[]'); } catch {}
-      setPromotions(
-        list
-          .filter(p => !deletedIds.includes(p.id))
-          .map(p => ({
-            id: p.id, belt: p.belt, stripes: p.stripes,
-            date: typeof p.date === "string" ? p.date.split("T")[0] : String(p.date),
-            note: p.note || "",
-            status: (p.status || "pending") as BeltPromotion['status'],
-          })).sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
-      );
+      const filtered = list
+        .filter(p => !deletedIds.includes(p.id))
+        .map(p => ({
+          id: p.id, belt: p.belt, stripes: p.stripes,
+          date: typeof p.date === "string" ? p.date.split("T")[0] : String(p.date),
+          note: p.note || "",
+          status: (p.status || "pending") as BeltPromotion['status'],
+        })).sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+      setPromotions(filtered);
+      // Update cache with fresh server data
+      try { localStorage.setItem('lbjj_belt_promotions_cache', JSON.stringify(filtered)); } catch {}
       setLoading(false);
     });
   }, [isAuthenticated]);
@@ -457,24 +463,22 @@ export default function BeltJourneyPage() {
   };
 
   const deletePromotion = async (id: string) => {
-    // Optimistically remove from UI immediately for snappy feel
-    setPromotions(prev => prev.filter(p => p.id !== id));
     setEditingId(null);
-    // Persist deletion to GAS backend — retry once on failure
-    try {
-      const result = await beltDeletePromotion(id);
-      if (!result?.success) throw new Error('GAS delete failed');
-    } catch {
-      // Re-try once
-      try { await beltDeletePromotion(id); } catch {}
-    }
-    // Write deleted ID list to localStorage so re-fetches filter it out
+    // Optimistically remove and cache remaining list immediately
+    setPromotions(prev => {
+      const updated = prev.filter(p => p.id !== id);
+      try { localStorage.setItem('lbjj_belt_promotions_cache', JSON.stringify(updated)); } catch {}
+      return updated;
+    });
+    // Track in deleted IDs so re-fetch filters it out during GAS sync lag
     try {
       const deletedRaw = localStorage.getItem('lbjj_belt_deleted_ids') || '[]';
       const deleted: string[] = JSON.parse(deletedRaw);
       if (!deleted.includes(id)) deleted.push(id);
       localStorage.setItem('lbjj_belt_deleted_ids', JSON.stringify(deleted));
     } catch {}
+    // Fire GAS delete (best-effort — UI already updated)
+    try { await beltDeletePromotion(id); } catch {}
   };
 
   const startEdit = (p: BeltPromotion) => {

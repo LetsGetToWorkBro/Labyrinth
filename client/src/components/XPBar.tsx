@@ -61,7 +61,7 @@ export function XPBar({ xp, prevXp, deltaXp, compact = false, onLevelUp }: XPBar
 
   const xpEarned = xp - xpForLevel;
   const xpNeeded = xpForNext - xpForLevel;
-  const clampedProg = Math.min(1, Math.max(0, animProgress));
+  const clampedProg = Math.min(1, Math.max(animProgress <= 0 ? 0.012 : animProgress, 0.012)); // min 1.2% so bar always shows
 
   if (compact) {
     return (
