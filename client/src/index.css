@@ -531,8 +531,8 @@
   display: flex;
   align-items: center;
   justify-content: space-around;
-  background: #0A0A0A;
-  border-top: 1px solid #222;
+  background: var(--color-surface, #0F0F12);
+  border-top: 1px solid var(--color-divider, rgba(255,255,255,0.08));
   padding: 8px 0;
   padding-bottom: max(8px, env(safe-area-inset-bottom, 8px));
   flex-shrink: 0;
@@ -571,7 +571,7 @@
 }
 
 .skeleton {
-  background: linear-gradient(90deg, #1A1A1A 25%, #222 50%, #1A1A1A 75%);
+  background: linear-gradient(90deg, var(--color-surface-2, #1A1A1A) 25%, var(--color-surface-offset, #222) 50%, var(--color-surface-2, #1A1A1A) 75%);
   background-size: 200% 100%;
   animation: shimmer 1.5s ease-in-out infinite;
   border-radius: 6px;
@@ -618,8 +618,8 @@
 
 /* Signature pad */
 .signature-canvas {
-  background: #1A1A1A;
-  border: 1px solid #333;
+  background: var(--color-surface-2, #1A1A1A);
+  border: 1px solid var(--color-divider, rgba(255,255,255,0.08));
   border-radius: 8px;
   touch-action: none;
 }

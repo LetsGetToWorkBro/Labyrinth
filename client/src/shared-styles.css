@@ -99,6 +99,17 @@
   --border:           0 0% 13%;  /* #212121 — Member App */
 
   /* --------------------------------------------------
+     ELEVATION — Semantic surface tokens (map to --lbj-*)
+     Use these in new code. Existing --lbj-* stay valid.
+  -------------------------------------------------- */
+  --color-bg:              var(--lbj-bg);          /* deepest page bg */
+  --color-surface:         var(--lbj-surface);     /* chrome / panels */
+  --color-surface-2:       var(--lbj-surface-2);   /* cards / lifted tiles */
+  --color-surface-offset:  var(--lbj-surface-3);   /* tooltips / popovers */
+  --color-divider:         rgba(255, 255, 255, 0.08);
+  --color-primary:         var(--lbj-gold);
+
+  /* --------------------------------------------------
      COLORS — Semantic (with paired backgrounds)
   -------------------------------------------------- */
   --lbj-success:      #34D399;
@@ -1226,7 +1237,8 @@ select {
   align-items: center;
   justify-content: center;
   text-align: center;
-  padding: var(--space-12) var(--space-6);
+  padding-block: clamp(3rem, 8vw, 6rem);
+  padding-inline: var(--space-6);
   min-height: 240px;
 }
 
