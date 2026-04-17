@@ -3,6 +3,7 @@ import { getMemberCheckIns } from '@/lib/api';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { Loader2, CalendarDays, Zap, Flame, Trophy, Star } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
+import { EmptyState, SkeletonStats } from '@/components/StateComponents';
 
 const GOLD = '#C8A24C';
 const VISIBLE_COUNT = 25;
@@ -147,7 +148,12 @@ export default function CheckInHistoryPage() {
       />
 
       {/* ── Hero stats row ── */}
-      <div className="reveal-stagger" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, padding: '0 20px 16px' }}>
+      {loading ? (
+        <div style={{ padding: '0 20px 16px' }}>
+          <SkeletonStats cols={2} rows={2} />
+        </div>
+      ) : null}
+      <div className="reveal-stagger" style={{ display: loading ? 'none' : 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, padding: '0 20px 16px' }}>
         {/* Total */}
         <div style={{
           gridColumn: '1 / -1',
@@ -239,16 +245,13 @@ export default function CheckInHistoryPage() {
             <Loader2 size={24} className="animate-spin" style={{ color: '#555' }} />
           </div>
         ) : checkIns.length === 0 ? (
-          <div style={{
-            background: '#111', borderRadius: 16, padding: '48px 24px',
-            textAlign: 'center', border: '1px solid #1A1A1A',
-          }}>
-            <div style={{ fontSize: 48, marginBottom: 16 }}>🥋</div>
-            <div style={{ color: '#F0F0F0', fontSize: 15, fontWeight: 700, marginBottom: 6 }}>No classes yet</div>
-            <div style={{ color: '#555', fontSize: 13, lineHeight: 1.5 }}>
-              Check in to your first class and start earning XP.
-            </div>
-          </div>
+          <EmptyState
+            illustration="history"
+            heading="No classes yet"
+            description="Check in to your first class and your history will appear here."
+            ctaLabel="View Schedule"
+            ctaHref="/#/schedule"
+          />
         ) : (
           <div className="stagger-list" style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
             {displayedCheckIns.map((ci, i) => {

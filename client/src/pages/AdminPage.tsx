@@ -1,4 +1,5 @@
 import { WarningIcon } from "@/components/icons/LbjjIcons";
+import { EmptyState, SkeletonList, ErrorState as PageErrorState } from '@/components/StateComponents';
 /**
  * AdminPage.tsx — Labyrinth BJJ Admin Panel
  *
@@ -133,7 +134,7 @@ function DashboardTab() {
   useEffect(() => { load(); }, [load]);
 
   if (loading) return <LoadingState rows={4} />;
-  if (error) return <ErrorState message={error} onRetry={load} />;
+  if (error) return <AdminErrorState message={error} onRetry={load} />;
   if (!data) return null;
 
   const beltCounts = { White: 0, Blue: 0, Purple: 0, Brown: 0, Black: 0 };
@@ -292,7 +293,7 @@ function MembersTab() {
   };
 
   if (loading) return <ListSkeleton count={8} />;
-  if (error && members.length === 0) return <ErrorState message={error} onRetry={load} />;
+  if (error && members.length === 0) return <AdminErrorState message={error} onRetry={load} />;
 
   const activeCount = members.filter(m => m.StripeSubscriptionID && m.StripeSubscriptionID.trim() !== '').length;
   const trialCount = 0;
@@ -341,7 +342,7 @@ function MembersTab() {
 
       {/* Member list */}
       {filtered.length === 0 ? (
-        <div style={{ textAlign: "center", padding: "32px 0", color: "#555", fontSize: 13 }}>No members found</div>
+        <EmptyState illustration="members" heading="No members found" description="Try adjusting your search or filter." compact />
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
           {filtered.map(m => {
@@ -608,7 +609,7 @@ function NotesTab() {
           {loadingComms ? (
             <LoadingState rows={3} />
           ) : comms.length === 0 ? (
-            <div style={{ textAlign: "center", padding: "24px 0", color: "#555", fontSize: 13 }}>No notes or messages yet.</div>
+            <EmptyState illustration="chat" heading="No messages yet" description="Notes and messages for this member will appear here." compact />
           ) : (
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
               {comms.map((c, i) => (
@@ -1152,21 +1153,9 @@ function LabeledSelect({ label, value, options, onChange }: { label: string; val
 }
 
 function LoadingState({ rows }: { rows: number }) {
-  return (
-    <div style={{ padding: "16px", display: "flex", flexDirection: "column", gap: 10 }}>
-      {Array.from({ length: rows }).map((_, i) => (
-        <div key={i} style={{ height: 56, borderRadius: 12, backgroundColor: "#111", border: "1px solid #1A1A1A", animation: "pulse 1.5s ease-in-out infinite", opacity: 1 - i * 0.15 }} />
-      ))}
-    </div>
-  );
+  return <SkeletonList count={rows} />;
 }
 
-function ErrorState({ message, onRetry }: { message: string; onRetry: () => void }) {
-  return (
-    <div style={{ padding: "32px 16px", textAlign: "center" }}>
-      <AlertCircle size={28} style={{ color: "#E05555", margin: "0 auto 12px" }} />
-      <p style={{ fontSize: 13, color: "#E05555", marginBottom: 12 }}>{message}</p>
-      <button onClick={onRetry} style={{ fontSize: 13, color: GOLD, background: "none", border: "none", cursor: "pointer" }}>Retry</button>
-    </div>
-  );
+function AdminErrorState({ message, onRetry }: { message: string; onRetry: () => void }) {
+  return <PageErrorState message={message} onRetry={onRetry} compact />;
 }

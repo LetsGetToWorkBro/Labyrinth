@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { ScreenHeader } from "@/components/ScreenHeader";
+import { EmptyState, SkeletonCard, ErrorState } from '@/components/StateComponents';
 import { getStreamStatus, getStreamArchive, getEmbedUrl, getLiveBadgeStyle } from "@/lib/streaming";
 import type { StreamStatus, ArchiveEntry } from "@/lib/streaming";
 
@@ -127,11 +128,13 @@ export default function LivePage() {
 
         {/* Not Live — empty state */}
         {!stream.isLive && (
-          <div style={{ textAlign: 'center', padding: '40px 20px', background: '#141414', borderRadius: 14, marginBottom: 20 }}>
-            <div style={{ fontSize: 40, marginBottom: 12 }}>📡</div>
-            <div style={{ fontSize: 16, fontWeight: 700, color: '#F0F0F0', marginBottom: 6 }}>No Live Class</div>
-            <div style={{ fontSize: 13, color: '#555' }}>When a class goes live, it will appear here automatically.</div>
-          </div>
+          <EmptyState
+            illustration="live"
+            heading="No class live right now"
+            description="When a class goes live it will appear here automatically."
+            ctaLabel="View Schedule"
+            ctaHref="/#/schedule"
+          />
         )}
 
         {/* Archive Section */}
@@ -155,13 +158,9 @@ export default function LivePage() {
 
           {/* Archive grid */}
           {archivesLoading ? (
-            <div style={{ textAlign: 'center', padding: '32px', color: '#555', fontSize: 13 }}>
-              Loading archives...
-            </div>
+            <SkeletonCard rows={3} />
           ) : archivesError ? (
-            <div style={{ textAlign: 'center', padding: '32px', color: '#E05555', fontSize: 13 }}>
-              Failed to load archives. Pull down to retry.
-            </div>
+            <ErrorState heading="Couldn't load archives" message="Pull down to retry." onRetry={() => window.location.reload()} compact />
           ) : archives.length === 0 ? (
             <div style={{ textAlign: 'center', padding: '32px', color: '#555', fontSize: 13 }}>
               No recordings yet — past streams will appear here.

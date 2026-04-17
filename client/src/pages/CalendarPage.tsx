@@ -1,4 +1,5 @@
 import { GoldMedalIcon, SilverMedalIcon, BronzeMedalIcon, FistIcon } from "@/components/icons/LbjjIcons";
+import { EmptyState } from '@/components/StateComponents';
 import { useState, useEffect, useMemo } from "react";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { BeltDot } from "@/components/BeltBadge";
@@ -310,10 +311,7 @@ export default function CalendarPage() {
           Events This Month ({monthEvents.length})
         </h3>
         {monthEvents.length === 0 ? (
-          <div className="text-center py-8">
-            <Calendar size={32} style={{ color: "#333", margin: "0 auto 8px" }} />
-            <p className="text-sm" style={{ color: "#666" }}>No events this month</p>
-          </div>
+          <EmptyState illustration="calendar" heading="Schedule is clear" description="No events this month. Check back as tournaments get added." compact />
         ) : (
           <div className="space-y-2">
             {monthEvents.map((event, i) => {

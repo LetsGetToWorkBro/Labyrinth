@@ -1,4 +1,5 @@
 import { CalendarSparkIcon, GamepadIcon, GoldMedalIcon, SilverMedalIcon, BronzeMedalIcon, TrophyIcon } from "@/components/icons/LbjjIcons";
+import { EmptyState } from '@/components/StateComponents';
 import { useState, useEffect, useCallback } from 'react';
 import { getLeaderboard, type LeaderboardEntry } from '@/lib/api';
 import { useAuth } from '@/lib/auth-context';
@@ -223,15 +224,13 @@ export default function LeaderboardPage() {
             ))}
           </div>
         ) : filteredEntries.length === 0 ? (
-          <div style={{ background: '#111', borderRadius: 12, padding: '40px 20px', textAlign: 'center', border: '1px solid #1A1A1A' }}>
-            <div style={{ marginBottom: 12, display: 'flex', justifyContent: 'center' }}>{tab === 'classes' ? <CalendarSparkIcon size={40} color="#555" /> : <GamepadIcon size={40} color="#555" />}</div>
-            <div style={{ color: '#888', fontSize: 14, fontWeight: 600, marginBottom: 6 }}>No entries yet</div>
-            <div style={{ color: '#555', fontSize: 13 }}>
-              {tab === 'classes'
-                ? 'Check in to classes to appear on the leaderboard!'
-                : 'Play games and win to appear here!'}
-            </div>
-          </div>
+          <EmptyState
+            illustration="leaderboard"
+            heading={tab === 'classes' ? "No rankings yet" : "No game scores yet"}
+            description={tab === 'classes' ? "Check in to classes to appear on the leaderboard." : "Play a game and win to get on the board."}
+            ctaLabel={tab === 'classes' ? "View Schedule" : "Play Now"}
+            ctaHref={tab === 'classes' ? "/#/schedule" : "/#/games"}
+          />
         ) : (
           <div className="stagger-list" style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
             {filteredEntries.map((entry, i) => {

@@ -12,6 +12,7 @@ import { BeltDot, TrophyIcon, StarIcon, FireIcon } from "@/components/icons/Lbjj
 import { useState, useRef, useEffect, useCallback } from "react";
 import { createPortal } from "react-dom";
 import { ListSkeleton } from "@/components/LoadingSkeleton";
+import { EmptyState, SkeletonMessages } from '@/components/StateComponents';
 import { getBeltColor } from "@/lib/constants";
 import { BeltIcon } from "@/components/BeltIcon";
 import { LevelWidget } from "@/components/LevelWidget";
@@ -610,7 +611,7 @@ export default function ChatPage() {
         {/* Messages */}
         <div ref={messagesContainerRef} style={{ flex: 1, overflowY: "auto", padding: "12px 16px", display: "flex", flexDirection: "column", gap: 4 }}>
           {loadingMsgs && messages.length === 0 ? (
-            <ListSkeleton count={6} />
+            <SkeletonMessages count={5} />
           ) : messages.length === 0 ? (
             <div style={{
               flex: 1,
@@ -655,25 +656,9 @@ export default function ChatPage() {
                 </>
               ) : (
                 /* Generic channel empty state */
-                <>
-                  <div style={{
-                    width: 64, height: 64, borderRadius: '50%',
-                    background: 'rgba(200,162,76,0.08)',
-                    border: '1px solid rgba(200,162,76,0.15)',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    fontSize: 28,
-                    animation: 'badge-appear 400ms cubic-bezier(0.34,1.56,0.64,1) both',
-                  }}>
-                              </div>
-                  <div>
-                    <p style={{ fontSize: 15, fontWeight: 700, color: '#E0E0E0', margin: '0 0 6px' }}>
-                      Nothing here yet
-                    </p>
-                    <p style={{ fontSize: 13, color: '#555', margin: 0, maxWidth: 240, lineHeight: 1.6 }}>
-                      Coaches will post updates, class notes, and announcements here.
-                    </p>
-                  </div>
-                </>
+                <div style={{ padding: '24px 20px' }}>
+                  <EmptyState illustration="chat" heading="Nothing here yet" description="Coaches will post updates, class notes, and announcements here." compact />
+                </div>
               )}
             </div>
           ) : (
@@ -888,8 +873,8 @@ export default function ChatPage() {
             )}
           </div>
         ) : channels.length === 0 ? (
-          <div style={{ padding: '32px 20px', textAlign: 'center' }}>
-            <p style={{ fontSize: 14, color: '#666' }}>No channels yet — check back soon.</p>
+          <div style={{ padding: '24px 20px' }}>
+            <EmptyState illustration="chat" heading="No channels yet" description="Check back soon — channels will appear here." compact />
           </div>
         ) : (
           <>

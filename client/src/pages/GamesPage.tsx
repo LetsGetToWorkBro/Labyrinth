@@ -1,4 +1,5 @@
 import { PawnIcon, TrophyIcon, FireIcon } from "@/components/icons/LbjjIcons";
+import { EmptyState } from '@/components/StateComponents';
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { ChevronLeft } from 'lucide-react';
 import logoImg from '@assets/maze-gold-md.png';
@@ -359,9 +360,7 @@ function GamesHub({ stats, rank, nextRank, onPlay, onStartGame, showDifficulty, 
           <div style={{ margin: '0 16px' }}>
             <div style={{ color: '#666', fontSize: 11, fontWeight: 600, marginBottom: 8, textTransform: 'uppercase', letterSpacing: 1 }}>Recent Matches</div>
             {stats.records.length === 0 ? (
-              <div style={{ background: '#111', borderRadius: 12, padding: '24px 20px', textAlign: 'center', color: '#666', fontSize: 13, border: '1px solid #1A1A1A' }}>
-                No matches yet. Start your first game!
-              </div>
+              <EmptyState illustration="games" heading="No matches yet" description="Start your first game to track your record." compact />
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                 {stats.records.slice(0, 5).map((m, i) => (
@@ -433,11 +432,7 @@ function GamesHub({ stats, rank, nextRank, onPlay, onStartGame, showDifficulty, 
               ))}
             </div>
           ) : leaderboard.length === 0 ? (
-            <div style={{ background: '#111', borderRadius: 12, padding: '32px 20px', textAlign: 'center', border: '1px solid #1A1A1A' }}>
-              <div style={{ fontSize: 32, marginBottom: 10 }}>🏆</div>
-              <div style={{ color: '#888', fontSize: 13, marginBottom: 6 }}>No scores yet</div>
-              <div style={{ color: '#555', fontSize: 12 }}>Play a game to get on the board!</div>
-            </div>
+            <EmptyState illustration="leaderboard" heading="No scores yet" description="Play a game and win to appear on the board." compact />
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
               {leaderboard.map((entry, i) => {

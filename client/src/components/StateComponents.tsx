@@ -1,0 +1,423 @@
+/**
+ * StateComponents.tsx
+ * Polished empty, loading, and error states.
+ * Visual layer only — no data fetching logic.
+ */
+import { type CSSProperties } from 'react';
+
+const GOLD = '#C8A24C';
+const FLOAT_STYLE: CSSProperties = {
+  animation: 'empty-float 3s ease-in-out infinite',
+};
+
+// ─── CSS keyframe injected once ──────────────────────────────────────────────
+let _injected = false;
+function injectCSS() {
+  if (_injected || typeof document === 'undefined') return;
+  _injected = true;
+  const style = document.createElement('style');
+  style.textContent = `
+    @media (prefers-reduced-motion: no-preference) {
+      @keyframes empty-float {
+        0%,100% { transform: translateY(0px);  }
+        50%      { transform: translateY(-6px); }
+      }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      @keyframes empty-float { 0%,100% { transform: none; } }
+    }
+    @keyframes sk-shimmer {
+      0%   { background-position: 200% 0; }
+      100% { background-position: -200% 0; }
+    }
+    .sk {
+      border-radius: 6px;
+      background: linear-gradient(90deg,#1A1A1A 25%,#252525 50%,#1A1A1A 75%);
+      background-size: 200% 100%;
+    }
+    @media (prefers-reduced-motion: no-preference) {
+      .sk { animation: sk-shimmer 1.5s ease-in-out infinite; }
+    }
+  `;
+  document.head.appendChild(style);
+}
+injectCSS();
+
+// ─── SVG illustrations ─────────────────────────────────────────────────────
+
+function IlluBelt() {
+  return (
+    <svg width="120" height="120" viewBox="0 0 120 120" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <rect x="20" y="46" width="80" height="28" rx="6" strokeDasharray="6 4"/>
+      <rect x="46" y="40" width="28" height="40" rx="4"/>
+      <line x1="20" y1="60" x2="46" y2="60"/>
+      <line x1="74" y1="60" x2="100" y2="60"/>
+      <circle cx="60" cy="60" r="6" strokeWidth="1.5"/>
+      <path d="M54 60 Q60 54 66 60" strokeWidth="1.5"/>
+    </svg>
+  );
+}
+
+function IlluChat() {
+  return (
+    <svg width="120" height="120" viewBox="0 0 120 120" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M24 36h72a6 6 0 0 1 6 6v32a6 6 0 0 1-6 6H60l-12 10v-10H24a6 6 0 0 1-6-6V42a6 6 0 0 1 6-6z" strokeDasharray="8 4"/>
+      <line x1="36" y1="54" x2="84" y2="54" strokeWidth="1.5" strokeOpacity=".5"/>
+      <line x1="36" y1="66" x2="64" y2="66" strokeWidth="1.5" strokeOpacity=".5"/>
+      <circle cx="96" cy="28" r="8" strokeDasharray="4 3"/>
+      <line x1="96" y1="24" x2="96" y2="32"/>
+      <line x1="92" y1="28" x2="100" y2="28"/>
+    </svg>
+  );
+}
+
+function IlluLeaderboard() {
+  return (
+    <svg width="120" height="120" viewBox="0 0 120 120" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <rect x="18" y="74" width="22" height="28" rx="3" strokeDasharray="5 3"/>
+      <rect x="49" y="56" width="22" height="46" rx="3" strokeDasharray="5 3"/>
+      <rect x="80" y="64" width="22" height="38" rx="3" strokeDasharray="5 3"/>
+      <path d="M44 36 L60 20 L76 36" strokeWidth="2"/>
+      <circle cx="60" cy="20" r="4"/>
+      <line x1="48" y1="28" x2="72" y2="28" strokeWidth="1.5" strokeOpacity=".4"/>
+    </svg>
+  );
+}
+
+function IlluCalendar() {
+  return (
+    <svg width="120" height="120" viewBox="0 0 120 120" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <rect x="22" y="32" width="76" height="64" rx="8" strokeDasharray="7 4"/>
+      <line x1="22" y1="50" x2="98" y2="50"/>
+      <line x1="42" y1="22" x2="42" y2="42"/>
+      <line x1="78" y1="22" x2="78" y2="42"/>
+      <circle cx="84" cy="88" r="14" stroke="#C8A24C" strokeDasharray="5 3"/>
+      <line x1="84" y1="82" x2="84" y2="94"/>
+      <line x1="78" y1="88" x2="90" y2="88"/>
+    </svg>
+  );
+}
+
+function IlluLive() {
+  return (
+    <svg width="120" height="120" viewBox="0 0 120 120" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <rect x="26" y="38" width="68" height="44" rx="6" strokeDasharray="7 4"/>
+      <polygon points="50,52 50,68 72,60" strokeWidth="2"/>
+      <path d="M18 60 Q18 38 38 26" strokeWidth="1.5" strokeDasharray="5 4" strokeOpacity=".5"/>
+      <path d="M102 60 Q102 38 82 26" strokeWidth="1.5" strokeDasharray="5 4" strokeOpacity=".5"/>
+      <path d="M26 60 Q26 46 40 38" strokeWidth="1.5" strokeDasharray="4 3" strokeOpacity=".7"/>
+      <path d="M94 60 Q94 46 80 38" strokeWidth="1.5" strokeDasharray="4 3" strokeOpacity=".7"/>
+      <circle cx="60" cy="96" r="4"/>
+      <line x1="40" y1="104" x2="80" y2="104"/>
+    </svg>
+  );
+}
+
+function IlluGames() {
+  return (
+    <svg width="120" height="120" viewBox="0 0 120 120" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <rect x="20" y="40" width="80" height="50" rx="10" strokeDasharray="8 4"/>
+      <circle cx="44" cy="65" r="10" strokeWidth="1.5"/>
+      <line x1="44" y1="55" x2="44" y2="75"/>
+      <line x1="34" y1="65" x2="54" y2="65"/>
+      <circle cx="76" cy="60" r="4" strokeWidth="1.5"/>
+      <circle cx="86" cy="70" r="4" strokeWidth="1.5"/>
+      <path d="M60 30 L65 18 L70 30 L80 30 L72 38 L75 50 L65 43 L55 50 L58 38 L50 30 Z" strokeWidth="1.5" strokeDasharray="4 3"/>
+    </svg>
+  );
+}
+
+function IlluHistory() {
+  return (
+    <svg width="120" height="120" viewBox="0 0 120 120" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <circle cx="60" cy="60" r="34" strokeDasharray="8 4"/>
+      <path d="M60 38 L60 60 L74 68"/>
+      <path d="M32 44 Q20 34 24 20" strokeWidth="1.5" strokeDasharray="4 3" strokeOpacity=".5"/>
+      <circle cx="60" cy="60" r="3" fill="currentColor"/>
+      <line x1="36" y1="94" x2="84" y2="94" strokeWidth="1.5" strokeOpacity=".3"/>
+      <circle cx="44" cy="100" r="4" strokeWidth="1.5" strokeOpacity=".5"/>
+      <circle cx="60" cy="100" r="4" strokeWidth="1.5" strokeOpacity=".5"/>
+      <circle cx="76" cy="100" r="4" strokeWidth="1.5" strokeOpacity=".5"/>
+    </svg>
+  );
+}
+
+function IlluMembers() {
+  return (
+    <svg width="120" height="120" viewBox="0 0 120 120" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <circle cx="52" cy="44" r="16" strokeDasharray="6 4"/>
+      <path d="M20 94 Q20 72 52 72 Q84 72 84 94" strokeDasharray="7 4"/>
+      <circle cx="86" cy="50" r="12" strokeDasharray="5 3" strokeOpacity=".6"/>
+      <circle cx="86" cy="30" r="8" strokeWidth="2" strokeDasharray="4 3"/>
+      <line x1="86" y1="26" x2="86" y2="34"/>
+      <line x1="82" y1="30" x2="90" y2="30"/>
+    </svg>
+  );
+}
+
+function IlluNetwork() {
+  return (
+    <svg width="120" height="120" viewBox="0 0 120 120" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <circle cx="60" cy="60" r="28" strokeDasharray="8 5"/>
+      <line x1="60" y1="20" x2="60" y2="32" strokeWidth="1.5"/>
+      <line x1="60" y1="88" x2="60" y2="100" strokeWidth="1.5"/>
+      <line x1="20" y1="60" x2="32" y2="60" strokeWidth="1.5"/>
+      <line x1="88" y1="60" x2="100" y2="60" strokeWidth="1.5"/>
+      <line x1="80" y1="40" x2="73" y2="47" strokeWidth="1.5"/>
+      <line x1="40" y1="80" x2="47" y2="73" strokeWidth="1.5"/>
+      <circle cx="60" cy="60" r="8"/>
+      <line x1="60" y1="52" x2="60" y2="68" strokeWidth="3"/>
+      <line x1="56" y1="56" x2="64" y2="56" strokeWidth="3"/>
+    </svg>
+  );
+}
+
+// ─── Empty State ─────────────────────────────────────────────────────────────
+
+interface EmptyStateProps {
+  illustration?: 'belt' | 'chat' | 'leaderboard' | 'calendar' | 'live' | 'games' | 'history' | 'members' | 'network';
+  heading: string;
+  description?: string;
+  ctaLabel?: string;
+  onCta?: () => void;
+  ctaHref?: string;
+  compact?: boolean;
+}
+
+const illustrations: Record<string, () => JSX.Element> = {
+  belt: IlluBelt,
+  chat: IlluChat,
+  leaderboard: IlluLeaderboard,
+  calendar: IlluCalendar,
+  live: IlluLive,
+  games: IlluGames,
+  history: IlluHistory,
+  members: IlluMembers,
+  network: IlluNetwork,
+};
+
+export function EmptyState({
+  illustration = 'members',
+  heading,
+  description,
+  ctaLabel,
+  onCta,
+  ctaHref,
+  compact = false,
+}: EmptyStateProps) {
+  const Illu = illustrations[illustration];
+  return (
+    <div style={{
+      display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+      padding: compact ? '28px 24px' : '48px 24px',
+      background: '#0D0D0D', borderRadius: 16, border: '1px solid #1A1A1A',
+      textAlign: 'center', gap: 16,
+    }}>
+      <div style={{ color: '#333', ...FLOAT_STYLE }}>
+        <Illu />
+      </div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxWidth: 260 }}>
+        <h3 style={{ fontSize: compact ? 14 : 16, fontWeight: 700, color: '#E0E0E0', margin: 0, letterSpacing: '-0.01em' }}>
+          {heading}
+        </h3>
+        {description && (
+          <p style={{ fontSize: 13, color: '#555', margin: 0, lineHeight: 1.6 }}>
+            {description}
+          </p>
+        )}
+      </div>
+      {(ctaLabel && (onCta || ctaHref)) && (
+        ctaHref ? (
+          <a href={ctaHref} style={{
+            padding: '10px 24px', borderRadius: 10, background: GOLD,
+            color: '#0A0A0A', fontWeight: 700, fontSize: 13,
+            textDecoration: 'none', display: 'inline-flex', alignItems: 'center',
+          }}>
+            {ctaLabel}
+          </a>
+        ) : (
+          <button onClick={onCta} style={{
+            padding: '10px 24px', borderRadius: 10, background: GOLD,
+            color: '#0A0A0A', fontWeight: 700, fontSize: 13,
+            border: 'none', cursor: 'pointer',
+          }}>
+            {ctaLabel}
+          </button>
+        )
+      )}
+    </div>
+  );
+}
+
+// ─── Skeleton Loaders ────────────────────────────────────────────────────────
+
+interface SkeletonProps { style?: CSSProperties; className?: string; }
+
+function Sk({ style, className }: SkeletonProps) {
+  return <div className={`sk${className ? ' ' + className : ''}`} style={style} />;
+}
+
+/** Card-style skeleton: avatar + title + 2 lines */
+export function SkeletonCard({ rows = 1 }: { rows?: number }) {
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+      {Array.from({ length: rows }).map((_, i) => (
+        <div key={i} style={{
+          background: '#111', borderRadius: 12, padding: '12px 14px',
+          border: '1px solid #1A1A1A', display: 'flex', alignItems: 'center', gap: 12,
+        }}>
+          <Sk style={{ width: 40, height: 40, borderRadius: '50%', flexShrink: 0 }} />
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 6 }}>
+            <Sk style={{ height: 13, borderRadius: 4, width: '60%' }} />
+            <Sk style={{ height: 11, borderRadius: 4, width: '40%' }} />
+          </div>
+          <Sk style={{ width: 36, height: 20, borderRadius: 10 }} />
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/** Message skeleton: right + left alternating bubbles */
+export function SkeletonMessages({ count = 5 }: { count?: number }) {
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 14, padding: '16px 0' }}>
+      {Array.from({ length: count }).map((_, i) => {
+        const right = i % 3 === 0;
+        return (
+          <div key={i} style={{ display: 'flex', gap: 8, justifyContent: right ? 'flex-end' : 'flex-start', padding: '0 16px' }}>
+            {!right && <Sk style={{ width: 30, height: 30, borderRadius: '50%', flexShrink: 0 }} />}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 4, maxWidth: '70%' }}>
+              <Sk style={{ height: 36, borderRadius: 14, width: 120 + (i * 27) % 80 }} />
+              <Sk style={{ height: 10, borderRadius: 4, width: 60, marginLeft: right ? 'auto' : 0 }} />
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+/** Belt journey skeleton */
+export function SkeletonBeltJourney() {
+  return (
+    <div style={{ padding: '0 20px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+      {/* Hero */}
+      <Sk style={{ height: 100, borderRadius: 16, marginBottom: 4 }} />
+      {/* Promo cards */}
+      {[1, 2, 3].map(i => (
+        <div key={i} style={{ background: '#111', borderRadius: 14, padding: '16px', border: '1px solid #1A1A1A', display: 'flex', gap: 12 }}>
+          <Sk style={{ width: 36, height: 36, borderRadius: '50%', flexShrink: 0 }} />
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 6 }}>
+            <Sk style={{ height: 14, borderRadius: 4, width: '50%' }} />
+            <Sk style={{ height: 11, borderRadius: 4, width: '70%' }} />
+            <Sk style={{ height: 4, borderRadius: 2, width: '100%', marginTop: 4 }} />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/** Stats grid skeleton */
+export function SkeletonStats({ cols = 2, rows = 2 }: { cols?: number; rows?: number }) {
+  return (
+    <div style={{ display: 'grid', gridTemplateColumns: `repeat(${cols}, 1fr)`, gap: 8 }}>
+      {Array.from({ length: cols * rows }).map((_, i) => (
+        <div key={i} style={{ background: '#111', borderRadius: 14, padding: '14px 16px', border: '1px solid #1A1A1A' }}>
+          <Sk style={{ height: 11, borderRadius: 4, width: '50%', marginBottom: 8 }} />
+          <Sk style={{ height: 28, borderRadius: 6, width: '60%' }} />
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/** Generic list skeleton (replaces LoadingState in AdminPage) */
+export function SkeletonList({ count = 4, compact = false }: { count?: number; compact?: boolean }) {
+  return (
+    <div style={{ padding: compact ? '8px 0' : '16px 0', display: 'flex', flexDirection: 'column', gap: 8 }}>
+      {Array.from({ length: count }).map((_, i) => (
+        <div key={i} style={{
+          background: '#111', borderRadius: 12, padding: compact ? '10px 14px' : '14px 16px',
+          border: '1px solid #1A1A1A', display: 'flex', alignItems: 'center', gap: 12,
+          opacity: 1 - i * 0.12,
+        }}>
+          <Sk style={{ width: compact ? 32 : 40, height: compact ? 32 : 40, borderRadius: '50%', flexShrink: 0 }} />
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 6 }}>
+            <Sk style={{ height: 12, borderRadius: 4, width: `${55 + (i * 13) % 30}%` }} />
+            <Sk style={{ height: 10, borderRadius: 4, width: `${30 + (i * 17) % 25}%` }} />
+          </div>
+          <Sk style={{ width: 40, height: 16, borderRadius: 8 }} />
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ─── Error State ─────────────────────────────────────────────────────────────
+
+interface ErrorStateProps {
+  heading?: string;
+  message?: string;
+  retryLabel?: string;
+  onRetry?: () => void;
+  homeHref?: string;
+  compact?: boolean;
+}
+
+export function ErrorState({
+  heading = "Something went wrong",
+  message,
+  retryLabel = "Try again",
+  onRetry,
+  homeHref,
+  compact = false,
+}: ErrorStateProps) {
+  return (
+    <div style={{
+      display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+      padding: compact ? '24px' : '48px 24px',
+      background: '#0D0D0D', borderRadius: 16, border: '1px solid #1A1A1A',
+      textAlign: 'center', gap: 12,
+    }}>
+      {/* SVG warning illustration */}
+      <div style={{ color: '#E05555' }}>
+        <svg width="64" height="64" viewBox="0 0 64 64" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+          <path d="M28 10 L8 46 Q6 50 10 52 L54 52 Q58 50 56 46 L36 10 Q34 6 32 6 Q30 6 28 10Z" strokeDasharray="6 3"/>
+          <line x1="32" y1="26" x2="32" y2="38"/>
+          <circle cx="32" cy="44" r="2" fill="currentColor" stroke="none"/>
+        </svg>
+      </div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxWidth: 260 }}>
+        <h3 style={{ fontSize: 15, fontWeight: 700, color: '#E0E0E0', margin: 0 }}>{heading}</h3>
+        {message && (
+          <p style={{ fontSize: 12, color: '#666', margin: 0, lineHeight: 1.6 }}>
+            {/* Never show raw error codes — sanitize */}
+            {message.length > 120 ? message.slice(0, 117) + '…' : message}
+          </p>
+        )}
+      </div>
+      <div style={{ display: 'flex', gap: 8 }}>
+        {onRetry && (
+          <button onClick={onRetry} style={{
+            padding: '9px 20px', borderRadius: 10, background: GOLD,
+            color: '#0A0A0A', fontWeight: 700, fontSize: 12,
+            border: 'none', cursor: 'pointer',
+          }}>
+            {retryLabel}
+          </button>
+        )}
+        {homeHref && (
+          <a href={homeHref} style={{
+            padding: '9px 20px', borderRadius: 10,
+            background: 'transparent', border: '1px solid #333',
+            color: '#888', fontWeight: 600, fontSize: 12, textDecoration: 'none',
+          }}>
+            Go Home
+          </a>
+        )}
+      </div>
+    </div>
+  );
+}

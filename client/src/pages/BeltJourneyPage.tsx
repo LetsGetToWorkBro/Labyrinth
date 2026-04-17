@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { ScreenHeader } from "@/components/ScreenHeader";
+import { SkeletonBeltJourney } from '@/components/StateComponents';
 import { BeltIcon, ADULT_BELT_OPTIONS, KIDS_BELT_OPTIONS, BELT_DISPLAY_NAMES } from "@/components/BeltIcon";
 import { getBeltColor } from "@/lib/constants";
 import { useAuth } from "@/lib/auth-context";
@@ -500,7 +501,7 @@ export default function BeltJourneyPage() {
       <ScreenHeader title="Belt Journey" subtitle="Your path to the top" />
 
       {loading && (
-        <div style={{ margin: '40px 20px', textAlign: 'center', color: '#444', fontSize: 13 }}>Loading your journey…</div>
+        <SkeletonBeltJourney />
       )}
 
       {!loading && (
