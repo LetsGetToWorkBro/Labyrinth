@@ -1460,7 +1460,7 @@ function AppShell() {
   }
 
   const GOLD = "#C8A24C";
-
+  const onboardingDone = onboardingDoneRef.current;
 
   return (
     <div className="app-shell">
