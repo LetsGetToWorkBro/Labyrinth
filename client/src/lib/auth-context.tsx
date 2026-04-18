@@ -46,7 +46,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     // Token max-age check — force re-auth after 30 days
     const tokenCreated = parseInt(localStorage.getItem('lbjj_token_created') || '0');
-    const TOKEN_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
+    const TOKEN_MAX_AGE_MS = 365 * 24 * 60 * 60 * 1000; // 365 days — GAS validates server-side
     if (tokenCreated && Date.now() - tokenCreated > TOKEN_MAX_AGE_MS) {
       localStorage.removeItem('lbjj_session_token');
       localStorage.removeItem('lbjj_token_created');
@@ -172,6 +172,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             setMemberData(normalized);
             if (normalized.familyMembers) setFamilyMembers(normalized.familyMembers);
 
+            // Refresh token timestamp so biometric logins always extend the session
+            localStorage.setItem('lbjj_token_created', Date.now().toString());
+
             // Background re-validate against GAS (non-blocking)
             gasCall('memberGetProfile', { token: savedToken }).then((res: any) => {
               if (res?.success === false && !res?.member) {
@@ -215,7 +218,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             return { success: true };
           }
         }
-        // Token invalid
+        // Token rejected by GAS — try to renew it
+        try {
+          const renewal = await gasCall('memberRenewToken', { token: savedToken, email });
+          if (renewal?.success && renewal?.token) {
+            const newToken = renewal.token;
+            localStorage.setItem('lbjj_session_token', newToken);
+            localStorage.setItem('lbjj_token_created', Date.now().toString());
+            const renewedProfile = renewal.member || await gasCall('memberGetProfile', { token: newToken });
+            const raw = renewedProfile?.member || renewedProfile;
+            if (raw && typeof raw === 'object' && raw.name) {
+              setToken(newToken);
+              const normalized = normalizeAdminRole(raw);
+              setIsAuthenticated(true);
+              setMemberState(normalized);
+              setMemberData(normalized);
+              localStorage.setItem('lbjj_member_profile', JSON.stringify(sanitizeProfileForStorage(normalized)));
+              if (normalized.familyMembers) setFamilyMembers(normalized.familyMembers);
+              return { success: true };
+            }
+          }
+        } catch { /* renewal failed — fall through */ }
         localStorage.removeItem('lbjj_session_token');
         localStorage.removeItem('lbjj_member_profile');
       }
