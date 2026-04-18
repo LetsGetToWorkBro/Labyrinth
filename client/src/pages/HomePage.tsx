@@ -1402,7 +1402,7 @@ export default function HomePage() {
       <ScreenHeader
         title="Home"
         right={
-          <button onClick={logout} className="p-2 rounded-lg transition-colors" style={{ color: "#666" }} data-testid="button-logout">
+          <button onClick={logout} className="p-2 rounded-lg transition-colors" style={{ color: "#666" }} data-testid="button-logout" aria-label="Sign out">
             <LogOut size={18} />
           </button>
         }
@@ -2512,7 +2512,7 @@ export default function HomePage() {
               <div style={{ fontSize: 12, color: '#666' }}>Member since <span style={{ color: '#999' }}>{joinDate}</span></div>
               {member.phone && <div style={{ fontSize: 12, color: '#666' }}>Phone <span style={{ color: '#999' }}>{member.phone}</span></div>}
               {member.email && member.email !== member.name && <div style={{ fontSize: 12, color: '#666' }}>Email <span style={{ color: '#999' }}>{member.email}</span></div>}
-              <button onClick={() => avatarFileRef.current?.click()} style={{ fontSize: 11, color: '#C8A24C', background: 'none', border: 'none', cursor: 'pointer', padding: '4px 0', fontWeight: 600 }}>Change Photo</button>
+              <button onClick={() => avatarFileRef.current?.click()} style={{ fontSize: 11, color: '#C8A24C', background: 'none', border: 'none', cursor: 'pointer', padding: '4px 0', fontWeight: 600 }} aria-label="Change profile photo">Change Photo</button>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 14 }}>
               {hasFamily && (
@@ -2524,7 +2524,7 @@ export default function HomePage() {
                 </button>
               )}
               <button onClick={(e) => { e.stopPropagation(); haptic(); setShowRankRequest(true); setRankBelt(member.belt || "white"); setRankStripes(0); setRankNote(""); setRankSent(false); }}
-                style={{ background: "none", border: "none", padding: 0, cursor: "pointer", position: "relative", overflow: "visible" }} title="Tap to request a rank update">
+                style={{ background: "none", border: "none", padding: 0, cursor: "pointer", position: "relative", overflow: "visible" }} title="Tap to request a rank update" aria-label="Request belt update">
                 <BeltIcon belt={member.belt || "white"} stripes={0} width={72} style={{ filter: `drop-shadow(0 1px 6px ${getBeltColor(member.belt)}40)` }} />
                 <span style={{ position: "absolute", bottom: -2, right: -2, width: 14, height: 14, borderRadius: "50%", backgroundColor: "#C8A24C", border: "2px solid #141414", display: "flex", alignItems: "center", justifyContent: "center" }}>
                   <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="#0A0A0A" strokeWidth="2.5"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
@@ -2615,7 +2615,7 @@ export default function HomePage() {
           <div style={{ width: '100%', maxWidth: 480, background: '#0F0F0F', borderRadius: '24px 24px 0 0', padding: '24px 20px', maxHeight: '90vh', overflowY: 'auto', touchAction: 'pan-y' as any }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
               <h2 style={{ fontSize: 18, fontWeight: 800, color: '#F0F0F0', margin: 0 }}>Request Belt Update</h2>
-              <button onClick={() => setShowRankRequest(false)} style={{ background: 'none', border: 'none', color: '#666', cursor: 'pointer', fontSize: 22, lineHeight: 1 }}>✕</button>
+              <button onClick={() => setShowRankRequest(false)} aria-label="Close" style={{ background: 'none', border: 'none', color: '#666', cursor: 'pointer', fontSize: 22, lineHeight: 1 }}>✕</button>
             </div>
             {rankSent ? (
               <div style={{ textAlign: 'center', padding: '20px 0' }}>
@@ -2688,7 +2688,7 @@ export default function HomePage() {
                 <div style={{ fontSize: 9, fontWeight: 800, letterSpacing: '0.14em', textTransform: 'uppercase', color: '#C8A24C', marginBottom: 4 }}>Experience System</div>
                 <div style={{ fontSize: 20, fontWeight: 900, color: '#F0F0F0' }}>Ranks & Levels</div>
               </div>
-              <button onClick={() => setShowRankInfo(false)} style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid #222', borderRadius: '50%', width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#888', fontSize: 16 }}>✕</button>
+              <button onClick={() => setShowRankInfo(false)} aria-label="Close" style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid #222', borderRadius: '50%', width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#888', fontSize: 16 }}>✕</button>
             </div>
 
             {/* Your current position */}
@@ -2808,7 +2808,7 @@ export default function HomePage() {
                   <div style={{ fontSize: 9, fontWeight: 800, letterSpacing: '0.14em', textTransform: 'uppercase', color: isEliteWeek ? '#A855F7' : isPerfectWeek ? '#FFD700' : '#C8A24C', marginBottom: 4 }}>Weekly Training</div>
                   <div style={{ fontSize: 20, fontWeight: 900, color: '#F0F0F0' }}>Streaks & Multipliers</div>
                 </div>
-                <button onClick={() => setShowStreakInfo(false)} style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid #222', borderRadius: '50%', width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#888', fontSize: 16 }}>✕</button>
+                <button onClick={() => setShowStreakInfo(false)} aria-label="Close" style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid #222', borderRadius: '50%', width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#888', fontSize: 16 }}>✕</button>
               </div>
 
               {/* Active multiplier hero — only when active */}

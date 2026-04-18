@@ -2,4 +2,3 @@ User-agent: *
 Disallow: /admin
 Disallow: /api/
 
-Sitemap: https://app.labyrinth.vision/sitemap.xml

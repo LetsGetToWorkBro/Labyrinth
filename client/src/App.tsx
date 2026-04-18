@@ -324,6 +324,7 @@ function AccountPage() {
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState("");
   const [walletLoading, setWalletLoading] = useState(false);
+  const [walletError, setWalletError] = useState('');
   const [googleWalletLoading, setGoogleWalletLoading] = useState(false);
   const [, navigate] = useHashLoc();
 
@@ -369,20 +370,20 @@ function AccountPage() {
 
   const handleAddToWallet = async () => {
     if (!navigator.onLine) {
-      alert('No internet connection. Please connect to generate your pass.');
+      setWalletError('No internet connection. Please connect and try again.');
       return;
     }
     if (walletLoading) return;
-
+    setWalletError('');
     setWalletLoading(true);
     try {
       const { getToken } = await import("@/lib/api");
       const token = getToken() || localStorage.getItem('lbjj_session_token') || '';
-      if (!token) { alert('Please sign in again.'); setWalletLoading(false); return; }
+      if (!token) { setWalletError('Session expired. Please sign in again.'); setWalletLoading(false); return; }
       const passUrl = `https://labyrinth-pass-server-production.up.railway.app/pass/generate?memberToken=${encodeURIComponent(token)}`;
       window.location.href = passUrl;
     } catch (e) {
-      alert('Could not generate pass. Please try again.');
+      setWalletError('Could not generate pass. Please try again.');
     } finally {
       setWalletLoading(false);
     }
@@ -390,15 +391,16 @@ function AccountPage() {
 
   const handleAddToGoogleWallet = async () => {
     if (!navigator.onLine) {
-      alert('No internet connection. Please connect to generate your pass.');
+      setWalletError('No internet connection. Please connect and try again.');
       return;
     }
     if (googleWalletLoading) return;
+    setWalletError('');
     setGoogleWalletLoading(true);
     try {
       const { getToken } = await import("@/lib/api");
       const token = getToken() || localStorage.getItem('lbjj_session_token') || '';
-      if (!token) { alert('Please sign in again.'); return; }
+      if (!token) { setWalletError('Session expired. Please sign in again.'); setGoogleWalletLoading(false); return; }
       const response = await fetch('https://labyrinth-pass-server-production.up.railway.app/pass/google', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -408,7 +410,7 @@ function AccountPage() {
       const { saveUrl } = await response.json();
       window.location.href = saveUrl;
     } catch (e) {
-      alert('Could not generate Google Wallet pass. Please try again.');
+      setWalletError('Could not generate Google Wallet pass. Please try again.');
     } finally {
       setGoogleWalletLoading(false);
     }
@@ -699,6 +701,13 @@ function AccountPage() {
               </div>
             </button>
           </div>
+          {/* Wallet error display */}
+          {walletError && (
+            <div style={{ margin: '4px 0 8px', padding: '10px 14px', background: 'rgba(224,82,82,0.08)', border: '1px solid rgba(224,82,82,0.2)', borderRadius: 10, fontSize: 13, color: '#E05252', display: 'flex', alignItems: 'center', gap: 8 }}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+              {walletError}
+            </div>
+          )}
           {/* Google Wallet button */}
           <div style={{ marginTop: 10 }}>
             <button
@@ -916,6 +925,7 @@ function SoundToggle() {
 function MorePage() {
   const { logout, isAdmin, member } = useAuth();
   const morePanelRef = useRef<HTMLDivElement>(null);
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
 
   useEffect(() => {
     setTimeout(() => morePanelRef.current?.focus(), 50);
@@ -1092,14 +1102,37 @@ function MorePage() {
             Request Account Deletion
           </button>
         </div>
-        <button onClick={logout}
+        <button onClick={() => setShowLogoutConfirm(true)}
           className="w-full mt-4 py-3 rounded-xl text-sm font-medium transition-all active:scale-[0.98]"
           style={{ backgroundColor: "rgba(224,85,85,0.08)", color: "#E05555", border: "1px solid rgba(224,85,85,0.15)" }}
           data-testid="button-logout-more"
+          aria-label="Sign out"
         >
           Sign Out
         </button>
       </div>
+      {/* Logout confirmation sheet */}
+      {showLogoutConfirm && (
+        <div style={{ position: 'fixed', inset: 0, zIndex: 1000, background: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'flex-end' }}
+             onClick={() => setShowLogoutConfirm(false)}>
+          <div style={{ background: '#111', borderRadius: '20px 20px 0 0', padding: '24px 20px', width: '100%', paddingBottom: 'max(24px, env(safe-area-inset-bottom))' }}
+               onClick={e => e.stopPropagation()}>
+            <div style={{ width: 36, height: 4, background: '#333', borderRadius: 2, margin: '0 auto 20px' }} />
+            <div style={{ fontSize: 17, fontWeight: 700, color: '#F0F0F0', marginBottom: 8, textAlign: 'center' }}>Sign Out?</div>
+            <div style={{ fontSize: 14, color: '#888', textAlign: 'center', marginBottom: 24, lineHeight: 1.5 }}>
+              You'll need your password to sign back in.
+            </div>
+            <button onClick={() => { setShowLogoutConfirm(false); logout(); }}
+              style={{ width: '100%', padding: '14px', borderRadius: 12, background: '#E05252', color: '#fff', border: 'none', fontWeight: 700, fontSize: 15, cursor: 'pointer', marginBottom: 10 }}>
+              Sign Out
+            </button>
+            <button onClick={() => setShowLogoutConfirm(false)}
+              style={{ width: '100%', padding: '14px', borderRadius: 12, background: '#1A1A1A', color: '#888', border: '1px solid #2A2A2A', fontWeight: 600, fontSize: 15, cursor: 'pointer' }}>
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -1116,6 +1149,12 @@ function ResetPasswordPage() {
 
   // Extract token from hash: /#/reset?token=xxx
   const token = new URLSearchParams(window.location.hash.split('?')[1] || '').get('token') || '';
+  // Immediately clear token from URL to prevent it appearing in browser history / Sentry logs
+  useEffect(() => {
+    if (token && window.location.hash.includes('?token=')) {
+      window.history.replaceState(null, '', window.location.pathname + '#/reset');
+    }
+  }, []);
 
   const submit = async () => {
     if (!password || password !== confirm) { setError('Passwords do not match'); return; }
@@ -1123,9 +1162,10 @@ function ResetPasswordPage() {
     if (!token) { setError('Invalid reset link'); return; }
     setLoading(true); setError('');
     try {
-      const GAS_URL = 'https://script.google.com/macros/s/AKfycbwybO9_NBFjSYmpDWVjM0TloiyQl5-oI7UZxgAHDILYHjhez8RUp7ncOgwKLoEHa6kj/exec';
+      const { getActiveGasUrl, getSavedLocationId } = await import('@/lib/locations');
+      const GAS_ENDPOINT = getActiveGasUrl(getSavedLocationId());
       const payload = JSON.stringify({ action: 'memberConfirmReset', token, newPassword: password });
-      const url = GAS_URL + '?action=memberConfirmReset&payload=' + encodeURIComponent(payload);
+      const url = GAS_ENDPOINT + '?action=memberConfirmReset&payload=' + encodeURIComponent(payload);
       const res = await fetch(url, { redirect: 'follow' });
       const data = await res.json();
       if (data.success) { setDone(true); }
@@ -1152,19 +1192,23 @@ function ResetPasswordPage() {
         ) : (
           <>
             {error && <p style={{ color: '#E05555', fontSize: 13, marginBottom: 12 }}>{error}</p>}
+            <form onSubmit={e => { e.preventDefault(); submit(); }}>
             <div style={{ marginBottom: 12 }}>
-              <label style={{ color: '#999', fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', display: 'block', marginBottom: 6 }}>New Password</label>
-              <input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="At least 8 characters"
+              <label htmlFor="reset-pw" style={{ color: '#999', fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', display: 'block', marginBottom: 6 }}>New Password</label>
+              <input id="reset-pw" type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="At least 8 characters"
+                enterKeyHint="next" autoComplete="new-password"
                 style={{ width: '100%', background: '#0D0D0D', border: '1px solid #222', borderRadius: 10, padding: '12px 14px', color: '#F0F0F0', fontSize: 14, outline: 'none', boxSizing: 'border-box' }} />
             </div>
             <div style={{ marginBottom: 20 }}>
-              <label style={{ color: '#999', fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', display: 'block', marginBottom: 6 }}>Confirm Password</label>
-              <input type="password" value={confirm} onChange={e => setConfirm(e.target.value)} placeholder="Same password again"
+              <label htmlFor="reset-confirm" style={{ color: '#999', fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', display: 'block', marginBottom: 6 }}>Confirm Password</label>
+              <input id="reset-confirm" type="password" value={confirm} onChange={e => setConfirm(e.target.value)} placeholder="Same password again"
+                enterKeyHint="go" autoComplete="new-password"
                 style={{ width: '100%', background: '#0D0D0D', border: '1px solid #222', borderRadius: 10, padding: '12px 14px', color: '#F0F0F0', fontSize: 14, outline: 'none', boxSizing: 'border-box' }} />
             </div>
-            <button onClick={submit} disabled={loading} style={{ width: '100%', padding: '13px', background: '#C8A24C', color: '#0A0A0A', border: 'none', borderRadius: 12, fontWeight: 700, fontSize: 14, cursor: loading ? 'default' : 'pointer', opacity: loading ? 0.7 : 1 }}>
+            <button type="submit" disabled={loading} style={{ width: '100%', padding: '13px', background: '#C8A24C', color: '#0A0A0A', border: 'none', borderRadius: 12, fontWeight: 700, fontSize: 14, cursor: loading ? 'default' : 'pointer', opacity: loading ? 0.7 : 1 }}>
               {loading ? 'Updating…' : 'Set New Password'}
             </button>
+            </form>
             <div style={{ textAlign: 'center', marginTop: 12 }}>
               <a href="/#/" style={{ color: '#888', fontSize: 12 }}>Back to sign in</a>
             </div>
@@ -1312,6 +1356,12 @@ function BeltMilestoneOverlay({ badge, onDismiss }: { badge: any; onDismiss: () 
       <button className="bm-dismiss" onClick={onDismiss}>Continue</button>
     </div>
   );
+}
+
+function WaiverRedirect() {
+  const [, navigate] = useHashLoc();
+  useEffect(() => { navigate('/waiver'); }, []);
+  return null;
 }
 
 function AppShell() {
@@ -1464,9 +1514,15 @@ function AppShell() {
   const GOLD = "#C8A24C";
   const onboardingDone = onboardingDoneRef.current;
 
+  // Waiver gate — redirect to /waiver if not signed (allow exempt paths)
+  const WAIVER_EXEMPT = ['/waiver', '/book', '/reset', '/account'];
+  const currentPath = typeof window !== 'undefined' ? (window.location.hash.replace('#', '') || '/') : '/';
+  const needsWaiver = onboardingDone && member && (!(member as any).waiverSigned || !(member as any).agreementSigned) && !WAIVER_EXEMPT.some(p => currentPath.startsWith(p));
+
   return (
     <div className="app-shell">
       {!onboardingDone && <OnboardingPage />}
+      {needsWaiver && <WaiverRedirect />}
       <AdminShortcut />
 
       {/* Global biometric registration prompt overlay */}
