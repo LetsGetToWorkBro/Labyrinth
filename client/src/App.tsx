@@ -1516,8 +1516,10 @@ function AppShell() {
 
   // Waiver gate — redirect to /waiver if not signed (allow exempt paths)
   const WAIVER_EXEMPT = ['/waiver', '/book', '/reset', '/account'];
-  const currentPath = typeof window !== 'undefined' ? (window.location.hash.replace('#', '') || '/') : '/';
-  const needsWaiver = onboardingDone && member && (!(member as any).waiverSigned || !(member as any).agreementSigned) && !WAIVER_EXEMPT.some(p => currentPath.startsWith(p));
+  // Hash is "#/path" — strip the leading "#" to get "/path"
+  const currentPath = typeof window !== 'undefined' ? (window.location.hash.replace(/^#/, '') || '/') : '/';
+  // Only gate on waiverSigned — agreementSigned is a separate optional doc, not required for access
+  const needsWaiver = onboardingDone && member && !(member as any).waiverSigned && !WAIVER_EXEMPT.some(p => currentPath.startsWith(p));
 
   return (
     <div className="app-shell">
