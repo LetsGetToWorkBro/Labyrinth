@@ -165,12 +165,17 @@ export default function OnboardingPage() {
   const complete = () => {
     localStorage.setItem(ONBOARDING_KEY, "1");
     setCompleting(true);
-    // Use replace() for reliability on iOS PWA, with reload() fallback
+    // Brave-compatible navigation: set hash directly, then reload
     setTimeout(() => {
       try {
-        window.location.replace(window.location.origin + window.location.pathname + '#/');
+        // Force hash to / first so the app shell renders the home route
+        window.location.hash = '#/';
+        // Then reload to pick up the onboarding key
+        setTimeout(() => {
+          try { window.location.reload(); } catch { /* ignore */ }
+        }, 80);
       } catch {
-        window.location.reload();
+        try { window.location.reload(); } catch { /* ignore */ }
       }
     }, 50);
   };
@@ -180,9 +185,12 @@ export default function OnboardingPage() {
     setCompleting(true);
     setTimeout(() => {
       try {
-        window.location.replace(window.location.origin + window.location.pathname + '#/');
+        window.location.hash = '#/';
+        setTimeout(() => {
+          try { window.location.reload(); } catch { /* ignore */ }
+        }, 80);
       } catch {
-        window.location.reload();
+        try { window.location.reload(); } catch { /* ignore */ }
       }
     }, 50);
   };

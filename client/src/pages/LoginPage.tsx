@@ -62,7 +62,7 @@ async function triggerBiometricPrompt(): Promise<'native' | 'webauthn' | 'failed
   if (typeof window !== 'undefined' && window.PublicKeyCredential) {
     try {
       const challenge = new Uint8Array(32);
-      crypto.getRandomValues(challenge);
+      try { crypto.getRandomValues(challenge); } catch { return 'failed'; } // Brave shields block this
       const assertion = await navigator.credentials.get({
         publicKey: {
           challenge,

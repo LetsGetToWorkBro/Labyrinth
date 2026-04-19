@@ -1273,7 +1273,7 @@ async function registerPasskeyGlobal(email: string): Promise<boolean> {
   try {
     if (!window.PublicKeyCredential) return false;
     const challenge = new Uint8Array(32);
-    crypto.getRandomValues(challenge);
+    try { crypto.getRandomValues(challenge); } catch { return false; } // Brave blocks this
     const userId = new TextEncoder().encode(email);
     const credential = await navigator.credentials.create({
       publicKey: {
