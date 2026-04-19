@@ -1518,8 +1518,12 @@ function AppShell() {
   const WAIVER_EXEMPT = ['/waiver', '/book', '/reset', '/account'];
   // Hash is "#/path" — strip the leading "#" to get "/path"
   const currentPath = typeof window !== 'undefined' ? (window.location.hash.replace(/^#/, '') || '/') : '/';
-  // Only gate on waiverSigned — agreementSigned is a separate optional doc, not required for access
-  const needsWaiver = onboardingDone && member && !(member as any).waiverSigned && !WAIVER_EXEMPT.some(p => currentPath.startsWith(p));
+  // Waiver gate — only redirect if GAS explicitly confirmed waiverSigned: false
+  // (not if it's undefined/null — that means the Waivers sheet lookup failed)
+  const waiverValue = (member as any)?.waiverSigned;
+  const needsWaiver = onboardingDone && member &&
+    waiverValue === false &&           // must be explicit false, not undefined/null/missing
+    !WAIVER_EXEMPT.some(p => currentPath.startsWith(p));
 
   return (
     <div className="app-shell">
