@@ -8,14 +8,15 @@ import { useAuth } from '@/lib/auth-context';
 import { getLevelFromXP, getRingTier } from '@/lib/xp';
 import { ProfileRing } from '@/components/ProfileRing';
 import { GrapplingIcon, TrophyIcon, GoldMedalIcon } from '@/components/icons/LbjjIcons';
-import { useLocation } from 'wouter';
+// useLocation removed — widget is outside Router context, use window.location directly
 
 // Pages where the widget should be hidden
 const HIDDEN_PATHS = ['/waiver', '/book', '/reset', '/account', '/admin'];
 
 export function FloatingIdentityWidget() {
   const { member, isAuthenticated } = useAuth();
-  const [location] = useLocation();
+  // Read location from hash directly — avoids requiring Router context
+  const location = window.location.hash.replace(/^#/, '') || '/';
   const [expanded, setExpanded] = useState(false);
   const [avatarSrc, setAvatarSrc] = useState<string | null>(null);
   const [animateBar, setAnimateBar] = useState(false);
