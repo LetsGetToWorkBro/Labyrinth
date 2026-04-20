@@ -990,6 +990,13 @@ html[data-nav="tab"] ::view-transition-new(root) {
 }
 */
 
+/* ── Profile tray slide-up ── */
+
+@keyframes tray-slide-up {
+  from { transform: translateY(100%); opacity: 0; }
+  to   { transform: translateY(0);    opacity: 1; }
+}
+
 /* ── XP Bar gamification animations ── */
 
 @keyframes xp-shimmer {

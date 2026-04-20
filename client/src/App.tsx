@@ -48,7 +48,8 @@ import { Redirect } from "wouter";
 import { gasCall, cachedGasCall, beltSavePromotion, updatePresence } from "@/lib/api";
 import { getBeltColor } from "@/lib/constants";
 import { ProfileRing } from "@/components/ProfileRing";
-import { FloatingIdentityWidget } from "@/components/FloatingIdentityWidget";
+import { TopHeader } from "@/components/TopHeader";
+import { ProfileTray } from "@/components/ProfileTray";
 import { getRingTier, getActualLevel } from "@/lib/xp";
 import { XPBar } from "@/components/XPBar";
 import { soundSystem } from '@/lib/sounds';
@@ -78,7 +79,7 @@ const ALL_NAV_OPTIONS: NavOption[] = [
   { path: '/sauna',    label: 'Sauna',    Icon: Thermometer,    emoji: '' },
 ];
 
-const DEFAULT_NAV_PATHS = ['/', '/chat', '/achievements', '/schedule', '/more'];
+const DEFAULT_NAV_PATHS = ['/', '/chat', '/schedule', '/games', '/leaderboard'];
 
 function getNavConfig(): string[] {
   try {
@@ -1372,6 +1373,7 @@ function AppShell() {
   const { isAuthenticated, isLoading, member } = useAuth();
   // location removed from AppShell — AppShell is outside Router, useHashLoc() crashes
   const [levelUpState, setLevelUpState] = useState<{ newLevel: number; prevLevel: number } | null>(null);
+  const [trayOpen, setTrayOpen] = useState(false);
   const handleLevelUp = useCallback((newLevel: number, prevLevel: number) => {
     setLevelUpState({ newLevel, prevLevel });
   }, []);
@@ -1454,7 +1456,7 @@ function AppShell() {
       if (prev === location) return;
 
       // Determine direction
-      const tabPaths = ['/', '/chat', '/achievements', '/schedule', '/more', '/games', '/leaderboard', '/live', '/history'];
+      const tabPaths = ['/', '/chat', '/schedule', '/games', '/leaderboard'];
       const isTab = tabPaths.includes(location) && tabPaths.includes(prev);
       const fromIdx = tabPaths.indexOf(prev);
       const toIdx = tabPaths.indexOf(location);
@@ -1529,6 +1531,8 @@ function AppShell() {
       {!onboardingDone && <OnboardingPage />}
       {needsWaiver && <WaiverRedirect />}
       <AdminShortcut />
+      <TopHeader onTrayOpen={() => setTrayOpen(true)} />
+      <ProfileTray open={trayOpen} onClose={() => setTrayOpen(false)} />
 
       {/* Global biometric registration prompt overlay */}
       {showPasskeySetup && supportsPasskey && (
@@ -1613,7 +1617,6 @@ function AppShell() {
           </Switch>
         </Suspense>
       </div>
-      <FloatingIdentityWidget />
       <TabBar />
       {/* Global level-up overlay */}
       {levelUpState && (
