@@ -1704,9 +1704,14 @@ function App() {
         <p style={{ fontSize: 16, color: '#F0F0F0', marginBottom: 8, fontWeight: 600 }}>
           Something went wrong
         </p>
-        <p style={{ fontSize: 11, color: '#E05252', marginBottom: 8, fontFamily: 'monospace', maxWidth: 320, wordBreak: 'break-word' }}>
+        <p style={{ fontSize: 11, color: '#E05252', marginBottom: 8, fontFamily: 'monospace', maxWidth: 320, wordBreak: 'break-word', whiteSpace: 'pre-wrap' }}>
           {props?.error?.message || props?.error?.toString() || 'Unknown error'}
         </p>
+        {props?.componentStack && (
+          <p style={{ fontSize: 9, color: '#666', marginBottom: 8, fontFamily: 'monospace', maxWidth: 340, wordBreak: 'break-word', whiteSpace: 'pre-wrap', textAlign: 'left', maxHeight: 120, overflow: 'auto' }}>
+            {props.componentStack.slice(0, 500)}
+          </p>
+        )}
         <p style={{ fontSize: 13, color: '#888', marginBottom: 24 }}>
           Try reloading the app.
         </p>
