@@ -1695,7 +1695,7 @@ function App() {
   }, []);
 
   return (
-    <Sentry.ErrorBoundary fallback={
+    <Sentry.ErrorBoundary fallback={(props: any) => (
       <div style={{
         display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
         height: '100vh', background: '#0A0A0A', padding: 40, textAlign: 'center',
@@ -1703,8 +1703,11 @@ function App() {
         <p style={{ fontSize: 16, color: '#F0F0F0', marginBottom: 8, fontWeight: 600 }}>
           Something went wrong
         </p>
+        <p style={{ fontSize: 11, color: '#E05252', marginBottom: 8, fontFamily: 'monospace', maxWidth: 320, wordBreak: 'break-word' }}>
+          {props?.error?.message || props?.error?.toString() || 'Unknown error'}
+        </p>
         <p style={{ fontSize: 13, color: '#888', marginBottom: 24 }}>
-          We've been notified. Try reloading the app.
+          Try reloading the app.
         </p>
         <button
           onClick={() => window.location.reload()}
@@ -1713,6 +1716,7 @@ function App() {
           Reload
         </button>
       </div>
+    )
     }>
       <QueryClientProvider client={queryClient}>
         <TooltipProvider>
