@@ -1921,3 +1921,6 @@ html[data-nav="tab"] ::view-transition-new(root) {
   margin-top:6px; text-decoration:none;
 }
 /* ===== END HomePage ===== */
+
+/* ===== v2.2 — force CSS rebuild ===== */
+:root { --lbj-build: 2; }
