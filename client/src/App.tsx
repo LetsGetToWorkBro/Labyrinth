@@ -1742,4 +1742,4 @@ function App() {
 }
 
 export default App;
-// rebuild Tue Apr 14 17:07:30 UTC 2026
+const LABYRINTH_APP_BUILD = '2.2.0-stable-no-hash-loc'; export { LABYRINTH_APP_BUILD };

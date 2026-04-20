@@ -85,18 +85,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           });
         }
 
-        // Background validation — if invalid, log out silently
+        // Background validation — refresh profile but NEVER log out
+        // Logging out here causes black screen / unexpected auth loss
+        // GAS validates every call server-side, so client-side expiry is redundant
         gasCall('memberGetProfile', { token: savedToken }).then((res: any) => {
-          // Detect explicit invalid session (success:false with no usable member)
           const raw = res?.member || (res && typeof res === 'object' && res.name ? res : null);
           if (res?.success === false && !raw) {
-            // Session invalid — log out
-            clearAuth();
-            localStorage.removeItem('lbjj_session_token');
-            localStorage.removeItem('lbjj_member_profile');
-            setIsAuthenticated(false);
-            setMemberState(null);
-            setFamilyMembers([]);
+            // Token stale — keep user logged in with cached profile, don't boot them
+            // The next explicit action (check-in, etc.) will get a fresh token via GAS
             return;
           }
           if (raw && typeof raw === 'object' && (raw.name || raw.email)) {
