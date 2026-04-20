@@ -364,6 +364,7 @@ function AccountPage() {
       const base64 = canvas.toDataURL("image/jpeg", 0.8);
       setProfilePic(base64);
       try { localStorage.setItem("lbjj_profile_picture", base64); } catch { /* storage full */ }
+      try { window.dispatchEvent(new CustomEvent('pfp-updated')); } catch {}
     };
     img.src = URL.createObjectURL(file);
   };

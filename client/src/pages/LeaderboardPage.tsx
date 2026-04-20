@@ -1,4 +1,4 @@
-import { CalendarSparkIcon, GamepadIcon, GoldMedalIcon, SilverMedalIcon, BronzeMedalIcon, TrophyIcon, BoltIcon } from "@/components/icons/LbjjIcons";
+import { CalendarSparkIcon, GamepadIcon, BoltIcon } from "@/components/icons/LbjjIcons";
 import { EmptyState } from '@/components/StateComponents';
 import React, { useState, useEffect, useCallback } from 'react';
 import { getLeaderboard, type LeaderboardEntry } from '@/lib/api';
@@ -8,10 +8,10 @@ import { RefreshCw } from 'lucide-react';
 import { getActualLevel } from '@/lib/xp';
 
 const GOLD = '#C8A24C';
-const PODIUM_CONFIG: Record<number, { icon: React.ReactNode; borderColor: string; glow: string }> = {
-  1: { icon: <GoldMedalIcon size={22} />, borderColor: '#FFD700', glow: '0 0 20px rgba(255,215,0,0.3)' },
-  2: { icon: <SilverMedalIcon size={22} />, borderColor: '#C0C0C0', glow: '0 0 12px rgba(192,192,192,0.15)' },
-  3: { icon: <BronzeMedalIcon size={22} />, borderColor: '#CD7F32', glow: '0 0 12px rgba(205,127,50,0.15)' },
+const PODIUM_STYLES: Record<number, { bg: string; color: string; shadow: string; border: string }> = {
+  1: { bg: 'linear-gradient(135deg, #B8860B, #FFD700)', color: '#000', shadow: '0 0 20px rgba(255,215,0,0.4)', border: '#FFD700' },
+  2: { bg: 'linear-gradient(135deg, #808080, #C0C0C0)', color: '#000', shadow: '0 0 12px rgba(192,192,192,0.3)', border: '#C0C0C0' },
+  3: { bg: 'linear-gradient(135deg, #8B4513, #CD7F32)', color: '#000', shadow: '0 0 12px rgba(205,127,50,0.3)', border: '#CD7F32' },
 };
 
 
@@ -236,45 +236,66 @@ export default function LeaderboardPage() {
         ) : (
           <div className="stagger-list" style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
             {filteredEntries.map((entry, i) => {
-              const podiumCfg = PODIUM_CONFIG[i + 1];
+              const podiumStyle = PODIUM_STYLES[i + 1];
               const isTop3 = i < 3;
               const isMe = entry.isMe || (member && entry.name === member.name);
               const hasClassCount = entry.classCount && entry.classCount > 0;
               const currentPos = i + 1;
               const prevPos = entry.name ? prevPositions[entry.name] : undefined;
               const rankDelta = prevPos !== undefined && prevPos !== currentPos ? prevPos - currentPos : null;
+              const beltKey = (entry.belt || '').toLowerCase();
+              const beltTint = BELT_DOT_COLORS[beltKey];
+              const entryXP = entry.totalPoints || ((entry.classCount || 0) * 10);
+              const entryLevel = getActualLevel(entryXP);
               return (
                 <div key={i} className="reveal-item" style={{
                   transitionDelay: `${Math.min(i, 8) * 50}ms`,
                   background: isMe ? `${GOLD}14` : isTop3 ? `${GOLD}0A` : '#111',
                   borderRadius: 12, padding: '12px 14px',
-                  border: `1px solid ${isMe ? GOLD + '40' : podiumCfg ? podiumCfg.borderColor + '40' : '#1A1A1A'}`,
-                  boxShadow: podiumCfg ? podiumCfg.glow : undefined,
+                  border: `1px solid ${isMe ? GOLD + '40' : podiumStyle ? podiumStyle.border + '40' : '#1A1A1A'}`,
+                  boxShadow: podiumStyle ? podiumStyle.shadow : undefined,
                   animation: i === 0 ? 'pulseGlow 2s ease-in-out infinite' : undefined,
                   display: 'flex', alignItems: 'center', gap: 12,
                 }}>
                   <div style={{ width: 36, textAlign: 'center', flexShrink: 0 }}>
-                    {podiumCfg
-                      ? <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>{podiumCfg.icon}</span>
-                      : <span style={{ color: '#555', fontSize: 13, fontWeight: 700 }}>#{currentPos}</span>}
+                    {podiumStyle ? (
+                      <div style={{ width:36, height:36, borderRadius:'50%', background:podiumStyle.bg, boxShadow:podiumStyle.shadow, display:'flex', alignItems:'center', justifyContent:'center', fontSize:15, fontWeight:900, color:podiumStyle.color }}>
+                        {i+1}
+                      </div>
+                    ) : <span style={{ color:'#555', fontSize:13, fontWeight:700 }}>#{currentPos}</span>}
                     {rankDelta !== null && (
                       <div style={{ fontSize: 9, fontWeight: 700, color: rankDelta > 0 ? '#4CAF80' : '#E05555', lineHeight: 1, marginTop: 1 }}>
                         {rankDelta > 0 ? `▲${rankDelta}` : `▼${Math.abs(rankDelta)}`}
                       </div>
                     )}
                   </div>
-                  <div style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
-                    {entry.belt && (
+                  {/* Avatar with belt tint + level badge */}
+                  <div style={{ position:'relative', flexShrink:0 }}>
+                    <div style={{
+                      width:36, height:36, borderRadius:'50%', overflow:'hidden',
+                      background: beltTint ? beltTint+'33' : '#1A1A1A',
+                      border:`2px solid ${beltDotColor(entry.belt)}55`,
+                      display:'flex', alignItems:'center', justifyContent:'center',
+                      fontSize:12, fontWeight:700, color:'#888',
+                    }}>
+                      {(entry as any).profilePic
+                        ? <img src={(entry as any).profilePic} style={{ width:'100%', height:'100%', objectFit:'cover' }} />
+                        : (entry.name || '?')[0].toUpperCase()}
+                    </div>
+                    {entryXP > 0 && (
                       <div style={{
-                        width: 8, height: 8, borderRadius: '50%', flexShrink: 0,
-                        backgroundColor: beltDotColor(entry.belt),
-                        border: entry.belt.toLowerCase() === 'black' ? '1px solid #C8A24C' : '1px solid transparent',
-                      }} />
-                    )}
-                    <div style={{ minWidth: 0 }}>
-                      <div style={{ color: isTop3 ? '#F0F0F0' : '#DDD', fontSize: 13, fontWeight: isMe ? 700 : 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                        {entry.name}{isMe ? ' (You)' : ''}
+                        position:'absolute', bottom:-2, right:-4,
+                        background:'#C8A24C', color:'#000',
+                        fontSize:8, fontWeight:900, padding:'1px 4px',
+                        borderRadius:999, border:'1.5px solid #0A0A0A', lineHeight:1.4,
+                      }}>
+                        {entryLevel}
                       </div>
+                    )}
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ color: isTop3 ? '#F0F0F0' : '#DDD', fontSize: 13, fontWeight: isMe ? 700 : 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {entry.name}{isMe ? ' (You)' : ''}
                     </div>
                   </div>
                   <div style={{ display: 'flex', gap: 8, flexShrink: 0, textAlign: 'right' }}>

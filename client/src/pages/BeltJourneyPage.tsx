@@ -413,13 +413,23 @@ export default function BeltJourneyPage() {
   useEffect(() => {
     if (!isAuthenticated) return;
     setLoading(true);
-    // Show cached list immediately while fetching (prevents delete flicker)
+    // Show cached list immediately while fetching (prevents delete flicker / blank page)
     try {
       const cached = localStorage.getItem('lbjj_belt_promotions_cache');
       if (cached) setPromotions(JSON.parse(cached));
     } catch {}
 
+    let settled = false;
+    const timer = setTimeout(() => {
+      if (settled) return;
+      settled = true;
+      setLoading(false);
+    }, 15000);
+
     beltGetPromotions().then(list => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
       let deletedIds: string[] = [];
       try { deletedIds = JSON.parse(localStorage.getItem('lbjj_belt_deleted_ids') || '[]'); } catch {}
       const filtered = list
@@ -431,10 +441,17 @@ export default function BeltJourneyPage() {
           status: (p.status || "pending") as BeltPromotion['status'],
         })).sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
       setPromotions(filtered);
-      // Update cache with fresh server data
       try { localStorage.setItem('lbjj_belt_promotions_cache', JSON.stringify(filtered)); } catch {}
       setLoading(false);
+    }).catch(() => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      // Fall back to cache on error — already seeded above
+      setLoading(false);
     });
+
+    return () => { clearTimeout(timer); };
   }, [isAuthenticated]);
 
   useEffect(() => {

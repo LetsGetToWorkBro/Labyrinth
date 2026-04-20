@@ -36,8 +36,16 @@ export function FloatingIdentityWidget() {
       } catch {}
     };
     window.addEventListener('storage', sync);
+    const pfpHandler = () => {
+      try { const s = localStorage.getItem('lbjj_profile_picture'); if (s) setAvatarSrc(s); } catch {}
+    };
+    window.addEventListener('pfp-updated', pfpHandler);
     const t = setInterval(sync, 4000);
-    return () => { window.removeEventListener('storage', sync); clearInterval(t); };
+    return () => {
+      window.removeEventListener('storage', sync);
+      window.removeEventListener('pfp-updated', pfpHandler);
+      clearInterval(t);
+    };
   }, [member]);
   const xp = localXP;
   const { level, title, progress, xpForNext, xpForLevel } = getLevelFromXP(xp);
@@ -123,7 +131,7 @@ export function FloatingIdentityWidget() {
           {/* Header row */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
             {/* Avatar small */}
-            <ProfileRing tier={ringTier} size={40} level={level > 1 ? level : undefined}>
+            <ProfileRing tier={ringTier} size={40}>
               <div style={{
                 width: 36, height: 36, borderRadius: '50%',
                 background: avatarSrc ? 'transparent' : `linear-gradient(135deg, ${beltColor}44, ${beltColor}22)`,
@@ -214,7 +222,7 @@ export function FloatingIdentityWidget() {
         aria-label={expanded ? 'Collapse XP widget' : 'View XP and level'}
         role="button"
       >
-        <ProfileRing tier={ringTier} size={52} level={level > 1 ? level : undefined}>
+        <ProfileRing tier={ringTier} size={52}>
           <div style={{
             width: 46, height: 46, borderRadius: '50%',
             background: avatarSrc

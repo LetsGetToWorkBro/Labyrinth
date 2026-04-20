@@ -215,6 +215,9 @@ export default function HomePage() {
   const [showWeekStats, setShowWeekStats] = useState(false);
   const [showSeasonModal, setShowSeasonModal] = useState(false);
   const [showGameDayInfo, setShowGameDayInfo] = useState(false);
+  const [isPulling, setIsPulling] = useState(false);
+  const [pullY, setPullY] = useState(0);
+  const pullStartY = useRef(0);
   const [techniqueOverride, setTechniqueOverride] = useState<string | null>(() => { try { return localStorage.getItem('lbjj_technique_override'); } catch { return null; } });
   const [showTechniqueEditor, setShowTechniqueEditor] = useState(false);
   const [techniqueCustomName, setTechniqueCustomName] = useState('');
@@ -1398,7 +1401,51 @@ export default function HomePage() {
   const weekMultiplier = getWeekMultiplier(trainedCount);
 
   return (
-    <div className={`app-content home-page-bg${isGameDay ? ' home-page-bg--gameday' : isFlowState ? ' home-page-bg--flow' : ''}`} style={{ minHeight: '100dvh' }}>
+    <div
+      className={`app-content home-page-bg${isGameDay ? ' home-page-bg--gameday' : isFlowState ? ' home-page-bg--flow' : ''}`}
+      style={{ minHeight: '100dvh' }}
+      onTouchStart={(e) => { if (window.scrollY === 0) pullStartY.current = e.touches[0].clientY; }}
+      onTouchMove={(e) => {
+        if (pullStartY.current > 0) {
+          const delta = e.touches[0].clientY - pullStartY.current;
+          if (delta > 0 && delta < 120) setPullY(delta);
+        }
+      }}
+      onTouchEnd={() => {
+        if (pullY > 72) {
+          setIsPulling(true);
+          setTimeout(() => window.location.reload(), 400);
+        } else {
+          setPullY(0);
+        }
+        pullStartY.current = 0;
+      }}
+    >
+      {(pullY > 0 || isPulling) && (
+        <div style={{
+          position: 'fixed', top: 0, left: 0, right: 0, zIndex: 200,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          height: Math.min(pullY, 60),
+          background: 'transparent',
+          pointerEvents: 'none',
+          transition: isPulling ? 'height 300ms ease' : 'none',
+        }}>
+          <div style={{
+            width: 32, height: 32, borderRadius: '50%',
+            background: '#1A1A1A', border: '1px solid rgba(200,162,76,0.3)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            transform: `rotate(${Math.min(pullY / 72, 1) * 180}deg)`,
+            transition: isPulling ? 'transform 300ms ease' : 'none',
+            opacity: Math.min(pullY / 72, 1),
+          }}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#C8A24C" strokeWidth="2.5" strokeLinecap="round">
+              {isPulling
+                ? <path d="M12 2v20M2 12l10 10 10-10"/>
+                : <path d="M12 5v14M5 12l7 7 7-7"/>}
+            </svg>
+          </div>
+        </div>
+      )}
       <ScreenHeader
         title="Home"
         right={
@@ -1411,7 +1458,7 @@ export default function HomePage() {
       {/* ════════════════════════════════════════════════════
           NARRATIVE HERO — "Where am I right now?"
           ════════════════════════════════════════════════════ */}
-      <div style={{ margin: '0 20px 18px', cursor: 'pointer' }} className="stagger-child" onClick={() => { haptic(); setShowNarrativeInfo(true); }}>
+      <div style={{ margin: '0 20px 18px', cursor: 'pointer' }} className="stagger-child" onClick={() => { haptic(); isGameDay ? setShowGameDayInfo(true) : setShowNarrativeInfo(true); }}>
         <div style={{
           background: isGameDay
             ? 'linear-gradient(135deg, #141008, #1A1500)'
@@ -1420,7 +1467,7 @@ export default function HomePage() {
               : 'linear-gradient(135deg, #0D0D0D, #111)',
           border: `1px solid ${isGameDay ? 'rgba(200,162,76,0.35)' : isPerfectWeek ? 'rgba(255,215,0,0.3)' : '#1A1A1A'}`,
           borderRadius: 18,
-          padding: '16px 18px',
+          padding: '12px 16px',
           position: 'relative',
           overflow: 'hidden',
         }}>
@@ -1451,42 +1498,11 @@ export default function HomePage() {
           )}
 
           {/* Main narrative lines */}
-          <div style={{ fontSize: 19, fontWeight: 900, color: '#F0F0F0', lineHeight: 1.15, marginBottom: 6, letterSpacing: '-0.01em' }}>
+          <div style={{ fontSize: 17, fontWeight: 900, color: '#F0F0F0', lineHeight: 1.15, marginBottom: 4, letterSpacing: '-0.01em' }}>
             {narrative.line1}
           </div>
-          <div style={{ fontSize: 13, color: '#666', lineHeight: 1.5, fontWeight: 500 }}>
+          <div style={{ fontSize: 12, color: '#666', lineHeight: 1.5, fontWeight: 500 }}>
             {narrative.line2}
-          </div>
-
-          {/* Bottom row: streak + combo inline */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 12 }}>
-            {effectiveStreak > 0 && (
-              <a href="/#/history" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 5 }}>
-                <span style={{ display: 'inline-flex', alignItems: 'center', animation: 'flame-idle 2.4s ease-in-out infinite' }}><FireIcon size={13} color="#E8660C" /></span>
-                <span style={{ fontSize: 12, fontWeight: 700, color: '#C8A24C' }}>{effectiveStreak}-week streak</span>
-                {streakFreezeActive && <span style={{ display: 'inline-flex', alignItems: 'center' }}><ShieldIcon size={11} color="#C8A24C" /></span>}
-              </a>
-            )}
-            {comboMultiplier > 1 && (
-              <div style={{
-                display: 'flex', alignItems: 'center', gap: 4,
-                padding: '2px 8px', borderRadius: 999,
-                background: comboMultiplier >= 3 ? 'rgba(249,115,22,0.15)' : 'rgba(200,162,76,0.1)',
-                border: `1px solid ${comboMultiplier >= 3 ? 'rgba(249,115,22,0.3)' : 'rgba(200,162,76,0.2)'}`,
-              }}>
-                <span style={{ fontSize: 10, fontWeight: 800, color: comboMultiplier >= 3 ? '#F97316' : '#C8A24C' }}>
-                  {comboMultiplier}× COMBO
-                </span>
-              </div>
-            )}
-            {trainingSeasonData && (
-              <div style={{ marginLeft: 'auto', textAlign: 'right' }}>
-                <div style={{ fontSize: 9, color: '#444', textTransform: 'uppercase', letterSpacing: '0.1em' }}>{trainingSeasonData.monthName}</div>
-                <div style={{ fontSize: 12, fontWeight: 800, color: '#F0F0F0' }}>
-                  {trainingSeasonData.thisMonthClasses}<span style={{ fontSize: 9, color: '#555', fontWeight: 400 }}>/{trainingSeasonData.goalClasses}</span>
-                </div>
-              </div>
-            )}
           </div>
         </div>
       </div>
@@ -1575,6 +1591,9 @@ export default function HomePage() {
                   </span>
                   <span style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.12em', textTransform: 'uppercase', color: headerColor }}>
                     This Week
+                  </span>
+                  <span style={{ fontSize: 11, fontWeight: 900, color: headerColor, marginLeft: 2 }}>
+                    {trainedCount}<span style={{ fontWeight: 400, color: '#444', fontSize: 10 }}>/7</span>
                   </span>
                   <button
                     type="button"
@@ -1764,6 +1783,50 @@ export default function HomePage() {
                 })}
               </div>
 
+              {/* Milestone track — 3, 5, 7 checkpoints */}
+              <div style={{ display: 'flex', alignItems: 'center', marginTop: 14, gap: 0 }}>
+                {[
+                  { at: 3, reward: '1.5× XP Combo', color: '#F97316', icon: <FireIcon size={10} color="#F97316" /> },
+                  { at: 5, reward: '2× Perfect Week', color: '#FFD700', icon: <TrophyIcon size={10} color="#FFD700" /> },
+                  { at: 7, reward: '3× Legend Week', color: '#A855F7', icon: <TrophyIcon size={10} color="#A855F7" /> },
+                ].map((ms, idx) => {
+                  const prevThreshold = idx === 0 ? 0 : [0, 3, 5][idx];
+                  const reached = trainedCount >= ms.at;
+                  const isNext = !reached && trainedCount >= prevThreshold;
+                  return (
+                    <React.Fragment key={ms.at}>
+                      <div style={{ flex: 1, height: 2, background: reached ? ms.color : '#1A1A1A', transition: 'background 600ms ease' }} />
+                      <div
+                        onClick={(e) => { e.stopPropagation(); haptic(); setShowMilestoneInfo(true); }}
+                        style={{
+                          width: 38, height: 38, borderRadius: '50%', flexShrink: 0,
+                          background: reached ? `${ms.color}22` : '#0D0D0D',
+                          border: `2px solid ${reached ? ms.color : isNext ? ms.color + '55' : '#222'}`,
+                          display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 1,
+                          cursor: 'pointer',
+                          boxShadow: reached ? `0 0 12px ${ms.color}55` : isNext ? `0 0 6px ${ms.color}22` : 'none',
+                          animation: isNext ? 'xp-pulse 2s ease-in-out infinite' : 'none',
+                          transition: 'all 600ms ease',
+                        }}
+                      >
+                        {reached ? (
+                          <>
+                            {ms.icon}
+                            <span style={{ fontSize: 7, fontWeight: 800, color: ms.color, lineHeight: 1 }}>DONE</span>
+                          </>
+                        ) : (
+                          <>
+                            <span style={{ fontSize: 10, fontWeight: 900, color: isNext ? ms.color : '#333' }}>{ms.at}</span>
+                            <span style={{ fontSize: 7, color: '#333', lineHeight: 1 }}>cls</span>
+                          </>
+                        )}
+                      </div>
+                    </React.Fragment>
+                  );
+                })}
+                <div style={{ flex: 1, height: 2, background: trainedCount >= 7 ? '#A855F7' : '#1A1A1A' }} />
+              </div>
+
               {/* Progress bar showing path to perfect week */}
               <div style={{ marginTop: 14, height: 3, borderRadius: 2, background: '#111', overflow: 'hidden', position: 'relative' }}>
                 {/* Milestone markers */}
@@ -1856,7 +1919,7 @@ export default function HomePage() {
                   )}
                   <button
                     data-checkin-btn
-                    data-phase={checkinPhase}
+                    data-phase={alreadyCheckedIn ? 'done' : checkinPhase === 'success' ? 'success' : checkinPhase === 'pressing' ? 'pressing' : 'idle'}
                     onMouseDown={() => !alreadyCheckedIn && checkinPhase === 'idle' && setCheckinPhase('pressing')}
                     onTouchStart={() => !alreadyCheckedIn && checkinPhase === 'idle' && setCheckinPhase('pressing')}
                     onClick={() => {
