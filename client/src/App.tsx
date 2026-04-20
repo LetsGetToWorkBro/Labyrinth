@@ -1369,7 +1369,7 @@ function WaiverRedirect() {
 
 function AppShell() {
   const { isAuthenticated, isLoading, member } = useAuth();
-  const [location] = useHashLoc();
+  // location removed from AppShell — AppShell is outside Router, useHashLoc() crashes
   const [levelUpState, setLevelUpState] = useState<{ newLevel: number; prevLevel: number } | null>(null);
   const handleLevelUp = useCallback((newLevel: number, prevLevel: number) => {
     setLevelUpState({ newLevel, prevLevel });
@@ -1377,10 +1377,15 @@ function AppShell() {
 
   // ── Clear game-active attribute on any route change ──────────
   useEffect(() => {
-    if (!location.startsWith('/games')) {
-      document.body.removeAttribute('data-game-active');
-    }
-  }, [location]);
+    const handler = () => {
+      if (!window.location.hash.includes('/games')) {
+        document.body.removeAttribute('data-game-active');
+      }
+    };
+    window.addEventListener('hashchange', handler);
+    handler(); // run once on mount
+    return () => window.removeEventListener('hashchange', handler);
+  }, []);
 
   // ── Idle-prefetch top routes + preload sounds ────────────────
   useEffect(() => {
@@ -1440,30 +1445,26 @@ function AppShell() {
   }, []);
 
   // ── Page transition on route change ──────────────────────────
-  const prevLocation = useRef(location);
+  const prevHash = useRef(window.location.hash);
   useEffect(() => {
-    if (prevLocation.current === location) return;
+    const handler = () => {
+      const location = window.location.hash.replace(/^#/, '') || '/';
+      const prev = prevHash.current.replace(/^#/, '') || '/';
+      if (prev === location) return;
 
-    // Determine direction
-    const tabPaths = ['/', '/chat', '/achievements', '/schedule', '/more', '/games', '/leaderboard', '/live', '/history'];
-    const isTab = tabPaths.includes(location) && tabPaths.includes(prevLocation.current);
+      // Determine direction
+      const tabPaths = ['/', '/chat', '/achievements', '/schedule', '/more', '/games', '/leaderboard', '/live', '/history'];
+      const isTab = tabPaths.includes(location) && tabPaths.includes(prev);
+      const fromIdx = tabPaths.indexOf(prev);
+      const toIdx = tabPaths.indexOf(location);
+      const direction = isTab ? (toIdx > fromIdx ? 'left' : 'right') : 'up';
 
-    const content = document.querySelector('.app-content');
-    if (content) {
-      const dir = navDirection.current;
-      const cls = isTab ? 'page-enter-tab'
-        : dir === 'back' ? 'page-enter-back'
-        : 'page-enter-forward';
-      // Reset direction after use
-      navDirection.current = 'forward';
-      content.classList.remove('page-enter-forward', 'page-enter-back', 'page-enter-tab');
-      content.classList.add(cls);
-      const cleanup = () => content.classList.remove(cls);
-      content.addEventListener('animationend', cleanup, { once: true });
-    }
-
-    prevLocation.current = location;
-  }, [location]);
+      document.body.dataset.navDir = direction;
+      prevHash.current = window.location.hash;
+    };
+    window.addEventListener('hashchange', handler);
+    return () => window.removeEventListener('hashchange', handler);
+  }, []);
 
   // ── Global Biometric / Passkey setup prompt ───────────────────
   const [showPasskeySetup, setShowPasskeySetup] = useState(false);
@@ -1490,7 +1491,7 @@ function AppShell() {
   const onboardingDoneRef = useRef<boolean>(!!(() => { try { return localStorage.getItem('lbjj_onboarding_done'); } catch { return null; } })());
 
   // Reset password page is public — show without auth check
-  if (location.startsWith('/reset')) {
+  if (window.location.hash.replace(/^#/, '').startsWith('/reset')) {
     return (
       <div className="app-shell">
         <ResetPasswordPage />
