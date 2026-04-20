@@ -158,11 +158,14 @@ export default function OnboardingPage() {
   const [tabsVisible, setTabsVisible] = useState<boolean[]>([false, false, false, false, false]);
   const [ctaTapped, setCtaTapped] = useState(false);
   const [completing, setCompleting] = useState(false);
+  const navigatingRef = useRef(false); // prevent double-tap crash
 
   // Already completed — render nothing (but not mid-completion)
   if (!completing && localStorage.getItem(ONBOARDING_KEY)) return null;
 
   const complete = () => {
+    if (navigatingRef.current) return;
+    navigatingRef.current = true;
     localStorage.setItem(ONBOARDING_KEY, "1");
     setCompleting(true);
     // Brave-compatible navigation: set hash directly, then reload
@@ -181,6 +184,8 @@ export default function OnboardingPage() {
   };
 
   const skip = () => {
+    if (navigatingRef.current) return;
+    navigatingRef.current = true;
     localStorage.setItem(ONBOARDING_KEY, "1");
     setCompleting(true);
     setTimeout(() => {
@@ -195,8 +200,8 @@ export default function OnboardingPage() {
     }, 50);
   };
 
-  const next = () => setStep((s) => Math.min(s + 1, 5));
-  const back = () => setStep((s) => Math.max(s - 1, 0));
+  const next = () => { if (!completing) setStep((s) => Math.min(s + 1, 5)); };
+  const back = () => { if (!completing) setStep((s) => Math.max(s - 1, 0)); };
 
   const firstName = member?.name?.split(" ")[0] || "Warrior";
   const belt = member?.belt || "white";
@@ -237,6 +242,7 @@ export default function OnboardingPage() {
   const TOTAL_STEPS = 6;
 
   const handleFinalCTA = () => {
+    if (navigatingRef.current) return;
     setCtaTapped(true);
     // Haptic — single strong pulse
     try { navigator.vibrate?.(80); } catch {}
@@ -255,6 +261,7 @@ export default function OnboardingPage() {
         inset: 0,
         zIndex: 9999,
         background: "#0A0A0A",
+        pointerEvents: completing ? 'none' : undefined,
         display: "flex",
         flexDirection: "column",
         alignItems: "center",
