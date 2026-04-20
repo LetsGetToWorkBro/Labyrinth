@@ -2119,13 +2119,14 @@ export default function HomePage() {
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 <div style={{
-                  width: 32, height: 32, borderRadius: '50%',
-                  background: 'radial-gradient(circle at 35% 30%, #FFD700, #C8A24C 50%, #6B4A00)',
-                  boxShadow: '0 0 12px rgba(200,162,76,0.6), inset 0 1px 0 rgba(255,255,255,0.3)',
+                  width: 36, height: 36, borderRadius: 10,
+                  background: 'linear-gradient(135deg, #FFD700 0%, #C8A24C 60%, #6B4A00 100%)',
+                  boxShadow: '0 0 12px rgba(200,162,76,0.5)',
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  fontSize: 12, fontWeight: 900, color: '#000',
+                  flexDirection: 'column',
                 }}>
-                  {getActualLevel(memberXP)}
+                  <span style={{ fontSize: 8, fontWeight: 700, color: 'rgba(0,0,0,0.6)', letterSpacing: '0.05em', lineHeight: 1 }}>LV</span>
+                  <span style={{ fontSize: 14, fontWeight: 900, color: '#000', lineHeight: 1 }}>{getActualLevel(memberXP)}</span>
                 </div>
                 <div>
                   <div style={{ fontSize: 13, fontWeight: 800, color: '#F0F0F0' }}>{getLevelFromXP(memberXP).title}</div>

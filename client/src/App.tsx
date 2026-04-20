@@ -1359,8 +1359,11 @@ function BeltMilestoneOverlay({ badge, onDismiss }: { badge: any; onDismiss: () 
 }
 
 function WaiverRedirect() {
-  const [, navigate] = useHashLoc();
-  useEffect(() => { navigate('/waiver'); }, []);
+  // Use window.location directly — this renders outside the Router context
+  // so wouter hooks (useHashLoc/useLocation) would throw
+  useEffect(() => {
+    window.location.hash = '#/waiver';
+  }, []);
   return null;
 }
 
