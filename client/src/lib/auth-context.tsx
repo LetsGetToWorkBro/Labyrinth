@@ -176,15 +176,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             localStorage.setItem('lbjj_token_created', Date.now().toString());
 
             // Background re-validate against GAS (non-blocking)
-            gasCall('memberGetProfile', { token: savedToken }).then((res: any) => {
+            // NEVER log out here — biometric already proved identity.
+            // If token is stale, try to renew it silently instead.
+            gasCall('memberGetProfile', { token: savedToken }).then(async (res: any) => {
               if (res?.success === false && !res?.member) {
-                // Token expired — log out
-                clearAuth();
-                localStorage.removeItem('lbjj_session_token');
-                localStorage.removeItem('lbjj_member_profile');
-                setIsAuthenticated(false);
-                setMemberState(null);
-                setFamilyMembers([]);
+                // Token stale — try silent renewal instead of logout
+                try {
+                  const renewal = await gasCall('memberRenewToken', { token: savedToken, email });
+                  if (renewal?.success && renewal?.token) {
+                    localStorage.setItem('lbjj_session_token', renewal.token);
+                    localStorage.setItem('lbjj_token_created', Date.now().toString());
+                    setToken(renewal.token);
+                    const raw = renewal.member;
+                    if (raw && typeof raw === 'object' && raw.name) {
+                      const fresh = normalizeAdminRole(raw);
+                      setMemberState(fresh);
+                      setMemberData(fresh);
+                      localStorage.setItem('lbjj_member_profile', JSON.stringify(sanitizeProfileForStorage(fresh)));
+                      if (fresh.familyMembers) setFamilyMembers(fresh.familyMembers);
+                    }
+                  }
+                  // If renewal also fails — keep cached state, don't boot the user
+                } catch { /* keep cached state */ }
               } else {
                 const raw = res?.member || res;
                 if (raw && typeof raw === 'object' && raw.name) {
