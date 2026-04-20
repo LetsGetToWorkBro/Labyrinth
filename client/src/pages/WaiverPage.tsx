@@ -181,7 +181,13 @@ export default function WaiverPage() {
       } catch {}
       clearCanvas();
       setConfirmed(false);
-      setTimeout(() => refreshProfile().catch(() => {}), 1500);
+      // Immediately patch cached profile so waiver gate doesn't re-fire
+    try {
+      const cached = JSON.parse(localStorage.getItem('lbjj_member_profile') || '{}');
+      cached.waiverSigned = true;
+      localStorage.setItem('lbjj_member_profile', JSON.stringify(cached));
+    } catch {}
+    setTimeout(() => refreshProfile().catch(() => {}), 1500);
     } catch (err: any) {
       setSignError("Connection error. Please check your internet and try again.");
     }

@@ -176,7 +176,9 @@ export default function LoginPage() {
   const supportsPasskey = typeof window !== 'undefined' && !!window.PublicKeyCredential;
   const [hasPasskey] = useState(() => localStorage.getItem('lbjj_passkey_registered') === 'true');
   const isNativePlatform = typeof (window as any).Capacitor !== 'undefined' && (window as any).Capacitor?.isNativePlatform?.();
-  const hasTruePasskey = hasPasskey && (isNativePlatform || !!localStorage.getItem('lbjj_passkey_id'));
+  // Show biometric button if registered via ANY method (native OR WebAuthn)
+  // Don't require passkey_id — native registrations don't store it
+  const hasTruePasskey = hasPasskey;
   const [passkeyLoading, setPasskeyLoading] = useState(false);
   const [showPasskeyPrompt, setShowPasskeyPrompt] = useState(false);
   const [passkeyRegistering, setPasskeyRegistering] = useState(false);
@@ -234,22 +236,18 @@ export default function LoginPage() {
         setPasskeyLoading(false);
         return;
       }
-      // Native or WebAuthn proved identity — restore session
+      // Biometric identity confirmed — try to restore session
       const savedEmail = localStorage.getItem('lbjj_passkey_email') || '';
-      if (savedEmail) {
-        try {
-          const loginResult = await loginWithPasskey(savedEmail);
-          if (!loginResult.success) {
-            setEmail(savedEmail);
-            setShowPasswordForm(true);
-            setLoginError(loginResult.error || "Session expired. Please sign in with your password.");
-          }
-        } catch {
-          setEmail(savedEmail);
-          setShowPasswordForm(true);
-        }
-      } else {
+      const loginResult = await loginWithPasskey(savedEmail);
+      if (!loginResult.success) {
+        // Session restore failed — pre-fill email so user only needs password
+        if (savedEmail) setEmail(savedEmail);
         setShowPasswordForm(true);
+        // Don't show error — just let them enter password with email pre-filled
+        if (loginResult.error?.toLowerCase().includes('expired') ||
+            loginResult.error?.toLowerCase().includes('connection')) {
+          setLoginError(loginResult.error);
+        }
       }
     } catch {
       // Any unexpected error — fall back to password form silently

@@ -1518,11 +1518,21 @@ function AppShell() {
   const WAIVER_EXEMPT = ['/waiver', '/book', '/reset', '/account'];
   // Hash is "#/path" — strip the leading "#" to get "/path"
   const currentPath = typeof window !== 'undefined' ? (window.location.hash.replace(/^#/, '') || '/') : '/';
-  // Waiver gate — only redirect if GAS explicitly confirmed waiverSigned: false
-  // (not if it's undefined/null — that means the Waivers sheet lookup failed)
-  const waiverValue = (member as any)?.waiverSigned;
+  // Waiver gate — read from localStorage cache at mount time only.
+  // Never use live member state for this — background GAS refresh can return
+  // stale/false waiverSigned and cause a redirect loop mid-session.
+  const waiverSignedCached = (() => {
+    try {
+      const cached = JSON.parse(localStorage.getItem('lbjj_member_profile') || '{}');
+      const v = cached?.waiverSigned;
+      // coerce: treat undefined/null/missing as "signed" (benefit of the doubt)
+      if (v === undefined || v === null || v === '') return true;
+      if (v === false || v === 'false' || v === '0' || v === 'no') return false;
+      return true; // any truthy value = signed
+    } catch { return true; }
+  })();
   const needsWaiver = onboardingDone && member &&
-    waiverValue === false &&           // must be explicit false, not undefined/null/missing
+    !waiverSignedCached &&
     !WAIVER_EXEMPT.some(p => currentPath.startsWith(p));
 
   return (
