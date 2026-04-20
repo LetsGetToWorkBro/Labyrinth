@@ -326,7 +326,7 @@ function AccountPage() {
   const [walletLoading, setWalletLoading] = useState(false);
   const [walletError, setWalletError] = useState('');
   const [googleWalletLoading, setGoogleWalletLoading] = useState(false);
-  const [, navigate] = useHashLoc();
+  const navigate = (path: string) => { window.location.hash = path.startsWith('#') ? path : '#' + path; };
 
   // Profile picture state
   const [profilePic, setProfilePic] = useState<string | null>(() => {
@@ -1145,7 +1145,7 @@ function ResetPasswordPage() {
   const [loading, setLoading] = useState(false);
   const [done, setDone] = useState(false);
   const [error, setError] = useState('');
-  const [, navigate] = useHashLoc();
+  const navigate = (path: string) => { window.location.hash = path.startsWith('#') ? path : '#' + path; };
 
   // Extract token from hash: /#/reset?token=xxx
   const token = new URLSearchParams(window.location.hash.split('?')[1] || '').get('token') || '';
@@ -1223,7 +1223,7 @@ function ResetPasswordPage() {
 
 function AdminGuard() {
   const { isAuthenticated, member } = useAuth();
-  const [, navigate] = useHashLoc();
+  const navigate = (path: string) => { window.location.hash = path.startsWith('#') ? path : '#' + path; };
 
   const isAdmin = isAuthenticated && !!(member?.isAdmin ||
     ['owner', 'admin', 'coach', 'instructor'].includes((member?.role || '').toLowerCase()));
@@ -1238,7 +1238,7 @@ function AdminGuard() {
 
 function AdminShortcut() {
   const { isAdmin, isAuthenticated } = useAuth();
-  const [, navigate] = useHashLoc();
+  const navigate = (path: string) => { window.location.hash = path.startsWith('#') ? path : '#' + path; };
   const handleKey = useCallback((e: KeyboardEvent) => {
     if (e.ctrlKey && e.shiftKey && e.key === "A") {
       e.preventDefault();
@@ -1303,7 +1303,7 @@ async function registerPasskeyGlobal(email: string): Promise<boolean> {
 const BELT_MILESTONE_KEYS = ['mat_warrior', 'mat_legend', 'loyal_1yr', 'loyal_2yr', 'streak_30', 'podium', 'century_club'];
 
 function BeltMilestoneOverlay({ badge, onDismiss }: { badge: any; onDismiss: () => void }) {
-  const [, navigate] = useHashLoc();
+  const navigate = (path: string) => { window.location.hash = path.startsWith('#') ? path : '#' + path; };
   const overlayRef = useRef<HTMLDivElement>(null);
   const sweepRef = useRef<HTMLDivElement>(null);
   const badgeRef = useRef<HTMLDivElement>(null);
