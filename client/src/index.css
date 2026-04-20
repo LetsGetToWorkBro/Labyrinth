@@ -912,7 +912,7 @@ select {
   min-height: 44px;
 }
 
-button,
+button:not([role="switch"]):not([role="checkbox"]):not([data-toggle]):not(.toggle-btn),
 [role="button"],
 a.btn {
   min-height: 44px;
