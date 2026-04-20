@@ -912,11 +912,13 @@ select {
   min-height: 44px;
 }
 
-button:not([role="switch"]):not([role="checkbox"]):not([data-toggle]):not(.toggle-btn),
+button:not([role="switch"]):not([role="checkbox"]):not([data-toggle]):not(.toggle-btn):not(.btn-icon-sm),
 [role="button"],
 a.btn {
   min-height: 44px;
 }
+/* Small icon buttons — bypass min-height tap target */
+.btn-icon-sm { min-height: unset !important; }
 
 /* P-07: Haptic feedback is done in JS, no CSS needed */
 

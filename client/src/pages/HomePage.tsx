@@ -1458,7 +1458,7 @@ export default function HomePage() {
       {/* ════════════════════════════════════════════════════
           NARRATIVE HERO — "Where am I right now?"
           ════════════════════════════════════════════════════ */}
-      <div style={{ margin: '0 20px 18px', cursor: 'pointer' }} className="stagger-child" onClick={() => { haptic(); isGameDay ? setShowGameDayInfo(true) : setShowNarrativeInfo(true); }}>
+      <div style={{ margin: '0 20px 18px', cursor: 'pointer' }} className="stagger-child" onClick={() => { haptic(); setShowNarrativeInfo(true); }}>
         <div style={{
           background: isGameDay
             ? 'linear-gradient(135deg, #141008, #1A1500)'
@@ -1481,14 +1481,14 @@ export default function HomePage() {
           {/* Accent chip */}
           {narrative.accent && (
             <div
-              onClick={isGameDay ? (e) => { e.stopPropagation(); haptic(); setShowGameDayInfo(true); } : undefined}
+              onClick={(e) => { e.stopPropagation(); haptic(); isGameDay ? setShowGameDayInfo(true) : setShowNarrativeInfo(true); }}
               style={{
               display: 'inline-flex', alignItems: 'center', gap: 5,
               padding: '3px 9px', borderRadius: 999, marginBottom: 10,
               background: isGameDay ? 'rgba(200,162,76,0.15)' : isPerfectWeek ? 'rgba(255,215,0,0.12)' : 'rgba(200,162,76,0.1)',
               border: `1px solid ${isGameDay ? 'rgba(200,162,76,0.3)' : isPerfectWeek ? 'rgba(255,215,0,0.25)' : 'rgba(200,162,76,0.2)'}`,
               animation: isGameDay || isPerfectWeek ? 'xp-pulse 2s ease-in-out infinite' : undefined,
-              cursor: isGameDay ? 'pointer' : 'default',
+              cursor: 'pointer',
             }}>
               <span style={{ display: 'inline-flex', alignItems: 'center' }}>{isGameDay ? <SwordsIcon size={9} /> : isPerfectWeek ? <TrophyIcon size={9} color="#FFD700" /> : comboMultiplier >= 3 ? <FireIcon size={9} color="#F97316" /> : <BoltIcon size={9} />}</span>
               <span style={{ fontSize: 9, fontWeight: 800, letterSpacing: '0.12em', color: isGameDay ? '#C8A24C' : isPerfectWeek ? '#FFD700' : '#C8A24C' }}>
@@ -1599,12 +1599,14 @@ export default function HomePage() {
                     type="button"
                     onClick={(e) => { e.stopPropagation(); haptic(); setShowWeekStats(true); }}
                     aria-label="Your week stats"
+                    className="btn-icon-sm"
                     style={{
-                      width: 18, height: 18, padding: 0, borderRadius: '50%',
+                      width: 18, height: 18, minHeight: 'unset', maxHeight: 18,
+                      padding: 0, borderRadius: '50%', flexShrink: 0,
                       background: 'rgba(200,162,76,0.08)', border: '1px solid rgba(200,162,76,0.25)',
-                      color: '#C8A24C', fontSize: 10, fontWeight: 800, lineHeight: 1,
+                      color: '#C8A24C', fontSize: 10, fontWeight: 800, lineHeight: '18px',
                       display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                      cursor: 'pointer', marginLeft: 4,
+                      cursor: 'pointer', marginLeft: 4, boxSizing: 'border-box',
                     }}
                   >i</button>
                   {/* Daily streak power badge */}
@@ -1786,22 +1788,24 @@ export default function HomePage() {
               {/* Milestone track — 3, 5, 7 checkpoints */}
               <div style={{ display: 'flex', alignItems: 'center', marginTop: 14, gap: 0 }}>
                 {[
-                  { at: 3, reward: '1.5× XP Combo', color: '#F97316', icon: <FireIcon size={10} color="#F97316" /> },
-                  { at: 5, reward: '2× Perfect Week', color: '#FFD700', icon: <TrophyIcon size={10} color="#FFD700" /> },
-                  { at: 7, reward: '3× Legend Week', color: '#A855F7', icon: <TrophyIcon size={10} color="#A855F7" /> },
+                  { at: 3, label: '1.5×', reward: 'Combo', color: '#F97316', icon: <FireIcon size={10} color="#F97316" /> },
+                  { at: 5, label: '2×', reward: 'Perfect Week', color: '#FFD700', icon: <TrophyIcon size={10} color="#FFD700" /> },
+                  { at: 7, label: '3×', reward: 'Legend', color: '#A855F7', icon: <TrophyIcon size={10} color="#A855F7" /> },
                 ].map((ms, idx) => {
                   const prevThreshold = idx === 0 ? 0 : [0, 3, 5][idx];
                   const reached = trainedCount >= ms.at;
                   const isNext = !reached && trainedCount >= prevThreshold;
                   return (
                     <React.Fragment key={ms.at}>
-                      <div style={{ flex: 1, height: 2, background: reached ? ms.color : '#1A1A1A', transition: 'background 600ms ease' }} />
+                      <div style={{ flex: 1, height: 2, background: reached ? ms.color : '#2A2A2A', transition: 'background 600ms ease' }} />
+                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3 }}>
+                      <span style={{ fontSize: 9, fontWeight: 800, color: reached ? ms.color : isNext ? ms.color + 'CC' : '#444', letterSpacing: '0.04em' }}>{(ms as any).label}XP</span>
                       <div
                         onClick={(e) => { e.stopPropagation(); haptic(); setShowMilestoneInfo(true); }}
                         style={{
                           width: 38, height: 38, borderRadius: '50%', flexShrink: 0,
                           background: reached ? `${ms.color}22` : '#0D0D0D',
-                          border: `2px solid ${reached ? ms.color : isNext ? ms.color + '55' : '#222'}`,
+                          border: `2px solid ${reached ? ms.color : isNext ? ms.color + 'AA' : '#3A3A3A'}`,
                           display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 1,
                           cursor: 'pointer',
                           boxShadow: reached ? `0 0 12px ${ms.color}55` : isNext ? `0 0 6px ${ms.color}22` : 'none',
@@ -1816,15 +1820,16 @@ export default function HomePage() {
                           </>
                         ) : (
                           <>
-                            <span style={{ fontSize: 10, fontWeight: 900, color: isNext ? ms.color : '#333' }}>{ms.at}</span>
-                            <span style={{ fontSize: 7, color: '#333', lineHeight: 1 }}>cls</span>
+                            <span style={{ fontSize: 11, fontWeight: 900, color: isNext ? ms.color : '#666' }}>{ms.at}</span>
+                            <span style={{ fontSize: 7, color: isNext ? ms.color + 'AA' : '#555', lineHeight: 1, letterSpacing: '0.04em' }}>cls</span>
                           </>
                         )}
+                      </div>
                       </div>
                     </React.Fragment>
                   );
                 })}
-                <div style={{ flex: 1, height: 2, background: trainedCount >= 7 ? '#A855F7' : '#1A1A1A' }} />
+                <div style={{ flex: 1, height: 2, background: trainedCount >= 7 ? '#A855F7' : '#2A2A2A' }} />
               </div>
 
               {/* Progress bar showing path to perfect week */}
