@@ -1514,26 +1514,10 @@ function AppShell() {
   const GOLD = "#C8A24C";
   const onboardingDone = onboardingDoneRef.current;
 
-  // Waiver gate — redirect to /waiver if not signed (allow exempt paths)
-  const WAIVER_EXEMPT = ['/waiver', '/book', '/reset', '/account'];
-  // Hash is "#/path" — strip the leading "#" to get "/path"
-  const currentPath = typeof window !== 'undefined' ? (window.location.hash.replace(/^#/, '') || '/') : '/';
-  // Waiver gate — read from localStorage cache at mount time only.
-  // Never use live member state for this — background GAS refresh can return
-  // stale/false waiverSigned and cause a redirect loop mid-session.
-  const waiverSignedCached = (() => {
-    try {
-      const cached = JSON.parse(localStorage.getItem('lbjj_member_profile') || '{}');
-      const v = cached?.waiverSigned;
-      // coerce: treat undefined/null/missing as "signed" (benefit of the doubt)
-      if (v === undefined || v === null || v === '') return true;
-      if (v === false || v === 'false' || v === '0' || v === 'no') return false;
-      return true; // any truthy value = signed
-    } catch { return true; }
-  })();
-  const needsWaiver = onboardingDone && member &&
-    !waiverSignedCached &&
-    !WAIVER_EXEMPT.some(p => currentPath.startsWith(p));
+  // Waiver gate — DISABLED until GAS waiverSigned field is verified reliable.
+  // The WaiverPage remains accessible via /#/waiver for members who need to sign.
+  // Re-enable once confirmed waiverSigned returns true correctly for signed members.
+  const needsWaiver = false;
 
   return (
     <div className="app-shell">
