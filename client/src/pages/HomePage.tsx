@@ -1471,6 +1471,43 @@ export default function HomePage() {
         }
       />
 
+      {/* Warning banners */}
+      {hasWarnings && (
+        <div className="mx-5 mb-4 space-y-2">
+          {!member.waiverSigned && <WarningBanner text="Liability waiver not signed" action="Sign Now" href="/#/waiver" />}
+          {!member.agreementSigned && <WarningBanner text="Membership agreement not signed" action="Sign Now" href="/#/waiver" />}
+        </div>
+      )}
+
+      {/* Pinned Announcement */}
+      {pinnedAnnouncement && (
+        <div className="mx-5 mb-4 stagger-child">
+          <div style={{ background: '#111', borderRadius: 14, border: '1px solid #1A1A1A', padding: '12px 14px', borderLeft: '3px solid #C8A24C' }}>
+            <div style={{ fontSize: 10, fontWeight: 700, color: '#C8A24C', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 6, display: 'flex', alignItems: 'center', gap: 5 }}>
+                <Megaphone size={11} color="#C8A24C" aria-hidden="true" />
+                Announcement
+              </div>
+            <div style={{ fontSize: 13, color: '#CCC', lineHeight: 1.5 }}>{pinnedAnnouncement.message}</div>
+          </div>
+        </div>
+      )}
+
+      {/* M5: Tournament Countdown (near-term) */}
+      {tournamentData && daysUntilTournament !== null && daysUntilTournament <= 30 && !nextTournament && (
+        <div style={{ margin: '0 20px 12px', background: '#0D0D0D', border: '1px solid #C8A24C25', borderRadius: 14, padding: '14px 16px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div>
+              <div style={{ fontSize: 9, color: '#C8A24C', letterSpacing: '0.12em', textTransform: 'uppercase' }}>Next Tournament</div>
+              <div style={{ fontSize: 15, fontWeight: 800, color: '#F0F0F0', marginTop: 2 }}>{tournamentData.name}</div>
+            </div>
+            <div style={{ textAlign: 'right' }}>
+              <div style={{ fontSize: 28, fontWeight: 900, color: '#FFD700' }}>{daysUntilTournament}</div>
+              <div style={{ fontSize: 9, color: '#555', textTransform: 'uppercase' }}>Days Out</div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* ════════════════════════════════════════════════════
           NARRATIVE HERO — "Where am I right now?"
           ════════════════════════════════════════════════════ */}
@@ -1542,6 +1579,158 @@ export default function HomePage() {
           </div>
         </a>
       )}
+
+      {/* ════════════════════════════════════════════════════
+          NEXT CLASS / GAME DAY CARD
+          ════════════════════════════════════════════════════ */}
+      {nextClass && (
+        <div className="mx-5 mb-4 stagger-child" data-card-interactive="true">
+          <div style={{
+            background: isGameDay ? 'linear-gradient(135deg, #141008, #1A1402)' : '#141414',
+            border: isGameDay ? '1px solid rgba(200,162,76,0.4)' : '1px solid #1A1A1A',
+            borderLeft: `3px solid ${isGameDay ? '#FFD700' : '#C8A24C'}`,
+            borderRadius: 14,
+            padding: isGameDay ? '16px 18px' : '14px 16px',
+            display: 'flex', alignItems: 'center', gap: 12,
+            boxShadow: isGameDay ? '0 0 24px rgba(200,162,76,0.1)' : 'none',
+          }}>
+            <a href="/#/schedule" style={{ textDecoration: 'none', flex: 1 }}>
+              {isGameDay && (
+                <span className="gameday-label">
+                  <Sword size={12} color="#FFD700" className="gameday-sword" />
+                  GAME DAY
+                </span>
+              )}
+              <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', color: isGameDay ? '#C8A24C' : '#C8A24C', textTransform: 'uppercase' as const, marginBottom: 4 }}>
+                {isGameDay ? nextClass.name : 'Next Class'}
+              </div>
+              {!isGameDay && <div style={{ fontSize: 16, fontWeight: 700, color: '#F0F0F0', marginBottom: 2 }}>{nextClass.name}</div>}
+              <div style={{ fontSize: 12, color: '#666' }}>{nextClass.dayLabel} · {formatClassTime(nextClass.time)}</div>
+              {nextClass.instructor && <div style={{ fontSize: 11, color: '#555', marginTop: 1 }}>w/ {nextClass.instructor}</div>}
+              {timeUntilClass && (
+                <div className="next-class-countdown" style={{ color: isGameDay ? '#FFD700' : 'var(--lbj-gold)' }}>
+                  <ClockCountdownIcon size={12} color="currentColor" aria-hidden="true" />
+                  <span style={{ fontVariantNumeric: 'tabular-nums' }}>{timeUntilClass}</span>
+                </div>
+              )}
+            </a>
+            {nextClass.isToday && (() => {
+              const alreadyCheckedIn = checkedInClasses.includes(nextClass.name || '');
+              return (
+                <div style={{ position: 'relative' }}>
+                  {checkinPhase === 'success' && (
+                    <div style={{
+                      position: 'absolute', inset: 0, borderRadius: 10,
+                      background: 'linear-gradient(90deg, transparent 0%, rgba(200,162,76,0.3) 50%, transparent 100%)',
+                      backgroundSize: '200% 100%',
+                      animation: 'checkin-shimmer 600ms ease-out 400ms both',
+                      pointerEvents: 'none', zIndex: 1,
+                    }}/>
+                  )}
+                  <button
+                    data-checkin-btn
+                    data-phase={alreadyCheckedIn ? 'done' : checkinPhase === 'success' ? 'success' : checkinPhase === 'pressing' ? 'pressing' : 'idle'}
+                    onMouseDown={() => !alreadyCheckedIn && checkinPhase === 'idle' && setCheckinPhase('pressing')}
+                    onTouchStart={() => !alreadyCheckedIn && checkinPhase === 'idle' && setCheckinPhase('pressing')}
+                    onClick={() => {
+                      if (alreadyCheckedIn || (checkinPhase !== 'idle' && checkinPhase !== 'pressing')) return;
+
+                      // Early gate check
+                      const windowMinutes = parseInt(localStorage.getItem('lbjj_checkin_window_minutes') || '60');
+                      const gateEnabled = localStorage.getItem('lbjj_checkin_gate_enabled') !== 'false';
+
+                      if (gateEnabled && windowMinutes > 0 && nextClass.time) {
+                        const [timePart, meridiem] = (nextClass.time || '').split(' ');
+                        const [hourStr, minStr] = timePart.split(':');
+                        let hour = parseInt(hourStr);
+                        const min = parseInt(minStr || '0');
+                        if (meridiem?.toLowerCase() === 'pm' && hour !== 12) hour += 12;
+                        if (meridiem?.toLowerCase() === 'am' && hour === 12) hour = 0;
+                        const now = new Date();
+                        const classTime = new Date(now);
+                        classTime.setHours(hour, min, 0, 0);
+                        const minutesUntil = (classTime.getTime() - now.getTime()) / 60000;
+
+                        if (minutesUntil > windowMinutes) {
+                          const hrs = Math.floor(minutesUntil / 60);
+                          const mins = Math.round(minutesUntil % 60);
+                          const timeStr = hrs > 0 ? `${hrs}h ${mins}m` : `${mins} minutes`;
+                          setEarlyCheckInMsg(`Class starts in ${timeStr}. Check-in opens ${windowMinutes >= 60 ? (windowMinutes/60)+'h' : windowMinutes+'min'} before class.`);
+                          return;
+                        }
+                      }
+
+                      setCheckinPhase('pressing');
+                      handleHomeCheckIn(nextClass);
+                    }}
+                    disabled={alreadyCheckedIn || checkinPhase === 'success' || checkinPhase === 'done'}
+                    style={{
+                      flexShrink: 0,
+                      padding: isGameDay ? '14px 20px' : '10px 14px',
+                      borderRadius: isGameDay ? 14 : 10,
+                      background: alreadyCheckedIn || checkinPhase === 'success' || checkinPhase === 'done' ? '#333' : '#C8A24C',
+                      border: 'none',
+                      color: alreadyCheckedIn ? '#666' : '#000',
+                      fontWeight: 800, fontSize: isGameDay ? 15 : 13,
+                      cursor: alreadyCheckedIn ? 'default' : 'pointer',
+                      display: 'flex', flexDirection: 'row', alignItems: 'center', gap: 6,
+                      opacity: alreadyCheckedIn ? 0.6 : 1,
+                      transform: checkinPhase === 'pressing' ? 'scale(0.95) translateY(1px)' : checkinPhase === 'success' ? 'scale(1.02)' : 'scale(1)',
+                      transition: 'transform 120ms ease, background 200ms ease',
+                      boxShadow: isGameDay && !alreadyCheckedIn ? '0 0 20px rgba(200,162,76,0.5)' : 'none',
+                      animation: nextClass.isToday && !alreadyCheckedIn && checkinPhase === 'idle' ? (isGameDay ? 'checkin-pulse-game 2s ease-in-out infinite' : 'checkin-pulse 2s ease-in-out infinite') : undefined,
+                    }}
+                  >
+                    {checkinPhase === 'success' || checkinPhase === 'done' ? (
+                      <svg viewBox="0 0 24 24" width={16} height={16}>
+                        <polyline points="3,13 9,19 21,5" fill="none" stroke={alreadyCheckedIn ? '#666' : '#666'} strokeWidth={3} strokeLinecap="round" strokeLinejoin="round"
+                          style={{ strokeDasharray: 30, strokeDashoffset: 30, animation: 'checkin-draw 350ms ease-out 50ms forwards' }}/>
+                      </svg>
+                    ) : (
+                      <GiIcon size={14} color="currentColor" aria-hidden="true" />
+                    )}
+                    <span style={{ fontSize: 12, fontWeight: 700 }}>
+                      {alreadyCheckedIn || checkinPhase === 'done' ? 'Done' : checkinPhase === 'success' ? 'OSS!' : 'Check In'}
+                    </span>
+                  </button>
+                </div>
+              );
+            })()}
+          </div>
+        </div>
+      )}
+
+      {/* Early check-in gate message */}
+      {earlyCheckInMsg && (
+        <div className="early-checkin-msg" role="alert">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none"
+               stroke="var(--lbj-warning)" strokeWidth="1.5" strokeLinecap="round" aria-hidden="true" style={{ flexShrink: 0, marginTop: 1 }}>
+            <path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/>
+            <line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
+          </svg>
+          <span style={{ flex: 1 }}>{earlyCheckInMsg}</span>
+          <button onClick={() => setEarlyCheckInMsg('')} aria-label="Dismiss" style={{ background: 'none', border: 'none', color: 'var(--lbj-text-faint)', cursor: 'pointer', padding: 0, display: 'flex', alignItems: 'center' }}>
+            <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+              <path d="M18 6L6 18M6 6l12 12"/>
+            </svg>
+          </button>
+        </div>
+      )}
+
+      {/* Loading skeleton */}
+      {homeLoading ? (
+        <div className="px-5 space-y-3 mt-2">
+          <div style={{ display: 'flex', gap: 12 }}>
+            <StatSkeleton />
+            <StatSkeleton />
+          </div>
+          <ListSkeleton count={3} />
+          {homeLoadSlow && (
+            <p style={{ textAlign: 'center', color: '#666', fontSize: 12, marginTop: 8 }}>Still loading your dashboard…</p>
+          )}
+        </div>
+      ) : (
+      <>
 
       {/* ════════════════════════════════════════════════════
           WEEKLY XP MULTIPLIER WIDGET
@@ -1892,158 +2081,6 @@ export default function HomePage() {
       })()}
 
       {/* ════════════════════════════════════════════════════
-          NEXT CLASS / GAME DAY CARD
-          ════════════════════════════════════════════════════ */}
-      {nextClass && (
-        <div className="mx-5 mb-4 stagger-child" data-card-interactive="true">
-          <div style={{
-            background: isGameDay ? 'linear-gradient(135deg, #141008, #1A1402)' : '#141414',
-            border: isGameDay ? '1px solid rgba(200,162,76,0.4)' : '1px solid #1A1A1A',
-            borderLeft: `3px solid ${isGameDay ? '#FFD700' : '#C8A24C'}`,
-            borderRadius: 14,
-            padding: isGameDay ? '16px 18px' : '14px 16px',
-            display: 'flex', alignItems: 'center', gap: 12,
-            boxShadow: isGameDay ? '0 0 24px rgba(200,162,76,0.1)' : 'none',
-          }}>
-            <a href="/#/schedule" style={{ textDecoration: 'none', flex: 1 }}>
-              {isGameDay && (
-                <span className="gameday-label">
-                  <Sword size={12} color="#FFD700" className="gameday-sword" />
-                  GAME DAY
-                </span>
-              )}
-              <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', color: isGameDay ? '#C8A24C' : '#C8A24C', textTransform: 'uppercase' as const, marginBottom: 4 }}>
-                {isGameDay ? nextClass.name : 'Next Class'}
-              </div>
-              {!isGameDay && <div style={{ fontSize: 16, fontWeight: 700, color: '#F0F0F0', marginBottom: 2 }}>{nextClass.name}</div>}
-              <div style={{ fontSize: 12, color: '#666' }}>{nextClass.dayLabel} · {formatClassTime(nextClass.time)}</div>
-              {nextClass.instructor && <div style={{ fontSize: 11, color: '#555', marginTop: 1 }}>w/ {nextClass.instructor}</div>}
-              {timeUntilClass && (
-                <div className="next-class-countdown" style={{ color: isGameDay ? '#FFD700' : 'var(--lbj-gold)' }}>
-                  <ClockCountdownIcon size={12} color="currentColor" aria-hidden="true" />
-                  <span style={{ fontVariantNumeric: 'tabular-nums' }}>{timeUntilClass}</span>
-                </div>
-              )}
-            </a>
-            {nextClass.isToday && (() => {
-              const alreadyCheckedIn = checkedInClasses.includes(nextClass.name || '');
-              return (
-                <div style={{ position: 'relative' }}>
-                  {checkinPhase === 'success' && (
-                    <div style={{
-                      position: 'absolute', inset: 0, borderRadius: 10,
-                      background: 'linear-gradient(90deg, transparent 0%, rgba(200,162,76,0.3) 50%, transparent 100%)',
-                      backgroundSize: '200% 100%',
-                      animation: 'checkin-shimmer 600ms ease-out 400ms both',
-                      pointerEvents: 'none', zIndex: 1,
-                    }}/>
-                  )}
-                  <button
-                    data-checkin-btn
-                    data-phase={alreadyCheckedIn ? 'done' : checkinPhase === 'success' ? 'success' : checkinPhase === 'pressing' ? 'pressing' : 'idle'}
-                    onMouseDown={() => !alreadyCheckedIn && checkinPhase === 'idle' && setCheckinPhase('pressing')}
-                    onTouchStart={() => !alreadyCheckedIn && checkinPhase === 'idle' && setCheckinPhase('pressing')}
-                    onClick={() => {
-                      if (alreadyCheckedIn || (checkinPhase !== 'idle' && checkinPhase !== 'pressing')) return;
-
-                      // Early gate check
-                      const windowMinutes = parseInt(localStorage.getItem('lbjj_checkin_window_minutes') || '60');
-                      const gateEnabled = localStorage.getItem('lbjj_checkin_gate_enabled') !== 'false';
-
-                      if (gateEnabled && windowMinutes > 0 && nextClass.time) {
-                        const [timePart, meridiem] = (nextClass.time || '').split(' ');
-                        const [hourStr, minStr] = timePart.split(':');
-                        let hour = parseInt(hourStr);
-                        const min = parseInt(minStr || '0');
-                        if (meridiem?.toLowerCase() === 'pm' && hour !== 12) hour += 12;
-                        if (meridiem?.toLowerCase() === 'am' && hour === 12) hour = 0;
-                        const now = new Date();
-                        const classTime = new Date(now);
-                        classTime.setHours(hour, min, 0, 0);
-                        const minutesUntil = (classTime.getTime() - now.getTime()) / 60000;
-
-                        if (minutesUntil > windowMinutes) {
-                          const hrs = Math.floor(minutesUntil / 60);
-                          const mins = Math.round(minutesUntil % 60);
-                          const timeStr = hrs > 0 ? `${hrs}h ${mins}m` : `${mins} minutes`;
-                          setEarlyCheckInMsg(`Class starts in ${timeStr}. Check-in opens ${windowMinutes >= 60 ? (windowMinutes/60)+'h' : windowMinutes+'min'} before class.`);
-                          return;
-                        }
-                      }
-
-                      setCheckinPhase('pressing');
-                      handleHomeCheckIn(nextClass);
-                    }}
-                    disabled={alreadyCheckedIn || checkinPhase === 'success' || checkinPhase === 'done'}
-                    style={{
-                      flexShrink: 0,
-                      padding: isGameDay ? '14px 20px' : '10px 14px',
-                      borderRadius: isGameDay ? 14 : 10,
-                      background: alreadyCheckedIn || checkinPhase === 'success' || checkinPhase === 'done' ? '#333' : '#C8A24C',
-                      border: 'none',
-                      color: alreadyCheckedIn ? '#666' : '#000',
-                      fontWeight: 800, fontSize: isGameDay ? 15 : 13,
-                      cursor: alreadyCheckedIn ? 'default' : 'pointer',
-                      display: 'flex', flexDirection: 'row', alignItems: 'center', gap: 6,
-                      opacity: alreadyCheckedIn ? 0.6 : 1,
-                      transform: checkinPhase === 'pressing' ? 'scale(0.95) translateY(1px)' : checkinPhase === 'success' ? 'scale(1.02)' : 'scale(1)',
-                      transition: 'transform 120ms ease, background 200ms ease',
-                      boxShadow: isGameDay && !alreadyCheckedIn ? '0 0 20px rgba(200,162,76,0.5)' : 'none',
-                      animation: nextClass.isToday && !alreadyCheckedIn && checkinPhase === 'idle' ? (isGameDay ? 'checkin-pulse-game 2s ease-in-out infinite' : 'checkin-pulse 2s ease-in-out infinite') : undefined,
-                    }}
-                  >
-                    {checkinPhase === 'success' || checkinPhase === 'done' ? (
-                      <svg viewBox="0 0 24 24" width={16} height={16}>
-                        <polyline points="3,13 9,19 21,5" fill="none" stroke={alreadyCheckedIn ? '#666' : '#666'} strokeWidth={3} strokeLinecap="round" strokeLinejoin="round"
-                          style={{ strokeDasharray: 30, strokeDashoffset: 30, animation: 'checkin-draw 350ms ease-out 50ms forwards' }}/>
-                      </svg>
-                    ) : (
-                      <GiIcon size={14} color="currentColor" aria-hidden="true" />
-                    )}
-                    <span style={{ fontSize: 12, fontWeight: 700 }}>
-                      {alreadyCheckedIn || checkinPhase === 'done' ? 'Done' : checkinPhase === 'success' ? 'OSS!' : 'Check In'}
-                    </span>
-                  </button>
-                </div>
-              );
-            })()}
-          </div>
-        </div>
-      )}
-
-      {/* Early check-in gate message */}
-      {earlyCheckInMsg && (
-        <div className="early-checkin-msg" role="alert">
-          <svg viewBox="0 0 24 24" width="14" height="14" fill="none"
-               stroke="var(--lbj-warning)" strokeWidth="1.5" strokeLinecap="round" aria-hidden="true" style={{ flexShrink: 0, marginTop: 1 }}>
-            <path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/>
-            <line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
-          </svg>
-          <span style={{ flex: 1 }}>{earlyCheckInMsg}</span>
-          <button onClick={() => setEarlyCheckInMsg('')} aria-label="Dismiss" style={{ background: 'none', border: 'none', color: 'var(--lbj-text-faint)', cursor: 'pointer', padding: 0, display: 'flex', alignItems: 'center' }}>
-            <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-              <path d="M18 6L6 18M6 6l12 12"/>
-            </svg>
-          </button>
-        </div>
-      )}
-
-      {/* Loading skeleton */}
-      {homeLoading ? (
-        <div className="px-5 space-y-3 mt-2">
-          <div style={{ display: 'flex', gap: 12 }}>
-            <StatSkeleton />
-            <StatSkeleton />
-          </div>
-          <ListSkeleton count={3} />
-          {homeLoadSlow && (
-            <p style={{ textAlign: 'center', color: '#666', fontSize: 12, marginTop: 8 }}>Still loading your dashboard…</p>
-          )}
-        </div>
-      ) : (
-      <>
-
-      {/* ════════════════════════════════════════════════════
           STATS ROW — Streak + Total classes
           ════════════════════════════════════════════════════ */}
       <div className="stagger-child" style={{ display: 'flex', gap: 10, margin: '0 20px 16px' }}>
@@ -2097,91 +2134,6 @@ export default function HomePage() {
           <ChevronRight size={14} color="#555" strokeWidth={2} />
         </a>
       </div>
-
-      {/* ════════════════════════════════════════════════════
-          SOCIAL PRESSURE STRIP — Gym activity + Rival
-          ════════════════════════════════════════════════════ */}
-      {leaderboard.length > 0 && (
-        <div className="mx-5 mb-4 stagger-child">
-          <div style={{
-            background: '#0D0D0D',
-            border: '1px solid #1A1A1A',
-            borderRadius: 14,
-            overflow: 'hidden',
-          }}>
-            {/* Header */}
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px 8px', borderBottom: '1px solid #141414' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#4CAF80', animation: 'ring-pulse 2s ease-in-out infinite' }} />
-                <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#4CAF80' }}>Gym Activity</span>
-              </div>
-              <a href="/#/leaderboard" style={{ fontSize: 11, color: '#C8A24C', textDecoration: 'none', fontWeight: 600 }}>Full board →</a>
-            </div>
-
-            {/* Rival callout — if not #1 */}
-            {rival && myLeaderboardRank > 1 && (
-              <div className="reveal" style={{ padding: '10px 14px', borderBottom: '1px solid #111', background: 'rgba(224,85,85,0.04)' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                  <div style={{ fontSize: 9, fontWeight: 700, color: '#E05555', letterSpacing: '0.12em', textTransform: 'uppercase', flexShrink: 0 }}>Your Rival</div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 7, flex: 1 }}>
-                    <div style={{
-                      width: 24, height: 24, borderRadius: '50%',
-                      background: '#1A1A1A', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      fontSize: 11, fontWeight: 700, color: '#F0F0F0',
-                      border: `1.5px solid ${getBeltColor(rival.belt || 'white')}`,
-                      flexShrink: 0,
-                    }}>
-                      {(rival.name || '?').charAt(0)}
-                    </div>
-                    <span style={{ fontSize: 13, fontWeight: 600, color: '#CCC', flex: 1 }}>{rival.name}</span>
-                    <span style={{ fontSize: 11, color: '#E05555', fontWeight: 600 }}>
-                      +{Math.max(0, (rival.classCount || 0) - myClassCount)} classes ahead
-                    </span>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Top 3 compact */}
-            {leaderboard.slice(0, 3).map((entry, i) => {
-              const medalColors = ['#FFD700', '#C0C0C0', '#CD7F32'];
-              const isMe = entry.name === member?.name;
-              return (
-                <div key={i} style={{
-                  display: 'flex', alignItems: 'center', gap: 10, padding: '9px 14px',
-                  borderBottom: i < 2 ? '1px solid #111' : 'none',
-                  background: isMe ? 'rgba(200,162,76,0.06)' : 'transparent',
-                }}>
-                  <span style={{
-                    width: 18, height: 18, borderRadius: '50%', flexShrink: 0,
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    fontSize: 10, fontWeight: 900, color: medalColors[i],
-                    background: `${medalColors[i]}18`,
-                  }}>
-                    {i + 1}
-                  </span>
-                  <BeltIcon belt={entry.belt || 'white'} width={18} style={{ flexShrink: 0 }} />
-                  <span style={{ flex: 1, fontSize: 13, fontWeight: isMe ? 700 : 500, color: isMe ? '#C8A24C' : '#CCC' }}>
-                    {isMe ? 'You' : entry.name}
-                  </span>
-                  <span style={{ fontSize: 12, color: '#555', fontWeight: 600 }}>
-                    {entry.classCount || 0}<span style={{ fontSize: 9, color: '#333' }}> cls</span>
-                  </span>
-                </div>
-              );
-            })}
-
-            {/* My rank if not in top 3 */}
-            {myLeaderboardRank > 3 && (
-              <div style={{ padding: '8px 14px', borderTop: '1px solid #111', background: 'rgba(200,162,76,0.04)', display: 'flex', alignItems: 'center', gap: 10 }}>
-                <span style={{ fontSize: 9, color: '#555', letterSpacing: '0.06em' }}>YOUR RANK</span>
-                <span style={{ fontSize: 13, fontWeight: 700, color: '#C8A24C' }}>#{myLeaderboardRank}</span>
-                <span style={{ fontSize: 11, color: '#555' }}>· {myClassCount} classes</span>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
 
       {/* ════════════════════════════════════════════════════
           XP PROGRESS WIDGET
@@ -2391,6 +2343,91 @@ export default function HomePage() {
       )}
 
       {/* ════════════════════════════════════════════════════
+          SOCIAL PRESSURE STRIP — Gym activity + Rival
+          ════════════════════════════════════════════════════ */}
+      {leaderboard.length > 0 && (
+        <div className="mx-5 mb-4 stagger-child">
+          <div style={{
+            background: '#0D0D0D',
+            border: '1px solid #1A1A1A',
+            borderRadius: 14,
+            overflow: 'hidden',
+          }}>
+            {/* Header */}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px 8px', borderBottom: '1px solid #141414' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#4CAF80', animation: 'ring-pulse 2s ease-in-out infinite' }} />
+                <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#4CAF80' }}>Gym Activity</span>
+              </div>
+              <a href="/#/leaderboard" style={{ fontSize: 11, color: '#C8A24C', textDecoration: 'none', fontWeight: 600 }}>Full board →</a>
+            </div>
+
+            {/* Rival callout — if not #1 */}
+            {rival && myLeaderboardRank > 1 && (
+              <div className="reveal" style={{ padding: '10px 14px', borderBottom: '1px solid #111', background: 'rgba(224,85,85,0.04)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <div style={{ fontSize: 9, fontWeight: 700, color: '#E05555', letterSpacing: '0.12em', textTransform: 'uppercase', flexShrink: 0 }}>Your Rival</div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 7, flex: 1 }}>
+                    <div style={{
+                      width: 24, height: 24, borderRadius: '50%',
+                      background: '#1A1A1A', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      fontSize: 11, fontWeight: 700, color: '#F0F0F0',
+                      border: `1.5px solid ${getBeltColor(rival.belt || 'white')}`,
+                      flexShrink: 0,
+                    }}>
+                      {(rival.name || '?').charAt(0)}
+                    </div>
+                    <span style={{ fontSize: 13, fontWeight: 600, color: '#CCC', flex: 1 }}>{rival.name}</span>
+                    <span style={{ fontSize: 11, color: '#E05555', fontWeight: 600 }}>
+                      +{Math.max(0, (rival.classCount || 0) - myClassCount)} classes ahead
+                    </span>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Top 3 compact */}
+            {leaderboard.slice(0, 3).map((entry, i) => {
+              const medalColors = ['#FFD700', '#C0C0C0', '#CD7F32'];
+              const isMe = entry.name === member?.name;
+              return (
+                <div key={i} style={{
+                  display: 'flex', alignItems: 'center', gap: 10, padding: '9px 14px',
+                  borderBottom: i < 2 ? '1px solid #111' : 'none',
+                  background: isMe ? 'rgba(200,162,76,0.06)' : 'transparent',
+                }}>
+                  <span style={{
+                    width: 18, height: 18, borderRadius: '50%', flexShrink: 0,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    fontSize: 10, fontWeight: 900, color: medalColors[i],
+                    background: `${medalColors[i]}18`,
+                  }}>
+                    {i + 1}
+                  </span>
+                  <BeltIcon belt={entry.belt || 'white'} width={18} style={{ flexShrink: 0 }} />
+                  <span style={{ flex: 1, fontSize: 13, fontWeight: isMe ? 700 : 500, color: isMe ? '#C8A24C' : '#CCC' }}>
+                    {isMe ? 'You' : entry.name}
+                  </span>
+                  <span style={{ fontSize: 12, color: '#555', fontWeight: 600 }}>
+                    {entry.classCount || 0}<span style={{ fontSize: 9, color: '#333' }}> cls</span>
+                  </span>
+                </div>
+              );
+            })}
+
+            {/* My rank if not in top 3 */}
+            {myLeaderboardRank > 3 && (
+              <div style={{ padding: '8px 14px', borderTop: '1px solid #111', background: 'rgba(200,162,76,0.04)', display: 'flex', alignItems: 'center', gap: 10 }}>
+                <span style={{ fontSize: 9, color: '#555', letterSpacing: '0.06em' }}>YOUR RANK</span>
+                <span style={{ fontSize: 13, fontWeight: 700, color: '#C8A24C' }}>#{myLeaderboardRank}</span>
+                <span style={{ fontSize: 11, color: '#555' }}>· {myClassCount} classes</span>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ════════════════════════════════════════════════════
           TECHNIQUE OF THE DAY
           ════════════════════════════════════════════════════ */}
       {techniqueOfDay && (
@@ -2419,18 +2456,61 @@ export default function HomePage() {
       )}
 
       {/* ════════════════════════════════════════════════════
-          FLOW STATE / COMBO (ambient chips — only if notable)
+          TOURNAMENT COUNTDOWN
           ════════════════════════════════════════════════════ */}
-      {isFlowState && (
-        <div style={{ margin: '0 20px 10px', display: 'flex' }} className="stagger-child reveal">
-          <div style={{
-            display: 'inline-flex', alignItems: 'center', gap: 6,
-            padding: '4px 10px', borderRadius: 999,
-            background: 'rgba(100,150,255,0.1)', border: '1px solid rgba(100,150,255,0.2)',
-            animation: 'pulse 2s ease-in-out infinite',
-          }}>
-            <span style={{ display: 'inline-flex', alignItems: 'center' }}><BoltIcon size={12} color="rgba(130,170,255,0.9)" /></span>
-            <span style={{ fontSize: 10, fontWeight: 700, color: 'rgba(130,170,255,0.9)', letterSpacing: '0.1em', textTransform: 'uppercase' }}>Flow State</span>
+      {nextTournament && tournamentDaysUntil <= 60 && (
+        <div className="mx-5 mb-4 reveal">
+          <div style={{ background: 'linear-gradient(135deg, #141414, #1A1A0A)', border: '1px solid rgba(200,162,76,0.19)', borderRadius: 14, padding: 16, position: 'relative' }}>
+            <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', color: '#C8A24C', textTransform: 'uppercase' as const, marginBottom: 6, display: 'flex', alignItems: 'center', gap: 5 }}>
+                <Trophy size={11} color="#C8A24C" aria-hidden="true" />
+                Upcoming Tournament
+              </div>
+            <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10 }}>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: 16, fontWeight: 700, color: '#F0F0F0', marginBottom: 4 }}>{nextTournament.name}</div>
+                <div style={{ fontSize: 13, color: '#888' }}>{tournamentDaysUntil === 0 ? 'Today!' : tournamentDaysUntil === 1 ? 'Tomorrow' : `${tournamentDaysUntil} days away`}</div>
+                {nextTournament.location && (
+                  <div style={{ fontSize: 11, color: '#666', marginTop: 4 }}>{nextTournament.location}</div>
+                )}
+              </div>
+              <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                <div style={{ fontSize: 28, fontWeight: 900, color: '#FFD700' }}>{tournamentDaysUntil}</div>
+                <div style={{ fontSize: 9, color: '#555', textTransform: 'uppercase' }}>Days Out</div>
+              </div>
+            </div>
+            {/* Map + Website buttons tucked in bottom-right corner */}
+            <div style={{ display: 'flex', gap: 6, marginTop: 12, justifyContent: 'flex-end' }}>
+              {nextTournament.location && (
+                <a
+                  href={`https://maps.google.com/?q=${encodeURIComponent(nextTournament.location)}`}
+                  target="_blank" rel="noopener noreferrer"
+                  style={{
+                    display: 'inline-flex', alignItems: 'center', gap: 4,
+                    padding: '5px 10px', borderRadius: 8,
+                    background: 'rgba(200,162,76,0.1)', border: '1px solid rgba(200,162,76,0.25)',
+                    color: '#C8A24C', fontSize: 11, fontWeight: 600, textDecoration: 'none',
+                  }}
+                >
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+                  Map
+                </a>
+              )}
+              {nextTournament.link && (
+                <a
+                  href={nextTournament.link}
+                  target="_blank" rel="noopener noreferrer"
+                  style={{
+                    display: 'inline-flex', alignItems: 'center', gap: 4,
+                    padding: '5px 10px', borderRadius: 8,
+                    background: 'rgba(200,162,76,0.1)', border: '1px solid rgba(200,162,76,0.25)',
+                    color: '#C8A24C', fontSize: 11, fontWeight: 600, textDecoration: 'none',
+                  }}
+                >
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+                  Website
+                </a>
+              )}
+            </div>
           </div>
         </div>
       )}
@@ -2495,61 +2575,18 @@ export default function HomePage() {
       )}
 
       {/* ════════════════════════════════════════════════════
-          TOURNAMENT COUNTDOWN
+          FLOW STATE / COMBO (ambient chips — only if notable)
           ════════════════════════════════════════════════════ */}
-      {nextTournament && tournamentDaysUntil <= 60 && (
-        <div className="mx-5 mb-4 reveal">
-          <div style={{ background: 'linear-gradient(135deg, #141414, #1A1A0A)', border: '1px solid rgba(200,162,76,0.19)', borderRadius: 14, padding: 16, position: 'relative' }}>
-            <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', color: '#C8A24C', textTransform: 'uppercase' as const, marginBottom: 6, display: 'flex', alignItems: 'center', gap: 5 }}>
-                <Trophy size={11} color="#C8A24C" aria-hidden="true" />
-                Upcoming Tournament
-              </div>
-            <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10 }}>
-              <div style={{ flex: 1 }}>
-                <div style={{ fontSize: 16, fontWeight: 700, color: '#F0F0F0', marginBottom: 4 }}>{nextTournament.name}</div>
-                <div style={{ fontSize: 13, color: '#888' }}>{tournamentDaysUntil === 0 ? 'Today!' : tournamentDaysUntil === 1 ? 'Tomorrow' : `${tournamentDaysUntil} days away`}</div>
-                {nextTournament.location && (
-                  <div style={{ fontSize: 11, color: '#666', marginTop: 4 }}>{nextTournament.location}</div>
-                )}
-              </div>
-              <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                <div style={{ fontSize: 28, fontWeight: 900, color: '#FFD700' }}>{tournamentDaysUntil}</div>
-                <div style={{ fontSize: 9, color: '#555', textTransform: 'uppercase' }}>Days Out</div>
-              </div>
-            </div>
-            {/* Map + Website buttons tucked in bottom-right corner */}
-            <div style={{ display: 'flex', gap: 6, marginTop: 12, justifyContent: 'flex-end' }}>
-              {nextTournament.location && (
-                <a
-                  href={`https://maps.google.com/?q=${encodeURIComponent(nextTournament.location)}`}
-                  target="_blank" rel="noopener noreferrer"
-                  style={{
-                    display: 'inline-flex', alignItems: 'center', gap: 4,
-                    padding: '5px 10px', borderRadius: 8,
-                    background: 'rgba(200,162,76,0.1)', border: '1px solid rgba(200,162,76,0.25)',
-                    color: '#C8A24C', fontSize: 11, fontWeight: 600, textDecoration: 'none',
-                  }}
-                >
-                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
-                  Map
-                </a>
-              )}
-              {nextTournament.link && (
-                <a
-                  href={nextTournament.link}
-                  target="_blank" rel="noopener noreferrer"
-                  style={{
-                    display: 'inline-flex', alignItems: 'center', gap: 4,
-                    padding: '5px 10px', borderRadius: 8,
-                    background: 'rgba(200,162,76,0.1)', border: '1px solid rgba(200,162,76,0.25)',
-                    color: '#C8A24C', fontSize: 11, fontWeight: 600, textDecoration: 'none',
-                  }}
-                >
-                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
-                  Website
-                </a>
-              )}
-            </div>
+      {isFlowState && (
+        <div style={{ margin: '0 20px 10px', display: 'flex' }} className="stagger-child reveal">
+          <div style={{
+            display: 'inline-flex', alignItems: 'center', gap: 6,
+            padding: '4px 10px', borderRadius: 999,
+            background: 'rgba(100,150,255,0.1)', border: '1px solid rgba(100,150,255,0.2)',
+            animation: 'pulse 2s ease-in-out infinite',
+          }}>
+            <span style={{ display: 'inline-flex', alignItems: 'center' }}><BoltIcon size={12} color="rgba(130,170,255,0.9)" /></span>
+            <span style={{ fontSize: 10, fontWeight: 700, color: 'rgba(130,170,255,0.9)', letterSpacing: '0.1em', textTransform: 'uppercase' }}>Flow State</span>
           </div>
         </div>
       )}
@@ -2656,43 +2693,6 @@ export default function HomePage() {
           </div>
         )}
       </div>
-
-      {/* Warning banners */}
-      {hasWarnings && (
-        <div className="mx-5 mb-4 space-y-2">
-          {!member.waiverSigned && <WarningBanner text="Liability waiver not signed" action="Sign Now" href="/#/waiver" />}
-          {!member.agreementSigned && <WarningBanner text="Membership agreement not signed" action="Sign Now" href="/#/waiver" />}
-        </div>
-      )}
-
-      {/* Pinned Announcement */}
-      {pinnedAnnouncement && (
-        <div className="mx-5 mb-4 stagger-child">
-          <div style={{ background: '#111', borderRadius: 14, border: '1px solid #1A1A1A', padding: '12px 14px', borderLeft: '3px solid #C8A24C' }}>
-            <div style={{ fontSize: 10, fontWeight: 700, color: '#C8A24C', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 6, display: 'flex', alignItems: 'center', gap: 5 }}>
-                <Megaphone size={11} color="#C8A24C" aria-hidden="true" />
-                Announcement
-              </div>
-            <div style={{ fontSize: 13, color: '#CCC', lineHeight: 1.5 }}>{pinnedAnnouncement.message}</div>
-          </div>
-        </div>
-      )}
-
-      {/* M5: Tournament Countdown (near-term) */}
-      {tournamentData && daysUntilTournament !== null && daysUntilTournament <= 30 && !nextTournament && (
-        <div style={{ margin: '0 20px 12px', background: '#0D0D0D', border: '1px solid #C8A24C25', borderRadius: 14, padding: '14px 16px' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <div>
-              <div style={{ fontSize: 9, color: '#C8A24C', letterSpacing: '0.12em', textTransform: 'uppercase' }}>Next Tournament</div>
-              <div style={{ fontSize: 15, fontWeight: 800, color: '#F0F0F0', marginTop: 2 }}>{tournamentData.name}</div>
-            </div>
-            <div style={{ textAlign: 'right' }}>
-              <div style={{ fontSize: 28, fontWeight: 900, color: '#FFD700' }}>{daysUntilTournament}</div>
-              <div style={{ fontSize: 9, color: '#555', textTransform: 'uppercase' }}>Days Out</div>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Rank request modal */}
       {showRankRequest && (
