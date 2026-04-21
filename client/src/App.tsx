@@ -1537,9 +1537,8 @@ function AppShell() {
       {!onboardingDone && <OnboardingPage />}
       {needsWaiver && <WaiverRedirect />}
       <AdminShortcut />
-      {/* TopHeader temporarily disabled for debugging */}
-      {/* <TopHeader onTrayOpen={() => setTrayOpen(true)} /> */}
-      {/* <ProfileTray open={trayOpen} onClose={() => setTrayOpen(false)} /> */}
+      <TopHeader onTrayOpen={() => setTrayOpen(true)} />
+      <ProfileTray open={trayOpen} onClose={() => setTrayOpen(false)} />
 
       {/* Global biometric registration prompt overlay */}
       {showPasskeySetup && supportsPasskey && (
