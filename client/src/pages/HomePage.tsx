@@ -1,4 +1,4 @@
-import { FireIcon, CheckCircleFilledIcon, CalendarSparkIcon, MegaphoneIcon, TrophyIcon, StarIcon, BoltIcon, GoldMedalIcon, SilverMedalIcon, ShieldIcon, SwordsIcon, AchievedIcon, ChartBarsIcon, GrapplingIcon, SunIcon, MoonIcon, SwordIcon, ClockCountdownIcon, ShieldFreezeIcon, GiIcon } from "@/components/icons/LbjjIcons";
+import { FireIcon, CheckCircleFilledIcon, CalendarSparkIcon, BoltIcon, GoldMedalIcon, SilverMedalIcon, ShieldIcon, GrapplingIcon, ClockCountdownIcon, ShieldFreezeIcon, GiIcon } from "@/components/icons/LbjjIcons";
 import { useAuth } from "@/lib/auth-context";
 import type { FamilyMember, PaymentCard } from "@/lib/api";
 import { beltSavePromotion, gasCall, getLeaderboard, getLeaderboardFresh, getMemberData, cachedGasCall, saveMemberStats, syncAchievements } from "@/lib/api";
@@ -15,6 +15,7 @@ import { getLevelFromXP, getActualLevel, XP_LEVELS } from "@/lib/xp";
 import {
   CreditCard, FileText, ChevronRight, ChevronDown, LogOut,
   Users, Check, Loader2, Plus, Trash2, Star, CheckCircle,
+  Trophy, Swords, Sword, Lock, BarChart2, Megaphone, CheckCircle2, AlertTriangle, Sun, Moon,
 } from "lucide-react";
 import {
   memberGetCards, memberSetDefaultCard, memberRemoveCard,
@@ -1260,8 +1261,8 @@ export default function HomePage() {
       const classes = stats.classesAttended || 0;
       const achMilestones = [
         { key: 'ten_classes', label: 'Mat Initiate', need: Math.max(0, 10 - classes), unit: 'classes', icon: <GrapplingIcon size={16} color="#C8A24C" /> },
-        { key: 'thirty_classes', label: 'Mat Warrior', need: Math.max(0, 30 - classes), unit: 'classes', icon: <SwordsIcon size={16} color="#C8A24C" /> },
-        { key: 'hundred_classes', label: 'Century Club', need: Math.max(0, 100 - classes), unit: 'classes', icon: <TrophyIcon size={16} color="#C8A24C" /> },
+        { key: 'thirty_classes', label: 'Mat Warrior', need: Math.max(0, 30 - classes), unit: 'classes', icon: <Swords size={16} color="#C8A24C" /> },
+        { key: 'hundred_classes', label: 'Century Club', need: Math.max(0, 100 - classes), unit: 'classes', icon: <Trophy size={16} color="#C8A24C" /> },
       ];
       const nearestAch = achMilestones
         .filter(a => !earned.includes(a.key) && a.need > 0)
@@ -1490,7 +1491,7 @@ export default function HomePage() {
               animation: isGameDay || isPerfectWeek ? 'xp-pulse 2s ease-in-out infinite' : undefined,
               cursor: 'pointer',
             }}>
-              <span style={{ display: 'inline-flex', alignItems: 'center' }}>{isGameDay ? <SwordsIcon size={9} /> : isPerfectWeek ? <TrophyIcon size={9} color="#FFD700" /> : comboMultiplier >= 3 ? <FireIcon size={9} color="#F97316" /> : <BoltIcon size={9} />}</span>
+              <span style={{ display: 'inline-flex', alignItems: 'center' }}>{isGameDay ? <Swords size={9} /> : isPerfectWeek ? <Trophy size={9} color="#FFD700" /> : comboMultiplier >= 3 ? <FireIcon size={9} color="#F97316" /> : <BoltIcon size={9} />}</span>
               <span style={{ fontSize: 9, fontWeight: 800, letterSpacing: '0.12em', color: isGameDay ? '#C8A24C' : isPerfectWeek ? '#FFD700' : '#C8A24C' }}>
                 {narrative.accent}
               </span>
@@ -1587,7 +1588,7 @@ export default function HomePage() {
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
                   <span style={{ display: 'inline-flex', alignItems: 'center' }}>
-                    {isEliteWeek ? <TrophyIcon size={12} color="#A855F7" /> : isPerfectWeek ? <TrophyIcon size={12} color="#FFD700" /> : anyTrained ? <CalendarSparkIcon size={12} /> : <AchievedIcon size={12} />}
+                    {isEliteWeek ? <Trophy size={12} color="#A855F7" /> : isPerfectWeek ? <Trophy size={12} color="#FFD700" /> : anyTrained ? <CalendarSparkIcon size={12} /> : <CheckCircle2 size={12} />}
                   </span>
                   <span style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.12em', textTransform: 'uppercase', color: headerColor }}>
                     This Week
@@ -1619,7 +1620,7 @@ export default function HomePage() {
                       animation: 'xp-pulse 2s ease-in-out infinite',
                     }}>
                       <span style={{ display: 'inline-flex', alignItems: 'center' }}>
-                        {dailyStreakTier === 'paragon' ? <BoltIcon size={10} color="#DC46DC" /> : dailyStreakTier === 'legend' ? <StarIcon size={10} color="#5A78FF" /> : dailyStreakTier === 'diamond' ? <StarIcon size={10} color="#22D3EE" /> : <FireIcon size={10} color="#F97316" />}
+                        {dailyStreakTier === 'paragon' ? <BoltIcon size={10} color="#DC46DC" /> : dailyStreakTier === 'legend' ? <Star size={10} color="#5A78FF" /> : dailyStreakTier === 'diamond' ? <Star size={10} color="#22D3EE" /> : <FireIcon size={10} color="#F97316" />}
                       </span>
                       <span style={{ fontSize: 8, fontWeight: 800, color: dsHeaderColor || '#FF6010', letterSpacing: '0.08em' }}>
                         {dailyStreakCount}D
@@ -1789,8 +1790,8 @@ export default function HomePage() {
               <div style={{ display: 'flex', alignItems: 'center', marginTop: 14, gap: 0 }}>
                 {[
                   { at: 3, label: '1.5×', reward: 'Combo', color: '#F97316', icon: <FireIcon size={10} color="#F97316" /> },
-                  { at: 5, label: '2×', reward: 'Perfect Week', color: '#FFD700', icon: <TrophyIcon size={10} color="#FFD700" /> },
-                  { at: 7, label: '3×', reward: 'Legend', color: '#A855F7', icon: <TrophyIcon size={10} color="#A855F7" /> },
+                  { at: 5, label: '2×', reward: 'Perfect Week', color: '#FFD700', icon: <Trophy size={10} color="#FFD700" /> },
+                  { at: 7, label: '3×', reward: 'Legend', color: '#A855F7', icon: <Trophy size={10} color="#A855F7" /> },
                 ].map((ms, idx) => {
                   const prevThreshold = idx === 0 ? 0 : [0, 3, 5][idx];
                   const reached = trainedCount >= ms.at;
@@ -1892,7 +1893,7 @@ export default function HomePage() {
             <a href="/#/schedule" style={{ textDecoration: 'none', flex: 1 }}>
               {isGameDay && (
                 <span className="gameday-label">
-                  <SwordIcon size={12} color="#FFD700" className="gameday-sword" />
+                  <Sword size={12} color="#FFD700" className="gameday-sword" />
                   GAME DAY
                 </span>
               )}
@@ -2232,7 +2233,7 @@ export default function HomePage() {
             <div style={{ marginTop: 8, display: 'flex', gap: 12, justifyContent: 'center' }}>
               {[
                 { icon: <GrapplingIcon size={14} />, label: 'Check in', xp: '+10' },
-                { icon: <TrophyIcon size={14} color="#C8A24C" />, label: 'Tournament', xp: '+50' },
+                { icon: <Trophy size={14} color="#C8A24C" />, label: 'Tournament', xp: '+50' },
                 { icon: <GoldMedalIcon size={14} />, label: 'Gold', xp: '+150' },
               ].map(item => (
                 <div key={item.label} style={{ textAlign: 'center' as const, opacity: 0.7 }}>
@@ -2485,7 +2486,7 @@ export default function HomePage() {
         <div className="mx-5 mb-4 reveal">
           <div style={{ background: 'linear-gradient(135deg, #141414, #1A1A0A)', border: '1px solid rgba(200,162,76,0.19)', borderRadius: 14, padding: 16, position: 'relative' }}>
             <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', color: '#C8A24C', textTransform: 'uppercase' as const, marginBottom: 6, display: 'flex', alignItems: 'center', gap: 5 }}>
-                <TrophyIcon size={11} color="#C8A24C" aria-hidden="true" />
+                <Trophy size={11} color="#C8A24C" aria-hidden="true" />
                 Upcoming Tournament
               </div>
             <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10 }}>
@@ -2654,7 +2655,7 @@ export default function HomePage() {
         <div className="mx-5 mb-4 stagger-child">
           <div style={{ background: '#111', borderRadius: 14, border: '1px solid #1A1A1A', padding: '12px 14px', borderLeft: '3px solid #C8A24C' }}>
             <div style={{ fontSize: 10, fontWeight: 700, color: '#C8A24C', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 6, display: 'flex', alignItems: 'center', gap: 5 }}>
-                <MegaphoneIcon size={11} color="#C8A24C" aria-hidden="true" />
+                <Megaphone size={11} color="#C8A24C" aria-hidden="true" />
                 Announcement
               </div>
             <div style={{ fontSize: 13, color: '#CCC', lineHeight: 1.5 }}>{pinnedAnnouncement.message}</div>
@@ -2688,7 +2689,7 @@ export default function HomePage() {
             </div>
             {rankSent ? (
               <div style={{ textAlign: 'center', padding: '20px 0' }}>
-                <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 12 }}><AchievedIcon size={40} color="#C8A24C" /></div>
+                <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 12 }}><CheckCircle2 size={40} color="#C8A24C" /></div>
                 <div style={{ fontSize: 18, fontWeight: 800, color: '#C8A24C', marginBottom: 8 }}>Request Sent!</div>
                 <div style={{ fontSize: 13, color: '#888' }}>Your coach will review and confirm the update.</div>
                 <button onClick={() => setShowRankRequest(false)} style={{ marginTop: 20, padding: '10px 24px', borderRadius: 10, background: '#C8A24C', color: '#000', fontWeight: 700, border: 'none', cursor: 'pointer' }}>Done</button>
@@ -2790,12 +2791,12 @@ export default function HomePage() {
                 {[
                   { icon: <GrapplingIcon size={18} />, label: 'Class Check-in', xp: '+10 XP', note: 'Per class' },
                   { icon: <FireIcon size={18} color="#F97316" />, label: 'Weekly Combo', xp: '+1 XP bonus', note: '3+ classes/week' },
-                  { icon: <TrophyIcon size={18} color="#FFD700" />, label: 'Perfect Week', xp: '2× multiplier', note: '5+ classes' },
-                  { icon: <TrophyIcon size={18} color="#A855F7" />, label: 'Legend Week', xp: '3× multiplier', note: '7 classes' },
-                  { icon: <TrophyIcon size={18} color="#C8A24C" />, label: 'Tournament', xp: '+50 XP', note: 'Per event' },
+                  { icon: <Trophy size={18} color="#FFD700" />, label: 'Perfect Week', xp: '2× multiplier', note: '5+ classes' },
+                  { icon: <Trophy size={18} color="#A855F7" />, label: 'Legend Week', xp: '3× multiplier', note: '7 classes' },
+                  { icon: <Trophy size={18} color="#C8A24C" />, label: 'Tournament', xp: '+50 XP', note: 'Per event' },
                   { icon: <GoldMedalIcon size={18} />, label: 'Gold Medal', xp: '+150 XP', note: 'First place' },
                   { icon: <SilverMedalIcon size={18} />, label: 'Silver Medal', xp: '+100 XP', note: 'Second place' },
-                  { icon: <AchievedIcon size={18} color="#C8A24C" />, label: 'Achievement', xp: '+25–100 XP', note: 'Varies' },
+                  { icon: <CheckCircle2 size={18} color="#C8A24C" />, label: 'Achievement', xp: '+25–100 XP', note: 'Varies' },
                 ].map(item => (
                   <div key={item.label} style={{ background: '#111', border: '1px solid #1A1A1A', borderRadius: 10, padding: '10px 12px', display: 'flex', gap: 10, alignItems: 'center' }}>
                     <div style={{ flexShrink: 0, display: 'inline-flex', alignItems: 'center' }}>{item.icon}</div>
@@ -2855,8 +2856,8 @@ export default function HomePage() {
         const streakTiers = [
           { days: 1, label: '1 Class', mult: '1×', desc: 'Base XP per class check-in', color: '#555', icon: <GrapplingIcon size={20} color="#555" /> },
           { days: 3, label: '3 Classes', mult: '1.5×', desc: 'On a Roll — combo bonus kicks in', color: '#F97316', icon: <FireIcon size={20} color="#F97316" /> },
-          { days: 5, label: '5 Classes', mult: '2×', desc: 'Perfect Week — double all XP', color: '#FFD700', icon: <TrophyIcon size={20} color="#FFD700" /> },
-          { days: 7, label: '7 Classes', mult: '3×', desc: 'Legendary — triple XP for the week', color: '#A855F7', icon: <TrophyIcon size={20} color="#A855F7" /> },
+          { days: 5, label: '5 Classes', mult: '2×', desc: 'Perfect Week — double all XP', color: '#FFD700', icon: <Trophy size={20} color="#FFD700" /> },
+          { days: 7, label: '7 Classes', mult: '3×', desc: 'Legendary — triple XP for the week', color: '#A855F7', icon: <Trophy size={20} color="#A855F7" /> },
         ];
         return (
           <div
@@ -2994,7 +2995,7 @@ export default function HomePage() {
           >
             <div style={{ width: 36, height: 4, borderRadius: 2, background: '#2A2A2A', margin: '16px auto 20px' }} />
             <div style={{ padding: '0 20px' }}>
-              <div style={{ fontSize: 20, fontWeight: 800, color: '#F0F0F0', marginBottom: 4, display: 'flex', alignItems: 'center', gap: 8 }}><TrophyIcon size={20} color="#C8A24C" /> Milestones</div>
+              <div style={{ fontSize: 20, fontWeight: 800, color: '#F0F0F0', marginBottom: 4, display: 'flex', alignItems: 'center', gap: 8 }}><Trophy size={20} color="#C8A24C" /> Milestones</div>
               <div style={{ fontSize: 13, color: '#666', marginBottom: 24, lineHeight: 1.5 }}>
                 Milestones mark major moments in your journey. Each one represents real progress — sessions on the mat, consistency, and growth.
               </div>
@@ -3003,11 +3004,11 @@ export default function HomePage() {
                   { icon: <GrapplingIcon size={28} />, label: 'First Class', desc: "Show up. That's the hardest part.", xp: 100 },
                   { icon: <FireIcon size={28} color="#F97316" />, label: '10 Classes', desc: "You've found your rhythm on the mat.", xp: 250 },
                   { icon: <BoltIcon size={28} color="#22D3EE" />, label: '25 Classes', desc: "Commitment is becoming habit.", xp: 500 },
-                  { icon: <StarIcon size={28} color="#60A5FA" />, label: '50 Classes', desc: "You're building something real.", xp: 1000 },
-                  { icon: <StarIcon size={28} color="#FFD700" />, label: '100 Classes', desc: "This is who you are now.", xp: 2500 },
-                  { icon: <TrophyIcon size={28} color="#A855F7" />, label: '200 Classes', desc: "Elite. The mat is home.", xp: 5000 },
-                  { icon: <TrophyIcon size={28} color="#F472B6" />, label: '365 Classes', desc: "A full year of dedication. Legendary.", xp: 10000 },
-                  { icon: <AchievedIcon size={28} color="#C8A24C" />, label: 'First Stripe', desc: "Your coach sees your progress.", xp: 300 },
+                  { icon: <Star size={28} color="#60A5FA" />, label: '50 Classes', desc: "You're building something real.", xp: 1000 },
+                  { icon: <Star size={28} color="#FFD700" />, label: '100 Classes', desc: "This is who you are now.", xp: 2500 },
+                  { icon: <Trophy size={28} color="#A855F7" />, label: '200 Classes', desc: "Elite. The mat is home.", xp: 5000 },
+                  { icon: <Trophy size={28} color="#F472B6" />, label: '365 Classes', desc: "A full year of dedication. Legendary.", xp: 10000 },
+                  { icon: <CheckCircle2 size={28} color="#C8A24C" />, label: 'First Stripe', desc: "Your coach sees your progress.", xp: 300 },
                   { icon: <GoldMedalIcon size={28} />, label: 'First Belt Promotion', desc: "A new chapter begins.", xp: 1500 },
                   { icon: <FireIcon size={28} color="#F97316" />, label: '7-Day Streak', desc: "Fire mode activated.", xp: 200 },
                   { icon: <BoltIcon size={28} color="#A855F7" />, label: '30-Day Streak', desc: "Paragon-level consistency.", xp: 1000 },
@@ -3072,12 +3073,12 @@ export default function HomePage() {
           >
             <div style={{ width: 36, height: 4, borderRadius: 2, background: '#2A2A2A', margin: '16px auto 20px' }} />
             <div style={{ padding: '0 20px' }}>
-              <div style={{ fontSize: 20, fontWeight: 800, color: '#F0F0F0', marginBottom: 4, display: 'flex', alignItems: 'center', gap: 8 }}><ChartBarsIcon size={20} color="#C8A24C" /> Your Week</div>
+              <div style={{ fontSize: 20, fontWeight: 800, color: '#F0F0F0', marginBottom: 4, display: 'flex', alignItems: 'center', gap: 8 }}><BarChart2 size={20} color="#C8A24C" /> Your Week</div>
               <div style={{ fontSize: 13, color: '#666', marginBottom: 24 }}>A snapshot of where you stand right now.</div>
               {[
                 { label: 'Classes This Week', value: weeklyTraining().filter(Boolean).length, unit: 'classes', icon: <GrapplingIcon size={24} /> },
-                { label: 'Current Streak', value: dailyStreakCount, unit: 'days', icon: dailyStreakTier === 'paragon' ? <BoltIcon size={24} color="#DC46DC" /> : dailyStreakTier === 'legend' ? <StarIcon size={24} color="#5A78FF" /> : dailyStreakTier === 'diamond' ? <StarIcon size={24} color="#22D3EE" /> : <FireIcon size={24} color="#F97316" /> },
-                { label: 'Streak Tier', value: dailyStreakTier === 'paragon' ? 'Paragon' : dailyStreakTier === 'legend' ? 'Legend' : dailyStreakTier === 'diamond' ? 'Diamond' : dailyStreakTier === 'fire' ? 'Fire' : 'None', unit: '', icon: <TrophyIcon size={24} color="#C8A24C" /> },
+                { label: 'Current Streak', value: dailyStreakCount, unit: 'days', icon: dailyStreakTier === 'paragon' ? <BoltIcon size={24} color="#DC46DC" /> : dailyStreakTier === 'legend' ? <Star size={24} color="#5A78FF" /> : dailyStreakTier === 'diamond' ? <Star size={24} color="#22D3EE" /> : <FireIcon size={24} color="#F97316" /> },
+                { label: 'Streak Tier', value: dailyStreakTier === 'paragon' ? 'Paragon' : dailyStreakTier === 'legend' ? 'Legend' : dailyStreakTier === 'diamond' ? 'Diamond' : dailyStreakTier === 'fire' ? 'Fire' : 'None', unit: '', icon: <Trophy size={24} color="#C8A24C" /> },
                 { label: 'XP This Week', value: weeklyTraining().filter(Boolean).length * 50, unit: 'XP', icon: <BoltIcon size={24} color="#C8A24C" /> },
               ].map((stat, i) => (
                 <div key={i} style={{
@@ -3300,13 +3301,13 @@ export default function HomePage() {
           >
             <div style={{ width: 36, height: 4, borderRadius: 2, background: '#2A2A2A', margin: '16px auto 20px' }} />
             <div style={{ padding: '0 20px' }}>
-              <div style={{ fontSize: 20, fontWeight: 800, color: '#F0F0F0', marginBottom: 4, display: 'flex', alignItems: 'center', gap: 8 }}><ChartBarsIcon size={20} color="#C8A24C" /> Your Week</div>
+              <div style={{ fontSize: 20, fontWeight: 800, color: '#F0F0F0', marginBottom: 4, display: 'flex', alignItems: 'center', gap: 8 }}><BarChart2 size={20} color="#C8A24C" /> Your Week</div>
               <div style={{ fontSize: 13, color: '#666', marginBottom: 24 }}>A snapshot of where you stand right now.</div>
               {[
                 { label: 'Classes This Week', value: weekDots.filter(d => d.trained).length, unit: 'classes', icon: <GrapplingIcon size={24} /> },
                 { label: 'Current Streak', value: dailyStreakCount, unit: 'days', icon: <FireIcon size={24} color="#F97316" /> },
                 { label: 'XP This Week', value: weekDots.filter(d => d.trained).length * 50, unit: 'XP', icon: <BoltIcon size={24} color="#C8A24C" /> },
-                { label: 'Week Multiplier', value: isEliteWeek ? '3×' : isPerfectWeek ? '2×' : trainedCount >= 3 ? '1.5×' : '1×', unit: '', icon: <TrophyIcon size={24} color="#C8A24C" /> },
+                { label: 'Week Multiplier', value: isEliteWeek ? '3×' : isPerfectWeek ? '2×' : trainedCount >= 3 ? '1.5×' : '1×', unit: '', icon: <Trophy size={24} color="#C8A24C" /> },
               ].map((s, i) => (
                 <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '14px 16px', borderRadius: 14, background: 'rgba(255,255,255,0.03)', border: '1px solid #1A1A1A', marginBottom: 10 }}>
                   <div style={{ width: 36, display: 'flex', justifyContent: 'center' }}>{s.icon}</div>
@@ -3344,7 +3345,7 @@ export default function HomePage() {
           >
             <div style={{ width: 36, height: 4, borderRadius: 2, background: '#2A2A2A', margin: '16px auto 20px' }} />
             <div style={{ padding: '0 20px' }}>
-              <div style={{ fontSize: 22, fontWeight: 900, color: '#F0F0F0', marginBottom: 6, display: 'flex', alignItems: 'center', gap: 8 }}><SwordsIcon size={22} color="#C8A24C" /> Game Day</div>
+              <div style={{ fontSize: 22, fontWeight: 900, color: '#F0F0F0', marginBottom: 6, display: 'flex', alignItems: 'center', gap: 8 }}><Swords size={22} color="#C8A24C" /> Game Day</div>
               <div style={{ fontSize: 14, color: '#888', lineHeight: 1.55, marginBottom: 22 }}>
                 Today there's a BJJ chess game session scheduled. Show up, play your positions, earn bonus XP. Win matches to climb the game leaderboard.
               </div>

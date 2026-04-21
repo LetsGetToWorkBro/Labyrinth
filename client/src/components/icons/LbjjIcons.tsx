@@ -8,7 +8,6 @@
  *   - stroke-linejoin: round
  *   - fill: none (strokes), currentColor (fills)
  *   - viewBox: 0 0 24 24 for all standard icons
- *   - viewBox: 0 0 48 48 for badge/achievement icons
  *   - size: width/height="1em" by default — scales with font-size
  *   - Colors: currentColor (inherits) or explicit CSS vars
  *
@@ -17,9 +16,20 @@
  *   <FireIcon size={24} />     — explicit px
  *   <FireIcon color="#C8A24C" />
  *   <GoldMedalIcon size={24} />
+ *
+ * NOTE: Generic icons (Home, Trophy, Star, Lock, etc.) have been
+ * removed — use lucide-react directly. Only BJJ-specific or
+ * visually-distinct icons remain here.
  */
 
 import React from "react";
+import { Trophy as LucideTrophy, AlertTriangle as LucideAlertTriangle, Lock as LucideLock } from "lucide-react";
+
+// Compat re-exports for GamesPage.tsx (out-of-scope this audit).
+// New code should import these directly from lucide-react.
+export const TrophyIcon = LucideTrophy;
+export const WarningIcon = LucideAlertTriangle;
+export const LockIcon = LucideLock;
 
 interface IconProps {
   size?: number | string;
@@ -68,190 +78,108 @@ function base(
   );
 }
 
-// ─── Emoji Replacements ──────────────────────────────────────────────────────
+// ─── BJJ-specific / kept custom icons ────────────────────────────────────────
 
-/** Replaces 🔥 — animated flame for streak widget */
+/** REDESIGNED — Clean flame silhouette, 2 elements. Replaces 🔥. */
 export function FireIcon(props: IconProps) {
   return base(
     props,
     <>
-      {/* Outer flame body */}
-      <path d="M12 2C12 2 9 7 9 11c0 1.5.5 2.8 1.2 3.8C9.5 13.8 9 12.5 9 11c0-2 1-4 1-4S8 9 7 12c0 3.3 2.2 6 5 6s5-2.7 5-6c0-3.5-3-5-3-5s1 2 1 4c-.6-.7-1-1.8-1-3C14 5.5 12 2 12 2z" fill={props.color ?? "currentColor"} stroke="none" opacity={0.9} />
-      {/* Inner highlight */}
-      <path d="M12 8c0 0-1.5 2-1.5 4 0 .9.3 1.7.8 2.3C12 13 12.5 11.5 12.5 10.5c0-1.5-.5-2.5-.5-2.5z" fill="none" stroke={props.color ?? "currentColor"} strokeWidth={0.8} opacity={0.4} />
+      <path
+        d="M12 2c0 0-5 5.5-5 10a5 5 0 0 0 10 0C17 7.5 12 2 12 2z"
+        fill={props.color ?? "currentColor"}
+        stroke="none"
+      />
+      <path
+        d="M12 9c0 0-2 2.5-2 5a2 2 0 0 0 4 0c0-2-2-5-2-5z"
+        fill="#000"
+        fillOpacity={0.25}
+        stroke="none"
+      />
     </>,
     "0 0 24 24"
   );
 }
 
-/** Replaces ✅ and ✓ — animated check in a circle for success states */
+/** REDESIGNED — Circle with subtle fill + centered checkmark. 2 elements. */
 export function CheckCircleFilledIcon(props: IconProps) {
   return base(
     props,
     <>
-      <circle cx="12" cy="12" r="10" fill={props.color ?? "currentColor"} stroke="none" opacity={0.15} />
-      <circle cx="12" cy="12" r="10" />
+      <circle
+        cx="12"
+        cy="12"
+        r="10"
+        fill={props.color ?? "currentColor"}
+        fillOpacity={0.1}
+      />
       <path d="M7.5 12.5l3 3 6-6" strokeWidth={props.strokeWidth ?? 2} />
     </>,
     "0 0 24 24"
   );
 }
 
-/** Replaces 📅 — calendar with a spark */
+/** REDESIGNED — Calendar + rounded tabs + divider + corner spark. 4 elements. */
 export function CalendarSparkIcon(props: IconProps) {
   return base(
     props,
     <>
-      <rect x="3" y="4" width="18" height="17" rx="2.5" />
-      <path d="M8 2v3M16 2v3M3 9h18" />
-      <path d="M8 13h1M12 13h1M16 13h1M8 17h1M12 17h1" strokeWidth={2} strokeLinecap="round" />
+      <rect x="3" y="5" width="18" height="16" rx="2.5" />
+      <path d="M8 3v4M16 3v4" />
+      <path d="M3 10h18" />
+      <path d="M17 15l.75 1.5L19.25 17l-1.5.5L17 19l-.75-1.5L14.75 17l1.5-.5z" />
     </>,
     "0 0 24 24"
   );
 }
 
-/** Replaces 🎮 — game controller, cleaner geometry than Lucide Gamepad2 */
+/** REDESIGNED — Rounded body + d-pad cross + two face-button dots. 4 elements. */
 export function GamepadIcon(props: IconProps) {
   return base(
     props,
     <>
-      <rect x="2" y="7" width="20" height="13" rx="5" />
-      {/* Left D-pad cross */}
-      <path d="M8 11v4M6 13h4" strokeWidth={props.strokeWidth ?? 1.5} />
-      {/* Right buttons */}
-      <circle cx="16" cy="11" r="1" fill={props.color ?? "currentColor"} stroke="none" />
-      <circle cx="18" cy="13.5" r="1" fill={props.color ?? "currentColor"} stroke="none" />
-      <circle cx="14" cy="13.5" r="1" fill={props.color ?? "currentColor"} stroke="none" />
+      <rect x="2" y="7" width="20" height="12" rx="5" />
+      <path d="M7 13h4M9 11v4" />
+      <circle cx="16" cy="12" r="0.9" fill={props.color ?? "currentColor"} stroke="none" />
+      <circle cx="18.5" cy="14" r="0.9" fill={props.color ?? "currentColor"} stroke="none" />
     </>,
     "0 0 24 24"
   );
 }
 
-/** Replaces 📊 — bar chart, more expressive than BarChart2 */
-export function ChartBarsIcon(props: IconProps) {
-  return base(
-    props,
-    <>
-      <path d="M4 20V12" />
-      <path d="M9 20V8" />
-      <path d="M14 20V14" />
-      <path d="M19 20V4" />
-      <path d="M2 20h20" />
-    </>,
-    "0 0 24 24"
-  );
-}
-
-/** Replaces 🧖 — sauna / thermometer with steam */
+/** KEPT — Previously SaunaIcon was called for the Sauna page. REDESIGNED — thermometer + 3 steam curves. 5 elements. */
 export function SaunaIcon(props: IconProps) {
   return base(
     props,
     <>
-      {/* Thermometer bulb + stem */}
-      <circle cx="12" cy="18" r="3" />
-      <path d="M12 15V7" />
-      <rect x="10.5" y="7" width="3" height="9" rx="1.5" />
-      {/* Heat/temperature fill indicator */}
-      <path d="M12 15V11" stroke={props.color ?? "currentColor"} strokeWidth={2.5} />
-      {/* Steam waves */}
-      <path d="M8 4c0 0 1-1 0-2" strokeWidth={1.2} opacity={0.6} />
-      <path d="M12 3c0 0 1-1 0-2" strokeWidth={1.2} opacity={0.6} />
-      <path d="M16 4c0 0 1-1 0-2" strokeWidth={1.2} opacity={0.6} />
+      <path d="M12 14V7a2 2 0 1 1 4 0v7a4 4 0 1 1-4 0z" />
+      <path d="M14 10v4" strokeWidth={2.5} />
+      <path d="M6 6c1-1 1-2 0-3" opacity={0.7} />
+      <path d="M9 5c1-1 1-2 0-3" opacity={0.7} />
+      <path d="M4 10c1-1 1-2 0-3" opacity={0.7} />
     </>,
     "0 0 24 24"
   );
 }
 
-/** Replaces 🏠 — home icon, cleaner than Lucide Home */
-export function HomeIcon(props: IconProps) {
-  return base(
-    props,
-    <>
-      <path d="M3 10.5L12 3l9 7.5V21a1 1 0 0 1-1 1H15v-6H9v6H4a1 1 0 0 1-1-1V10.5z" />
-    </>,
-    "0 0 24 24"
-  );
-}
+// HomeIcon            — REMOVED → use lucide-react <Home />
+// ChatBubbleIcon      — REMOVED → use lucide-react <MessageCircle />
+// TrophyIcon          — REMOVED → use lucide-react <Trophy />
+// MegaphoneIcon       — REMOVED → use lucide-react <Megaphone />
+// LockIcon            — REMOVED → use lucide-react <Lock />
+// ChartBarsIcon       — REMOVED → use lucide-react <BarChart2 />
+// WaveIcon            — REMOVED (was broken, unused after audit)
 
-/** Replaces 💬 — chat bubble with energy */
-export function ChatBubbleIcon(props: IconProps) {
-  return base(
-    props,
-    <>
-      <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
-      <path d="M8 10h8M8 13h5" strokeWidth={props.strokeWidth ?? 1.5} opacity={0.6} />
-    </>,
-    "0 0 24 24"
-  );
-}
+// ─── Medal Icons (no <text>, paths only) ─────────────────────────────────────
 
-/** Replaces 🏆 — trophy, more expressive */
-export function TrophyIcon(props: IconProps) {
-  return base(
-    props,
-    <>
-      <path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6M18 9h1.5a2.5 2.5 0 0 0 0-5H18" />
-      <path d="M18 2H6v7a6 6 0 0 0 12 0V2Z" />
-      <path d="M4 22h16M12 17v5" />
-      <path d="M9 17c0-1.7 1.3-3 3-3s3 1.3 3 3" />
-    </>,
-    "0 0 24 24"
-  );
-}
-
-/** Replaces 📢 — megaphone/announcement */
-export function MegaphoneIcon(props: IconProps) {
-  return base(
-    props,
-    <>
-      {/* Bullhorn body */}
-      <path d="M3 9h3l8-5v14l-8-5H3a1 1 0 0 1-1-1v-3a1 1 0 0 1 1-1z" />
-      {/* Handle / tail */}
-      <path d="M6 13v4a1 1 0 0 0 1 1h2a1 1 0 0 0 1-1v-4" />
-      {/* Sound waves */}
-      <path d="M17 9a4 4 0 0 1 0 6" strokeLinecap="round" />
-      <path d="M19.5 7a7 7 0 0 1 0 10" strokeLinecap="round" strokeWidth={1.5} />
-    </>,
-    "0 0 24 24"
-  );
-}
-
-/** Replaces 🔒 — padlock for locked states */
-export function LockIcon(props: IconProps) {
-  return base(
-    props,
-    <>
-      <rect x="5" y="11" width="14" height="10" rx="2" />
-      <path d="M8 11V7a4 4 0 0 1 8 0v4" />
-      <circle cx="12" cy="16" r="1" fill={props.color ?? "currentColor"} stroke="none" />
-    </>,
-    "0 0 24 24"
-  );
-}
-
-/** Replaces 👋 — wave / greeting */
-export function WaveIcon(props: IconProps) {
-  return base(
-    props,
-    <>
-      <path d="M8 12c0 0-2.5-2.5-2.5-5.5A2.5 2.5 0 0 1 11 6c.5 1 .5 2.5-.5 3.5" />
-      <path d="M11 9c0 0 .5-2 2-2s2.5 1 2.5 3" />
-      <path d="M5 16c0 0-2-2-2-5 0-1.5 1-2.5 2-2.5" />
-      <path d="M9 21c2 1 4 .5 6-1s4-4 4-7c0-2-1-3.5-2-3.5" />
-    </>,
-    "0 0 24 24"
-  );
-}
-
-// ─── Medal Icons (replaces 🥇 🥈 🥉) ─────────────────────────────────────────
-
-/** Gold medal — replaces 🥇 */
+/** REDESIGNED — Ribbon + circle + numeral "1" drawn as paths. No <text>. */
 export function GoldMedalIcon(props: IconProps) {
   const c = props.color ?? "#C8A24C";
+  const size = props.size ?? "1em";
   return (
     <svg
-      width={props.size ?? "1em"}
-      height={props.size ?? "1em"}
+      width={size}
+      height={size}
       viewBox="0 0 24 24"
       fill="none"
       className={props.className}
@@ -261,25 +189,23 @@ export function GoldMedalIcon(props: IconProps) {
       role={props["aria-label"] ? "img" : undefined}
       xmlns="http://www.w3.org/2000/svg"
     >
-      {/* Ribbon left */}
-      <path d="M9 2l-4 6h6L9 2z" fill={c} opacity={0.7} />
-      {/* Ribbon right */}
-      <path d="M15 2l4 6h-6L15 2z" fill={c} opacity={0.85} />
-      {/* Medal circle */}
-      <circle cx="12" cy="16" r="6" fill={c} opacity={0.15} stroke={c} strokeWidth={1.5} />
-      {/* "1" text-equivalent — bold vertical bar */}
-      <text x="12" y="20" textAnchor="middle" fontSize="7" fontWeight="800" fill={c} stroke="none">1</text>
+      <path d="M8 2l-4 6 4 2 2-4z" fill={c} opacity={0.75} />
+      <path d="M16 2l4 6-4 2-2-4z" fill={c} opacity={0.9} />
+      <circle cx="12" cy="16" r="6" fill={c} fillOpacity={0.18} stroke={c} strokeWidth={1.5} />
+      {/* "1" — vertical stroke + small top serif */}
+      <path d="M12 13v6M10.5 14l1.5-1" stroke={c} strokeWidth={1.75} strokeLinecap="round" strokeLinejoin="round" fill="none" />
     </svg>
   );
 }
 
-/** Silver medal — replaces 🥈 */
+/** REDESIGNED — Ribbon + circle + numeral "2" drawn as paths. No <text>. */
 export function SilverMedalIcon(props: IconProps) {
   const c = props.color ?? "#9CA3AF";
+  const size = props.size ?? "1em";
   return (
     <svg
-      width={props.size ?? "1em"}
-      height={props.size ?? "1em"}
+      width={size}
+      height={size}
       viewBox="0 0 24 24"
       fill="none"
       className={props.className}
@@ -289,21 +215,23 @@ export function SilverMedalIcon(props: IconProps) {
       role={props["aria-label"] ? "img" : undefined}
       xmlns="http://www.w3.org/2000/svg"
     >
-      <path d="M9 2l-4 6h6L9 2z" fill={c} opacity={0.7} />
-      <path d="M15 2l4 6h-6L15 2z" fill={c} opacity={0.85} />
-      <circle cx="12" cy="16" r="6" fill={c} opacity={0.12} stroke={c} strokeWidth={1.5} />
-      <text x="12" y="20" textAnchor="middle" fontSize="7" fontWeight="800" fill={c} stroke="none">2</text>
+      <path d="M8 2l-4 6 4 2 2-4z" fill={c} opacity={0.75} />
+      <path d="M16 2l4 6-4 2-2-4z" fill={c} opacity={0.9} />
+      <circle cx="12" cy="16" r="6" fill={c} fillOpacity={0.15} stroke={c} strokeWidth={1.5} />
+      {/* "2" — top arc + diagonal stroke + base */}
+      <path d="M10 14.5a2 2 0 1 1 4 0c0 1-4 2.5-4 4.5h4" stroke={c} strokeWidth={1.75} strokeLinecap="round" strokeLinejoin="round" fill="none" />
     </svg>
   );
 }
 
-/** Bronze medal — replaces 🥉 */
+/** REDESIGNED — Ribbon + circle + numeral "3" drawn as paths. No <text>. */
 export function BronzeMedalIcon(props: IconProps) {
   const c = props.color ?? "#B45309";
+  const size = props.size ?? "1em";
   return (
     <svg
-      width={props.size ?? "1em"}
-      height={props.size ?? "1em"}
+      width={size}
+      height={size}
       viewBox="0 0 24 24"
       fill="none"
       className={props.className}
@@ -313,15 +241,16 @@ export function BronzeMedalIcon(props: IconProps) {
       role={props["aria-label"] ? "img" : undefined}
       xmlns="http://www.w3.org/2000/svg"
     >
-      <path d="M9 2l-4 6h6L9 2z" fill={c} opacity={0.7} />
-      <path d="M15 2l4 6h-6L15 2z" fill={c} opacity={0.85} />
-      <circle cx="12" cy="16" r="6" fill={c} opacity={0.12} stroke={c} strokeWidth={1.5} />
-      <text x="12" y="20" textAnchor="middle" fontSize="7" fontWeight="800" fill={c} stroke="none">3</text>
+      <path d="M8 2l-4 6 4 2 2-4z" fill={c} opacity={0.75} />
+      <path d="M16 2l4 6-4 2-2-4z" fill={c} opacity={0.9} />
+      <circle cx="12" cy="16" r="6" fill={c} fillOpacity={0.15} stroke={c} strokeWidth={1.5} />
+      {/* "3" — two right-facing arcs stacked */}
+      <path d="M10 14a2 2 0 1 1 2 2.5M10 19a2 2 0 1 0 2-2.5" stroke={c} strokeWidth={1.75} strokeLinecap="round" strokeLinejoin="round" fill="none" />
     </svg>
   );
 }
 
-// ─── Belt Rank Dots (replaces colored circle emojis ⚪🔵🟣🟤⬛) ─────────────
+// ─── Belt Rank Dots ──────────────────────────────────────────────────────────
 
 interface BeltDotProps {
   color: string;
@@ -331,7 +260,7 @@ interface BeltDotProps {
   style?: React.CSSProperties;
 }
 
-/** Inline belt rank dot — replaces colored circle emojis in chat/rank lists */
+/** KEPT AS-IS — inline belt rank dot, used in chat/rank lists. */
 export function BeltDot({ color, size = "1em", border, className, style }: BeltDotProps) {
   return (
     <svg
@@ -345,33 +274,28 @@ export function BeltDot({ color, size = "1em", border, className, style }: BeltD
       xmlns="http://www.w3.org/2000/svg"
     >
       <circle cx="8" cy="8" r="6.5" fill={color} stroke={border ?? color} strokeWidth="1.5" />
-      {/* subtle inner shine */}
       <circle cx="6" cy="6" r="1.5" fill="white" opacity={0.15} />
     </svg>
   );
 }
 
-// ─── BJJ position icons (replaces emoji in games) ────────────────────────────
+// ─── BJJ position icons (Games page — out of scope, kept as-is) ───────────────
 
-/** Standing position — replaces 🧍 */
+/** Standing position — GamesPage only, untouched. */
 export function StandingIcon(props: IconProps) {
   return base(
     props,
     <>
-      {/* Head */}
       <circle cx="12" cy="5" r="2.5" />
-      {/* Body */}
       <path d="M12 7.5v7" />
-      {/* Arms */}
       <path d="M8 10.5l4-1 4 1" />
-      {/* Legs */}
       <path d="M12 14.5l-2.5 5M12 14.5l2.5 5" />
     </>,
     "0 0 24 24"
   );
 }
 
-/** Guard/shield position — replaces 🛡️ */
+/** Guard/shield position — GamesPage only, untouched. */
 export function ShieldIcon(props: IconProps) {
   return base(
     props,
@@ -383,23 +307,7 @@ export function ShieldIcon(props: IconProps) {
   );
 }
 
-/** Mount/dominant position — replaces ⚔️ */
-export function SwordsIcon(props: IconProps) {
-  return base(
-    props,
-    <>
-      <path d="M14.5 9.5l-5 5" />
-      <path d="M3 3l5 5M16 3l-5 5" />
-      <path d="M3 21l7-7" />
-      <path d="M21 3l-7 7" />
-      <path d="M17 21l-3-3 4-4 3 3-4 4z" />
-      <path d="M3 17l3 3-4 4z" opacity={0.5} />
-    </>,
-    "0 0 24 24"
-  );
-}
-
-/** Sweep/rotate — replaces 🔄 */
+/** Sweep/rotate — GamesPage only, untouched. */
 export function SweepIcon(props: IconProps) {
   return base(
     props,
@@ -411,7 +319,7 @@ export function SweepIcon(props: IconProps) {
   );
 }
 
-/** Lightning bolt / takedown energy — replaces ⚡ */
+/** Lightning bolt / takedown energy — GamesPage only, untouched. */
 export function BoltIcon(props: IconProps) {
   return base(
     props,
@@ -422,53 +330,36 @@ export function BoltIcon(props: IconProps) {
   );
 }
 
-/** Skull/submission — replaces 💀 */
+/** Skull/submission — GamesPage only, untouched. */
 export function SubmissionIcon(props: IconProps) {
   return base(
     props,
     <>
-      {/* Skull dome */}
       <path d="M8 19v-3a4 4 0 0 1 8 0v3" />
       <path d="M6 13a6 6 0 1 1 12 0v1H6v-1z" />
-      {/* Eye sockets */}
       <circle cx="9.5" cy="11" r="1.5" fill={props.color ?? "currentColor"} stroke="none" opacity={0.7} />
       <circle cx="14.5" cy="11" r="1.5" fill={props.color ?? "currentColor"} stroke="none" opacity={0.7} />
-      {/* Jaw teeth */}
       <path d="M9 19h1.5v2H9zM13.5 19H15v2h-1.5z" fill={props.color ?? "currentColor"} stroke="none" opacity={0.5} />
     </>,
     "0 0 24 24"
   );
 }
 
-/** Warning / sudden death — replaces ⚠️ */
-export function WarningIcon(props: IconProps) {
-  return base(
-    props,
-    <>
-      <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
-      <path d="M12 9v4M12 17h.01" strokeWidth={2} strokeLinecap="round" />
-    </>,
-    "0 0 24 24"
-  );
-}
+// WarningIcon  — REMOVED → use lucide-react <AlertTriangle />
+// StarIcon     — REMOVED → use lucide-react <Star />
+// SwordsIcon   — REMOVED → use lucide-react <Swords />
+// SwordIcon    — REMOVED → use lucide-react <Sword />
+// SunIcon      — REMOVED → use lucide-react <Sun />
+// MoonIcon     — REMOVED → use lucide-react <Moon />
+// AchievedIcon — REMOVED → use lucide-react <CheckCircle2 />
+// ChevronDownIcon  — REMOVED → use lucide-react <ChevronDown />
+// ChevronRightIcon — REMOVED → use lucide-react <ChevronRight />
 
-/** Star / rating — replaces ⭐ */
-export function StarIcon(props: IconProps) {
-  return base(
-    props,
-    <>
-      <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" fill={props.color ?? "currentColor"} stroke="none" />
-    </>,
-    "0 0 24 24"
-  );
-}
-
-/** Struggle / Half guard — replaces 🤼 */
+/** Struggle / Half guard — GamesPage only, untouched. */
 export function GrapplingIcon(props: IconProps) {
   return base(
     props,
     <>
-      {/* Two figures grappling */}
       <circle cx="8" cy="5" r="2" />
       <circle cx="16" cy="5" r="2" />
       <path d="M6 7c0 0 2 1.5 4 1.5S14 7 14 7" />
@@ -480,46 +371,39 @@ export function GrapplingIcon(props: IconProps) {
   );
 }
 
-/** Scorpion / S-mount — replaces 🦂 */
+/** Scorpion / S-mount — GamesPage only, untouched. */
 export function ScorpionIcon(props: IconProps) {
   return base(
     props,
     <>
-      {/* Body */}
       <ellipse cx="12" cy="12" rx="4" ry="6" />
-      {/* Claws */}
       <path d="M8 9l-4-2 2 3" />
       <path d="M16 9l4-2-2 3" />
-      {/* Tail curl */}
       <path d="M12 18c0 0 3 1 4 4-1 0-2-1-4-1s-3 1-4 1c1-3 4-4 4-4z" />
     </>,
     "0 0 24 24"
   );
 }
 
-/** Heel — replaces 🦶 for heel hook */
+/** Heel hook — GamesPage only, untouched. */
 export function HeelHookIcon(props: IconProps) {
   return base(
     props,
     <>
-      {/* Foot shape */}
       <path d="M8 4C8 4 5 7 5 12c0 3 1 5 2 6h8c1-1 2-3 2-6V8c0-2-1-3-2-3" />
-      {/* Toes */}
       <path d="M8 18c1 1 6 1 7 0" />
       <path d="M9 4c0-1.5 2-2 3-1" />
-      {/* Hook indicator */}
       <path d="M16 9c2 1 2 3 0 4" strokeWidth={1.5} />
     </>,
     "0 0 24 24"
   );
 }
 
-/** Fist / punch power — replaces 💪 */
+/** Fist / punch power — GamesPage only, untouched. */
 export function FistIcon(props: IconProps) {
   return base(
     props,
     <>
-      {/* Fist silhouette */}
       <rect x="6" y="9" width="12" height="9" rx="3" />
       <path d="M9 9V6a3 3 0 0 1 6 0v3" />
       <path d="M6 13h12" opacity={0.3} />
@@ -528,7 +412,7 @@ export function FistIcon(props: IconProps) {
   );
 }
 
-/** Back arrow — replaces ↩️ for escape moves */
+/** Escape — GamesPage only, untouched. */
 export function EscapeIcon(props: IconProps) {
   return base(
     props,
@@ -540,7 +424,7 @@ export function EscapeIcon(props: IconProps) {
   );
 }
 
-/** Forward arrow — replaces ➡️ for pass/advance */
+/** Pass — GamesPage only, untouched. */
 export function PassIcon(props: IconProps) {
   return base(
     props,
@@ -553,7 +437,7 @@ export function PassIcon(props: IconProps) {
   );
 }
 
-/** Mountain / high mount — replaces 🏔️ */
+/** High mount — GamesPage only, untouched. */
 export function MountIcon(props: IconProps) {
   return base(
     props,
@@ -565,7 +449,7 @@ export function MountIcon(props: IconProps) {
   );
 }
 
-/** Triangle submission — replaces 📐 */
+/** Triangle submission — GamesPage only, untouched. */
 export function TriangleIcon(props: IconProps) {
   return base(
     props,
@@ -577,23 +461,21 @@ export function TriangleIcon(props: IconProps) {
   );
 }
 
-/** Dizziness / exhaustion — replaces 😵 */
+/** Exhaustion — GamesPage only, untouched. */
 export function ExhaustionIcon(props: IconProps) {
   return base(
     props,
     <>
       <circle cx="12" cy="12" r="9" />
-      {/* X eyes */}
       <path d="M9 9l2 2-2 2M11 9l-2 2 2 2" strokeWidth={1.5} />
       <path d="M13 9l2 2-2 2M15 9l-2 2 2 2" strokeWidth={1.5} />
-      {/* Wavy mouth */}
       <path d="M8 16c1-1 2-1 4 0s3 1 4 0" strokeWidth={1.5} />
     </>,
     "0 0 24 24"
   );
 }
 
-/** Spiral / berimbolo — replaces 🌀 */
+/** Berimbolo — GamesPage only, untouched. */
 export function BerimsboloIcon(props: IconProps) {
   return base(
     props,
@@ -607,77 +489,37 @@ export function BerimsboloIcon(props: IconProps) {
   );
 }
 
-/** Eagle / flying triangle — replaces 🦅 */
+/** Eagle — GamesPage only, untouched. */
 export function EagleIcon(props: IconProps) {
   return base(
     props,
     <>
-      {/* Wings spread */}
       <path d="M2 10c0 0 4-4 8-4s8 4 8 4" />
       <path d="M4 12l8-2 8 2" />
-      {/* Body */}
       <path d="M12 6v10" />
-      {/* Tail */}
       <path d="M9 16l3 4 3-4" />
-      {/* Head */}
       <circle cx="12" cy="5" r="1.5" fill={props.color ?? "currentColor"} stroke="none" />
     </>,
     "0 0 24 24"
   );
 }
 
-/** Lizard / sprawl — replaces 🦎 */
+/** Sprawl — GamesPage only, untouched. */
 export function SprawlIcon(props: IconProps) {
   return base(
     props,
     <>
-      {/* Body horizontal */}
       <path d="M5 12h14" strokeWidth={2.5} />
-      {/* Legs */}
       <path d="M8 12l-2-4M8 12l-3 4" />
       <path d="M16 12l2-4M16 12l3 4" />
-      {/* Head */}
       <circle cx="19" cy="12" r="1.5" />
-      {/* Tail */}
       <path d="M5 12C3 13 2 15 3 17" strokeWidth={1} />
     </>,
     "0 0 24 24"
   );
 }
 
-// ─── Status / UI Icons ────────────────────────────────────────────────────────
-
-/** Replaces ✅ / achieved badge pill */
-export function AchievedIcon(props: IconProps) {
-  return base(
-    props,
-    <>
-      <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
-      <path d="M22 4L12 14.01l-3-3" strokeWidth={2} />
-    </>,
-    "0 0 24 24"
-  );
-}
-
-/** Replaces the nav customizer dropdown chevron */
-export function ChevronDownIcon(props: IconProps) {
-  return base(
-    props,
-    <path d="M6 9l6 6 6-6" />,
-    "0 0 24 24"
-  );
-}
-
-/** Replaces right arrow / "View All →" chevron */
-export function ChevronRightIcon(props: IconProps) {
-  return base(
-    props,
-    <path d="M9 6l6 6-6 6" />,
-    "0 0 24 24"
-  );
-}
-
-/** Replaces ♟️ — chess pawn for games tab */
+/** Chess pawn — GamesPage only, untouched. */
 export function PawnIcon(props: IconProps) {
   return base(
     props,
@@ -690,112 +532,46 @@ export function PawnIcon(props: IconProps) {
   );
 }
 
-/** Sun — 8 calibrated rays (cardinal longer, diagonal shorter). Morning greeting. */
-export function SunIcon(props: IconProps) {
-  return base(
-    props,
-    <>
-      <circle cx="12" cy="12" r="4" />
-      {/* Cardinal rays (longer) */}
-      <line x1="12" y1="2" x2="12" y2="4.5" />
-      <line x1="12" y1="19.5" x2="12" y2="22" />
-      <line x1="2" y1="12" x2="4.5" y2="12" />
-      <line x1="19.5" y1="12" x2="22" y2="12" />
-      {/* Diagonal rays (shorter) */}
-      <line x1="4.93" y1="4.93" x2="6.64" y2="6.64" />
-      <line x1="17.36" y1="17.36" x2="19.07" y2="19.07" />
-      <line x1="19.07" y1="4.93" x2="17.36" y2="6.64" />
-      <line x1="6.64" y1="17.36" x2="4.93" y2="19.07" />
-    </>,
-    "0 0 24 24"
-  );
-}
+// ─── Kept BJJ-specific custom icons ──────────────────────────────────────────
 
-/** Moon — crescent with small star detail upper-right for "night" at a glance. */
-export function MoonIcon(props: IconProps) {
-  return base(
-    props,
-    <>
-      <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
-      {/* Small star detail */}
-      <path d="M18.5 5.5l.5 1 1 .5-1 .5-.5 1-.5-1-1-.5 1-.5z" strokeWidth={1} />
-    </>,
-    "0 0 24 24"
-  );
-}
-
-/** Single sword — tapered blade, tsuba guard, wrapped grip, pommel. Game Day. */
-export function SwordIcon(props: IconProps) {
-  return base(
-    props,
-    <>
-      {/* Blade */}
-      <path d="M14.5 2.5L20 8l-9.5 9.5" strokeLinejoin="round" />
-      {/* Tip */}
-      <path d="M20 8l1.5 1.5-2 2L18 10z" strokeLinejoin="round" />
-      {/* Tsuba (guard) */}
-      <path d="M9.5 12.5l-1.5 1.5M7.5 12.5l-1 1" />
-      <path d="M8 13.5l2-2" />
-      {/* Grip + pommel */}
-      <path d="M5.5 16.5l-3 3" />
-      <circle cx="4" cy="19" r="1.2" fill="currentColor" stroke="none" />
-    </>,
-    "0 0 24 24"
-  );
-}
-
-/** Clock with hands near midnight — urgency. Countdown timer. */
+/** REDESIGNED — Clock with ticks + hands pointing near midnight. 5 elements. */
 export function ClockCountdownIcon(props: IconProps) {
   return base(
     props,
     <>
       <circle cx="12" cy="12" r="9" />
-      {/* Tick marks at 12 o'clock */}
-      <line x1="12" y1="3.5" x2="12" y2="5" strokeWidth={2} />
-      {/* Hour hand pointing near 11 */}
-      <path d="M12 12L8.5 6" />
-      {/* Minute hand pointing near 12 */}
-      <path d="M12 12L12 7" />
-      {/* Center dot */}
-      <circle cx="12" cy="12" r="1.2" fill="currentColor" stroke="none" />
+      <path d="M12 3.5v1.5M12 19v1.5M3.5 12H5M19 12h1.5" strokeWidth={1.5} />
+      <path d="M12 12L8.5 8" />
+      <path d="M12 12V7" />
+      <circle cx="12" cy="12" r="1" fill={props.color ?? "currentColor"} stroke="none" />
     </>,
     "0 0 24 24"
   );
 }
 
-/** Shield with crystalline snowflake centered inside — streak freeze. */
+/** REDESIGNED — Classic shield outline + 6-point snowflake. 4 elements. */
 export function ShieldFreezeIcon(props: IconProps) {
   return base(
     props,
     <>
       <path d="M12 2l8 4v6c0 5-3.5 9.74-8 11-4.5-1.26-8-6-8-11V6l8-4z" />
-      {/* Snowflake — 3 spokes */}
-      <line x1="12" y1="8" x2="12" y2="16" />
-      <line x1="8.27" y1="10" x2="15.73" y2="14" />
-      <line x1="15.73" y1="10" x2="8.27" y2="14" />
-      {/* Branch nubs on center spoke */}
-      <line x1="10.5" y1="9.5" x2="12" y2="8" /><line x1="13.5" y1="9.5" x2="12" y2="8" />
-      <line x1="10.5" y1="14.5" x2="12" y2="16" /><line x1="13.5" y1="14.5" x2="12" y2="16" />
+      <path d="M12 8v8M8.27 10l7.46 4M15.73 10l-7.46 4" />
+      <path d="M10.5 9.2L12 8l1.5 1.2M10.5 14.8L12 16l1.5-1.2" strokeWidth={1} opacity={0.8} />
+      <path d="M9 11.5l-1 .5 1 .5M15 11.5l1 .5-1 .5" strokeWidth={1} opacity={0.8} />
     </>,
     "0 0 24 24"
   );
 }
 
-/** Gi kimono — proper collar + lapel construction. Replaces 🥋 emoji. */
+/** REDESIGNED — BJJ kimono: body + crossing V-lapels + belt. 4 elements. */
 export function GiIcon(props: IconProps) {
   return base(
     props,
     <>
-      {/* Body */}
-      <path d="M3 21V8l4-5h10l4 5v13" strokeLinejoin="round" />
-      {/* Left lapel */}
-      <path d="M7 3l5 7" />
-      {/* Right lapel */}
-      <path d="M17 3l-5 7" />
-      {/* Collar cross */}
+      <path d="M4 21V8l4-5h8l4 5v13z" />
+      <path d="M8 3l4 7 4-7" />
       <path d="M12 10v11" />
-      {/* Belt */}
-      <path d="M3 14h18" />
+      <path d="M4 14h16" strokeWidth={2} />
     </>,
     "0 0 24 24"
   );

@@ -1,7 +1,8 @@
 import { useState, useEffect, useCallback } from "react";
 import { getSaunaMembers, getSaunaStatus, saunaCheckin, saunaCheckout } from "@/lib/api";
 import type { SaunaMember, SaunaStatus } from "@/lib/api";
-import { SaunaIcon, FireIcon, WarningIcon, CheckCircleFilledIcon } from "@/components/icons/LbjjIcons";
+import { SaunaIcon, FireIcon, CheckCircleFilledIcon } from "@/components/icons/LbjjIcons";
+import { AlertTriangle } from "lucide-react";
 
 // ── Progress Ring ─────────────────────────────────────────────────────────────
 
@@ -50,7 +51,7 @@ const HOUSE_RULES = [
   { emoji: "📱", text: "No phone calls or loud music inside the sauna" },
   { emoji: "💧", text: "Stay hydrated — drink water before and after your session" },
   { emoji: "🛀", text: "Wipe down your spot when you're done" },
-  { emoji: <WarningIcon size={14} color="#FF6B6B" />, text: "If you feel dizzy or unwell, exit immediately" },
+  { emoji: <AlertTriangle size={14} color="#FF6B6B" />, text: "If you feel dizzy or unwell, exit immediately" },
   { emoji: "🔇", text: "Keep conversation low — respect others' quiet time" },
   { emoji: "⏰", text: "Limit sessions during peak hours so everyone gets a turn" },
   { emoji: <FireIcon size={14} color="#E8660C" />, text: "Recommended session: 15–20 minutes" },
@@ -173,7 +174,7 @@ export default function SaunaPage() {
         </div>
         {error && (
           <div style={{ fontSize: 12, color: "#E08228", marginTop: 4, marginBottom: 4 }}>
-            <WarningIcon size={14} color="#E08228" style={{ verticalAlign: 'middle', marginRight: 3 }} /> Unable to connect — showing cached data
+            <AlertTriangle size={14} color="#E08228" style={{ verticalAlign: 'middle', marginRight: 3 }} /> Unable to connect — showing cached data
           </div>
         )}
       </div>
@@ -399,7 +400,7 @@ export default function SaunaPage() {
                     </div>
                     {mins >= 20 && (
                       <div style={{ display: "flex", alignItems: "center", gap: 4, marginTop: 3 }}>
-                        <span style={{ display: 'inline-flex', alignItems: 'center' }}><WarningIcon size={14} color="#E05555" /></span>
+                        <span style={{ display: 'inline-flex', alignItems: 'center' }}><AlertTriangle size={14} color="#E05555" /></span>
                         <span style={{ fontSize: 12, color: "#E05555", fontWeight: 600 }}>Over recommended time</span>
                       </div>
                     )}

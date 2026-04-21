@@ -1,6 +1,7 @@
 import React, { useEffect } from 'react';
 import { useAuth } from '@/lib/auth-context';
-import { TrophyIcon, AchievedIcon, CalendarSparkIcon, SaunaIcon, ChartBarsIcon, MegaphoneIcon, ShieldIcon } from '@/components/icons/LbjjIcons';
+import { CalendarSparkIcon, SaunaIcon, ShieldIcon } from '@/components/icons/LbjjIcons';
+import { Trophy, CheckCircle2, BarChart2, Megaphone } from 'lucide-react';
 
 export function ProfileTray({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { logout, isAdmin, member } = useAuth();
@@ -37,12 +38,12 @@ export function ProfileTray({ open, onClose }: { open: boolean; onClose: () => v
       label: 'My Account',
       path: '/account',
     },
-    { icon: <TrophyIcon size={18} color="#C8A24C" />, label: 'Achievements', path: '/achievements' },
-    { icon: <AchievedIcon size={18} color="#C8A24C" />, label: 'Belt Journey', path: '/belt' },
+    { icon: <Trophy size={18} color="#C8A24C" />, label: 'Achievements', path: '/achievements' },
+    { icon: <CheckCircle2 size={18} color="#C8A24C" />, label: 'Belt Journey', path: '/belt' },
     { icon: <CalendarSparkIcon size={18} color="#C8A24C" />, label: 'Class History', path: '/history' },
     { icon: <SaunaIcon size={18} color="#C8A24C" />, label: 'Sauna', path: '/sauna' },
-    { icon: <ChartBarsIcon size={18} color="#C8A24C" />, label: 'Academy Stats', path: '/stats' },
-    { icon: <TrophyIcon size={18} color="#C8A24C" />, label: 'Tournament Calendar', path: '/calendar' },
+    { icon: <BarChart2 size={18} color="#C8A24C" />, label: 'Academy Stats', path: '/stats' },
+    { icon: <Trophy size={18} color="#C8A24C" />, label: 'Tournament Calendar', path: '/calendar' },
     {
       icon: (
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#C8A24C" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -67,7 +68,7 @@ export function ProfileTray({ open, onClose }: { open: boolean; onClose: () => v
     },
     ...(isAdmin
       ? [
-          { icon: <MegaphoneIcon size={18} color="#C8A24C" />, label: 'Message Blast', path: '/messages' },
+          { icon: <Megaphone size={18} color="#C8A24C" />, label: 'Message Blast', path: '/messages' },
           { icon: <ShieldIcon size={18} color="#C8A24C" />, label: 'Admin Panel', path: '/admin' },
         ]
       : []),

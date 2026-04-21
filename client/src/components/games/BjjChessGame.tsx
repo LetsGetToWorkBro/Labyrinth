@@ -1,10 +1,11 @@
 import {
-  FireIcon, ShieldIcon, SwordsIcon, SweepIcon, BoltIcon, SubmissionIcon,
-  WarningIcon, StarIcon, GrapplingIcon, ScorpionIcon, HeelHookIcon,
+  FireIcon, ShieldIcon, SweepIcon, BoltIcon, SubmissionIcon,
+  GrapplingIcon, ScorpionIcon, HeelHookIcon,
   FistIcon, EscapeIcon, PassIcon, MountIcon, TriangleIcon, ExhaustionIcon,
-  BerimsboloIcon, EagleIcon, SprawlIcon, StandingIcon, TrophyIcon,
+  BerimsboloIcon, EagleIcon, SprawlIcon, StandingIcon,
   GoldMedalIcon,
 } from "@/components/icons/LbjjIcons";
+import { AlertTriangle, Star, Swords, Trophy } from "lucide-react";
 import { useState, useEffect, useCallback } from "react";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -266,10 +267,10 @@ function GameIcon({ id, size = ICON_SIZE }: { id: string; size?: number }) {
     case "escape":     return <EscapeIcon size={s} color={c} />;
     case "scorpion":   return <ScorpionIcon size={s} color={c} />;
     case "heelhook":   return <HeelHookIcon size={s} color={c} />;
-    case "swords":     return <SwordsIcon size={s} color={c} />;
+    case "swords":     return <Swords size={s} color={c} />;
     case "grappling":  return <GrapplingIcon size={s} color={c} />;
     case "exhaustion": return <ExhaustionIcon size={s} color="#E05555" />;
-    case "trophy":     return <TrophyIcon size={s} color="#C8A24C" />;
+    case "trophy":     return <Trophy size={s} color="#C8A24C" />;
     case "check":      return <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke="#4CAF80" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5"/></svg>;
     case "x":          return <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke="#E05555" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6L6 18M6 6l12 12"/></svg>;
     case "target":     return <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="1.5" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2" fill={c} stroke="none"/></svg>;
@@ -553,7 +554,7 @@ export default function BjjChessGame({ onBack, onGameEnd }: Props) {
             </button>
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
               <span style={{ fontSize: 11, color: suddenDeath ? "#E05555" : "#666", fontWeight: suddenDeath ? 700 : 400 }}>
-                <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}>{suddenDeath ? <><WarningIcon size={13} color="#E05555" aria-hidden="true" /> SUDDEN DEATH</> : `Round ${round}/${MAX_ROUNDS}`}</span>
+                <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}>{suddenDeath ? <><AlertTriangle size={13} color="#E05555" aria-hidden="true" /> SUDDEN DEATH</> : `Round ${round}/${MAX_ROUNDS}`}</span>
               </span>
               <span style={{
                 fontSize: 10, fontWeight: 700, padding: "2px 8px", borderRadius: 6,
@@ -590,7 +591,7 @@ export default function BjjChessGame({ onBack, onGameEnd }: Props) {
                 fontSize: 14, opacity: i < momentum ? 1 : 0.2,
                 filter: i < momentum ? "none" : "grayscale(1)",
                 transition: "all 0.3s",
-              }}><StarIcon size={14} color="#C8A24C" /></span>
+              }}><Star size={14} color="#C8A24C" /></span>
             ))}
             {momentum >= 3 && (
               <span style={{ fontSize: 9, color: "#C8A24C", fontWeight: 700, marginLeft: 4, alignSelf: "center" }}>
@@ -636,7 +637,7 @@ export default function BjjChessGame({ onBack, onGameEnd }: Props) {
             {position}
           </div>
           <div style={{ fontSize: 11, color: "#666", marginTop: 4 }}>
-            <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>{isDominant(position) ? <><SwordsIcon size={13} color="#C8A24C" aria-hidden="true" /> Dominant position</> : "Neutral ground"}</span>
+            <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>{isDominant(position) ? <><Swords size={13} color="#C8A24C" aria-hidden="true" /> Dominant position</> : "Neutral ground"}</span>
           </div>
         </div>
 

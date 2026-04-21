@@ -1,4 +1,3 @@
-import { WarningIcon } from "@/components/icons/LbjjIcons";
 import { EmptyState, SkeletonList, ErrorState as PageErrorState } from '@/components/StateComponents';
 /**
  * AdminPage.tsx — Labyrinth BJJ Admin Panel

@@ -39,9 +39,10 @@ import logoMaze from './assets/logo-maze.webp';
 import {
   Home, MessageCircle, CalendarDays, MoreHorizontal,
   Gamepad2, BarChart2, Trophy, Thermometer,
+  CheckCircle2, Megaphone, ChevronRight,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
-import { TrophyIcon, AchievedIcon, CalendarSparkIcon, GamepadIcon, GoldMedalIcon, SaunaIcon, ChartBarsIcon, MegaphoneIcon, ShieldIcon, ChevronRightIcon } from "@/components/icons/LbjjIcons";
+import { CalendarSparkIcon, GamepadIcon, GoldMedalIcon, SaunaIcon, ShieldIcon } from "@/components/icons/LbjjIcons";
 import React, { useEffect, useCallback, useState, useRef } from "react";
 import { useHashLocation as useHashLoc } from "wouter/use-hash-location";
 import { Redirect } from "wouter";
@@ -949,8 +950,8 @@ function MorePage() {
     {
       label: 'Train',
       items: [
-        { href: '/#/achievements', icon: <TrophyIcon size={20} color="#C8A24C" />, label: 'Achievements', desc: 'Unlock badges and track your progress' },
-        { href: '/#/belt', icon: <AchievedIcon size={20} color="#C8A24C" />, label: 'Belt Journey', desc: 'Track your progression and submit promotion requests' },
+        { href: '/#/achievements', icon: <Trophy size={20} color="#C8A24C" />, label: 'Achievements', desc: 'Unlock badges and track your progress' },
+        { href: '/#/belt', icon: <CheckCircle2 size={20} color="#C8A24C" />, label: 'Belt Journey', desc: 'Track your progression and submit promotion requests' },
         { href: '/#/history',  icon: <CalendarSparkIcon size={20} color="#C8A24C" />, label: 'Class History', desc: 'Your attendance record' },
         { href: '/#/games',    icon: <GamepadIcon size={20} color="#C8A24C" />, label: 'Games', desc: 'Challenge your teammates' },
         { href: '/#/leaderboard', icon: <GoldMedalIcon size={20} />, label: 'Leaderboard', desc: 'Weekly class attendance rankings' },
@@ -962,8 +963,8 @@ function MorePage() {
       label: 'Manage',
       items: [
         { href: '/#/sauna',    icon: <SaunaIcon size={20} color="#C8A24C" />, label: 'Sauna Dashboard', desc: 'Check in/out, active sessions' },
-        { href: '/#/stats',    icon: <ChartBarsIcon size={20} color="#C8A24C" />, label: 'Academy Stats', desc: 'Rankings, athletes, jits.gg' },
-        { href: '/#/calendar', icon: <TrophyIcon size={20} color="#C8A24C" />, label: 'Tournament Calendar', desc: 'Events and registrations' },
+        { href: '/#/stats',    icon: <BarChart2 size={20} color="#C8A24C" />, label: 'Academy Stats', desc: 'Rankings, athletes, jits.gg' },
+        { href: '/#/calendar', icon: <Trophy size={20} color="#C8A24C" />, label: 'Tournament Calendar', desc: 'Events and registrations' },
       ]
     },
     {
@@ -976,7 +977,7 @@ function MorePage() {
     ...(isAdmin ? [{
       label: 'Admin',
       items: [
-        { href: '/#/messages', icon: <MegaphoneIcon size={20} color="#C8A24C" />, label: 'Message Blast', desc: 'Email or text all members' },
+        { href: '/#/messages', icon: <Megaphone size={20} color="#C8A24C" />, label: 'Message Blast', desc: 'Email or text all members' },
         { href: '/#/admin',    icon: <ShieldIcon size={20} color="#C8A24C" />, label: 'Admin Panel', desc: 'Member management & stats' },
       ]
     }] : []),
@@ -1031,7 +1032,7 @@ function MorePage() {
                     <p className="text-xs" style={{ color: "#888" }}>{item.desc}</p>
                   </div>
                   <span style={{ display: 'inline-flex', alignItems: 'center', transition: 'transform 80ms cubic-bezier(0.16, 1, 0.3, 1)' }}>
-                    <ChevronRightIcon size={16} color="#555" />
+                    <ChevronRight size={16} color="#555" />
                   </span>
                 </a>
               ))}

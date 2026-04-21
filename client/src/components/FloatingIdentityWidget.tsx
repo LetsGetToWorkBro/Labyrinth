@@ -7,7 +7,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '@/lib/auth-context';
 import { getLevelFromXP, getRingTier } from '@/lib/xp';
 import { ProfileRing } from '@/components/ProfileRing';
-import { GrapplingIcon, TrophyIcon, GoldMedalIcon } from '@/components/icons/LbjjIcons';
+import { GrapplingIcon, GoldMedalIcon } from '@/components/icons/LbjjIcons';
+import { Trophy } from 'lucide-react';
 // useLocation removed — widget is outside Router context, use window.location directly
 
 // Pages where the widget should be hidden
@@ -193,7 +194,7 @@ export function FloatingIdentityWidget() {
           <div style={{ display: 'flex', justifyContent: 'space-around' }}>
             {[
               { icon: <GrapplingIcon size={14} color="#C8A24C" />, xp: '+10 XP', label: 'Check in' },
-              { icon: <TrophyIcon size={14} color="#C8A24C" />, xp: '+50 XP', label: 'Tournament' },
+              { icon: <Trophy size={14} color="#C8A24C" />, xp: '+50 XP', label: 'Tournament' },
               { icon: <GoldMedalIcon size={14} />, xp: '+150 XP', label: 'Gold' },
             ].map(item => (
               <div key={item.label} style={{ textAlign: 'center', opacity: 0.8 }}>

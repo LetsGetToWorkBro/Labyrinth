@@ -1,10 +1,10 @@
-import { CheckCircleFilledIcon, TrophyIcon, LockIcon } from "@/components/icons/LbjjIcons";
+import { CheckCircleFilledIcon, LockIcon } from "@/components/icons/LbjjIcons";
 import { useState, useEffect, useRef, useCallback } from "react";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { CLASS_SCHEDULE, CLASS_TYPE_COLORS, DAYS_ORDER } from "@/lib/constants";
 import type { ClassScheduleItem } from "@/lib/constants";
 import { getScheduleClasses, gasCall, getMemberData, saveMemberStats, syncAchievements, getLeaderboardFresh } from "@/lib/api";
-import { Clock, ChevronRight, X, User, CheckCircle } from "lucide-react";
+import { Clock, ChevronRight, X, User, CheckCircle, Trophy } from "lucide-react";
 import { checkAndUnlockAchievements, ALL_ACHIEVEMENTS } from "@/lib/achievements";
 import { validateGeoIfRequired } from "@/lib/geo";
 import { getStreamStatus, getLiveBadgeStyle } from "@/lib/streaming";
@@ -377,7 +377,7 @@ export default function SchedulePage() {
           alignItems: "center",
           gap: 12,
         }}>
-          <TrophyIcon size={22} color="#C8A24C" aria-hidden="true" />
+          <Trophy size={22} color="#C8A24C" aria-hidden="true" />
           <div style={{ flex: 1 }}>
             <p style={{ fontSize: 14, fontWeight: 600, color: "#E0E0E0", margin: 0 }}>Compete at a Tournament</p>
             <p style={{ fontSize: 12, color: "#666", margin: "2px 0 0" }}>View upcoming events and registration links</p>

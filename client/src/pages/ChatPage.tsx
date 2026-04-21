@@ -8,7 +8,7 @@
  * - Unauthenticated users can read public channels (no token) but must log in to send
  */
 
-import { BeltDot, TrophyIcon, StarIcon, FireIcon } from "@/components/icons/LbjjIcons";
+import { BeltDot, FireIcon } from "@/components/icons/LbjjIcons";
 import React, { useState, useRef, useEffect, useCallback } from "react";
 import { createPortal } from "react-dom";
 import { ListSkeleton } from "@/components/LoadingSkeleton";
@@ -25,7 +25,7 @@ import { getRankProfile } from "@/lib/chat-data";
 import logoMaze from "@assets/maze-gold-md.png";
 import {
   Send, ArrowLeft, Lock, Users, Hash, ChevronRight, ChevronLeft, ChevronDown, X,
-  Shield, Crown, MessageCircle, Megaphone, Loader2, RefreshCw, Award,
+  Shield, Crown, MessageCircle, Megaphone, Loader2, RefreshCw, Award, Trophy, Star,
 } from "lucide-react";
 
 const GOLD = "#C8A24C";
@@ -121,7 +121,7 @@ function MemberMiniProfile({ member, onClose }: { member: ChannelMember; onClose
         })()}
         {member.badgeCount && member.badgeCount > 0 ? (
           <div style={{ display:'flex', alignItems:'center', gap:6, marginTop:12, padding:'8px 12px', background:'rgba(200,162,76,0.06)', border:'1px solid rgba(200,162,76,0.12)', borderRadius:10 }}>
-            <TrophyIcon size={14} color="#C8A24C" />
+            <Trophy size={14} color="#C8A24C" />
             <span style={{ fontSize:12, color:'#C8A24C', fontWeight:600 }}>{member.badgeCount} achievement{member.badgeCount !== 1 ? 's' : ''} unlocked</span>
           </div>
         ) : null}
@@ -687,7 +687,7 @@ export default function ChatPage() {
               if ((msg as any).sender === 'system' || (msg as any).type === 'system') {
                 const txt = msg.text || '';
                 const emojiMatch = txt.match(/^(\S{1,2})/);
-                const icon: React.ReactNode = emojiMatch && emojiMatch[1].codePointAt(0)! > 127 ? emojiMatch[1] : <TrophyIcon size={14} color="#C8A24C" />;
+                const icon: React.ReactNode = emojiMatch && emojiMatch[1].codePointAt(0)! > 127 ? emojiMatch[1] : <Trophy size={14} color="#C8A24C" />;
                 const color = '#C8A24C';
                 return (
                   <div key={msg.id} className="chat-message-entry" style={isNew ? { animation: 'chat-msg-enter 160ms cubic-bezier(0.16, 1, 0.3, 1) both' } : undefined}>

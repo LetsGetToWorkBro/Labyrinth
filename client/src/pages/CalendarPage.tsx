@@ -1,4 +1,4 @@
-import { GoldMedalIcon, SilverMedalIcon, BronzeMedalIcon, FistIcon, TrophyIcon } from "@/components/icons/LbjjIcons";
+import { GoldMedalIcon, SilverMedalIcon, BronzeMedalIcon, FistIcon } from "@/components/icons/LbjjIcons";
 import { EmptyState } from '@/components/StateComponents';
 import { useState, useEffect, useMemo } from "react";
 import { ScreenHeader } from "@/components/ScreenHeader";
@@ -635,7 +635,7 @@ export default function CalendarPage() {
             );
           })}
           <span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", animation: "celebratePulse 1s ease-in-out infinite" }}>
-            {celebration.emoji === 'gold' ? <GoldMedalIcon size={72} /> : celebration.emoji === 'silver' ? <SilverMedalIcon size={72} /> : celebration.emoji === 'bronze' ? <BronzeMedalIcon size={72} /> : <TrophyIcon size={72} color="#FFD700" />}
+            {celebration.emoji === 'gold' ? <GoldMedalIcon size={72} /> : celebration.emoji === 'silver' ? <SilverMedalIcon size={72} /> : celebration.emoji === 'bronze' ? <BronzeMedalIcon size={72} /> : <Trophy size={72} color="#FFD700" />}
           </span>
           <h2 style={{ fontSize: 24, fontWeight: 800, color: "#C8A24C", margin: "16px 0 8px", textAlign: "center" }}>
             {celebration.name} won {celebration.place}!

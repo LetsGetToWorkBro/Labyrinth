@@ -1,4 +1,4 @@
-import { GoldMedalIcon, StarIcon } from "@/components/icons/LbjjIcons";
+import { GoldMedalIcon } from "@/components/icons/LbjjIcons";
 import React, { useState, useEffect, useMemo, useRef } from "react";
 import { useAuth } from "@/lib/auth-context";
 import { getActualLevel, getLevelFromXP } from "@/lib/xp";
@@ -10,7 +10,7 @@ import { ListSkeleton, StatSkeleton } from "@/components/LoadingSkeleton";
 import { fetchCSV, parseCSV, CSV_ENDPOINTS } from "@/lib/api";
 import type { Athlete, AcademyConfig } from "@/lib/api";
 import { getTierColor } from "@/lib/constants";
-import { Search, ExternalLink, Trophy, Target, Swords, Award, TrendingUp, Filter } from "lucide-react";
+import { Search, ExternalLink, Trophy, Target, Swords, Award, TrendingUp, Filter, Star } from "lucide-react";
 
 function AnimatedCounter({ target, suffix = "" }: { target: number; suffix?: string }) {
   const [count, setCount] = useState(0);
@@ -281,7 +281,7 @@ export default function StatsPage() {
                     <span>{a.wins}W - {a.losses}L</span>
                     <span>{a.winRate}% Win</span>
                     {a.golds > 0 && <span style={{ color: "#C8A24C", display: "inline-flex", alignItems: "center", gap: 4 }}>{a.golds} <GoldMedalIcon size={15} aria-hidden="true" /></span>}
-                    {a.rating > 0 && <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}><StarIcon size={13} color="#C8A24C" aria-hidden="true" /> {a.rating.toLocaleString()}</span>}
+                    {a.rating > 0 && <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}><Star size={13} color="#C8A24C" aria-hidden="true" /> {a.rating.toLocaleString()}</span>}
                   </div>
                 </div>
                 {a.profileUrl && <ExternalLink size={14} style={{ color: "#444", flexShrink: 0 }} />}
