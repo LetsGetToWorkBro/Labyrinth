@@ -42,7 +42,7 @@ import {
   CheckCircle2, Megaphone, ChevronRight,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
-import { CalendarSparkIcon, GamepadIcon, GoldMedalIcon, SaunaIcon, ShieldIcon } from "@/components/icons/LbjjIcons";
+import { CalendarSparkIcon, GamepadIcon, GoldMedalIcon, SaunaIcon, ShieldIcon, GrapplingIcon } from "@/components/icons/LbjjIcons";
 import React, { useEffect, useCallback, useState, useRef } from "react";
 import { useHashLocation as useHashLoc } from "wouter/use-hash-location";
 import { Redirect } from "wouter";
@@ -51,7 +51,7 @@ import { getBeltColor } from "@/lib/constants";
 import { ProfileRing } from "@/components/ProfileRing";
 import { TopHeader } from "@/components/TopHeader";
 import { ProfileTray } from "@/components/ProfileTray";
-import { getRingTier, getActualLevel } from "@/lib/xp";
+import { getRingTier, getActualLevel, getLevelFromXP } from "@/lib/xp";
 import { XPBar } from "@/components/XPBar";
 import { soundSystem } from '@/lib/sounds';
 
@@ -85,7 +85,7 @@ const ALL_NAV_OPTIONS: NavOption[] = [
   { path: '/achievements', label: 'Achievements', Icon: Trophy,       emoji: '' },
 ];
 
-const DEFAULT_NAV_PATHS = ['/', '/chat', '/schedule', '/games', '/leaderboard'];
+const DEFAULT_NAV_PATHS = ['/', '/chat', '/schedule', '/achievements', '/leaderboard'];
 
 function getNavConfig(): string[] {
   try {
@@ -1381,6 +1381,7 @@ function AppShell() {
   // location removed from AppShell — AppShell is outside Router, useHashLoc() crashes
   const [levelUpState, setLevelUpState] = useState<{ newLevel: number; prevLevel: number } | null>(null);
   const [trayOpen, setTrayOpen] = useState(false);
+  const [xpModalOpen, setXpModalOpen] = useState(false);
   const handleLevelUp = useCallback((newLevel: number, prevLevel: number) => {
     setLevelUpState({ newLevel, prevLevel });
   }, []);
@@ -1463,7 +1464,7 @@ function AppShell() {
       if (prev === location) return;
 
       // Determine direction
-      const tabPaths = ['/', '/chat', '/schedule', '/games', '/leaderboard'];
+      const tabPaths = ['/', '/chat', '/schedule', '/achievements', '/leaderboard'];
       const isTab = tabPaths.includes(location) && tabPaths.includes(prev);
       const fromIdx = tabPaths.indexOf(prev);
       const toIdx = tabPaths.indexOf(location);
@@ -1538,8 +1539,68 @@ function AppShell() {
       {!onboardingDone && <OnboardingPage />}
       {needsWaiver && <WaiverRedirect />}
       <AdminShortcut />
-      <TopHeader onTrayOpen={() => setTrayOpen(true)} />
+      <TopHeader onMenuOpen={() => setTrayOpen(true)} onXpOpen={() => setXpModalOpen(true)} />
       <ProfileTray open={trayOpen} onClose={() => setTrayOpen(false)} />
+
+      {xpModalOpen && (() => {
+        const memberXP = (member as any)?.totalPoints || 0;
+        const memberLevel = getActualLevel(memberXP);
+        const lvl = getLevelFromXP(memberXP);
+        return (
+          <div style={{ position: 'fixed', inset: 0, zIndex: 600, background: 'rgba(0,0,0,0.75)' }} onClick={() => setXpModalOpen(false)}>
+            <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, background: 'linear-gradient(135deg, #141418, #1A1A1E)', borderRadius: '20px 20px 0 0', border: '1px solid rgba(200,162,76,0.18)', padding: '20px 20px max(24px, calc(env(safe-area-inset-bottom) + 20px))', maxHeight: '75vh', overflowY: 'auto' }}
+              onClick={e => e.stopPropagation()}>
+              <div style={{ width: 36, height: 4, background: '#333', borderRadius: 2, margin: '0 auto 20px' }} />
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
+                <div style={{ fontSize: 28, fontWeight: 900, color: '#C8A24C' }}>{memberLevel}</div>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: 14, fontWeight: 700, color: '#F0F0F0' }}>{lvl.title}</div>
+                  <div style={{ fontSize: 11, color: '#666' }}>{memberXP.toLocaleString()} XP total</div>
+                </div>
+                <div style={{ textAlign: 'right' }}>
+                  <div style={{ fontSize: 9, color: '#555', textTransform: 'uppercase', letterSpacing: '0.08em' }}>to next</div>
+                  <div style={{ fontSize: 13, fontWeight: 800, color: '#C8A24C' }}>+{Math.max(0, lvl.xpForNext - memberXP).toLocaleString()}</div>
+                </div>
+              </div>
+              <div style={{ height: 12, borderRadius: 6, background: '#0A0A0A', overflow: 'hidden', marginBottom: 20, border: '1px solid #1A1A1A' }}>
+                <div style={{ height: '100%', borderRadius: 6, width: `${Math.max(lvl.progress * 100, 1.5)}%`, background: 'linear-gradient(90deg, #6B4A00, #C8A24C 40%, #FFD700 70%, #FFF8DC 85%, #FFD700 100%)', backgroundSize: '300% 100%', animation: 'xp-shimmer 2s linear infinite', transition: 'width 1.2s cubic-bezier(0.4,0,0.2,1)', boxShadow: '0 0 10px rgba(255,215,0,0.5)' }} />
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-around', marginBottom: 20 }}>
+                {[
+                  { icon: <GrapplingIcon size={16} color="#C8A24C" />, xp: '+10 XP', label: 'Check in' },
+                  { icon: <Trophy size={16} color="#C8A24C" />, xp: '+50 XP', label: 'Tournament' },
+                  { icon: <GoldMedalIcon size={16} />, xp: '+150 XP', label: 'Gold' },
+                ].map(item => (
+                  <div key={item.label} style={{ textAlign: 'center' }}>
+                    <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 4 }}>{item.icon}</div>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: '#C8A24C' }}>{item.xp}</div>
+                    <div style={{ fontSize: 10, color: '#555' }}>{item.label}</div>
+                  </div>
+                ))}
+              </div>
+              <div style={{ fontSize: 11, fontWeight: 700, color: '#888', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 10 }}>Next Rewards</div>
+              {[
+                { level: 5, label: 'Bronze Portrait', desc: 'Bronze ring frame unlocks', color: '#CD7F32' },
+                { level: 10, label: 'Silver Portrait', desc: 'Double-ring silver frame', color: '#9CA3AF' },
+                { level: 20, label: 'Gold Portrait', desc: 'Gold crown ring', color: '#C8A24C' },
+                { level: 50, label: 'Paragon Portrait', desc: 'Animated paragon frame', color: '#DC46DC' },
+              ].filter(r => r.level > memberLevel).slice(0, 3).map(reward => (
+                <div key={reward.label} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 0', borderBottom: '1px solid #1A1A1A' }}>
+                  <div style={{ width: 32, height: 32, borderRadius: '50%', border: `2px solid ${reward.color}`, background: `${reward.color}11`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                    <div style={{ width: 20, height: 20, borderRadius: '50%', background: reward.color, opacity: 0.5 }} />
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontSize: 13, fontWeight: 700, color: '#F0F0F0' }}>{reward.label}</div>
+                    <div style={{ fontSize: 11, color: '#666' }}>{reward.desc}</div>
+                  </div>
+                  <div style={{ fontSize: 11, color: reward.color, fontWeight: 700 }}>LV {reward.level}</div>
+                </div>
+              ))}
+              <button onClick={() => setXpModalOpen(false)} style={{ marginTop: 20, width: '100%', padding: 13, borderRadius: 12, background: '#1A1A1A', border: '1px solid #2A2A2A', color: '#888', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>Close</button>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Global biometric registration prompt overlay */}
       {showPasskeySetup && supportsPasskey && (

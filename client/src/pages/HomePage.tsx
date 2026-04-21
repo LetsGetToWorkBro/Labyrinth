@@ -22,6 +22,7 @@ import {
   memberAddCard, memberCreateSetupLink,
 } from "@/lib/api";
 import React, { useState, useEffect, useCallback, useRef } from "react";
+import { createPortal } from "react-dom";
 import { soundSystem } from '@/lib/sounds';
 import { StatSkeleton, ListSkeleton } from "@/components/LoadingSkeleton";
 import { getStreamStatus, clearStreamCache } from "@/lib/streaming";
@@ -2739,7 +2740,7 @@ export default function HomePage() {
       {/* ════════════════════════════════════════════════════
           RANK INFO MODAL — tap XP bar to open
           ════════════════════════════════════════════════════ */}
-      {showRankInfo && (
+      {showRankInfo && createPortal((
         <div
           style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.88)', zIndex: 1100, display: 'flex', alignItems: 'flex-end', justifyContent: 'center', animation: 'fadeInOverlay 0.2s ease-out', touchAction: 'none' as any }}
           onClick={() => setShowRankInfo(false)}
@@ -2846,12 +2847,12 @@ export default function HomePage() {
             </div>
           </div>
         </div>
-      )}
+      ), document.body)}
 
       {/* ════════════════════════════════════════════════════
           STREAK & MULTIPLIER INFO MODAL — tap weekly widget
           ════════════════════════════════════════════════════ */}
-      {showStreakInfo && (() => {
+      {showStreakInfo && createPortal((() => {
         const isActive = trainedCount >= 3;
         const streakTiers = [
           { days: 1, label: '1 Class', mult: '1×', desc: 'Base XP per class check-in', color: '#555', icon: <GrapplingIcon size={20} color="#555" /> },
@@ -2971,10 +2972,10 @@ export default function HomePage() {
             </div>
           </div>
         );
-      })()}
+      })(), document.body)}
 
       {/* ── Milestone Info Modal ─────────────────────────────────── */}
-      {showMilestoneInfo && (
+      {showMilestoneInfo && createPortal((
         <div
           onClick={() => setShowMilestoneInfo(false)}
           style={{ position: 'fixed', inset: 0, zIndex: 1200, display: 'flex', alignItems: 'flex-end', animation: 'fadeInOverlay 0.2s ease', touchAction: 'none' as any }}
@@ -3049,10 +3050,10 @@ export default function HomePage() {
             </div>
           </div>
         </div>
-      )}
+      ), document.body)}
 
       {/* ── Narrative / Weekly Stats Modal ───────────────────────── */}
-      {showNarrativeInfo && (
+      {showNarrativeInfo && createPortal((
         <div
           onClick={() => setShowNarrativeInfo(false)}
           style={{ position: 'fixed', inset: 0, zIndex: 1200, display: 'flex', alignItems: 'flex-end', animation: 'fadeInOverlay 0.2s ease', touchAction: 'none' as any }}
@@ -3120,7 +3121,7 @@ export default function HomePage() {
             </div>
           </div>
         </div>
-      )}
+      ), document.body)}
 
       {/* ── Technique Editor Modal ───────────────────────────────── */}
       {showTechniqueEditor && member?.isAdmin && (
@@ -3282,7 +3283,7 @@ export default function HomePage() {
       )}
 
       {/* ── Week Stats Modal ───────────────────────── */}
-      {showWeekStats && (
+      {showWeekStats && createPortal((
         <div
           onClick={() => setShowWeekStats(false)}
           style={{ position: 'fixed', inset: 0, zIndex: 1200, display: 'flex', alignItems: 'flex-end', animation: 'fadeInOverlay 0.2s ease' }}
@@ -3323,10 +3324,10 @@ export default function HomePage() {
             </div>
           </div>
         </div>
-      )}
+      ), document.body)}
 
       {/* ── Game Day Info Modal ───────────────────────── */}
-      {showGameDayInfo && (
+      {showGameDayInfo && createPortal((
         <div
           onClick={() => setShowGameDayInfo(false)}
           style={{ position: 'fixed', inset: 0, zIndex: 1200, display: 'flex', alignItems: 'flex-end', animation: 'fadeInOverlay 0.2s ease' }}
@@ -3364,10 +3365,10 @@ export default function HomePage() {
             </div>
           </div>
         </div>
-      )}
+      ), document.body)}
 
       {/* ── Season Modal ───────────────────────── */}
-      {showSeasonModal && trainingSeasonData && (
+      {showSeasonModal && trainingSeasonData && createPortal((
         <div
           onClick={() => setShowSeasonModal(false)}
           style={{ position: 'fixed', inset: 0, zIndex: 1200, display: 'flex', alignItems: 'flex-end', animation: 'fadeInOverlay 0.2s ease' }}
@@ -3443,7 +3444,7 @@ export default function HomePage() {
             </div>
           </div>
         </div>
-      )}
+      ), document.body)}
     </div>
   );
 }

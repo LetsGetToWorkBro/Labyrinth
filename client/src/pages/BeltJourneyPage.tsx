@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { SkeletonBeltJourney } from '@/components/StateComponents';
 import { BeltIcon, ADULT_BELT_OPTIONS, KIDS_BELT_OPTIONS, BELT_DISPLAY_NAMES } from "@/components/BeltIcon";
+import { BoltIcon } from "@/components/icons/LbjjIcons";
 import { getBeltColor } from "@/lib/constants";
 import { useAuth } from "@/lib/auth-context";
 import { beltGetPromotions, beltSavePromotion, beltDeletePromotion, beltUpdatePromotion, getCoachNotes } from "@/lib/api";

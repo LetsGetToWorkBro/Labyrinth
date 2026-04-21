@@ -4,7 +4,7 @@ import { getLevelFromXP, getRingTier } from '@/lib/xp';
 import { ProfileRing } from '@/components/ProfileRing';
 import logoMaze from '../assets/logo-maze.webp';
 
-export function TopHeader({ onTrayOpen }: { onTrayOpen: () => void }) {
+export function TopHeader({ onMenuOpen, onXpOpen }: { onMenuOpen: () => void; onXpOpen: () => void }) {
   const { member, isAuthenticated } = useAuth();
   const [avatarSrc, setAvatarSrc] = useState<string | null>(null);
   const [hidden, setHidden] = useState<boolean>(() => {
@@ -13,10 +13,16 @@ export function TopHeader({ onTrayOpen }: { onTrayOpen: () => void }) {
   });
 
   useEffect(() => {
-    try { const s = localStorage.getItem('lbjj_profile_picture'); if (s) setAvatarSrc(s); } catch {}
-    const handler = () => { try { const s = localStorage.getItem('lbjj_profile_picture'); if (s) setAvatarSrc(s); } catch {} };
-    window.addEventListener('pfp-updated', handler);
-    return () => window.removeEventListener('pfp-updated', handler);
+    const sync = () => {
+      try {
+        const s = localStorage.getItem('lbjj_profile_picture');
+        if (s) setAvatarSrc(s);
+      } catch {}
+    };
+    sync();
+    const t = setInterval(sync, 3000);
+    window.addEventListener('pfp-updated', sync);
+    return () => { clearInterval(t); window.removeEventListener('pfp-updated', sync); };
   }, []);
 
   useEffect(() => {
@@ -50,7 +56,14 @@ export function TopHeader({ onTrayOpen }: { onTrayOpen: () => void }) {
       paddingLeft: 16, paddingRight: 16,
     }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-        <img src={logoMaze} alt="Labyrinth BJJ" style={{ width: 28, height: 28, objectFit: 'contain', opacity: 0.9, flexShrink: 0 }} />
+        <button
+          className="btn-icon-sm"
+          onClick={onMenuOpen}
+          aria-label="Open menu"
+          style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', flexShrink: 0 }}
+        >
+          <img src={logoMaze} alt="Labyrinth BJJ" style={{ width: 28, height: 28, objectFit: 'contain', opacity: 0.9 }} />
+        </button>
 
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, marginBottom: 4 }}>
@@ -58,29 +71,31 @@ export function TopHeader({ onTrayOpen }: { onTrayOpen: () => void }) {
             <span style={{ fontSize: 10, color: '#666', fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>{title}</span>
             <span style={{ fontSize: 9, color: '#444', whiteSpace: 'nowrap' }}>+{xpToNext.toLocaleString()} to next</span>
           </div>
-          <div style={{ height: 4, borderRadius: 2, background: '#111', overflow: 'hidden', position: 'relative' }}>
+          <div style={{ height: 8, borderRadius: 4, background: '#111', overflow: 'hidden', position: 'relative', border: '1px solid #1A1A1A' }}>
             <div style={{
-              height: '100%', borderRadius: 2,
+              height: '100%', borderRadius: 4,
               width: `${Math.max(progress * 100, 1.5)}%`,
-              background: 'linear-gradient(90deg, #6B4A00, #C8A24C 50%, #FFD700)',
-              backgroundSize: '200% 100%',
-              animation: 'xp-shimmer 2.5s linear infinite',
-              transition: 'width 1s cubic-bezier(0.4,0,0.2,1)',
+              background: 'linear-gradient(90deg, #6B4A00, #C8A24C 40%, #FFD700 70%, #FFF8DC 85%, #FFD700 100%)',
+              backgroundSize: '300% 100%',
+              animation: 'xp-shimmer 2s linear infinite',
+              transition: 'width 1.2s cubic-bezier(0.4,0,0.2,1)',
+              boxShadow: '0 0 8px rgba(255,215,0,0.4)',
             }} />
           </div>
         </div>
 
         <button
-          onClick={onTrayOpen}
-          aria-label="Open menu"
+          className="btn-icon-sm"
+          onClick={onXpOpen}
+          aria-label="View XP and level"
           style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', flexShrink: 0 }}
         >
-          <ProfileRing tier={ringTier} size={36}>
+          <ProfileRing tier={ringTier} size={40}>
             <div style={{
-              width: 32, height: 32, borderRadius: '50%',
+              width: 36, height: 36, borderRadius: '50%',
               background: avatarSrc ? 'transparent' : 'rgba(200,162,76,0.15)',
               overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center',
-              fontSize: 11, fontWeight: 800, color: '#C8A24C',
+              fontSize: 12, fontWeight: 800, color: '#C8A24C',
             }}>
               {avatarSrc
                 ? <img src={avatarSrc} style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt="Profile" />
