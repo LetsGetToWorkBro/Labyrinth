@@ -1259,9 +1259,9 @@ export default function HomePage() {
       const stats = JSON.parse(localStorage.getItem('lbjj_game_stats_v2') || '{}');
       const classes = stats.classesAttended || 0;
       const achMilestones = [
-        { key: 'ten_classes', label: 'Mat Initiate', need: Math.max(0, 10 - classes), unit: 'classes', icon: '🥋' },
+        { key: 'ten_classes', label: 'Mat Initiate', need: Math.max(0, 10 - classes), unit: 'classes', icon: <GrapplingIcon size={16} color="#C8A24C" /> },
         { key: 'thirty_classes', label: 'Mat Warrior', need: Math.max(0, 30 - classes), unit: 'classes', icon: <SwordsIcon size={16} color="#C8A24C" /> },
-        { key: 'hundred_classes', label: 'Century Club', need: Math.max(0, 100 - classes), unit: 'classes', icon: '💯' },
+        { key: 'hundred_classes', label: 'Century Club', need: Math.max(0, 100 - classes), unit: 'classes', icon: <TrophyIcon size={16} color="#C8A24C" /> },
       ];
       const nearestAch = achMilestones
         .filter(a => !earned.includes(a.key) && a.need > 0)
@@ -2353,7 +2353,7 @@ export default function HomePage() {
                   background: 'rgba(200,162,76,0.08)', border: '1px solid rgba(200,162,76,0.18)',
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
                 }}>
-                  {React.cloneElement(nextMilestoneData.icon as React.ReactElement<any>, { size: 26 })}
+                  {nextMilestoneData.icon}
                 </div>
               </div>
               <div style={{ fontSize: 12, fontWeight: 800, color: '#F0F0F0', textAlign: 'center', lineHeight: 1.25 }}>
