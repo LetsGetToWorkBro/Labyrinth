@@ -193,35 +193,31 @@ export function TopHeader({ onMenuOpen, onXpOpen }: { onMenuOpen: () => void; on
             </div>
           </div>
 
-          {/* Row 2: XP bar */}
-          <div style={{ position: 'relative' }}>
-            {/* XP progress label — floats above bar */}
+          {/* Row 2: XP bar + inline XP label */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            {/* Bar — takes all remaining space */}
             <div style={{
-              position: 'absolute', right: 0, top: -13,
-              fontSize: 9, color: '#3A3A3A', lineHeight: 1,
-              whiteSpace: 'nowrap', pointerEvents: 'none',
-            }}>
-              {xpInLevel.toLocaleString()}/{xpNeeded.toLocaleString()} XP
-            </div>
-
-            {/* Bar */}
-            <div style={{
-              height: 12, borderRadius: 6,
+              flex: 1,
+              height: 10, borderRadius: 5,
               background: '#111',
               overflow: 'hidden',
               border: '1px solid #1C1C1C',
               boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.6)',
             }}>
               <div style={{
-                height: '100%', borderRadius: 6,
+                height: '100%', borderRadius: 5,
                 width: `${Math.max(progress * 100, 2)}%`,
                 background: 'linear-gradient(90deg,#6B4A00,#C8A24C 40%,#FFD700 70%,#FFF8DC 85%,#FFD700 100%)',
                 backgroundSize: '300% 100%',
                 animation: 'xp-shimmer 2s linear infinite',
                 transition: 'width 1s cubic-bezier(0.4,0,0.2,1)',
-                boxShadow: '0 0 10px rgba(255,215,0,0.45), inset 0 1px 0 rgba(255,255,255,0.12)',
+                boxShadow: '0 0 8px rgba(255,215,0,0.4), inset 0 1px 0 rgba(255,255,255,0.12)',
               }} />
             </div>
+            {/* XP numbers — right of bar, never overlaps Row 1 */}
+            <span style={{ fontSize: 8, color: '#3A3A3A', whiteSpace: 'nowrap', flexShrink: 0, lineHeight: 1 }}>
+              {xpInLevel.toLocaleString()}/{xpNeeded.toLocaleString()}
+            </span>
           </div>
         </div>
 

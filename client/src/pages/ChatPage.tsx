@@ -703,7 +703,12 @@ export default function ChatPage() {
                     animation: 'chat-msg-enter 160ms cubic-bezier(0.16, 1, 0.3, 1) both',
                   } : undefined}
                 >
-                  <MessageBubble msg={msg} myName={member?.name || ""} />
+                  <MessageBubble
+                    msg={msg}
+                    myName={member?.name || ""}
+                    myPfp={(() => { try { return localStorage.getItem('lbjj_profile_picture') || undefined; } catch { return undefined; } })()}
+                    myBelt={(member as any)?.belt || 'white'}
+                  />
                 </div>
               );
             })
@@ -1075,7 +1080,7 @@ function beltToMinXP(belt: string, role: string): number {
 
 // ─── Message bubble ────────────────────────────────────────────────
 
-function MessageBubble({ msg, myName }: { msg: ChatMessage; myName: string }) {
+function MessageBubble({ msg, myName, myPfp, myBelt }: { msg: ChatMessage; myName: string; myPfp?: string; myBelt?: string }) {
   const isMe = msg.sender === myName && !!myName;
   const rank = getRankProfile(msg.senderBelt || "white");
   const isHighRank = rank.tier >= 3;
@@ -1103,18 +1108,27 @@ function MessageBubble({ msg, myName }: { msg: ChatMessage; myName: string }) {
   }
 
   if (isMe) {
+    const myLevel = getActualLevel(beltToMinXP(myBelt || 'white', ''));
+    const myRingTier = getRingTier(myLevel);
+    const initials = myName ? myName.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase() : '?';
     return (
-      <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 2, marginTop: 8 }}>
-        <div style={{ maxWidth: "80%" }}>
-          <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 4, marginBottom: 2 }}>
-            <span style={{ fontSize: 11, fontWeight: 700, color: '#C8A24C' }}>You</span>
-            <BeltIcon belt={msg.senderBelt || 'white'} width={28} style={{ flexShrink: 0 }} />
-            <span style={{ fontSize: 12, color: "#666" }}>{fmt(msg.timestamp)}</span>
+      <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "flex-end", gap: 8, marginBottom: 2, marginTop: 8 }}>
+        <div style={{ maxWidth: "75%" }}>
+          <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 4, marginBottom: 4 }}>
+            <span style={{ fontSize: 11, color: "#555" }}>{fmt(msg.timestamp)}</span>
+            <BeltIcon belt={myBelt || msg.senderBelt || 'white'} width={24} style={{ flexShrink: 0 }} />
           </div>
-          <div style={{ backgroundColor: GOLD, color: "#0A0A0A", padding: "8px 14px", borderRadius: "16px 16px 4px 16px", fontSize: 13, fontWeight: 500, lineHeight: 1.4 }}>
+          <div style={{ backgroundColor: GOLD, color: "#0A0A0A", padding: "9px 14px", borderRadius: "16px 16px 4px 16px", fontSize: 13, fontWeight: 500, lineHeight: 1.4 }}>
             {msg.text}
           </div>
         </div>
+        {/* My PFP — right side */}
+        <ProfileRing tier={myRingTier} size={34}>
+          {myPfp
+            ? <img src={myPfp} style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%', display: 'block' }} alt="You" />
+            : <div style={{ width: '100%', height: '100%', borderRadius: '50%', background: 'rgba(200,162,76,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 800, color: '#C8A24C' }}>{initials}</div>
+          }
+        </ProfileRing>
       </div>
     );
   }
