@@ -218,6 +218,7 @@ export default function HomePage() {
   const [showSeasonModal, setShowSeasonModal] = useState(false);
   const [showGameDayInfo, setShowGameDayInfo] = useState(false);
   const [isPulling, setIsPulling] = useState(false);
+  const [pullDone, setPullDone] = useState(false);
   const [pullY, setPullY] = useState(0);
   const pullStartY = useRef(0);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -1428,8 +1429,10 @@ export default function HomePage() {
           Promise.all([
             refreshProfile().catch(() => {}),
           ]).finally(() => {
-            setPullY(0);
             setIsPulling(false);
+            setPullDone(true);
+            setPullY(80);
+            setTimeout(() => { setPullY(0); setPullDone(false); }, 800);
           });
         } else {
           setPullY(0);
@@ -1444,21 +1447,23 @@ export default function HomePage() {
           height: Math.min(pullY, 60),
           background: 'transparent',
           pointerEvents: 'none',
-          transition: isPulling ? 'height 300ms ease' : 'none',
+          transition: 'height 300ms ease',
         }}>
           <div style={{
             width: 32, height: 32, borderRadius: '50%',
-            background: '#1A1A1A', border: '1px solid rgba(200,162,76,0.3)',
+            background: pullDone ? 'rgba(76,175,128,0.15)' : '#1A1A1A',
+            border: `1px solid ${pullDone ? 'rgba(76,175,128,0.5)' : 'rgba(200,162,76,0.3)'}`,
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            transform: `rotate(${Math.min(pullY / 72, 1) * 180}deg)`,
-            transition: isPulling ? 'transform 300ms ease' : 'none',
-            opacity: Math.min(pullY / 72, 1),
+            transform: isPulling ? 'rotate(360deg)' : pullDone ? 'scale(1.1)' : `rotate(${Math.min(pullY / 72, 1) * 180}deg)`,
+            transition: 'transform 400ms ease, background 200ms ease, border-color 200ms ease',
+            opacity: Math.min(pullY / 40, 1),
           }}>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#C8A24C" strokeWidth="2.5" strokeLinecap="round">
-              {isPulling
-                ? <path d="M12 2v20M2 12l10 10 10-10"/>
-                : <path d="M12 5v14M5 12l7 7 7-7"/>}
-            </svg>
+            {pullDone
+              ? <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#4CAF80" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+              : isPulling
+                ? <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#C8A24C" strokeWidth="2.5" strokeLinecap="round" style={{ animation: 'spin 0.7s linear infinite' }}><path d="M21 12a9 9 0 1 1-9-9"/></svg>
+                : <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#C8A24C" strokeWidth="2.5" strokeLinecap="round"><path d="M12 5v14M5 12l7 7 7-7"/></svg>
+            }
           </div>
         </div>
       )}

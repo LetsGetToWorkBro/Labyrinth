@@ -708,6 +708,7 @@ export default function ChatPage() {
                     myName={member?.name || ""}
                     myPfp={(() => { try { return localStorage.getItem('lbjj_profile_picture') || undefined; } catch { return undefined; } })()}
                     myBelt={(member as any)?.belt || 'white'}
+                    myXP={(() => { try { const s = JSON.parse(localStorage.getItem('lbjj_game_stats_v2') || '{}'); return Math.max(s.xp || 0, s.totalXP || 0, (member as any)?.totalPoints || 0); } catch { return (member as any)?.totalPoints || 0; } })()}
                   />
                 </div>
               );
@@ -729,22 +730,18 @@ export default function ChatPage() {
             {sendError && <p style={{ fontSize: 12, color: "#E05555", margin: "0 0 6px 4px" }}>{sendError}</p>}
             <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
               {member && (() => {
-                const chatXP = member?.totalPoints || (member as any)?.totalPoints || 0;
+                const chatXP = (() => { try { const s = JSON.parse(localStorage.getItem('lbjj_game_stats_v2') || '{}'); return Math.max(s.xp || 0, s.totalXP || 0, (member as any)?.totalPoints || 0); } catch { return (member as any)?.totalPoints || 0; } })();
                 const chatLevel = getActualLevel(chatXP);
                 const chatRingTier = getRingTier(chatLevel);
+                const chatPfp = (() => { try { return localStorage.getItem('lbjj_profile_picture') || undefined; } catch { return undefined; } })();
+                const chatInitials = member.name ? member.name.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase() : '?';
                 return (
-                  <>
-                    {chatXP > 0 ? (
-                      <ProfileRing tier={chatRingTier} size={24}>
-                        <BeltIcon belt={myBelt} width={18} style={{ flexShrink: 0 }} />
-                      </ProfileRing>
-                    ) : (
-                      <BeltIcon belt={myBelt} width={18} style={{ flexShrink: 0 }} />
-                    )}
-                    <span style={{ fontSize: 11, fontWeight: 600, color: getBeltColor(myBelt) }}>
-                      {myBelt.charAt(0).toUpperCase() + myBelt.slice(1)} Belt
-                    </span>
-                  </>
+                  <ProfileRing tier={chatRingTier} size={30}>
+                    {chatPfp
+                      ? <img src={chatPfp} style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%', display: 'block' }} alt="" />
+                      : <div style={{ width: '100%', height: '100%', borderRadius: '50%', background: 'rgba(200,162,76,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 800, color: '#C8A24C' }}>{chatInitials}</div>
+                    }
+                  </ProfileRing>
                 );
               })()}
               <input
@@ -1080,7 +1077,7 @@ function beltToMinXP(belt: string, role: string): number {
 
 // ─── Message bubble ────────────────────────────────────────────────
 
-function MessageBubble({ msg, myName, myPfp, myBelt }: { msg: ChatMessage; myName: string; myPfp?: string; myBelt?: string }) {
+function MessageBubble({ msg, myName, myPfp, myBelt, myXP }: { msg: ChatMessage; myName: string; myPfp?: string; myBelt?: string; myXP?: number }) {
   const isMe = msg.sender === myName && !!myName;
   const rank = getRankProfile(msg.senderBelt || "white");
   const isHighRank = rank.tier >= 3;
@@ -1108,21 +1105,36 @@ function MessageBubble({ msg, myName, myPfp, myBelt }: { msg: ChatMessage; myNam
   }
 
   if (isMe) {
-    const myLevel = getActualLevel(beltToMinXP(myBelt || 'white', ''));
+    // Use real XP for ring tier — NOT belt-proxy XP
+    const myLevel = getActualLevel(myXP || 0);
     const myRingTier = getRingTier(myLevel);
     const initials = myName ? myName.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase() : '?';
+    const belt = (myBelt || msg.senderBelt || 'white').toLowerCase();
+    const myRank = getRankProfile(belt);
     return (
-      <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "flex-end", gap: 8, marginBottom: 2, marginTop: 8 }}>
+      <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "flex-start", gap: 8, marginBottom: 2, marginTop: 8 }}>
         <div style={{ maxWidth: "75%" }}>
-          <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 4, marginBottom: 4 }}>
-            <span style={{ fontSize: 11, color: "#555" }}>{fmt(msg.timestamp)}</span>
-            <BeltIcon belt={myBelt || msg.senderBelt || 'white'} width={24} style={{ flexShrink: 0 }} />
+          {/* Header row — mirrors Jonathan's layout but right-aligned */}
+          <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 5, marginBottom: 4, marginRight: 2 }}>
+            <span style={{ fontSize: 10, color: "#555" }}>{fmt(msg.timestamp)}</span>
+            {/* Belt dot */}
+            <div style={{ width: 6, height: 6, borderRadius: '50%', background: getBeltColor(belt), flexShrink: 0 }} />
+            {/* LV chip — smaller than Jonathan's */}
+            <div style={{
+              display: 'inline-flex', alignItems: 'center', gap: 3,
+              padding: '1px 5px', borderRadius: 999,
+              background: `${getBeltColor(belt)}18`,
+              border: `1px solid ${getBeltColor(belt)}35`,
+            }}>
+              <span style={{ fontSize: 9, fontWeight: 700, color: getBeltColor(belt), letterSpacing: '0.05em' }}>LV{myLevel}</span>
+            </div>
+            <span style={{ fontSize: 12, fontWeight: 700, color: myRank.color }}>{myName}</span>
           </div>
           <div style={{ backgroundColor: GOLD, color: "#0A0A0A", padding: "9px 14px", borderRadius: "16px 16px 4px 16px", fontSize: 13, fontWeight: 500, lineHeight: 1.4 }}>
             {msg.text}
           </div>
         </div>
-        {/* My PFP — right side */}
+        {/* My PFP — right side, aligned to top of name row */}
         <ProfileRing tier={myRingTier} size={34}>
           {myPfp
             ? <img src={myPfp} style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%', display: 'block' }} alt="You" />
