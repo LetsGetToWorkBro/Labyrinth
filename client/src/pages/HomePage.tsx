@@ -1691,82 +1691,113 @@ export default function HomePage() {
           ════════════════════════════════════════════════════ */}
       {leaderboard.length > 0 && (
         <div className="mx-5 mb-4 stagger-child">
-          <div style={{
-            background: '#0D0D0D',
-            border: '1px solid #1A1A1A',
-            borderRadius: 14,
-            overflow: 'hidden',
-          }}>
+          <div
+            style={{
+              background: 'linear-gradient(145deg,#0a0908 0%,#000 100%)',
+              border: '1px solid rgba(255,255,255,0.06)',
+              borderRadius: 24,
+              overflow: 'hidden',
+              cursor: 'pointer',
+              boxShadow: '0 24px 48px -12px rgba(0,0,0,1)',
+              position: 'relative',
+            }}
+            onClick={() => { window.location.hash = '#/leaderboard'; }}
+          >
+            {/* Top glow */}
+            <div style={{ position:'absolute', top:0, left:'50%', transform:'translateX(-50%)', width:'100%', height:60, background:'radial-gradient(ellipse at top, rgba(232,175,52,0.1) 0%, transparent 70%)', opacity:0.6, pointerEvents:'none' }} />
+
             {/* Header */}
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px 8px', borderBottom: '1px solid #141414' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#4CAF80', animation: 'ring-pulse 2s ease-in-out infinite' }} />
-                <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#4CAF80' }}>Gym Activity</span>
+            <div style={{ padding:'16px 20px 12px', display:'flex', justifyContent:'space-between', alignItems:'center', borderBottom:'1px solid rgba(255,255,255,0.04)', position:'relative', zIndex:2 }}>
+              <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#e8af34" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                <span style={{ fontFamily:'var(--font-display,system-ui)', fontSize:13, fontWeight:800, color:'#e8af34', letterSpacing:'0.1em', textTransform:'uppercase' }}>Leaderboard</span>
               </div>
-              <a href="/#/leaderboard" style={{ fontSize: 11, color: '#C8A24C', textDecoration: 'none', fontWeight: 600 }}>Full board →</a>
+              <div style={{ fontSize:12, fontWeight:700, color:'#a8a29e', display:'flex', alignItems:'center', gap:4 }}>
+                View All
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+              </div>
             </div>
 
-            {/* Rival callout — if not #1 */}
-            {rival && myLeaderboardRank > 1 && (
-              <div className="reveal" style={{ padding: '10px 14px', borderBottom: '1px solid #111', background: 'rgba(224,85,85,0.04)' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                  <div style={{ fontSize: 9, fontWeight: 700, color: '#E05555', letterSpacing: '0.12em', textTransform: 'uppercase', flexShrink: 0 }}>Your Rival</div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 7, flex: 1 }}>
-                    <div style={{
-                      width: 24, height: 24, borderRadius: '50%',
-                      background: '#1A1A1A', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      fontSize: 11, fontWeight: 700, color: '#F0F0F0',
-                      border: `1.5px solid ${getBeltColor(rival.belt || 'white')}`,
-                      flexShrink: 0,
-                    }}>
-                      {(rival.name || '?').charAt(0)}
-                    </div>
-                    <span style={{ fontSize: 13, fontWeight: 600, color: '#CCC', flex: 1 }}>{rival.name}</span>
-                    <span style={{ fontSize: 11, color: '#E05555', fontWeight: 600 }}>
-                      +{Math.max(0, (rival.classCount || 0) - myClassCount)} classes ahead
-                    </span>
-                  </div>
-                </div>
-              </div>
-            )}
+            {/* Rows */}
+            <div style={{ position:'relative', zIndex:2 }}>
+              {leaderboard.slice(0, 5).map((entry, i) => {
+                const rank = i + 1;
+                const entryXP = (entry.totalPoints || 0) || ((entry.classCount || 0) * 10);
+                const entryLevel = getActualLevel(entryXP);
+                const isMe = entry.name === member?.name;
 
-            {/* Top 3 compact */}
-            {leaderboard.slice(0, 3).map((entry, i) => {
-              const medalColors = ['#FFD700', '#C0C0C0', '#CD7F32'];
-              const isMe = entry.name === member?.name;
-              return (
-                <div key={i} style={{
-                  display: 'flex', alignItems: 'center', gap: 10, padding: '9px 14px',
-                  borderBottom: i < 2 ? '1px solid #111' : 'none',
-                  background: isMe ? 'rgba(200,162,76,0.06)' : 'transparent',
-                }}>
-                  <span style={{
-                    width: 18, height: 18, borderRadius: '50%', flexShrink: 0,
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    fontSize: 10, fontWeight: 900, color: medalColors[i],
-                    background: `${medalColors[i]}18`,
+                // Rank color system from HTML design
+                const rankColors = [
+                  { name:'#fde047', score:'#fde047', rank:'#fde047', scoreSz:26 },  // apex gold
+                  { name:'#fca5a5', score:'#fca5a5', rank:'#fca5a5', scoreSz:24 },  // blood pink
+                  { name:'#d8b4fe', score:'#d8b4fe', rank:'#d8b4fe', scoreSz:22 },  // void purple
+                  { name:'#bae6fd', score:'#bae6fd', rank:'#bae6fd', scoreSz:20 },  // frost blue
+                  { name:'#e8af34', score:'#e8af34', rank:'#e8af34', scoreSz:20 },  // ember gold
+                ];
+                const rc = rank <= 5 ? rankColors[i] : { name:'#a8a29e', score:'#f5f5f4', rank:'#57534e', scoreSz:18 };
+                const beltKey = (entry.belt || 'white').toLowerCase();
+                const beltTints: Record<string, string> = { white:'#E0E0E0', blue:'#3B82F6', purple:'#8B5CF6', brown:'#92400E', black:'#2A2A2A', grey:'#9CA3AF', yellow:'#EAB308', orange:'#F97316', green:'#22C55E' };
+                const beltTint = beltTints[beltKey] || '#888';
+                const prevPos = entry.name ? prevPositions[entry.name] : undefined;
+                const currentPos = i + 1;
+                const rankDelta = prevPos !== undefined && prevPos !== currentPos ? prevPos - currentPos : null;
+
+                return (
+                  <div key={i} style={{
+                    display:'flex', alignItems:'center', gap:0,
+                    padding:'16px 20px',
+                    borderBottom: i < 4 ? '1px solid rgba(255,255,255,0.03)' : 'none',
+                    background: isMe ? 'rgba(232,175,52,0.04)' : 'transparent',
+                    transition:'background 0.2s',
                   }}>
-                    {i + 1}
-                  </span>
-                  <BeltIcon belt={entry.belt || 'white'} width={18} style={{ flexShrink: 0 }} />
-                  <span style={{ flex: 1, fontSize: 13, fontWeight: isMe ? 700 : 500, color: isMe ? '#C8A24C' : '#CCC' }}>
-                    {isMe ? 'You' : entry.name}
-                  </span>
-                  <span style={{ fontSize: 12, color: '#555', fontWeight: 600 }}>
-                    {entry.classCount || 0}<span style={{ fontSize: 9, color: '#333' }}> cls</span>
-                  </span>
-                </div>
-              );
-            })}
+                    {/* Rank */}
+                    <div style={{ width:24, textAlign:'center', flexShrink:0, marginRight:4 }}>
+                      <div style={{ fontFamily:'var(--font-display,system-ui)', fontSize:13, fontWeight:900, color: rc.rank, lineHeight:1 }}>{rank}</div>
+                      {rankDelta !== null && (
+                        <div style={{ fontSize:8, fontWeight:700, color: rankDelta > 0 ? '#4CAF80' : '#E05555', lineHeight:1, marginTop:2 }}>
+                          {rankDelta > 0 ? `▲${rankDelta}` : `▼${Math.abs(rankDelta)}`}
+                        </div>
+                      )}
+                    </div>
 
-            {/* My rank if not in top 3 */}
-            {myLeaderboardRank > 3 && (
-              <div style={{ padding: '8px 14px', borderTop: '1px solid #111', background: 'rgba(200,162,76,0.04)', display: 'flex', alignItems: 'center', gap: 10 }}>
-                <span style={{ fontSize: 9, color: '#555', letterSpacing: '0.06em' }}>YOUR RANK</span>
-                <span style={{ fontSize: 13, fontWeight: 700, color: '#C8A24C' }}>#{myLeaderboardRank}</span>
-                <span style={{ fontSize: 11, color: '#555' }}>· {myClassCount} classes</span>
-              </div>
-            )}
+                    {/* Paragon avatar */}
+                    <div style={{ margin:'0 10px', flexShrink:0 }}>
+                      <ParagonRing level={entryLevel} size={40} showOrbit={entryLevel >= 6}>
+                        {entry.profilePic
+                          ? <img src={entry.profilePic} style={{ width:'100%', height:'100%', objectFit:'cover', borderRadius:'50%', display:'block' }} alt="" />
+                          : <div style={{ width:'100%', height:'100%', borderRadius:'50%', background: beltTint+'22', display:'flex', alignItems:'center', justifyContent:'center', fontSize:14, fontWeight:800, color: beltTint }}>
+                              {(entry.name || '?')[0].toUpperCase()}
+                            </div>
+                        }
+                      </ParagonRing>
+                    </div>
+
+                    {/* Name + belt */}
+                    <div style={{ flex:1, minWidth:0 }}>
+                      <div style={{ fontSize:15, fontWeight:700, color: rc.name, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', lineHeight:1.1, letterSpacing:'-0.01em', textShadow: rank <= 3 ? `0 0 12px ${rc.name}60` : 'none' }}>
+                        {entry.name}{isMe ? ' (You)' : ''}
+                      </div>
+                      <div style={{ display:'flex', alignItems:'center', gap:5, marginTop:3 }}>
+                        <div style={{ width:20, height:6, borderRadius:2, background: beltTint, border:'1px solid rgba(255,255,255,0.1)', flexShrink:0, position:'relative', overflow:'hidden' }}>
+                          <div style={{ position:'absolute', right:0, top:0, bottom:0, width:4, background:'rgba(0,0,0,0.5)' }} />
+                        </div>
+                        <span style={{ fontFamily:'var(--font-display,system-ui)', fontSize:10, fontWeight:800, color:'#57534e', textTransform:'uppercase', letterSpacing:'0.08em' }}>
+                          {(entry.belt || 'white').charAt(0).toUpperCase() + (entry.belt || 'white').slice(1)} Belt
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Level score */}
+                    <div style={{ textAlign:'right', flexShrink:0 }}>
+                      <div style={{ fontSize:9, fontWeight:800, color:'#57534e', textTransform:'uppercase', letterSpacing:'0.1em', lineHeight:1, marginBottom:2 }}>LVL</div>
+                      <div style={{ fontFamily:'var(--font-display,system-ui)', fontSize:rc.scoreSz, fontWeight:900, color: rc.score, lineHeight:1, fontVariantNumeric:'tabular-nums', textShadow: rank <= 3 ? `0 0 12px ${rc.score}60` : 'none' }}>
+                        {entryLevel > 0 ? entryLevel : (entry.classCount || entry.score || 0)}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           </div>
         </div>
       )}
