@@ -105,20 +105,18 @@ export function LevelWidget({ xp, memberName, memberBelt, profilePic, size = 64,
         {/* Profile ring + avatar */}
         <div style={{ width: size, height: size, position: 'relative' }}>
           <ProfileRing tier={tier} size={size} level={actualLevel}>
-            {/* Avatar — initials or belt-colored circle */}
-            <div style={{
-              width: size, height: size, borderRadius: '50%',
-              background: profilePic ? 'none' : 'radial-gradient(circle at 35% 30%, #2A2A2A, #0D0D0D)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              fontSize: size * 0.28, fontWeight: 800, color: '#F0F0F0',
-              userSelect: 'none', overflow: 'hidden',
-            }}>
-              {profilePic ? (
-                <img src={profilePic} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-              ) : (
-                (memberName || '?').charAt(0).toUpperCase()
-              )}
-            </div>
+            {profilePic
+              ? <img src={profilePic} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%', display: 'block' }} />
+              : <div style={{
+                  width: '100%', height: '100%', borderRadius: '50%',
+                  background: 'radial-gradient(circle at 35% 30%, #2A2A2A, #0D0D0D)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontSize: size * 0.28, fontWeight: 800, color: '#F0F0F0',
+                  userSelect: 'none',
+                }}>
+                  {(memberName || '?').charAt(0).toUpperCase()}
+                </div>
+            }
           </ProfileRing>
         </div>
 

@@ -324,11 +324,15 @@ export default function HomePage() {
         stats.profilePic = base64;
         localStorage.setItem('lbjj_game_stats_v2', JSON.stringify(stats));
       } catch {}
+      // Notify TopHeader + other listeners immediately
+      try { window.dispatchEvent(new CustomEvent('pfp-updated')); } catch {}
       // Sync to GAS so photo persists across devices/sessions
       try {
         const memberEmail = member?.email || '';
-        if (memberEmail) {
+        const token = localStorage.getItem('lbjj_session_token') || '';
+        if (memberEmail && token) {
           gasCall('updateMemberProfileApp', {
+            token,
             memberEmail,
             profilePicBase64: base64,
           }).catch(() => {});
