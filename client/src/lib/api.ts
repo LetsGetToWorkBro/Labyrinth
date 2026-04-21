@@ -812,6 +812,7 @@ export interface LeaderboardEntry {
   classCount?: number;
   score?: number;
   totalPoints?: number;
+  profilePic?: string;
 }
 
 export async function saveGameScore(data: {
@@ -886,6 +887,7 @@ export interface ChannelMember {
   totalPoints?: number;
   lastSeen?: string; // ISO timestamp
   badgeCount?: number;
+  profilePic?: string;
 }
 
 // ─── Pinned Announcements ────────────────────────────────────────

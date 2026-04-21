@@ -709,6 +709,7 @@ export default function ChatPage() {
                     myPfp={(() => { try { return localStorage.getItem('lbjj_profile_picture') || undefined; } catch { return undefined; } })()}
                     myBelt={(member as any)?.belt || 'white'}
                     myXP={(() => { try { const s = JSON.parse(localStorage.getItem('lbjj_game_stats_v2') || '{}'); return Math.max(s.xp || 0, s.totalXP || 0, (member as any)?.totalPoints || 0); } catch { return (member as any)?.totalPoints || 0; } })()}
+                    onTapSender={(m) => setSelectedMember(m)}
                   />
                 </div>
               );
@@ -957,109 +958,152 @@ function MemberProfileModal({ member: sm, onClose }: { member: ChannelMember; on
   const beltColor = getBeltColor(sm.belt || 'white');
   const rankProfile = getRankProfile(sm.belt || 'white');
   const badgeCount = sm.badgeCount || 0;
+  const initials = sm.name ? sm.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase() : '?';
 
-  return (
-    <div style={{ position: 'fixed', inset: 0, zIndex: 300, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 20px' }}
+  // Belt journey — order and display names
+  const BELT_ORDER = ['white', 'blue', 'purple', 'brown', 'black'];
+  const BELT_LABELS: Record<string, string> = {
+    white: 'White', blue: 'Blue', purple: 'Purple', brown: 'Brown', black: 'Black'
+  };
+  const currentBeltIdx = BELT_ORDER.indexOf((sm.belt || 'white').toLowerCase());
+
+  return createPortal(
+    <div style={{ position: 'fixed', inset: 0, zIndex: 600, display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}
       onClick={onClose}>
-      <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(6px)' }} />
+      <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(8px)' }} />
       <div onClick={e => e.stopPropagation()} style={{
-        position: 'relative', width: '100%', maxWidth: 340,
-        background: '#111', borderRadius: 20, padding: '24px 20px',
+        position: 'relative', width: '100%', maxWidth: 480,
+        background: 'linear-gradient(180deg,#141414 0%,#0F0F0F 100%)',
+        borderRadius: '24px 24px 0 0',
         border: '1px solid #1A1A1A',
+        maxHeight: '92vh', overflowY: 'auto',
+        paddingBottom: 'max(24px, env(safe-area-inset-bottom, 24px))',
+        animation: 'modalSlideUp 0.3s cubic-bezier(0.34,1.28,0.64,1)',
       }}>
-        {/* Close */}
-        <button onClick={onClose} style={{ position: 'absolute', top: 12, right: 12, background: 'none', border: 'none', color: '#555', cursor: 'pointer' }}>
-          <X size={18} />
-        </button>
+        {/* Drag handle */}
+        <div style={{ display: 'flex', justifyContent: 'center', paddingTop: 10, paddingBottom: 4 }}>
+          <div style={{ width: 36, height: 4, borderRadius: 2, background: '#2A2A2A' }} />
+        </div>
 
-        {/* Portrait with ring + name */}
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: 16 }}>
-          <ProfileRing tier={memberTier} size={80} level={memberLevel}>
-            <div style={{ width: 80, height: 80, borderRadius: '50%', background: 'radial-gradient(circle at 35% 30%, #2A2A2A, #0D0D0D)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 28, fontWeight: 800, color: '#F0F0F0' }}>
-              {sm.name.charAt(0)}
-            </div>
+        {/* Hero: portrait + name + belt */}
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '12px 20px 16px' }}>
+          <ProfileRing tier={memberTier} size={88}>
+            {sm.profilePic
+              ? <img src={sm.profilePic} style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%', display: 'block' }} alt={sm.name} />
+              : <div style={{ width: '100%', height: '100%', borderRadius: '50%', background: `${beltColor}20`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 30, fontWeight: 800, color: beltColor }}>{initials}</div>
+            }
           </ProfileRing>
-          <div style={{ fontSize: 17, fontWeight: 700, color: '#F0F0F0', marginTop: 10, marginBottom: 4 }}>{sm.name}</div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            <BeltIcon belt={sm.belt || 'white'} width={28} />
-            <span style={{ fontSize: 12, color: beltColor, fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase' }}>
+          <div style={{ fontSize: 20, fontWeight: 800, color: '#F0F0F0', marginTop: 12 }}>{sm.name}</div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4 }}>
+            <BeltIcon belt={sm.belt || 'white'} width={32} />
+            <span style={{ fontSize: 12, color: beltColor, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase' }}>
               {rankProfile.title}
             </span>
+            {sm.role && sm.role.toLowerCase().includes('coach') && (
+              <span style={{ fontSize: 9, fontWeight: 700, color: '#C8A24C', background: 'rgba(200,162,76,0.15)', border: '1px solid rgba(200,162,76,0.3)', borderRadius: 4, padding: '1px 6px', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Coach</span>
+            )}
           </div>
         </div>
 
-        {/* Stats row */}
-        <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
-          {[
-            { label: 'Level', value: memberXP > 0 ? memberLevel : '\u2014' },
-            { label: 'Rank', value: '\u2014' },
-            { label: 'Badges', value: badgeCount || '\u2014' },
-          ].map(stat => (
-            <div key={stat.label} style={{ flex: 1, background: '#0D0D0D', borderRadius: 10, padding: '10px', textAlign: 'center', border: '1px solid #1A1A1A' }}>
-              <div style={{ fontSize: 18, fontWeight: 700, color: '#F0F0F0' }}>{String(stat.value)}</div>
-              <div style={{ fontSize: 10, color: '#555', marginTop: 2 }}>{stat.label}</div>
+        <div style={{ padding: '0 16px' }}>
+          {/* Stats row: Level, XP, Badges */}
+          <div style={{ display: 'flex', gap: 8, marginBottom: 14 }}>
+            {[
+              { label: 'Level', value: memberLevel > 1 ? `LV ${memberLevel}` : '—', color: '#C8A24C' },
+              { label: 'Total XP', value: memberXP > 0 ? memberXP.toLocaleString() : '—', color: '#F0F0F0' },
+              { label: 'Badges', value: badgeCount > 0 ? badgeCount : '—', color: '#F0F0F0' },
+            ].map(stat => (
+              <div key={stat.label} style={{ flex: 1, background: '#111', borderRadius: 12, padding: '10px 8px', textAlign: 'center', border: '1px solid #1A1A1A' }}>
+                <div style={{ fontSize: 16, fontWeight: 800, color: stat.color }}>{String(stat.value)}</div>
+                <div style={{ fontSize: 9, color: '#555', marginTop: 2, textTransform: 'uppercase', letterSpacing: '0.08em' }}>{stat.label}</div>
+              </div>
+            ))}
+          </div>
+
+          {/* XP progress bar */}
+          {memberXP > 0 && (
+            <div style={{ marginBottom: 14 }}>
+              <XPBar xp={memberXP} compact />
             </div>
-          ))}
-        </div>
+          )}
 
-        {/* XP bar compact */}
-        {memberXP > 0 && (
-          <div style={{ marginBottom: 16 }}>
-            <XPBar xp={memberXP} compact />
-          </div>
-        )}
-
-        {/* Achievements preview */}
-        {badgeCount > 0 && (
-          <div style={{ marginBottom: 16 }}>
-            <div style={{ fontSize: 11, fontWeight: 700, color: '#555', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 8 }}>Achievements</div>
-            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-              {Array.from({ length: Math.min(badgeCount, 6) }).map((_, i) => (
-                <div key={i} style={{
-                  width: 40, height: 40, borderRadius: 10,
-                  background: '#0D0D0D', border: '1px solid #1A1A1A',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                }}>
-                  <Award size={18} color="#C8A24C" opacity={0.6} />
-                </div>
-              ))}
-              {badgeCount > 6 && (
-                <div style={{
-                  width: 40, height: 40, borderRadius: 10,
-                  background: '#0D0D0D', border: '1px solid #1A1A1A',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  fontSize: 11, fontWeight: 700, color: '#555',
-                }}>
-                  +{badgeCount - 6}
-                </div>
-              )}
+          {/* Belt Journey strip */}
+          <div style={{ background: '#111', borderRadius: 14, padding: '12px 14px', marginBottom: 14, border: '1px solid #1A1A1A' }}>
+            <div style={{ fontSize: 10, fontWeight: 700, color: '#555', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 10 }}>Belt Journey</div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 0 }}>
+              {BELT_ORDER.map((b, idx) => {
+                const isReached = idx <= currentBeltIdx;
+                const isCurrent = idx === currentBeltIdx;
+                const bc = getBeltColor(b);
+                return (
+                  <React.Fragment key={b}>
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, flex: 1 }}>
+                      <div style={{
+                        width: isCurrent ? 28 : 20,
+                        height: isCurrent ? 28 : 20,
+                        borderRadius: '50%',
+                        background: isReached ? bc : '#1A1A1A',
+                        border: isCurrent ? `2px solid ${bc}` : `1px solid ${isReached ? bc + '60' : '#2A2A2A'}`,
+                        boxShadow: isCurrent ? `0 0 10px ${bc}60` : 'none',
+                        transition: 'all 0.2s',
+                      }} />
+                      <span style={{ fontSize: 8, color: isReached ? bc : '#333', fontWeight: isCurrent ? 700 : 400 }}>
+                        {BELT_LABELS[b]}
+                      </span>
+                    </div>
+                    {idx < BELT_ORDER.length - 1 && (
+                      <div style={{ flex: 1, height: 2, background: idx < currentBeltIdx ? beltColor : '#1A1A1A', marginBottom: 18, borderRadius: 1 }} />
+                    )}
+                  </React.Fragment>
+                );
+              })}
             </div>
           </div>
-        )}
 
-        {/* Profile info */}
-        <div style={{ background: '#0D0D0D', borderRadius: 10, padding: '10px 12px', marginBottom: 10, border: '1px solid #1A1A1A' }}>
-          <div style={{ fontSize: 11, color: '#444', marginBottom: 4 }}>Viewing {sm.name.split(' ')[0]}'s profile</div>
-          <div style={{ display: 'flex', gap: 16 }}>
-            {sm.badgeCount ? <div><span style={{ fontSize: 14, fontWeight: 700, color: '#F0F0F0' }}>{sm.badgeCount}</span><span style={{ fontSize: 10, color: '#555', marginLeft: 4 }}>badges</span></div> : null}
-            <div><span style={{ fontSize: 14, fontWeight: 700, color: '#C8A24C' }}>Lv {getActualLevel(sm.totalPoints || 0)}</span></div>
-          </div>
+          {/* Achievements preview */}
+          {badgeCount > 0 && (
+            <div style={{ background: '#111', borderRadius: 14, padding: '12px 14px', marginBottom: 14, border: '1px solid #1A1A1A' }}>
+              <div style={{ fontSize: 10, fontWeight: 700, color: '#555', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 10 }}>Achievements</div>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                {Array.from({ length: Math.min(badgeCount, 8) }).map((_, i) => (
+                  <div key={i} style={{ width: 40, height: 40, borderRadius: 10, background: '#0D0D0D', border: '1px solid #1A1A1A', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <Award size={18} color="#C8A24C" opacity={0.6} />
+                  </div>
+                ))}
+                {badgeCount > 8 && (
+                  <div style={{ width: 40, height: 40, borderRadius: 10, background: '#0D0D0D', border: '1px solid #1A1A1A', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700, color: '#555' }}>
+                    +{badgeCount - 8}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Online status */}
+          {sm.lastSeen && (() => {
+            const diff = Date.now() - new Date(sm.lastSeen).getTime();
+            const isOnline = diff < 5 * 60 * 1000;
+            return (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 14, padding: '8px 12px', background: '#111', borderRadius: 10, border: '1px solid #1A1A1A' }}>
+                <div style={{ width: 8, height: 8, borderRadius: '50%', background: isOnline ? '#4CAF80' : '#444', flexShrink: 0 }} />
+                <span style={{ fontSize: 12, color: isOnline ? '#4CAF80' : '#555' }}>
+                  {isOnline ? 'Online now' : `Last seen ${Math.floor(diff / 60000) < 60 ? Math.floor(diff / 60000) + 'm ago' : Math.floor(diff / 3600000) + 'h ago'}`}
+                </span>
+              </div>
+            );
+          })()}
+
+          <button onClick={onClose} style={{
+            width: '100%', padding: '13px', borderRadius: 14,
+            background: '#1A1A1A', border: '1px solid #222',
+            color: '#888', fontSize: 14, fontWeight: 600, cursor: 'pointer',
+          }}>
+            Close
+          </button>
         </div>
-        {/* View their achievements (link to their profile via More) */}
-        <button
-          onClick={() => { onClose(); }}
-          style={{
-            width: '100%', padding: '12px', borderRadius: 12,
-            background: 'rgba(200,162,76,0.1)', border: '1px solid rgba(200,162,76,0.2)',
-            color: '#C8A24C', fontSize: 13, fontWeight: 700,
-            cursor: 'pointer', textAlign: 'center',
-            letterSpacing: '0.04em',
-          }}
-        >
-          Close
-        </button>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
 
@@ -1077,7 +1121,7 @@ function beltToMinXP(belt: string, role: string): number {
 
 // ─── Message bubble ────────────────────────────────────────────────
 
-function MessageBubble({ msg, myName, myPfp, myBelt, myXP }: { msg: ChatMessage; myName: string; myPfp?: string; myBelt?: string; myXP?: number }) {
+function MessageBubble({ msg, myName, myPfp, myBelt, myXP, onTapSender }: { msg: ChatMessage; myName: string; myPfp?: string; myBelt?: string; myXP?: number; onTapSender?: (m: ChannelMember) => void }) {
   const isMe = msg.sender === myName && !!myName;
   const rank = getRankProfile(msg.senderBelt || "white");
   const isHighRank = rank.tier >= 3;
@@ -1147,9 +1191,25 @@ function MessageBubble({ msg, myName, myPfp, myBelt, myXP }: { msg: ChatMessage;
 
   const senderXP = beltToMinXP(msg.senderBelt || 'white', msg.senderRole || '');
 
+  const handleTapSender = () => {
+    if (!onTapSender) return;
+    onTapSender({
+      name: msg.sender,
+      email: '',
+      belt: msg.senderBelt || 'white',
+      role: msg.senderRole || '',
+      totalPoints: senderXP,
+      badgeCount: 0,
+      profilePic: msg.senderProfilePic || undefined,
+    } as ChannelMember);
+  };
+
   return (
     <div style={{ marginBottom: 2, marginTop: 8 }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4, marginLeft: 2 }}>
+      <div
+        style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4, marginLeft: 2, cursor: onTapSender ? 'pointer' : 'default' }}
+        onClick={onTapSender ? handleTapSender : undefined}
+      >
         <LevelWidget
           xp={senderXP}
           memberName={msg.sender}

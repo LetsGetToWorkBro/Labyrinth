@@ -5,7 +5,8 @@ import { getLeaderboard, type LeaderboardEntry } from '@/lib/api';
 import { useAuth } from '@/lib/auth-context';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { RefreshCw } from 'lucide-react';
-import { getActualLevel } from '@/lib/xp';
+import { getActualLevel, getRingTier } from '@/lib/xp';
+import { ProfileRing } from '@/components/ProfileRing';
 
 const GOLD = '#C8A24C';
 const PODIUM_STYLES: Record<number, { bg: string; color: string; shadow: string; border: string }> = {
@@ -35,7 +36,7 @@ export default function LeaderboardPage() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [selectedBelt, setSelectedBelt] = useState<string | null>(null);
-  const [sortBy, setSortBy] = useState<SortBy>('classes');
+  const [sortBy, setSortBy] = useState<SortBy>('level');
   const [prevPositions, setPrevPositions] = useState<Record<string, number>>(() => {
     try { return JSON.parse(localStorage.getItem('lbjj_lb_positions_v1') || '{}'); } catch { return {}; }
   });
@@ -97,13 +98,15 @@ export default function LeaderboardPage() {
           const b = (e.belt || 'white').toLowerCase();
           return (BELT_GROUPS[selectedBelt] || [selectedBelt]).includes(b);
         })
-      : entries;
+      : [...entries];
     if (sortBy === 'level') {
-      result = [...result].sort((a, b) => {
+      result = result.sort((a, b) => {
         const axp = a.totalPoints || ((a.classCount || 0) * 10);
         const bxp = b.totalPoints || ((b.classCount || 0) * 10);
-        return getActualLevel(bxp) - getActualLevel(axp);
+        return bxp - axp; // sort by raw XP desc (preserves fractional differences)
       });
+    } else {
+      result = result.sort((a, b) => (b.classCount || 0) - (a.classCount || 0));
     }
     return result;
   })();
@@ -269,30 +272,15 @@ export default function LeaderboardPage() {
                       </div>
                     )}
                   </div>
-                  {/* Avatar with belt tint + level badge */}
-                  <div style={{ position:'relative', flexShrink:0 }}>
-                    <div style={{
-                      width:36, height:36, borderRadius:'50%', overflow:'hidden',
-                      background: beltTint ? beltTint+'33' : '#1A1A1A',
-                      border:`2px solid ${beltDotColor(entry.belt)}55`,
-                      display:'flex', alignItems:'center', justifyContent:'center',
-                      fontSize:12, fontWeight:700, color:'#888',
-                    }}>
-                      {(entry as any).profilePic
-                        ? <img src={(entry as any).profilePic} style={{ width:'100%', height:'100%', objectFit:'cover' }} />
-                        : (entry.name || '?')[0].toUpperCase()}
-                    </div>
-                    {entryXP > 0 && (
-                      <div style={{
-                        position:'absolute', bottom:-2, right:-4,
-                        background:'#C8A24C', color:'#000',
-                        fontSize:8, fontWeight:900, padding:'1px 4px',
-                        borderRadius:999, border:'1.5px solid #0A0A0A', lineHeight:1.4,
-                      }}>
-                        {entryLevel}
-                      </div>
-                    )}
-                  </div>
+                  {/* Avatar with ProfileRing + PFP */}
+                  <ProfileRing tier={getRingTier(entryLevel)} size={40}>
+                    {entry.profilePic
+                      ? <img src={entry.profilePic} style={{ width:'100%', height:'100%', objectFit:'cover', borderRadius:'50%', display:'block' }} />
+                      : <div style={{ width:'100%', height:'100%', borderRadius:'50%', background: beltTint ? beltTint+'22' : '#1A1A1A', display:'flex', alignItems:'center', justifyContent:'center', fontSize:13, fontWeight:700, color: beltTint || '#888' }}>
+                          {(entry.name || '?')[0].toUpperCase()}
+                        </div>
+                    }
+                  </ProfileRing>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ color: isTop3 ? '#F0F0F0' : '#DDD', fontSize: 13, fontWeight: isMe ? 700 : 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                       {entry.name}{isMe ? ' (You)' : ''}
