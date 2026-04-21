@@ -768,6 +768,8 @@ export default function HomePage() {
       stats.totalXP = (stats.totalXP || 0) + xpGain;
       localStorage.setItem('lbjj_game_stats_v2', JSON.stringify(stats));
       setMemberXP(prev => prev + xpGain);
+      // Notify TopHeader and any other listeners of XP change
+      try { window.dispatchEvent(new CustomEvent('xp-updated')); } catch {}
     } catch {}
     setTotalClasses(prev => prev + 1);
 
