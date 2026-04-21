@@ -220,6 +220,7 @@ export default function HomePage() {
   const [isPulling, setIsPulling] = useState(false);
   const [pullY, setPullY] = useState(0);
   const pullStartY = useRef(0);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
   const [techniqueOverride, setTechniqueOverride] = useState<string | null>(() => { try { return localStorage.getItem('lbjj_technique_override'); } catch { return null; } });
   const [showTechniqueEditor, setShowTechniqueEditor] = useState(false);
   const [techniqueCustomName, setTechniqueCustomName] = useState('');
@@ -1404,9 +1405,14 @@ export default function HomePage() {
 
   return (
     <div
+      ref={scrollContainerRef}
       className={`app-content home-page-bg${isGameDay ? ' home-page-bg--gameday' : isFlowState ? ' home-page-bg--flow' : ''}`}
       style={{ minHeight: '100dvh' }}
-      onTouchStart={(e) => { if (window.scrollY === 0) pullStartY.current = e.touches[0].clientY; }}
+      onTouchStart={(e) => {
+        // Only trigger pull-to-refresh when the scroll container itself is at the top
+        const el = scrollContainerRef.current;
+        if (el && el.scrollTop === 0) pullStartY.current = e.touches[0].clientY;
+      }}
       onTouchMove={(e) => {
         if (pullStartY.current > 0) {
           const delta = e.touches[0].clientY - pullStartY.current;
@@ -1416,7 +1422,13 @@ export default function HomePage() {
       onTouchEnd={() => {
         if (pullY > 72) {
           setIsPulling(true);
-          setTimeout(() => window.location.reload(), 400);
+          // Soft refresh: reload data without blowing away the whole page
+          Promise.all([
+            refreshProfile().catch(() => {}),
+          ]).finally(() => {
+            setPullY(0);
+            setIsPulling(false);
+          });
         } else {
           setPullY(0);
         }

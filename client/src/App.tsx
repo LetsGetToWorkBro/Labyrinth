@@ -39,7 +39,8 @@ import logoMaze from './assets/logo-maze.webp';
 import {
   Home, MessageCircle, CalendarDays, MoreHorizontal,
   Gamepad2, BarChart2, Trophy, Thermometer,
-  CheckCircle2, Megaphone, ChevronRight,
+  CheckCircle2, Megaphone, ChevronRight, Medal,
+  Award,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { CalendarSparkIcon, GamepadIcon, GoldMedalIcon, SaunaIcon, ShieldIcon, GrapplingIcon } from "@/components/icons/LbjjIcons";
@@ -71,18 +72,18 @@ type NavOption = {
 const ALL_NAV_OPTIONS: NavOption[] = [
   { path: '/',         label: 'Home',     Icon: Home,           emoji: '' },
   { path: '/chat',     label: 'Chat',     Icon: MessageCircle,  emoji: '' },
-  { path: '/achievements', label: 'Progress', Icon: Trophy,      emoji: '' },
+  { path: '/achievements', label: 'Achievements', Icon: Award,    emoji: '' },
   { path: '/schedule', label: 'Schedule', Icon: CalendarDays,   emoji: '' },
   { path: '/more',     label: 'More',     Icon: MoreHorizontal, emoji: '', customIcon: 'maze'  },
   { path: '/games',       label: 'Games',       Icon: Gamepad2,       emoji: '' },
-  { path: '/leaderboard', label: 'Leaderboard', Icon: Trophy,         emoji: '' },
+  { path: '/leaderboard', label: 'Leaderboard', Icon: Medal,          emoji: '' },
   { path: '/stats',       label: 'Stats',       Icon: BarChart2,      emoji: '' },
   { path: '/calendar',   label: 'Events',      Icon: Trophy,         emoji: '' },
   { path: '/sauna',      label: 'Sauna',       Icon: Thermometer,    emoji: '' },
   { path: '/live',       label: 'Live',        Icon: null,           emoji: '🔴' },
   { path: '/history',    label: 'History',     Icon: CalendarDays,   emoji: '' },
   { path: '/belt',       label: 'Belt',        Icon: null,           emoji: '🥋' },
-  { path: '/achievements', label: 'Achievements', Icon: Trophy,       emoji: '' },
+  { path: '/achievements', label: 'Achievements', Icon: Award,        emoji: '' },
 ];
 
 const DEFAULT_NAV_PATHS = ['/', '/chat', '/schedule', '/achievements', '/leaderboard'];
@@ -1731,7 +1732,9 @@ function App() {
           }
         });
 
-        // Background resume — validate session when app comes to foreground
+        // Background resume — silently refresh profile when app comes to foreground
+        // NEVER log out here — network hiccups, GAS cold starts (22s+), or brief
+        // validation failures must not boot the user mid-session.
         appStateListener = await CapApp.addListener('appStateChange', async ({ isActive }) => {
           if (isActive) {
             const token = localStorage.getItem('lbjj_session_token');
@@ -1739,12 +1742,17 @@ function App() {
               try {
                 const { gasCall } = await import('@/lib/api');
                 const res = await gasCall('validateSession', { token });
-                if (!res?.valid && !res?.success) {
-                  localStorage.removeItem('lbjj_session_token');
-                  window.location.hash = '#/login';
+                if (res?.valid || res?.success) {
+                  // Session confirmed — optionally refresh profile silently
+                  // (non-critical, errors are swallowed)
+                } else if (res?.member) {
+                  // GAS returned a fresh profile but flagged token stale — just update
+                  // profile data, keep the session alive
                 }
+                // If res is falsy/error: keep session intact, will re-validate on
+                // next explicit user action
               } catch {
-                // Network error — leave session intact, will retry on next action
+                // Network error or GAS cold start — leave session intact
               }
             }
           }

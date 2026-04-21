@@ -53,6 +53,16 @@ class SoundSystem {
   private _unlock() {
     if (this._unlocked) return;
     this._unlocked = true; // set immediately so play() doesn't re-queue
+
+    const afterUnlock = () => {
+      this._preloadAll();
+      if (this._pendingPlay) {
+        const key = this._pendingPlay;
+        this._pendingPlay = null;
+        setTimeout(() => this.play(key), 80);
+      }
+    };
+
     try {
       const AC = window.AudioContext || (window as any).webkitAudioContext;
       if (AC) {
@@ -63,26 +73,20 @@ class SoundSystem {
         src.buffer = buf;
         src.connect(ctx.destination);
         src.start(0);
-        // Resume (needed for Chrome autoplay policy)
-        const doResume = ctx.resume ? ctx.resume() : Promise.resolve();
-        doResume.finally(() => {
-          this._preloadAll();
-          if (this._pendingPlay) {
-            const key = this._pendingPlay;
-            this._pendingPlay = null;
-            setTimeout(() => this.play(key), 80);
-          }
-        });
+
+        // Resume context (required for Chrome/Safari autoplay policy)
+        const resumePromise = ctx.resume ? ctx.resume() : Promise.resolve();
+
+        // iOS Safari sometimes never resolves/rejects — use a race with a timeout
+        const timeoutPromise = new Promise<void>(resolve => setTimeout(resolve, 300));
+        Promise.race([resumePromise, timeoutPromise])
+          .then(afterUnlock)
+          .catch(afterUnlock);
       } else {
-        this._preloadAll();
-        if (this._pendingPlay) {
-          const key = this._pendingPlay;
-          this._pendingPlay = null;
-          setTimeout(() => this.play(key), 80);
-        }
+        afterUnlock();
       }
     } catch {
-      this._preloadAll();
+      afterUnlock();
     }
   }
 

@@ -849,7 +849,15 @@ export async function getLeaderboard(): Promise<LeaderboardEntry[]> {
     try { sessionStorage.removeItem(cacheKey); } catch {}
     const result = await gasCall("getLeaderboard", { type: 'weekly' });
     // Handle both leaderboard.gs format and legacy format
-    const entries = result?.leaderboard || result?.scores || result?.entries || [];
+    const raw = result?.leaderboard || result?.scores || result?.entries || [];
+    // Normalize numeric fields — GAS may return strings from sheet cells
+    const entries = raw.map((e: any) => ({
+      ...e,
+      classCount:  typeof e.classCount  === 'string' ? parseInt(e.classCount,  10) || 0 : (e.classCount  ?? 0),
+      totalPoints: typeof e.totalPoints === 'string' ? parseInt(e.totalPoints, 10) || 0 : (e.totalPoints ?? 0),
+      wins:        typeof e.wins        === 'string' ? parseInt(e.wins,        10) || 0 : (e.wins        ?? 0),
+      score:       typeof e.score       === 'string' ? parseInt(e.score,       10) || 0 : (e.score       ?? 0),
+    }));
     return entries;
   } catch (err) {
     console.error("getLeaderboard failed:", err);
