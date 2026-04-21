@@ -12,6 +12,7 @@ import { validateGeoIfRequired } from "@/lib/geo";
 import { LevelWidget } from "@/components/LevelWidget";
 import { ProfileRing } from "@/components/ProfileRing";
 import { StreakWidget, StreakInfoPanel } from "@/components/StreakWidget";
+import { XPWidget, XPInfoPanel } from "@/components/XPWidget";
 import { getLevelFromXP, getActualLevel, XP_LEVELS } from "@/lib/xp";
 import {
   CreditCard, FileText, ChevronRight, ChevronDown, LogOut,
@@ -1813,207 +1814,11 @@ export default function HomePage() {
           XP PROGRESS WIDGET
           ════════════════════════════════════════════════════ */}
       {member && (
-        <div className="mx-5 mb-4 stagger-child reveal" style={{ position: 'relative' }} onClick={() => { haptic(); setShowRankInfo(true); }}>
-          <div style={{
-            position: 'absolute', inset: -1, borderRadius: 17,
-            background: 'linear-gradient(135deg, rgba(200,162,76,0.25), transparent, rgba(200,162,76,0.08))',
-            filter: 'blur(8px)', zIndex: 0,
-          }}/>
-          <div style={{
-            position: 'relative', zIndex: 1,
-            background: 'linear-gradient(135deg, #0D0D0D 0%, #141408 100%)',
-            borderRadius: 16, padding: '14px 16px',
-            border: '1px solid rgba(200,162,76,0.18)',
-            cursor: 'pointer',
-          }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <div style={{
-                  width: 36, height: 36, borderRadius: 10,
-                  background: 'linear-gradient(135deg, #FFD700 0%, #C8A24C 60%, #6B4A00 100%)',
-                  boxShadow: '0 0 12px rgba(200,162,76,0.5)',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  flexDirection: 'column',
-                }}>
-                  <span style={{ fontSize: 8, fontWeight: 700, color: 'rgba(0,0,0,0.6)', letterSpacing: '0.05em', lineHeight: 1 }}>LV</span>
-                  <span style={{ fontSize: 14, fontWeight: 900, color: '#000', lineHeight: 1 }}>{getActualLevel(memberXP)}</span>
-                </div>
-                <div>
-                  <div style={{ fontSize: 13, fontWeight: 800, color: '#F0F0F0' }}>{getLevelFromXP(memberXP).title}</div>
-                  <div style={{ fontSize: 10, color: '#555' }}>{memberXP.toLocaleString()} XP</div>
-                </div>
-              </div>
-              <div style={{ fontSize: 11, color: '#C8A24C', fontWeight: 600 }}>
-                +{(getLevelFromXP(memberXP).xpForNext - memberXP).toLocaleString()} to next
-              </div>
-            </div>
-            <div style={{ height: 14, borderRadius: 7, background: '#0A0A0A', overflow: 'hidden', position: 'relative', border: '1px solid #1A1A1A', boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.5)' }}>
-              {(() => {
-                const pct = getLevelFromXP(memberXP).progress * 100;
-                const visibleWidth = pct < 1 ? 20 : pct; // min 20px-equivalent so bar always shows
-                return (
-                  <>
-                    <div style={{
-                      height: '100%', width: `${Math.max(visibleWidth, 4)}%`,
-                      background: pct < 1
-                        ? 'linear-gradient(90deg, rgba(200,162,76,0.4), rgba(200,162,76,0.15))'
-                        : 'linear-gradient(90deg, #6B4A00 0%, #C8A24C 40%, #FFD700 70%, #FFF8DC 85%, #FFD700 100%)',
-                      backgroundSize: '300% 100%',
-                      animation: pct < 1 ? 'xpBarShimmer 2s ease-in-out infinite alternate' : 'xp-shimmer 2s linear infinite',
-                      borderRadius: 7, transition: 'width 1.5s cubic-bezier(0.4,0,0.2,1)',
-                      boxShadow: pct < 1 ? '0 0 8px rgba(200,162,76,0.3)' : '0 0 10px rgba(255,215,0,0.6), 0 0 20px rgba(200,162,76,0.3)',
-                    }}/>
-                    <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '45%', background: 'linear-gradient(180deg, rgba(255,255,255,0.12) 0%, transparent 100%)', borderRadius: '7px 7px 0 0', pointerEvents: 'none' }}/>
-                    {[25, 50, 75].map(p => (
-                      <div key={p} style={{ position: 'absolute', top: 0, bottom: 0, left: `${p}%`, width: 1, background: 'rgba(0,0,0,0.3)' }}/>
-                    ))}
-                  </>
-                );
-              })()}
-            </div>
-            <div style={{ marginTop: 8, display: 'flex', gap: 12, justifyContent: 'center' }}>
-              {[
-                { icon: <GrapplingIcon size={14} />, label: 'Check in', xp: '+10' },
-                { icon: <Trophy size={14} color="#C8A24C" />, label: 'Tournament', xp: '+50' },
-                { icon: <GoldMedalIcon size={14} />, label: 'Gold', xp: '+150' },
-              ].map(item => (
-                <div key={item.label} style={{ textAlign: 'center' as const, opacity: 0.7 }}>
-                  <div style={{ display: 'inline-flex', alignItems: 'center' }}>{item.icon}</div>
-                  <div style={{ fontSize: 9, color: '#C8A24C', fontWeight: 700 }}>{item.xp} XP</div>
-                  <div style={{ fontSize: 8, color: '#444' }}>{item.label}</div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
-
-      <style>{`
-        @keyframes flamePulse {
-          0%, 100% { transform: scale(1); filter: drop-shadow(0 0 4px #C8A24C88); }
-          50% { transform: scale(1.15); filter: drop-shadow(0 0 10px #C8A24Ccc); }
-        }
-        @keyframes xp-shimmer {
-          0% { background-position: 0% 50%; }
-          100% { background-position: 300% 50%; }
-        }
-        @keyframes activeMultiplierPulse {
-          0%, 100% { transform: scale(1); }
-          50% { transform: scale(1.12); }
-        }
-        @keyframes activeMultiplierRing {
-          0%, 100% { transform: scale(1); opacity: 0.6; }
-          50% { transform: scale(1.35); opacity: 0; }
-        }
-        @keyframes modalSlideUp {
-          from { transform: translateY(100%); opacity: 0; }
-          to { transform: translateY(0); opacity: 1; }
-        }
-        @keyframes streakBarFill {
-          from { width: 0%; }
-          to { width: var(--bar-width); }
-        }
-        @keyframes todayDotPulse {
-          0%, 100% { transform: scale(1); opacity: 1; }
-          50% { transform: scale(1.4); opacity: 0.6; }
-        }
-        @keyframes xpBarShimmer {
-          0% { background-position: -200% center; }
-          100% { background-position: 200% center; }
-        }
-        @keyframes fadeInOverlay {
-          from { opacity: 0; }
-          to { opacity: 1; }
-        }
-      `}</style>
-
-            {/* SEASON + MILESTONE — 2-column square tiles */}
-      {(trainingSeasonData || (nextMilestoneData && nextMilestoneData.need > 0)) && (
-        <div className="mx-5 mb-4 stagger-child" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-
-          {/* LEFT: Season tile */}
-          {trainingSeasonData ? (
-            <div
-              onClick={() => { haptic(); setShowSeasonModal(true); }}
-              style={{
-                background: '#0D0D0D', border: '1px solid #1A1A1A', borderRadius: 16,
-                padding: '14px 12px 12px', cursor: 'pointer', display: 'flex',
-                flexDirection: 'column', alignItems: 'center', gap: 6, minHeight: 130,
-              }}
-            >
-              <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: '#C8A24C', alignSelf: 'flex-start' }}>
-                {trainingSeasonData.monthName} Season
-              </div>
-              <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <svg width={62} height={62} viewBox="0 0 64 64">
-                  <circle cx={32} cy={32} r={26} fill="none" stroke="#1A1A1A" strokeWidth={5}/>
-                  <circle cx={32} cy={32} r={26} fill="none"
-                    stroke="url(#sg-sq)" strokeWidth={5} strokeLinecap="round"
-                    strokeDasharray={`${2 * Math.PI * 26}`}
-                    strokeDashoffset={`${2 * Math.PI * 26 * (1 - trainingSeasonData.progress)}`}
-                    transform="rotate(-90 32 32)"
-                    style={{ transition: 'stroke-dashoffset 1.2s cubic-bezier(0.4,0,0.2,1)' }}
-                  />
-                  <defs>
-                    <linearGradient id="sg-sq" x1="0%" y1="0%" x2="100%" y2="0%">
-                      <stop offset="0%" stopColor="#8B6914"/><stop offset="100%" stopColor="#FFD700"/>
-                    </linearGradient>
-                  </defs>
-                  <text x={32} y={37} textAnchor="middle" fill="#F0F0F0" fontSize={16} fontWeight={900} fontFamily="sans-serif">
-                    {trainingSeasonData.thisMonthClasses}
-                  </text>
-                </svg>
-              </div>
-              <div style={{ fontSize: 13, fontWeight: 800, color: '#F0F0F0', textAlign: 'center' }}>
-                {trainingSeasonData.thisMonthClasses}<span style={{ color: '#444', fontWeight: 400, fontSize: 11 }}> / {trainingSeasonData.goalClasses}</span>
-              </div>
-              <div style={{ width: '100%', height: 3, borderRadius: 2, background: '#1A1A1A', overflow: 'hidden' }}>
-                <div style={{ height: '100%', width: `${Math.min(100, trainingSeasonData.progress * 100)}%`, background: 'linear-gradient(90deg, #8B6914, #FFD700)', borderRadius: 2, transition: 'width 1.2s cubic-bezier(0.4,0,0.2,1)' }}/>
-              </div>
-              <div style={{ fontSize: 9, color: '#555', textAlign: 'center' }}>
-                {trainingSeasonData.thisMonthClasses >= trainingSeasonData.goalClasses ? 'Season complete ✓' : `${trainingSeasonData.goalClasses - trainingSeasonData.thisMonthClasses} more to complete`}
-              </div>
-            </div>
-          ) : <div />}
-
-          {/* RIGHT: Next Milestone tile */}
-          {nextMilestoneData && nextMilestoneData.need > 0 ? (
-            <div
-              onClick={() => { haptic(); setShowMilestoneInfo(true); }}
-              style={{
-                background: '#0D0D0D', border: '1px solid rgba(200,162,76,0.12)', borderRadius: 16,
-                padding: '14px 12px 12px', cursor: 'pointer', display: 'flex',
-                flexDirection: 'column', alignItems: 'center', gap: 6, minHeight: 130,
-              }}
-            >
-              <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: '#444', alignSelf: 'flex-start' }}>
-                Next Milestone
-              </div>
-              <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <div style={{
-                  width: 54, height: 54, borderRadius: 14,
-                  background: 'rgba(200,162,76,0.08)', border: '1px solid rgba(200,162,76,0.18)',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                }}>
-                  {nextMilestoneData.icon}
-                </div>
-              </div>
-              <div style={{ fontSize: 12, fontWeight: 800, color: '#F0F0F0', textAlign: 'center', lineHeight: 1.25 }}>
-                {nextMilestoneData.label}
-              </div>
-              <div style={{ fontSize: 10, fontWeight: 700, color: '#C8A24C', textAlign: 'center' }}>
-                {nextMilestoneData.type === 'achievement'
-                  ? `${nextMilestoneData.need} ${nextMilestoneData.unit} away`
-                  : `${nextMilestoneData.need.toLocaleString()} XP away`}
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 2, fontSize: 9, color: '#333' }}>
-                <span>View all</span>
-                <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M9 18l6-6-6-6"/></svg>
-              </div>
-            </div>
-          ) : <div />}
-
-        </div>
+        <XPWidget
+          xp={memberXP}
+          memberName={member.name}
+          onOpenInfo={() => setShowRankInfo(true)}
+        />
       )}
 
       {/* ════════════════════════════════════════════════════
@@ -2426,116 +2231,15 @@ export default function HomePage() {
       )}
 
       {/* ════════════════════════════════════════════════════
-          RANK INFO MODAL — tap XP bar to open
+          RANK INFO MODAL — tap XP widget to open
           ════════════════════════════════════════════════════ */}
-      {showRankInfo && createPortal((
-        <div
-          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.88)', zIndex: 1100, display: 'flex', alignItems: 'flex-end', justifyContent: 'center', animation: 'fadeInOverlay 0.2s ease-out', touchAction: 'none' as any }}
-          onClick={() => setShowRankInfo(false)}
-          onTouchMove={e => e.stopPropagation()}
-        >
-          <div
-            style={{ width: '100%', maxWidth: 480, background: 'linear-gradient(180deg, #111108 0%, #0D0D0D 100%)', borderRadius: '24px 24px 0 0', padding: '0 0 max(32px, calc(env(safe-area-inset-bottom) + 32px))', maxHeight: '92vh', overflowY: 'auto', overscrollBehavior: 'contain', WebkitOverflowScrolling: 'touch' as any, animation: 'modalSlideUp 0.32s cubic-bezier(0.34,1.28,0.64,1)', touchAction: 'pan-y' as any }}
-            onClick={e => e.stopPropagation()}
-          >
-            {/* Drag handle */}
-            <div style={{ width: 36, height: 4, borderRadius: 2, background: '#2A2A2A', margin: '12px auto 0' }} />
+      {showRankInfo && (
+        <XPInfoPanel
+          onClose={() => setShowRankInfo(false)}
+          xp={memberXP}
+        />
+      )}
 
-            {/* Header */}
-            <div style={{ padding: '18px 20px 0', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <div>
-                <div style={{ fontSize: 9, fontWeight: 800, letterSpacing: '0.14em', textTransform: 'uppercase', color: '#C8A24C', marginBottom: 4 }}>Experience System</div>
-                <div style={{ fontSize: 20, fontWeight: 900, color: '#F0F0F0' }}>Ranks & Levels</div>
-              </div>
-              <button onClick={() => setShowRankInfo(false)} aria-label="Close" style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid #222', borderRadius: '50%', width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#888', fontSize: 16 }}>✕</button>
-            </div>
-
-            {/* Your current position */}
-            {member && (() => {
-              const lvl = getActualLevel(memberXP);
-              const { title, progress, xpForNext } = getLevelFromXP(memberXP);
-              const toNext = xpForNext - memberXP;
-              return (
-                <div style={{ margin: '16px 20px', background: 'linear-gradient(135deg, rgba(200,162,76,0.12), rgba(200,162,76,0.04))', border: '1px solid rgba(200,162,76,0.25)', borderRadius: 14, padding: '14px 16px' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12 }}>
-                    <div style={{ width: 42, height: 42, borderRadius: '50%', background: 'radial-gradient(circle at 35% 30%, #FFD700, #C8A24C 50%, #6B4A00)', boxShadow: '0 0 16px rgba(200,162,76,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 900, color: '#000', flexShrink: 0 }}>
-                      {lvl}
-                    </div>
-                    <div style={{ flex: 1 }}>
-                      <div style={{ fontSize: 15, fontWeight: 800, color: '#F0F0F0' }}>{title}</div>
-                      <div style={{ fontSize: 11, color: '#C8A24C', marginTop: 2 }}>{memberXP.toLocaleString()} XP · {toNext.toLocaleString()} to next level</div>
-                    </div>
-                  </div>
-                  <div style={{ height: 8, borderRadius: 4, background: '#0A0A0A', overflow: 'hidden', border: '1px solid #1A1A1A' }}>
-                    <div style={{ height: '100%', width: `${progress * 100}%`, background: 'linear-gradient(90deg, #C8A24C, #FFD700)', borderRadius: 4, transition: 'width 1s ease', boxShadow: '0 0 8px rgba(255,215,0,0.5)' }} />
-                  </div>
-                </div>
-              );
-            })()}
-
-            {/* How to earn XP */}
-            <div style={{ margin: '0 20px 20px' }}>
-              <div style={{ fontSize: 9, fontWeight: 800, letterSpacing: '0.14em', textTransform: 'uppercase', color: '#555', marginBottom: 10 }}>How to Earn XP</div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-                {[
-                  { icon: <GrapplingIcon size={18} />, label: 'Class Check-in', xp: '+10 XP', note: 'Per class' },
-                  { icon: <FireIcon size={18} color="#F97316" />, label: 'Weekly Combo', xp: '+1 XP bonus', note: '3+ classes/week' },
-                  { icon: <Trophy size={18} color="#FFD700" />, label: 'Perfect Week', xp: '2× multiplier', note: '5+ classes' },
-                  { icon: <Trophy size={18} color="#A855F7" />, label: 'Legend Week', xp: '3× multiplier', note: '7 classes' },
-                  { icon: <Trophy size={18} color="#C8A24C" />, label: 'Tournament', xp: '+50 XP', note: 'Per event' },
-                  { icon: <GoldMedalIcon size={18} />, label: 'Gold Medal', xp: '+150 XP', note: 'First place' },
-                  { icon: <SilverMedalIcon size={18} />, label: 'Silver Medal', xp: '+100 XP', note: 'Second place' },
-                  { icon: <CheckCircle2 size={18} color="#C8A24C" />, label: 'Achievement', xp: '+25–100 XP', note: 'Varies' },
-                ].map(item => (
-                  <div key={item.label} style={{ background: '#111', border: '1px solid #1A1A1A', borderRadius: 10, padding: '10px 12px', display: 'flex', gap: 10, alignItems: 'center' }}>
-                    <div style={{ flexShrink: 0, display: 'inline-flex', alignItems: 'center' }}>{item.icon}</div>
-                    <div>
-                      <div style={{ fontSize: 11, fontWeight: 700, color: '#C8A24C' }}>{item.xp}</div>
-                      <div style={{ fontSize: 10, color: '#F0F0F0', fontWeight: 600 }}>{item.label}</div>
-                      <div style={{ fontSize: 9, color: '#555', marginTop: 1 }}>{item.note}</div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Level milestones */}
-            <div style={{ margin: '0 20px' }}>
-              <div style={{ fontSize: 9, fontWeight: 800, letterSpacing: '0.14em', textTransform: 'uppercase', color: '#555', marginBottom: 10 }}>Level Milestones</div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                {XP_LEVELS.map((lvlDef, idx) => {
-                  const isCurrentBracket = memberXP >= lvlDef.xpRequired && (idx === XP_LEVELS.length - 1 || memberXP < XP_LEVELS[idx + 1].xpRequired);
-                  const isUnlocked = memberXP >= lvlDef.xpRequired;
-                  const tierColors: Record<number, string> = { 1: '#888', 5: '#C8A24C', 10: '#FFD700', 15: '#22D3EE', 20: '#60A5FA', 25: '#A78BFA', 30: '#F472B6', 40: '#F97316', 50: '#A855F7' };
-                  const color = tierColors[lvlDef.level] || '#555';
-                  return (
-                    <div key={lvlDef.level} style={{
-                      display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px', borderRadius: 10,
-                      background: isCurrentBracket ? 'rgba(200,162,76,0.1)' : 'transparent',
-                      border: isCurrentBracket ? '1px solid rgba(200,162,76,0.25)' : '1px solid transparent',
-                      opacity: isUnlocked ? 1 : 0.4,
-                    }}>
-                      <div style={{ width: 28, height: 28, borderRadius: '50%', background: isUnlocked ? `radial-gradient(circle at 40% 35%, ${color}CC, ${color}55)` : '#1A1A1A', border: `1.5px solid ${isUnlocked ? color : '#2A2A2A'}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, fontWeight: 900, color: isUnlocked ? '#000' : '#333', flexShrink: 0, boxShadow: isUnlocked ? `0 0 8px ${color}55` : 'none' }}>
-                        {lvlDef.level}
-                      </div>
-                      <div style={{ flex: 1 }}>
-                        <div style={{ fontSize: 12, fontWeight: 700, color: isCurrentBracket ? '#F0F0F0' : isUnlocked ? '#CCC' : '#444' }}>{lvlDef.title}</div>
-                        <div style={{ fontSize: 10, color: '#555' }}>{lvlDef.xpRequired.toLocaleString()} XP required</div>
-                      </div>
-                      {isCurrentBracket && (
-                        <div style={{ fontSize: 9, fontWeight: 800, letterSpacing: '0.08em', color: '#C8A24C', background: 'rgba(200,162,76,0.15)', padding: '2px 7px', borderRadius: 999 }}>YOU</div>
-                      )}
-                      {!isCurrentBracket && isUnlocked && (
-                        <div style={{ fontSize: 14, color: '#2A8A2A' }}>✓</div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          </div>
-        </div>
-      ), document.body)}
 
       {/* ════════════════════════════════════════════════════
           STREAK & MULTIPLIER INFO MODAL
