@@ -17,6 +17,7 @@ import { getBeltColor } from "@/lib/constants";
 import { BeltIcon } from "@/components/BeltIcon";
 import { LevelWidget } from "@/components/LevelWidget";
 import { ProfileRing } from "@/components/ProfileRing";
+import { ParagonRing } from "@/components/ParagonRing";
 import { getRingTier, getActualLevel } from "@/lib/xp";
 import { useAuth } from "@/lib/auth-context";
 import { chatGetMessages, chatSendMessage, chatGetChannels, chatGetChannelMembers, updatePresence, type ChatMessage, type ChatChannel, type ChannelMember } from "@/lib/api";
@@ -84,16 +85,11 @@ function MemberMiniProfile({ member, onClose }: { member: ChannelMember; onClose
         paddingBottom: 'max(24px, calc(env(safe-area-inset-bottom) + 24px))',
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 20 }}>
-          <ProfileRing tier={tier} size={72}>
-            <div style={{
-              width: 72, height: 72, borderRadius: '50%',
-              background: 'radial-gradient(circle at 35% 30%, #2A2A2A, #0D0D0D)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              fontSize: 24, fontWeight: 800, color: '#F0F0F0',
-            }}>
+          <ParagonRing level={level} size={64} showOrbit={level >= 6}>
+            <div style={{ width: '100%', height: '100%', borderRadius: '50%', background: 'radial-gradient(circle at 35% 30%, #2A2A2A, #0D0D0D)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24, fontWeight: 800, color: '#F0F0F0' }}>
               {(member.name || '?').charAt(0)}
             </div>
-          </ProfileRing>
+          </ParagonRing>
           <div style={{ flex: 1 }}>
             <div style={{ fontSize: 18, fontWeight: 900, color: '#F0F0F0' }}>{member.name}</div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4 }}>
@@ -156,11 +152,11 @@ function OnlineMemberRow({ m, status, now, onSelect, isMe }: {
       style={{ display: 'flex', alignItems: 'center', gap: 12, width: '100%', padding: '10px 8px', background: isMe ? 'rgba(200,162,76,0.06)' : 'none', border: 'none', borderRadius: isMe ? 10 : 0, cursor: 'pointer', textAlign: 'left', borderBottom: isMe ? 'none' : '1px solid #0D0D0D', marginBottom: isMe ? 4 : 0 }}>
       {/* Portrait with ring */}
       <div style={{ position: 'relative', flexShrink: 0 }}>
-        <ProfileRing tier={memberTier} size={48} level={memberLevel}>
-          <div style={{ width: 48, height: 48, borderRadius: '50%', background: 'radial-gradient(circle at 35% 30%, #2A2A2A, #0D0D0D)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, fontWeight: 800, color: '#F0F0F0' }}>
+        <ParagonRing level={memberLevel} size={44} showOrbit={memberLevel >= 6}>
+          <div style={{ width: '100%', height: '100%', borderRadius: '50%', background: 'radial-gradient(circle at 35% 30%, #2A2A2A, #0D0D0D)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 15, fontWeight: 800, color: '#F0F0F0' }}>
             {m.name.charAt(0)}
           </div>
-        </ProfileRing>
+        </ParagonRing>
         {/* Status dot */}
         <div style={{ position: 'absolute', bottom: 0, right: 0, width: 12, height: 12, borderRadius: '50%', background: statusColor, border: '2px solid #0A0A0A' }} />
       </div>
@@ -737,12 +733,12 @@ export default function ChatPage() {
                 const chatPfp = (() => { try { return localStorage.getItem('lbjj_profile_picture') || undefined; } catch { return undefined; } })();
                 const chatInitials = member.name ? member.name.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase() : '?';
                 return (
-                  <ProfileRing tier={chatRingTier} size={30}>
+                  <ParagonRing level={chatLevel} size={30} showOrbit={chatLevel >= 6}>
                     {chatPfp
                       ? <img src={chatPfp} style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%', display: 'block' }} alt="" />
                       : <div style={{ width: '100%', height: '100%', borderRadius: '50%', background: 'rgba(200,162,76,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 800, color: '#C8A24C' }}>{chatInitials}</div>
                     }
-                  </ProfileRing>
+                  </ParagonRing>
                 );
               })()}
               <input
@@ -987,12 +983,12 @@ function MemberProfileModal({ member: sm, onClose }: { member: ChannelMember; on
 
         {/* Hero: portrait + name + belt */}
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '12px 20px 16px' }}>
-          <ProfileRing tier={memberTier} size={88}>
+          <ParagonRing level={memberLevel} size={80} showOrbit={memberLevel >= 6}>
             {sm.profilePic
               ? <img src={sm.profilePic} style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%', display: 'block' }} alt={sm.name} />
               : <div style={{ width: '100%', height: '100%', borderRadius: '50%', background: `${beltColor}20`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 30, fontWeight: 800, color: beltColor }}>{initials}</div>
             }
-          </ProfileRing>
+          </ParagonRing>
           <div style={{ fontSize: 20, fontWeight: 800, color: '#F0F0F0', marginTop: 12 }}>{sm.name}</div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4 }}>
             <BeltIcon belt={sm.belt || 'white'} width={32} />
@@ -1179,12 +1175,12 @@ function MessageBubble({ msg, myName, myPfp, myBelt, myXP, onTapSender }: { msg:
           </div>
         </div>
         {/* My PFP — right side, aligned to top of name row */}
-        <ProfileRing tier={myRingTier} size={34}>
+        <ParagonRing level={myLevel} size={34} showOrbit={myLevel >= 6}>
           {myPfp
             ? <img src={myPfp} style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%', display: 'block' }} alt="You" />
             : <div style={{ width: '100%', height: '100%', borderRadius: '50%', background: 'rgba(200,162,76,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 800, color: '#C8A24C' }}>{initials}</div>
           }
-        </ProfileRing>
+        </ParagonRing>
       </div>
     );
   }

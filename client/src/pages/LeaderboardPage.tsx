@@ -7,6 +7,7 @@ import { ScreenHeader } from '@/components/ScreenHeader';
 import { RefreshCw } from 'lucide-react';
 import { getActualLevel, getRingTier } from '@/lib/xp';
 import { ProfileRing } from '@/components/ProfileRing';
+import { ParagonRing } from '@/components/ParagonRing';
 
 const GOLD = '#C8A24C';
 const PODIUM_STYLES: Record<number, { bg: string; color: string; shadow: string; border: string }> = {
@@ -273,14 +274,14 @@ export default function LeaderboardPage() {
                     )}
                   </div>
                   {/* Avatar with ProfileRing + PFP */}
-                  <ProfileRing tier={getRingTier(entryLevel)} size={40}>
+                  <ParagonRing level={entryLevel} size={38} showOrbit={entryLevel >= 6}>
                     {entry.profilePic
                       ? <img src={entry.profilePic} style={{ width:'100%', height:'100%', objectFit:'cover', borderRadius:'50%', display:'block' }} />
                       : <div style={{ width:'100%', height:'100%', borderRadius:'50%', background: beltTint ? beltTint+'22' : '#1A1A1A', display:'flex', alignItems:'center', justifyContent:'center', fontSize:13, fontWeight:700, color: beltTint || '#888' }}>
                           {(entry.name || '?')[0].toUpperCase()}
                         </div>
                     }
-                  </ProfileRing>
+                  </ParagonRing>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ color: isTop3 ? '#F0F0F0' : '#DDD', fontSize: 13, fontWeight: isMe ? 700 : 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                       {entry.name}{isMe ? ' (You)' : ''}
