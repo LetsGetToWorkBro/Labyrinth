@@ -73,10 +73,15 @@ const ALL_NAV_OPTIONS: NavOption[] = [
   { path: '/achievements', label: 'Progress', Icon: Trophy,      emoji: '' },
   { path: '/schedule', label: 'Schedule', Icon: CalendarDays,   emoji: '' },
   { path: '/more',     label: 'More',     Icon: MoreHorizontal, emoji: '', customIcon: 'maze'  },
-  { path: '/games',    label: 'Games',    Icon: Gamepad2,       emoji: '' },
-  { path: '/stats',    label: 'Stats',    Icon: BarChart2,      emoji: '' },
-  { path: '/calendar', label: 'Events',   Icon: Trophy,         emoji: '' },
-  { path: '/sauna',    label: 'Sauna',    Icon: Thermometer,    emoji: '' },
+  { path: '/games',       label: 'Games',       Icon: Gamepad2,       emoji: '' },
+  { path: '/leaderboard', label: 'Leaderboard', Icon: Trophy,         emoji: '' },
+  { path: '/stats',       label: 'Stats',       Icon: BarChart2,      emoji: '' },
+  { path: '/calendar',   label: 'Events',      Icon: Trophy,         emoji: '' },
+  { path: '/sauna',      label: 'Sauna',       Icon: Thermometer,    emoji: '' },
+  { path: '/live',       label: 'Live',        Icon: null,           emoji: '🔴' },
+  { path: '/history',    label: 'History',     Icon: CalendarDays,   emoji: '' },
+  { path: '/belt',       label: 'Belt',        Icon: null,           emoji: '🥋' },
+  { path: '/achievements', label: 'Achievements', Icon: Trophy,       emoji: '' },
 ];
 
 const DEFAULT_NAV_PATHS = ['/', '/chat', '/schedule', '/games', '/leaderboard'];
