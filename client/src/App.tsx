@@ -150,6 +150,7 @@ function TabBar() {
       {allTabs.map(tab => {
         const isActive = tab.path === '/' ? location === '/' : location.startsWith(tab.path);
         const Icon = tab.Icon;
+        if (!Icon && !tab.emoji) return null; // skip if no icon defined
         const tabSlug = pathToTabSlug(tab.path);
         return (
           <a
@@ -263,7 +264,7 @@ function NavCustomizer() {
                       fontSize: 13, fontWeight: 500,
                     }}
                   >
-                    {selectedTab.Icon ? <selectedTab.Icon size={16} color="#C8A24C" /> : <span>{selectedTab.emoji}</span>}
+                    {(() => { const I = selectedTab.Icon; return I ? <I size={16} color="#C8A24C" /> : <span>{selectedTab.emoji}</span>; })()}
                     <span style={{ flex: 1, textAlign: 'left' }}>{selectedTab.label}</span>
                     <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 4l4 4 4-4" stroke="#666" strokeWidth="1.5" strokeLinecap="round"/></svg>
                   </button>
@@ -290,7 +291,7 @@ function NavCustomizer() {
                             borderBottom: '1px solid #222',
                           }}
                         >
-                          {opt.Icon ? <opt.Icon size={16} color={slots[idx] === opt.path ? '#C8A24C' : '#888'} /> : <span>{opt.emoji}</span>}
+                          {(() => { const I = opt.Icon; return I ? <I size={16} color={slots[idx] === opt.path ? '#C8A24C' : '#888'} /> : <span>{opt.emoji}</span>; })()}
                           <span>{opt.label}</span>
                           {slots[idx] === opt.path && <svg style={{ marginLeft: 'auto' }} width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#C8A24C" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>}
                         </button>
