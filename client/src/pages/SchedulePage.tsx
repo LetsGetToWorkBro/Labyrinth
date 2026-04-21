@@ -1,28 +1,43 @@
-import { CheckCircleFilledIcon, LockIcon } from "@/components/icons/LbjjIcons";
+import { CheckCircleFilledIcon } from "@/components/icons/LbjjIcons";
 import { useState, useEffect, useRef, useCallback } from "react";
-import { ScreenHeader } from "@/components/ScreenHeader";
 import { CLASS_SCHEDULE, CLASS_TYPE_COLORS, DAYS_ORDER } from "@/lib/constants";
 import type { ClassScheduleItem } from "@/lib/constants";
 import { getScheduleClasses, gasCall, getMemberData, saveMemberStats, syncAchievements, getLeaderboardFresh } from "@/lib/api";
-import { Clock, ChevronRight, X, User, CheckCircle, Trophy } from "lucide-react";
+import { Clock, X, User, CheckCircle, Trophy, ChevronRight } from "lucide-react";
 import { checkAndUnlockAchievements, ALL_ACHIEVEMENTS } from "@/lib/achievements";
 import { validateGeoIfRequired } from "@/lib/geo";
 import { getStreamStatus, getLiveBadgeStyle } from "@/lib/streaming";
 import type { StreamStatus } from "@/lib/streaming";
 
-// Shared check-in dedup state for SchedulePage class cards
+// ── Helpers ─────────────────────────────────────────────────────
+
 const getScheduleTodayKey = (email?: string) =>
   'lbjj_checkins_' + new Date().toISOString().split('T')[0] + (email ? '_' + email : '');
 
-// ── Gamification animations ─────────────────────────────────────
+function formatClassTime(timeStr: string): string {
+  if (!timeStr) return "";
+  const [time, period] = timeStr.trim().split(" ");
+  return `${time} ${(period || "AM").toUpperCase()}`;
+}
+
+function getDuration(name: string): string {
+  const n = (name || "").toLowerCase();
+  if (n.includes("3") && n.includes("6")) return "30 min";
+  if (n.includes("open mat")) return "90 min";
+  return "1 hr";
+}
+function getDurationMinutes(name: string): number {
+  const n = (name || "").toLowerCase();
+  if (n.includes("3") && n.includes("6")) return 30;
+  if (n.includes("open mat")) return 90;
+  return 60;
+}
 
 function triggerConfetti() {
   const container = document.createElement('div');
   container.style.cssText = 'position:fixed;inset:0;pointer-events:none;z-index:9999;overflow:hidden;';
   document.body.appendChild(container);
-
-  const colors = ['#C8A24C', '#E8C86C', '#FFD700', '#FFF8DC', '#ffffff'];
-
+  const colors = ['#e8af34', '#fde047', '#FFD700', '#FFF8DC', '#ffffff'];
   for (let i = 0; i < 40; i++) {
     const dot = document.createElement('div');
     const size = Math.random() * 8 + 4;
@@ -32,151 +47,49 @@ function triggerConfetti() {
     const color = colors[Math.floor(Math.random() * colors.length)];
     const endY = -(Math.random() * 60 + 40);
     const endX = (Math.random() - 0.5) * 40;
-
     dot.style.cssText = `
-      position:absolute; bottom:30%; left:${x}%;
-      width:${size}px; height:${size}px;
+      position:absolute;bottom:30%;left:${x}%;
+      width:${size}px;height:${size}px;
       border-radius:${Math.random() > 0.5 ? '50%' : '2px'};
       background:${color};
-      animation: confettiFly_${i} ${duration}ms ${delay}ms ease-out forwards;
+      animation:confettiFly_s${i} ${duration}ms ${delay}ms ease-out forwards;
     `;
-
     const style = document.createElement('style');
     style.textContent = `
-      @keyframes confettiFly_${i} {
-        0% { transform: translate(0, 0) rotate(0deg); opacity: 1; }
-        100% { transform: translate(${endX}vw, ${endY}vh) rotate(${Math.random() * 720}deg); opacity: 0; }
-      }
-    `;
+      @keyframes confettiFly_s${i} {
+        0%{transform:translate(0,0) rotate(0deg);opacity:1;}
+        100%{transform:translate(${endX}vw,${endY}vh) rotate(${Math.random()*720}deg);opacity:0;}
+      }`;
     document.head.appendChild(style);
     container.appendChild(dot);
   }
-
-  setTimeout(() => { container.remove(); }, 2000);
+  setTimeout(() => container.remove(), 2000);
 }
 
-function showPointsToast(points: number) {
-  const el = document.createElement('div');
-  el.textContent = `+${points} pts`;
-  el.style.cssText = `
-    position: fixed;
-    bottom: 120px;
-    left: 50%;
-    transform: translateX(-50%);
-    background: rgba(200, 162, 76, 0.95);
-    color: #000;
-    font-weight: 700;
-    font-size: 18px;
-    padding: 8px 20px;
-    border-radius: 20px;
-    z-index: 9999;
-    pointer-events: none;
-    animation: pointsFloat 1.5s ease-out forwards;
-  `;
-
-  const style = document.createElement('style');
-  style.textContent = `
-    @keyframes pointsFloat {
-      0% { transform: translateX(-50%) translateY(0); opacity: 1; }
-      100% { transform: translateX(-50%) translateY(-60px); opacity: 0; }
-    }
-  `;
-  document.head.appendChild(style);
-  document.body.appendChild(el);
-  setTimeout(() => { el.remove(); style.remove(); }, 1600);
-}
-
-function showBadgeUnlock(badge: { key: string; label: string; icon: string; desc: string; color?: string }) {
-  const color = badge.color || '#C8A24C';
-  const overlay = document.createElement('div');
-  overlay.style.cssText = `
-    position: fixed; inset: 0; background: rgba(0,0,0,0.85);
-    display: flex; align-items: center; justify-content: center;
-    z-index: 10000; animation: fadeInOverlay 0.3s ease-out forwards;
-  `;
-  const card = document.createElement('div');
-  card.style.cssText = 'text-align:center;padding:40px;max-width:300px;animation:slideUpCard 0.4s cubic-bezier(0.34,1.56,0.64,1) forwards;';
-
-  const heading = document.createElement('div');
-  heading.style.cssText = 'font-size:14px;letter-spacing:3px;text-transform:uppercase;color:#888;margin-bottom:16px;';
-  heading.textContent = 'New Badge Unlocked';
-
-  const iconCircle = document.createElement('div');
-  iconCircle.style.cssText = `width:100px;height:100px;border-radius:50%;background:${color}22;border:3px solid ${color};display:flex;align-items:center;justify-content:center;margin:0 auto 20px;font-size:48px;box-shadow:0 0 30px ${color}66;animation:badgePulse 1s ease-in-out infinite alternate;`;
-  iconCircle.textContent = badge.icon;
-
-  const labelEl = document.createElement('div');
-  labelEl.style.cssText = 'font-size:22px;font-weight:800;color:#fff;margin-bottom:8px;';
-  labelEl.textContent = badge.label;
-
-  const descEl = document.createElement('div');
-  descEl.style.cssText = 'font-size:14px;color:#888;line-height:1.5;';
-  descEl.textContent = badge.desc;
-
-  const dismissHint = document.createElement('div');
-  dismissHint.style.cssText = 'margin-top:24px;font-size:12px;color:#555;';
-  dismissHint.textContent = 'Tap to dismiss';
-
-  card.appendChild(heading);
-  card.appendChild(iconCircle);
-  card.appendChild(labelEl);
-  card.appendChild(descEl);
-  card.appendChild(dismissHint);
-  overlay.appendChild(card);
-
-  const style = document.createElement('style');
-  style.textContent = `
-    @keyframes fadeInOverlay { from { opacity: 0; } to { opacity: 1; } }
-    @keyframes slideUpCard { from { transform: translateY(40px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
-    @keyframes badgePulse { from { box-shadow: 0 0 20px ${color}44; } to { box-shadow: 0 0 50px ${color}99; } }
-  `;
-  document.head.appendChild(style);
-  document.body.appendChild(overlay);
-
-  const dismiss = () => { overlay.remove(); style.remove(); };
-  overlay.onclick = dismiss;
-  setTimeout(dismiss, 4000);
-}
-
-const CLASS_DURATIONS: Record<string, string> = {
-  default: "1 hour",
-  "Kids BJJ (3–6)": "30 min",
-  "Kids BJJ Comp": "1 hour",
-  "Kids BJJ (7–12)": "1 hour",
-  "Adult Comp": "1.5 hours",
-  "Open Mat": "1.5 hours",
-};
-
-function getDuration(name: string): string {
-  return CLASS_DURATIONS[name] || CLASS_DURATIONS.default;
-}
-
-const CLASS_DURATION_MINUTES: Record<string, number> = {
-  default: 60,
-  "Kids BJJ (3–6)": 30,
-  "Kids BJJ Comp": 60,
-  "Kids BJJ (7–12)": 60,
-  "Adult Comp": 90,
-  "Open Mat": 90,
-};
-
-function getDurationMinutes(name: string): number {
-  return CLASS_DURATION_MINUTES[name] || CLASS_DURATION_MINUTES.default;
-}
-
-function formatClassTime(timeStr: string): string {
-  if (!timeStr) return '';
-  if (timeStr.includes('T') && timeStr.includes('Z')) {
-    const date = new Date(timeStr);
-    return date.toLocaleTimeString('en-US', {
-      hour: 'numeric',
-      minute: '2-digit',
-      hour12: true,
-      timeZone: 'UTC'
-    });
+function spawnParticles(x: number, y: number, color: string, count = 20) {
+  for (let i = 0; i < count; i++) {
+    const p = document.createElement('div');
+    const size = count > 30 ? Math.random() * 8 + 4 : Math.random() * 6 + 3;
+    p.style.cssText = `
+      position:fixed;width:${size}px;height:${size}px;border-radius:50%;
+      background:${color};box-shadow:0 0 12px ${color};
+      pointer-events:none;z-index:9999;
+      left:${x}px;top:${y}px;transform:translate(-50%,-50%);
+    `;
+    document.body.appendChild(p);
+    const angle = Math.random() * Math.PI * 2;
+    const v = (count > 30 ? 120 : 60) + Math.random() * 100;
+    const tx = x + Math.cos(angle) * v;
+    const ty = y + Math.sin(angle) * v;
+    p.animate(
+      [{ transform: 'translate(-50%,-50%) scale(1)', opacity: '1' },
+       { transform: `translate(calc(${tx-x}px - 50%),calc(${ty-y}px - 50%)) scale(0)`, opacity: '0' }],
+      { duration: 600 + Math.random() * 400, easing: 'cubic-bezier(0,0.5,0.5,1)', fill: 'forwards' }
+    ).onfinish = () => p.remove();
   }
-  return timeStr;
 }
+
+// ── Main Page ────────────────────────────────────────────────────
 
 export default function SchedulePage() {
   const [selectedDay, setSelectedDay] = useState(() => {
@@ -186,20 +99,18 @@ export default function SchedulePage() {
   const [category, setCategory] = useState<"all" | "adult" | "kids">("all");
   const [classes, setClasses] = useState<ClassScheduleItem[]>(CLASS_SCHEDULE);
   const [stream, setStream] = useState<StreamStatus | null>(null);
+  const timelineRef = useRef<HTMLDivElement>(null);
 
-  // Dedup: track which classes have been checked into today (per-user, per-day)
   const dedupEmail = getMemberData()?.email || '';
   const [checkedInClasses, setCheckedInClasses] = useState<string[]>(() => {
     try { return JSON.parse(localStorage.getItem(getScheduleTodayKey(dedupEmail)) || '[]'); } catch { return []; }
   });
 
-  // Persist to localStorage on change
   useEffect(() => {
     const email = getMemberData()?.email || '';
     try { localStorage.setItem(getScheduleTodayKey(email), JSON.stringify(checkedInClasses)); } catch {}
   }, [checkedInClasses]);
 
-  // Pre-populate from GAS on mount
   useEffect(() => {
     const memberEmail = getMemberData()?.email || '';
     if (memberEmail) {
@@ -217,13 +128,7 @@ export default function SchedulePage() {
     setCheckedInClasses(prev => Array.from(new Set([...prev, className])));
   }, []);
 
-  // 5a: Day pill indicator slide
-  const dayRefs = useRef<Record<string, HTMLButtonElement | null>>({});
-  const [indicatorStyle, setIndicatorStyle] = useState({ left: 0, width: 0 });
-
-  useEffect(() => {
-    getStreamStatus().then(setStream);
-  }, []);
+  useEffect(() => { getStreamStatus().then(setStream); }, []);
 
   useEffect(() => {
     getScheduleClasses().then((gasClasses) => {
@@ -246,12 +151,13 @@ export default function SchedulePage() {
     });
   }, []);
 
-  // 5a: Slide indicator to active day
+  // Scroll selected day into view in timeline
   useEffect(() => {
-    const el = dayRefs.current[selectedDay];
-    if (el) {
-      setIndicatorStyle({ left: el.offsetLeft, width: el.offsetWidth });
-    }
+    const timeline = timelineRef.current;
+    if (!timeline) return;
+    const idx = DAYS_ORDER.indexOf(selectedDay);
+    const node = timeline.children[idx] as HTMLElement;
+    if (node) node.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
   }, [selectedDay]);
 
   const dayClasses = classes.filter(c => {
@@ -261,298 +167,306 @@ export default function SchedulePage() {
   });
 
   const today = new Date().toLocaleDateString("en-US", { weekday: "long" });
-  const emptyCategoryLabel =
-    category === "adult" ? "adults" : category === "kids" ? "kids" : "";
+  const totalCheckedInToday = checkedInClasses.length;
+  const floatingTrackState =
+    totalCheckedInToday >= 3 ? 3 :
+    totalCheckedInToday === 2 ? 2 :
+    totalCheckedInToday === 1 ? 1 : 0;
+
+  const ftColors = ['#e8af34', '#22c55e', '#0ea5e9', '#ef4444'];
+  const ftLabels = ['Daily Training', 'Daily Training', 'Double Header', 'Savage Mode'];
+  const ftFraction = floatingTrackState >= 3 ? 'SAVAGE' : `${floatingTrackState}/3`;
+  const ftFillWidths = ['0%', '33.33%', '66.66%', '100%'];
+  const ftFillBgs = [
+    'linear-gradient(90deg,#6b4a00,#e8af34)',
+    'linear-gradient(90deg,#15803d,#22c55e)',
+    'linear-gradient(90deg,#0369a1,#0ea5e9)',
+    'linear-gradient(90deg,#991b1b,#ef4444)',
+  ];
+
+  // Build 7-day timeline with real dates
+  const today7 = new Date();
+  const todayDayIdx = today7.getDay(); // 0=Sun
+  const mondayOffset = (todayDayIdx + 6) % 7;
+  const weekStart = new Date(today7);
+  weekStart.setDate(today7.getDate() - mondayOffset);
+
+  const dayNodes = DAYS_ORDER.map((dayName, i) => {
+    const d = new Date(weekStart);
+    d.setDate(weekStart.getDate() + i);
+    return { dayName, num: d.getDate(), abbr: dayName.slice(0, 3), isToday: dayName === today };
+  });
 
   return (
-    <div className="app-content">
-      <ScreenHeader title="Schedule" subtitle="Class Timetable" />
+    <>
+      <style>{`
+        @keyframes sch-card-pulse {
+          0%   { box-shadow: 0 0 30px rgba(239,68,68,0.15); }
+          100% { box-shadow: 0 0 50px rgba(239,68,68,0.3); }
+        }
+        @keyframes sch-ft-pulse {
+          0%   { box-shadow: 0 20px 40px rgba(0,0,0,0.8), 0 0 40px rgba(239,68,68,0.2); }
+          100% { box-shadow: 0 20px 40px rgba(0,0,0,0.8), 0 0 60px rgba(239,68,68,0.4); }
+        }
+        @keyframes sch-btn-sweep {
+          0%   { left:-100%; }
+          20%  { left:200%; }
+          100% { left:200%; }
+        }
+        @keyframes sch-btn-breathe {
+          0%   { box-shadow:0 4px 16px rgba(232,175,52,0.3),inset 0 2px 2px rgba(255,255,255,0.6); }
+          100% { box-shadow:0 8px 24px rgba(232,175,52,0.6),inset 0 2px 2px rgba(255,255,255,0.8); }
+        }
+        @keyframes sch-stagger-in {
+          from { opacity:0; transform:translateY(20px); }
+          to   { opacity:1; transform:translateY(0); }
+        }
+        .sch-stagger { animation: sch-stagger-in 0.5s var(--ease-out-expo,cubic-bezier(0.16,1,0.3,1)) both; }
+        .sch-timeline::-webkit-scrollbar { display:none; }
+        .sch-list::-webkit-scrollbar { display:none; }
+      `}</style>
 
-      {/* Category Toggle */}
-      <div className="px-5 mb-3">
-        <div className="flex gap-1 p-1 rounded-xl" style={{ backgroundColor: "#111" }}>
-          {[
-            { key: "all",   label: "All"         },
-            { key: "adult", label: "Adults"       },
-            { key: "kids",  label: "Kids & Teens" },
-          ].map(cat => (
-            <button
-              key={cat.key}
-              onClick={() => setCategory(cat.key as "all" | "adult" | "kids")}
-              className="flex-1 py-2 text-xs font-medium rounded-lg transition-all"
-              style={{
-                backgroundColor: category === cat.key ? "#C8A24C" : "transparent",
-                color: category === cat.key ? "#0A0A0A" : "#666",
-              }}
-              data-testid={`button-category-${cat.key}`}
-            >
-              {cat.label}
-            </button>
-          ))}
+      {/* Full-screen overlay */}
+      <div className="app-content" style={{
+        background: '#030303',
+        display: 'flex', flexDirection: 'column',
+        overflow: 'hidden',
+        position: 'relative',
+      }}>
+
+        {/* ── Header ── */}
+        <div className="sch-stagger" style={{
+          padding: '20px 20px 14px',
+          background: 'rgba(3,3,3,0.9)',
+          backdropFilter: 'blur(24px)',
+          WebkitBackdropFilter: 'blur(24px)',
+          borderBottom: '1px solid rgba(255,255,255,0.05)',
+          flexShrink: 0,
+          animationDelay: '0ms',
+        }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
+            <div>
+              <div style={{ fontFamily: 'var(--font-display, system-ui)', fontSize: 26, fontWeight: 900, color: '#fff', letterSpacing: '-0.02em', lineHeight: 1 }}>
+                Schedule
+              </div>
+              <div style={{ fontSize: 13, fontWeight: 600, color: '#a8a29e', marginTop: 4 }}>Select a class to check in.</div>
+            </div>
+            <a href="/#/" style={{
+              width: 34, height: 34, borderRadius: '50%',
+              background: '#151412', border: '1px solid rgba(255,255,255,0.1)',
+              color: '#a8a29e', display: 'flex', alignItems: 'center', justifyContent: 'center',
+              textDecoration: 'none', flexShrink: 0,
+            }}>
+              <X size={18} />
+            </a>
+          </div>
+
+          {/* Filter row */}
+          <div style={{ display: 'flex', gap: 6, background: 'rgba(255,255,255,0.03)', padding: 4, borderRadius: 12, border: '1px solid rgba(255,255,255,0.05)' }}>
+            {(['all', 'adult', 'kids'] as const).map(cat => (
+              <button key={cat} onClick={() => setCategory(cat)} style={{
+                flex: 1, padding: '9px 0', borderRadius: 8,
+                fontSize: 13, fontWeight: 700,
+                color: category === cat ? '#000' : '#a8a29e',
+                background: category === cat ? 'linear-gradient(135deg, #e8af34, #ca8a04)' : 'transparent',
+                border: 'none', cursor: 'pointer',
+                boxShadow: category === cat ? '0 4px 12px rgba(232,175,52,0.2)' : 'none',
+                transition: 'all 0.2s',
+              }}>
+                {cat === 'all' ? 'All' : cat === 'adult' ? 'Adults' : 'Kids & Teens'}
+              </button>
+            ))}
+          </div>
         </div>
-      </div>
 
-      {/* Day Selector */}
-      <div className="px-5 mb-4">
-        <div style={{ display: 'flex', gap: 4, justifyContent: 'space-between', position: 'relative' }}>
-          <div style={{
-            position: 'absolute',
-            bottom: 0,
-            left: indicatorStyle.left,
-            width: indicatorStyle.width,
-            height: 2,
-            background: '#C8A24C',
-            borderRadius: 999,
-            transition: 'left 220ms cubic-bezier(0.4, 0, 0.2, 1), width 220ms cubic-bezier(0.4, 0, 0.2, 1)',
-          }} />
-          {DAYS_ORDER.map(day => {
-            const isSelected = selectedDay === day;
-            const isToday = day === today;
-            const short = day.slice(0, 3);
+        {/* ── Day timeline ── */}
+        <div
+          ref={timelineRef}
+          className="sch-timeline sch-stagger"
+          style={{
+            display: 'flex', overflowX: 'auto', scrollSnapType: 'x mandatory',
+            padding: '14px 20px', gap: 10,
+            borderBottom: '1px solid rgba(255,255,255,0.05)',
+            background: 'linear-gradient(180deg, #0a0908 0%, transparent 100%)',
+            flexShrink: 0, scrollbarWidth: 'none',
+            animationDelay: '60ms',
+          }}
+        >
+          {dayNodes.map(({ dayName, num, abbr, isToday }) => {
+            const isSelected = selectedDay === dayName;
             return (
-              <button
-                key={day}
-                ref={el => { dayRefs.current[day] = el; }}
-                onClick={() => setSelectedDay(day)}
-                className="flex flex-col items-center py-2 rounded-xl transition-all"
-                style={{
-                  backgroundColor: isSelected ? "rgba(200, 162, 76, 0.12)" : "#111",
-                  border: `1px solid ${isSelected ? "rgba(200, 162, 76, 0.3)" : "#1A1A1A"}`,
-                  flex: 1, minWidth: 0,
-                }}
-                data-testid={`button-day-${day}`}
-              >
-                <span className="text-[10px] font-medium" style={{ color: isSelected ? "#C8A24C" : "#666" }}>
-                  {short}
+              <button key={dayName} onClick={() => setSelectedDay(dayName)} style={{
+                flexShrink: 0, width: 58, height: 72, borderRadius: 14,
+                scrollSnapAlign: 'center',
+                display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 4,
+                background: isSelected
+                  ? 'linear-gradient(180deg, rgba(232,175,52,0.1) 0%, transparent 100%)'
+                  : '#151412',
+                border: isSelected ? '1px solid rgba(232,175,52,0.3)' : '1px solid rgba(255,255,255,0.05)',
+                cursor: 'pointer', transition: 'all 0.2s',
+                position: 'relative', overflow: 'hidden',
+              }}>
+                {/* Active underline */}
+                <div style={{
+                  position: 'absolute', bottom: 0, left: 0, width: '100%', height: 3,
+                  background: '#e8af34',
+                  transform: isSelected ? 'scaleX(1)' : 'scaleX(0)',
+                  transition: 'transform 0.3s',
+                  transformOrigin: 'left',
+                }} />
+                <span style={{ fontSize: 10, fontWeight: 700, color: isSelected ? '#e8af34' : '#a8a29e', textTransform: 'uppercase', letterSpacing: '0.1em' }}>
+                  {abbr}
+                </span>
+                <span style={{ fontFamily: 'var(--font-display, system-ui)', fontSize: 19, fontWeight: 800, color: isSelected ? '#e8af34' : '#f5f5f4' }}>
+                  {num}
                 </span>
                 {isToday && (
-                  <span className="w-1 h-1 rounded-full mt-0.5" style={{ backgroundColor: "#C8A24C" }} />
+                  <div style={{ width: 4, height: 4, borderRadius: '50%', background: '#e8af34', position: 'absolute', top: 8, right: 8 }} />
                 )}
               </button>
             );
           })}
         </div>
-      </div>
 
-      {/* Classes List */}
-      <div className="px-5 pb-6">
-        {dayClasses.length === 0 ? (
-          <div className="text-center py-12">
-            <Clock size={32} style={{ color: "#333", margin: "0 auto 8px" }} />
-            <p className="text-sm" style={{ color: "#666" }}>
-              No classes{emptyCategoryLabel ? ` for ${emptyCategoryLabel}` : ""} on {selectedDay}
-            </p>
-          </div>
-        ) : (
-          <div className="space-y-2">
-            {dayClasses.map((cls, index) => (
-              <div key={`${selectedDay}-${cls.day}-${cls.time}-${cls.name}`}
-                className="stagger-child"
-                style={{ animationDelay: `${index * 30}ms` }}
-              >
-                <ClassCard cls={cls} isToday={selectedDay === today} stream={stream} checkedInClasses={checkedInClasses} markClassCheckedIn={markClassCheckedIn} />
+        {/* ── Class list (scrollable) ── */}
+        <div className="sch-list" style={{ flex: 1, overflowY: 'auto', scrollbarWidth: 'none', position: 'relative' }}>
+          <div style={{ padding: '20px 20px 120px', display: 'flex', flexDirection: 'column', gap: 14 }}>
+
+            {dayClasses.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: '48px 0', color: '#57534e' }}>
+                <Clock size={32} style={{ margin: '0 auto 10px', display: 'block' }} />
+                <p style={{ fontSize: 14, fontWeight: 600 }}>No classes on {selectedDay}</p>
               </div>
-            ))}
-          </div>
-        )}
+            ) : (
+              dayClasses.map((cls, idx) => (
+                <div key={`${selectedDay}-${cls.day}-${cls.time}-${cls.name}`}
+                  className="sch-stagger"
+                  style={{ animationDelay: `${120 + idx * 50}ms` }}
+                >
+                  <ClassCard
+                    cls={cls}
+                    isToday={selectedDay === today}
+                    stream={stream}
+                    checkedInClasses={checkedInClasses}
+                    markClassCheckedIn={markClassCheckedIn}
+                    checkInCount={checkedInClasses.length}
+                  />
+                </div>
+              ))
+            )}
 
-        {/* Book Trial CTA */}
-        <a
-          href="/#/book"
-          className="flex items-center justify-center gap-2 mt-6 py-3 rounded-xl text-sm font-semibold transition-all active:scale-[0.98]"
-          style={{ backgroundColor: "rgba(200, 162, 76, 0.1)", color: "#C8A24C", border: "1px solid rgba(200, 162, 76, 0.2)" }}
-          data-testid="button-book-trial"
-        >
-          Book a Trial Class <ChevronRight size={14} />
-        </a>
+            {/* Book Trial */}
+            <a href="/#/book" style={{
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+              marginTop: 8, padding: '14px', borderRadius: 14, fontSize: 14, fontWeight: 700,
+              background: 'rgba(232,175,52,0.08)', color: '#e8af34',
+              border: '1px solid rgba(232,175,52,0.15)', textDecoration: 'none',
+              transition: 'all 0.2s',
+            }}>
+              Book a Trial Class <ChevronRight size={14} />
+            </a>
 
-        {/* Tournament link */}
-        <div style={{
-          margin: "20px 0",
-          padding: "14px 16px",
-          background: "rgba(200,162,76,0.06)",
-          border: "1px solid rgba(200,162,76,0.15)",
-          borderRadius: 12,
-          display: "flex",
-          alignItems: "center",
-          gap: 12,
-        }}>
-          <Trophy size={22} color="#C8A24C" aria-hidden="true" />
-          <div style={{ flex: 1 }}>
-            <p style={{ fontSize: 14, fontWeight: 600, color: "#E0E0E0", margin: 0 }}>Compete at a Tournament</p>
-            <p style={{ fontSize: 12, color: "#666", margin: "2px 0 0" }}>View upcoming events and registration links</p>
+            {/* Tournament link */}
+            <div style={{
+              padding: '14px 16px', background: 'rgba(232,175,52,0.05)',
+              border: '1px solid rgba(232,175,52,0.12)', borderRadius: 14,
+              display: 'flex', alignItems: 'center', gap: 12,
+            }}>
+              <Trophy size={20} color="#e8af34" />
+              <div style={{ flex: 1 }}>
+                <p style={{ fontSize: 14, fontWeight: 600, color: '#e0e0e0', margin: 0 }}>Compete at a Tournament</p>
+                <p style={{ fontSize: 12, color: '#666', margin: '2px 0 0' }}>View upcoming events and registration links</p>
+              </div>
+              <a href="/#/calendar" style={{ fontSize: 12, fontWeight: 700, color: '#e8af34', textDecoration: 'none' }}>View →</a>
+            </div>
           </div>
-          <a href="/#/calendar" style={{ fontSize: 12, fontWeight: 700, color: "#C8A24C", textDecoration: "none", flexShrink: 0 }}>
-            View →
-          </a>
         </div>
+
+        {/* ── Floating daily tracker ── */}
+        <div style={{
+          position: 'absolute', bottom: 24, left: 20, right: 20,
+          background: 'rgba(10,9,8,0.88)',
+          backdropFilter: 'blur(24px)', WebkitBackdropFilter: 'blur(24px)',
+          border: floatingTrackState === 0 ? '1px solid rgba(255,255,255,0.08)'
+            : floatingTrackState === 1 ? '1px solid rgba(34,197,94,0.3)'
+            : floatingTrackState === 2 ? '1px solid rgba(14,165,233,0.4)'
+            : '1px solid rgba(239,68,68,0.6)',
+          borderRadius: 18, padding: '14px 18px',
+          display: 'flex', flexDirection: 'column', gap: 10,
+          boxShadow: floatingTrackState === 0 ? '0 20px 40px rgba(0,0,0,0.8)'
+            : floatingTrackState === 1 ? '0 20px 40px rgba(0,0,0,0.8), 0 0 32px rgba(34,197,94,0.1)'
+            : floatingTrackState === 2 ? '0 20px 40px rgba(0,0,0,0.8), 0 0 40px rgba(14,165,233,0.15)'
+            : '0 20px 40px rgba(0,0,0,0.8), 0 0 50px rgba(239,68,68,0.25)',
+          zIndex: 100, transition: 'all 0.5s',
+          animation: floatingTrackState >= 3 ? 'sch-ft-pulse 1.5s infinite alternate' : undefined,
+        }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div style={{
+              display: 'flex', alignItems: 'center', gap: 8,
+              fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em',
+              color: floatingTrackState >= 3 ? '#fca5a5' : '#a8a29e',
+              transition: 'color 0.5s',
+            }}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/></svg>
+              {ftLabels[floatingTrackState]}
+            </div>
+            <span style={{
+              fontFamily: 'var(--font-display, system-ui)', fontSize: floatingTrackState >= 3 ? 20 : 18,
+              fontWeight: 900,
+              color: ftColors[floatingTrackState],
+              textShadow: floatingTrackState > 0 ? `0 0 ${floatingTrackState >= 3 ? 12 : 8}px ${ftColors[floatingTrackState]}60` : 'none',
+              transition: 'color 0.5s, text-shadow 0.5s, font-size 0.3s',
+            }}>
+              {ftFraction}
+            </span>
+          </div>
+          {/* Progress bar */}
+          <div style={{
+            width: '100%', height: 6, background: '#000', borderRadius: 3,
+            boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.8)', position: 'relative', overflow: 'hidden',
+          }}>
+            <div style={{
+              position: 'absolute', left: 0, top: 0, bottom: 0,
+              width: ftFillWidths[floatingTrackState],
+              background: ftFillBgs[floatingTrackState],
+              borderRadius: 3,
+              boxShadow: 'inset 0 1px 1px rgba(255,255,255,0.4)',
+              transition: 'width 0.8s cubic-bezier(0.16,1,0.3,1), background 0.5s',
+            }} />
+          </div>
+        </div>
+
       </div>
-    </div>
+    </>
   );
 }
 
-function ClassCard({ cls, isToday, stream, checkedInClasses, markClassCheckedIn }: { cls: ClassScheduleItem; isToday: boolean; stream: StreamStatus | null; checkedInClasses: string[]; markClassCheckedIn: (name: string) => void }) {
+// ── ClassCard ────────────────────────────────────────────────────
+
+function ClassCard({
+  cls, isToday, stream, checkedInClasses, markClassCheckedIn, checkInCount,
+}: {
+  cls: ClassScheduleItem; isToday: boolean; stream: StreamStatus | null;
+  checkedInClasses: string[]; markClassCheckedIn: (name: string) => void;
+  checkInCount: number;
+}) {
   const isClassLive = stream?.isLive && (stream.className === cls.name || stream.className === (cls as any).title);
   const typeStyle = CLASS_TYPE_COLORS[cls.type] ?? CLASS_TYPE_COLORS.gi;
   const displayTime = formatClassTime(cls.time);
   const [timePart, ampm] = displayTime.split(" ");
-  const [showDetail, setShowDetail] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(false);
   const [checkInDone, setCheckInDone] = useState(false);
   const checkingInRef = useRef(false);
+  const btnRef = useRef<HTMLButtonElement>(null);
   const duration = getDuration(cls.name);
   const alreadyCheckedIn = checkedInClasses.includes(cls.name || '');
 
-  const handleCheckIn = async () => {
-    if (!navigator.onLine) {
-      alert('No internet connection. Please connect and try again.');
-      return;
-    }
-    // Geo-lock validation
-    const geo = await validateGeoIfRequired();
-    if (!geo.allowed) {
-      alert(geo.error || 'Location check failed. Please try again.');
-      return;
-    }
-    // Dedup: prevent double check-ins (ref lock is synchronous — blocks rapid taps)
-    if (alreadyCheckedIn || checkInDone || checkingInRef.current) return;
-    checkingInRef.current = true;
-    // Increment local attendance
-    try {
-      const raw = localStorage.getItem('lbjj_game_stats_v2');
-      const stats = raw ? JSON.parse(raw) : {};
-      stats.classesAttended = (stats.classesAttended || 0) + 1;
-      const comboMultiplier = (() => {
-        try {
-          const weekly2: string[] = JSON.parse(localStorage.getItem('lbjj_weekly_training') || '[]');
-          const today2 = new Date().toISOString().split('T')[0];
-          const yesterday2 = new Date(Date.now() - 86400000).toISOString().split('T')[0];
-          const twoDaysAgo2 = new Date(Date.now() - 2 * 86400000).toISOString().split('T')[0];
-          if (weekly2.includes(today2) && weekly2.includes(yesterday2) && weekly2.includes(twoDaysAgo2)) return 3;
-          if (weekly2.includes(today2) && weekly2.includes(yesterday2)) return 2;
-          return 1;
-        } catch { return 1; }
-      })();
-      const xpGain = 10 * comboMultiplier;
-      stats.xp = (stats.xp || 0) + xpGain;
-      stats.totalXP = (stats.totalXP || 0) + xpGain;
-      localStorage.setItem('lbjj_game_stats_v2', JSON.stringify(stats));
-    } catch (_) {}
+  // State: which check-in level (1,2,3) applies to THIS card if checked in
+  const cardStateLevel = Math.min(checkInCount + 1, 3);
 
-    // Update today's check-in count for immediate display on HomePage
-    const today = new Date().toISOString().split('T')[0];
-    const todayData = (() => { try { return JSON.parse(localStorage.getItem('lbjj_checkins_today') || '{}'); } catch { return {}; } })();
-    const newCount = (todayData.date === today ? (todayData.count || 0) : 0) + 1;
-    localStorage.setItem('lbjj_checkins_today', JSON.stringify({ date: today, count: newCount }));
+  const stateColors = ['#22c55e', '#0ea5e9', '#ef4444'];
+  const stateColor = stateColors[Math.min(cardStateLevel - 1, 2)];
 
-    // Track weekly training days for the home screen dots
-    const weekly: string[] = (() => { try { return JSON.parse(localStorage.getItem('lbjj_weekly_training') || '[]'); } catch { return []; } })();
-    if (!weekly.includes(today)) {
-      weekly.push(today);
-      const cutoff = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
-      localStorage.setItem('lbjj_weekly_training', JSON.stringify(weekly.filter((d: string) => d >= cutoff)));
-    }
-
-    // Update season check-in history for April ring on HomePage
-    try {
-      const history: string[] = JSON.parse(localStorage.getItem('lbjj_checkin_history') || '[]');
-      if (!history.includes(today)) {
-        history.push(today);
-        const cutoff = new Date(Date.now() - 400*24*60*60*1000).toISOString().split('T')[0];
-        localStorage.setItem('lbjj_checkin_history', JSON.stringify(history.filter((d: string) => d >= cutoff)));
-      }
-    } catch {}
-
-    // Check and unlock local achievements after check-in
-    const member = getMemberData();
-    const gameStats = (() => { try { return JSON.parse(localStorage.getItem('lbjj_game_stats_v2') || '{}'); } catch { return {}; } })();
-    const newlyEarned = checkAndUnlockAchievements(member || {}, gameStats);
-    if (newlyEarned.length > 0) {
-      const first = ALL_ACHIEVEMENTS.find(a => a.key === newlyEarned[0]);
-      if (first) {
-        showBadgeUnlock({ key: first.key, label: first.label, icon: first.icon, desc: first.desc, color: first.color });
-        setTimeout(() => { window.location.hash = '#/achievements'; }, 3000);
-      }
-    }
-
-    // Fire-and-forget GAS gamification call
-    const memberEmail = member?.email || '';
-    const memberName = member?.name || '';
-    if (memberEmail) {
-      gasCall('recordCheckIn', {
-        email: memberEmail,
-        name: memberName,
-        className: cls.name || '',
-        day: cls.day || '',
-        time: cls.time || '',
-      }).then((result: any) => {
-        if (result?.alreadyCheckedIn) {
-          // Already checked in server-side — just update local state
-          markClassCheckedIn(cls.name || '');
-          return;
-        }
-        if (result?.pointsAwarded) {
-          showPointsToast(result.pointsAwarded);
-        }
-        if (result?.newBadges && result.newBadges.length > 0) {
-          showBadgeUnlock(result.newBadges[0]);
-        }
-        if (result?.streakMilestone) {
-          showBadgeUnlock({ key: 'streak', label: `${result.streakMilestone}-Week Streak!`, icon: '\u{1F525}', desc: `${result.streakMilestone} consecutive weeks of training. Consistency is everything.`, color: '#F97316' });
-        }
-        // Save successful check-in to dedup state
-        markClassCheckedIn(cls.name || '');
-
-        // ── Persist stats to GAS after server confirms ──────────────────────
-        const statsAfter = (() => { try { return JSON.parse(localStorage.getItem('lbjj_game_stats_v2') || '{}'); } catch { return {}; } })();
-        const currentStreakForSync = result?.currentStreak ?? parseInt(localStorage.getItem('lbjj_streak_cache') || '0') ?? (statsAfter.currentStreak || 0);
-        saveMemberStats({
-          xp:        statsAfter.xp || statsAfter.totalXP || 0,
-          streak:    currentStreakForSync,
-          maxStreak: Math.max(statsAfter.maxStreak || 0, currentStreakForSync),
-        }).catch(() => {});
-
-        // Persist streak from GAS response to localStorage
-        if (result?.currentStreak !== undefined) {
-          try {
-            const stored = JSON.parse(localStorage.getItem('lbjj_member_profile') || '{}');
-            stored.currentStreak = result.currentStreak;
-            localStorage.setItem('lbjj_member_profile', JSON.stringify(stored));
-            localStorage.setItem('lbjj_streak_cache', String(result.currentStreak));
-          } catch {}
-        }
-
-        // ── Sync achievements to GAS ─────────────────────────────────────────
-        const earned: string[] = (() => { try { return JSON.parse(localStorage.getItem('lbjj_achievements') || '[]'); } catch { return []; } })();
-        if (earned.length > 0) {
-          const toSync = earned.map((key: string) => {
-            const def = ALL_ACHIEVEMENTS.find(a => a.key === key);
-            return def ? { key, label: def.label, icon: def.icon, earnedAt: new Date().toISOString() } : null;
-          }).filter(Boolean) as Array<{ key: string; label: string; icon: string; earnedAt: string }>;
-          syncAchievements(toSync).catch(() => {});
-        }
-
-        // Trigger background leaderboard refresh so home screen is current
-        setTimeout(() => {
-          try { localStorage.removeItem('lbjj_home_leaderboard'); } catch {}
-          getLeaderboardFresh().catch(() => {});
-        }, 3500);
-      }).catch(() => {});
-    }
-
-    markClassCheckedIn(cls.name || '');
-    setCheckInDone(true);
-    // Bust leaderboard + home cache so fresh data loads on return to home
-    try { localStorage.removeItem('lbjj_home_leaderboard'); } catch {}
-    try { localStorage.removeItem('lbjj_home_cache'); } catch {}
-    triggerConfetti();
-    setTimeout(() => {
-      setShowDetail(false);
-      setCheckInDone(false);
-      window.location.hash = '#/';
-    }, 1500);
-  };
-
-  // Check if this class has already ended today
   const isPast = (() => {
     if (!isToday) return false;
     const now = new Date();
@@ -562,202 +476,306 @@ function ClassCard({ cls, isToday, stream, checkedInClasses, markClassCheckedIn 
     const minutes = parseInt(mStr || "0", 10);
     if (period?.toUpperCase() === "PM" && hours !== 12) hours += 12;
     if (period?.toUpperCase() === "AM" && hours === 12) hours = 0;
+    const endTotalMins = hours * 60 + minutes + getDurationMinutes(cls.name);
     const classEnd = new Date();
-    const durationMins = getDurationMinutes(cls.name);
-    const endTotalMins = hours * 60 + minutes + durationMins;
     classEnd.setHours(Math.floor(endTotalMins / 60), endTotalMins % 60, 0, 0);
     return now > classEnd;
   })();
 
+  const handleCheckIn = async () => {
+    if (!navigator.onLine) { alert('No internet connection.'); return; }
+    const geo = await validateGeoIfRequired();
+    if (!geo.allowed) { alert(geo.error || 'Location check failed.'); return; }
+    if (alreadyCheckedIn || checkInDone || checkingInRef.current) return;
+    checkingInRef.current = true;
+
+    // Particle burst
+    if (btnRef.current) {
+      const rect = btnRef.current.getBoundingClientRect();
+      spawnParticles(rect.left + rect.width / 2, rect.top + rect.height / 2, stateColor, cardStateLevel >= 3 ? 50 : 20);
+    }
+
+    try {
+      const raw = localStorage.getItem('lbjj_game_stats_v2');
+      const stats = raw ? JSON.parse(raw) : {};
+      stats.classesAttended = (stats.classesAttended || 0) + 1;
+      const comboMultiplier = (() => {
+        try {
+          const weekly2: string[] = JSON.parse(localStorage.getItem('lbjj_weekly_training') || '[]');
+          const t2 = new Date().toISOString().split('T')[0];
+          const y2 = new Date(Date.now() - 86400000).toISOString().split('T')[0];
+          const d2 = new Date(Date.now() - 2 * 86400000).toISOString().split('T')[0];
+          if (weekly2.includes(t2) && weekly2.includes(y2) && weekly2.includes(d2)) return 3;
+          if (weekly2.includes(t2) && weekly2.includes(y2)) return 2;
+          return 1;
+        } catch { return 1; }
+      })();
+      const xpGain = 10 * comboMultiplier;
+      stats.xp = (stats.xp || 0) + xpGain;
+      stats.totalXP = (stats.totalXP || 0) + xpGain;
+      localStorage.setItem('lbjj_game_stats_v2', JSON.stringify(stats));
+      try { window.dispatchEvent(new CustomEvent('xp-updated')); } catch {}
+    } catch {}
+
+    const today = new Date().toISOString().split('T')[0];
+    const todayData = (() => { try { return JSON.parse(localStorage.getItem('lbjj_checkins_today') || '{}'); } catch { return {}; } })();
+    const newCount = (todayData.date === today ? (todayData.count || 0) : 0) + 1;
+    localStorage.setItem('lbjj_checkins_today', JSON.stringify({ date: today, count: newCount }));
+
+    const weekly: string[] = (() => { try { return JSON.parse(localStorage.getItem('lbjj_weekly_training') || '[]'); } catch { return []; } })();
+    if (!weekly.includes(today)) {
+      weekly.push(today);
+      const cutoff = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+      localStorage.setItem('lbjj_weekly_training', JSON.stringify(weekly.filter((d: string) => d >= cutoff)));
+    }
+    try {
+      const history: string[] = JSON.parse(localStorage.getItem('lbjj_checkin_history') || '[]');
+      if (!history.includes(today)) {
+        history.push(today);
+        const cutoff = new Date(Date.now() - 400 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+        localStorage.setItem('lbjj_checkin_history', JSON.stringify(history.filter((d: string) => d >= cutoff)));
+      }
+    } catch {}
+
+    const member = getMemberData();
+    const gameStats = (() => { try { return JSON.parse(localStorage.getItem('lbjj_game_stats_v2') || '{}'); } catch { return {}; } })();
+    const newlyEarned = checkAndUnlockAchievements(member || {}, gameStats);
+    if (newlyEarned.length > 0) {
+      const first = ALL_ACHIEVEMENTS.find(a => a.key === newlyEarned[0]);
+      if (first && (window as any).__showBadgeUnlock) {
+        (window as any).__showBadgeUnlock({ key: first.key, label: first.label, icon: first.icon, desc: first.desc, color: first.color });
+      }
+    }
+
+    const memberEmail = member?.email || '';
+    const memberName = member?.name || '';
+    if (memberEmail) {
+      gasCall('recordCheckIn', {
+        email: memberEmail, name: memberName,
+        className: cls.name || '', day: cls.day || '', time: cls.time || '',
+      }).then(async (result: any) => {
+        if (result?.alreadyCheckedIn) {
+          markClassCheckedIn(cls.name || '');
+          return;
+        }
+        if (result?.pointsAwarded || result?.success) {
+          try {
+            const { data: statsData } = await saveMemberStats({
+              email: memberEmail, classesAttended: gameStats.classesAttended || 0,
+              totalXP: gameStats.totalXP || 0, currentStreak: gameStats.currentStreak || 0,
+              maxStreak: gameStats.maxStreak || 0,
+            }) as any;
+            if (statsData) {
+              const raw2 = localStorage.getItem('lbjj_game_stats_v2');
+              const s2 = raw2 ? JSON.parse(raw2) : {};
+              s2.currentStreak = result?.currentStreak ?? s2.currentStreak;
+              s2.maxStreak = Math.max(s2.maxStreak || 0, s2.currentStreak || 0);
+              localStorage.setItem('lbjj_game_stats_v2', JSON.stringify(s2));
+              try { localStorage.setItem('lbjj_streak_cache', String(s2.currentStreak || 0)); } catch {}
+            }
+          } catch {}
+          try { await syncAchievements(member || {}, gameStats); } catch {}
+          try { await getLeaderboardFresh(); } catch {}
+        }
+      }).catch(() => {});
+    }
+
+    markClassCheckedIn(cls.name || '');
+    setCheckInDone(true);
+    try { localStorage.removeItem('lbjj_home_leaderboard'); localStorage.removeItem('lbjj_home_cache'); } catch {}
+    triggerConfetti();
+    setTimeout(() => {
+      setIsExpanded(false);
+      setCheckInDone(false);
+      window.location.hash = '#/';
+    }, 1500);
+  };
+
+  // Card visual state
+  const cardIsCheckedIn = alreadyCheckedIn || checkInDone;
+  const stateIdx = cardIsCheckedIn ? Math.min(checkInCount, 3) : 0;
+
+  const cardBorderColor = cardIsCheckedIn
+    ? stateIdx >= 3 ? 'rgba(239,68,68,0.8)'
+      : stateIdx === 2 ? 'rgba(14,165,233,0.5)'
+      : 'rgba(34,197,94,0.4)'
+    : isExpanded ? 'rgba(232,175,52,0.2)' : 'rgba(255,255,255,0.04)';
+
+  const cardBg = cardIsCheckedIn
+    ? stateIdx >= 3 ? 'linear-gradient(145deg, rgba(239,68,68,0.08) 0%, rgba(0,0,0,0) 100%)'
+      : stateIdx === 2 ? 'linear-gradient(145deg, rgba(14,165,233,0.05) 0%, rgba(0,0,0,0) 100%)'
+      : 'linear-gradient(145deg, rgba(34,197,94,0.05) 0%, rgba(0,0,0,0) 100%)'
+    : 'rgba(255,255,255,0.02)';
+
+  const btnBg = cardIsCheckedIn
+    ? stateIdx >= 3 ? 'linear-gradient(135deg, #ef4444, #991b1b)'
+      : stateIdx === 2 ? 'linear-gradient(135deg, #0ea5e9, #0369a1)'
+      : 'linear-gradient(135deg, #22c55e, #15803d)'
+    : 'linear-gradient(135deg, #e8af34, #ca8a04)';
+
+  const btnBorder = cardIsCheckedIn
+    ? stateIdx >= 3 ? '#f87171' : stateIdx === 2 ? '#38bdf8' : '#4ade80'
+    : '#fef08a';
+
+  const btnColor = cardIsCheckedIn ? '#fff' : '#000';
+
   return (
     <>
-      <button
-        onClick={() => setShowDetail(true)}
-        className="w-full p-4 rounded-xl transition-all active:scale-[0.98] text-left"
-        style={{ backgroundColor: "#111", border: "1px solid #1A1A1A", cursor: "pointer", opacity: isPast ? 0.5 : 1 }}
-        data-testid={`button-class-${cls.name}`}
-      >
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-12 text-center">
-              <p className="text-sm font-bold" style={{ color: "#F0F0F0" }}>{timePart}</p>
-              <p className="text-[10px]" style={{ color: "#666" }}>{ampm ?? ""}</p>
-            </div>
-            <div className="w-px h-8" style={{ backgroundColor: "#222" }} />
-            <div>
-              <div className="flex items-center gap-2">
-                <p className="text-sm font-medium" style={{ color: "#F0F0F0" }}>{cls.name}</p>
-                {isClassLive && (
-                  <span style={{ ...getLiveBadgeStyle(), fontSize: 9 }}>● LIVE</span>
-                )}
-              </div>
-              <div className="flex items-center gap-2 flex-wrap mt-1">
-                <span
-                  className="inline-block text-[10px] font-medium px-2 py-0.5 rounded"
-                  style={{ backgroundColor: typeStyle.bg, color: typeStyle.text }}
-                >
-                  {typeStyle.label}
-                </span>
-                {/* Coach name */}
-                {cls.instructor && (
-                  <span className="text-[10px]" style={{ color: "#888" }}>
-                    w/ Coach {cls.instructor}
-                  </span>
-                )}
-              </div>
-              {/* Capacity indicator */}
-              <div className="mt-1">
-                {cls.capacity != null && cls.enrolled != null ? (
-                  <span className="text-[10px] font-medium" style={{
-                    color: cls.enrolled >= cls.capacity
-                      ? "#E05555"
-                      : cls.enrolled >= cls.capacity * 0.8
-                        ? "#E08228"
-                        : "#666",
-                  }}>
-                    {cls.enrolled >= cls.capacity
-                      ? "Full"
-                      : `${cls.enrolled}/${cls.capacity} spots`}
-                  </span>
-                ) : (
-                  <span className="text-[10px]" style={{ color: "#444" }}>—</span>
-                )}
-              </div>
-            </div>
-          </div>
-          {isPast ? (
-            <span style={{ fontSize: 11, color: "#4CAF80", fontWeight: 600, flexShrink: 0 }}>&#10003; Ended</span>
-          ) : (
-            <ChevronRight size={16} style={{ color: "#444", flexShrink: 0 }} />
-          )}
-        </div>
-      </button>
-
-      {showDetail && (
+      <div style={{
+        background: cardBg,
+        border: `1px solid ${cardBorderColor}`,
+        borderRadius: 18, overflow: 'hidden',
+        transition: 'all 0.4s cubic-bezier(0.16,1,0.3,1)',
+        cursor: 'pointer',
+        boxShadow: cardIsCheckedIn
+          ? stateIdx >= 3 ? '0 0 40px rgba(239,68,68,0.2)' : stateIdx === 2 ? '0 0 32px rgba(14,165,233,0.15)' : '0 0 24px rgba(34,197,94,0.1)'
+          : 'none',
+        animation: cardIsCheckedIn && stateIdx >= 3 ? 'sch-card-pulse 1.5s infinite alternate' : undefined,
+      }}>
+        {/* Card header — always visible, click to expand */}
         <div
-          style={{ position: "fixed", inset: 0, zIndex: 200, display: "flex", alignItems: "flex-end" }}
-          onClick={() => setShowDetail(false)}
+          style={{ display: 'flex', gap: 14, padding: '18px 18px', alignItems: 'center', position: 'relative', zIndex: 2 }}
+          onClick={() => setIsExpanded(e => !e)}
         >
-          <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.5)", backdropFilter: "blur(4px)" }} />
-          <div
-            onClick={e => e.stopPropagation()}
-            style={{
-              position: "relative", width: "100%",
-              background: "#111", borderRadius: "20px 20px 0 0",
-              padding: "24px 20px 0", borderTop: "1px solid #1A1A1A",
-              maxHeight: "80vh",
-              overflowY: "auto",
-              paddingBottom: "max(80px, calc(env(safe-area-inset-bottom, 0px) + 80px))",
-            }}
-          >
-            {/* Handle bar */}
-            <div style={{ width: 36, height: 4, borderRadius: 2, background: "#2A2A2A", margin: "0 auto 20px" }} />
+          {/* Time block */}
+          <div style={{
+            width: 66, flexShrink: 0, textAlign: 'right',
+            display: 'flex', flexDirection: 'column', alignItems: 'flex-end',
+            borderRight: '1px solid rgba(255,255,255,0.05)', paddingRight: 14,
+          }}>
+            <span style={{
+              fontFamily: 'var(--font-display, system-ui)', fontSize: 20, fontWeight: 800,
+              color: cardIsCheckedIn ? stateColor : '#fff', lineHeight: 1,
+              textShadow: cardIsCheckedIn ? `0 0 12px ${stateColor}` : 'none',
+              transition: 'color 0.4s, text-shadow 0.4s',
+            }}>{timePart}</span>
+            <span style={{ fontSize: 10, fontWeight: 700, color: '#57534e', marginTop: 2 }}>{ampm}</span>
+          </div>
 
-            {checkInDone ? (
-              <div style={{ textAlign: 'center', padding: '32px 0' }}>
-                <div style={{ marginBottom: 12, display: "flex", justifyContent: "center" }}><CheckCircleFilledIcon size={56} color="#4CAF50" aria-label="Checked in" /></div>
-                <div style={{ fontSize: 18, fontWeight: 700, color: '#4CAF50' }}>Checked In!</div>
-                <div style={{ fontSize: 14, color: '#888', marginTop: 6 }}>{cls.name}</div>
-              </div>
-            ) : (
-              <>
-                {/* Header */}
-                <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 20 }}>
-                  <div>
-                    <h3 style={{ fontSize: 20, fontWeight: 700, color: "#F0F0F0", margin: 0 }}>{cls.name}</h3>
-                    <span style={{ display: "inline-block", marginTop: 6, fontSize: 11, fontWeight: 600, padding: "3px 10px", borderRadius: 6, backgroundColor: typeStyle.bg, color: typeStyle.text }}>
-                      {typeStyle.label}
-                    </span>
-                  </div>
-                  <button onClick={() => setShowDetail(false)} style={{ background: "none", border: "none", padding: 4, cursor: "pointer" }}>
-                    <X size={20} style={{ color: "#555" }} />
-                  </button>
-                </div>
+          {/* Class info */}
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+              <span style={{ fontFamily: 'var(--font-display, system-ui)', fontSize: 16, fontWeight: 800, color: '#fff', lineHeight: 1.1 }}>
+                {cls.name}
+              </span>
+              {isClassLive && (
+                <span style={{ ...getLiveBadgeStyle(), fontSize: 9 }}>● LIVE</span>
+              )}
+            </div>
+            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
+              <span style={{ padding: '3px 8px', borderRadius: 6, fontSize: 11, fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', background: typeStyle.bg, color: typeStyle.text, border: `1px solid ${typeStyle.text}30` }}>
+                {typeStyle.label}
+              </span>
+              {cls.category === 'kids' && (
+                <span style={{ padding: '3px 8px', borderRadius: 6, fontSize: 11, fontWeight: 700, background: 'rgba(244,63,94,0.1)', color: '#f43f5e', border: '1px solid rgba(244,63,94,0.2)' }}>
+                  Kids
+                </span>
+              )}
+              {cls.instructor && (
+                <span style={{ fontSize: 11, color: '#a8a29e' }}>w/ Coach {cls.instructor}</span>
+              )}
+            </div>
+          </div>
 
-                {/* Detail rows */}
-                <div style={{ display: "flex", flexDirection: "column", gap: 14, marginBottom: 24 }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                    <Clock size={16} style={{ color: "#C8A24C", flexShrink: 0 }} />
-                    <div>
-                      <p style={{ fontSize: 14, color: "#F0F0F0", margin: 0, fontWeight: 600 }}>{displayTime}</p>
-                      <p style={{ fontSize: 12, color: "#666", margin: "2px 0 0" }}>{duration}</p>
-                    </div>
-                  </div>
-                  <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                    <User size={16} style={{ color: "#666", flexShrink: 0 }} />
-                    <div>
-                      <p style={{ fontSize: 13, color: "#999", margin: 0 }}>
-                        {cls.category === "kids" ? "Kids & Teens" : "Adults"} · {typeStyle.label}
-                        {cls.instructor && <span style={{ color: "#C8A24C" }}> · w/ Coach {cls.instructor}</span>}
-                      </p>
-                      {cls.capacity != null && cls.enrolled != null ? (
-                        <p style={{
-                          fontSize: 12, margin: "4px 0 0",
-                          color: cls.enrolled >= cls.capacity ? "#E05555"
-                            : cls.enrolled >= cls.capacity * 0.8 ? "#E08228"
-                            : "#666",
-                          fontWeight: 600,
-                        }}>
-                          {cls.enrolled >= cls.capacity ? "Class Full" : `${cls.enrolled}/${cls.capacity} spots`}
-                        </p>
-                      ) : (
-                        <p style={{ fontSize: 12, margin: "4px 0 0", color: "#444" }}>Capacity: —</p>
-                      )}
-                    </div>
-                  </div>
-                </div>
-
-                {/* Watch Live button */}
-                {isClassLive && (
-                  <a href="/#/live" style={{
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    gap: 8, padding: '14px', borderRadius: 12, width: '100%',
-                    background: 'linear-gradient(135deg, #1A0A0A, #1A1010)',
-                    border: '1px solid #EF444430',
-                    color: '#EF4444', fontWeight: 700, fontSize: 15,
-                    textDecoration: 'none', marginBottom: 10,
-                  }}>
-                    <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#EF4444', display: 'inline-block', animation: 'livePulse 1.5s ease-in-out infinite' }} />
-                    Watch Live
-                  </a>
-                )}
-
-                {/* CTA */}
-                {isPast ? (
-                  <div
-                    style={{
-                      display: "flex", alignItems: "center", justifyContent: "center",
-                      gap: 8, padding: "14px", borderRadius: 12,
-                      background: "rgba(74, 175, 128, 0.1)", color: "#4CAF80",
-                      fontWeight: 600, fontSize: 15, border: "1px solid rgba(74, 175, 128, 0.2)",
-                    }}
-                  >
-                    <CheckCircle size={16} /> Class has ended
-                  </div>
-                ) : (
-                  <button
-                    onClick={handleCheckIn}
-                    disabled={alreadyCheckedIn || checkInDone}
-                    data-checkin-btn=""
-                    style={{
-                      display: "flex", alignItems: "center", justifyContent: "center",
-                      gap: 8, padding: "14px", borderRadius: 12, width: "100%",
-                      background: alreadyCheckedIn ? 'rgba(200,162,76,0.15)' : "#C8A24C",
-                      color: alreadyCheckedIn ? '#C8A24C' : "#0A0A0A",
-                      fontWeight: 700, fontSize: 15, border: "none",
-                      cursor: alreadyCheckedIn ? "default" : "pointer",
-                      opacity: alreadyCheckedIn ? 0.7 : 1,
-                      transition: 'transform 80ms cubic-bezier(0.16, 1, 0.3, 1)',
-                    }}
-                  >
-                    {alreadyCheckedIn ? '✓ Checked In' : 'Check In to Class'}
-                  </button>
-                )}
-              </>
-            )}
+          {/* Chevron */}
+          <div style={{
+            width: 24, height: 24, borderRadius: '50%', flexShrink: 0,
+            background: isExpanded && !cardIsCheckedIn ? '#e8af34' : 'rgba(255,255,255,0.05)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            color: isExpanded && !cardIsCheckedIn ? '#000' : '#a8a29e',
+            transform: isExpanded ? 'rotate(180deg)' : 'none',
+            transition: 'transform 0.4s cubic-bezier(0.16,1,0.3,1), background 0.2s, color 0.2s',
+          }}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="6 9 12 15 18 9"/></svg>
           </div>
         </div>
-      )}
+
+        {/* Expandable details — CSS grid-template-rows for smooth animation */}
+        <div style={{
+          display: 'grid',
+          gridTemplateRows: isExpanded ? '1fr' : '0fr',
+          transition: 'grid-template-rows 0.4s cubic-bezier(0.16,1,0.3,1)',
+        }}>
+          <div style={{ overflow: 'hidden' }}>
+            <div style={{ padding: '0 18px 18px', display: 'flex', flexDirection: 'column', gap: 16 }}>
+              {/* Meta grid */}
+              <div style={{
+                display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10,
+                paddingTop: 14, borderTop: '1px solid rgba(255,255,255,0.05)',
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: '#a8a29e', fontWeight: 500 }}>
+                  <Clock size={13} style={{ color: '#57534e', flexShrink: 0 }} />
+                  {duration}
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: '#a8a29e', fontWeight: 500 }}>
+                  <User size={13} style={{ color: '#57534e', flexShrink: 0 }} />
+                  {cls.capacity != null && cls.enrolled != null
+                    ? `${cls.enrolled}/${cls.capacity} spots`
+                    : 'Capacity: Open'}
+                </div>
+              </div>
+
+              {/* Watch Live */}
+              {isClassLive && (
+                <a href="/#/live" style={{
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                  padding: 12, borderRadius: 10, background: 'rgba(239,68,68,0.1)',
+                  border: '1px solid rgba(239,68,68,0.3)', color: '#ef4444',
+                  fontWeight: 700, fontSize: 14, textDecoration: 'none',
+                }}>
+                  <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#ef4444', display: 'inline-block' }} />
+                  Watch Live
+                </a>
+              )}
+
+              {/* Check-in button */}
+              {checkInDone ? (
+                <div style={{ textAlign: 'center', padding: '12px 0' }}>
+                  <CheckCircle size={36} style={{ color: '#22c55e', display: 'block', margin: '0 auto 8px' }} />
+                  <div style={{ fontSize: 16, fontWeight: 700, color: '#22c55e' }}>Checked In!</div>
+                </div>
+              ) : isPast ? (
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: 14, borderRadius: 12, background: 'rgba(74,175,128,0.1)', color: '#4caf80', fontWeight: 600, fontSize: 14, border: '1px solid rgba(74,175,128,0.2)' }}>
+                  <CheckCircle size={16} /> Class has ended
+                </div>
+              ) : (
+                <button
+                  ref={btnRef}
+                  onClick={(e) => { e.stopPropagation(); handleCheckIn(); }}
+                  disabled={cardIsCheckedIn}
+                  style={{
+                    background: btnBg, border: `1px solid ${btnBorder}`, color: btnColor,
+                    borderRadius: 12, padding: '13px', width: '100%',
+                    fontFamily: 'var(--font-display, system-ui)', fontSize: 15, fontWeight: 900,
+                    letterSpacing: '0.05em', textTransform: 'uppercase',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                    cursor: cardIsCheckedIn ? 'default' : 'pointer',
+                    pointerEvents: cardIsCheckedIn ? 'none' : 'auto',
+                    position: 'relative', overflow: 'hidden',
+                    animation: !cardIsCheckedIn ? 'sch-btn-breathe 2s infinite alternate ease-in-out' : 'none',
+                    boxShadow: cardIsCheckedIn
+                      ? stateIdx >= 3 ? '0 4px 24px rgba(239,68,68,0.5)' : stateIdx === 2 ? '0 4px 20px rgba(14,165,233,0.4)' : '0 4px 16px rgba(34,197,94,0.4)'
+                      : '0 4px 16px rgba(232,175,52,0.2), inset 0 1px 1px rgba(255,255,255,0.5)',
+                    transition: 'all 0.2s',
+                  }}
+                >
+                  {!cardIsCheckedIn && (
+                    <div style={{
+                      position: 'absolute', top: 0, left: '-100%', width: '50%', height: '100%',
+                      background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.8), transparent)',
+                      transform: 'skewX(-20deg)', animation: 'sch-btn-sweep 3s infinite',
+                    }} />
+                  )}
+                  {cardIsCheckedIn
+                    ? <><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg> {stateIdx >= 3 ? 'SAVAGE COMPLETE' : 'CHECKED IN'}</>
+                    : <><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg> Check In</>
+                  }
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
     </>
   );
 }

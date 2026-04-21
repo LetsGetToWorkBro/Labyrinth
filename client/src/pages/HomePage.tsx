@@ -13,6 +13,7 @@ import { LevelWidget } from "@/components/LevelWidget";
 import { ProfileRing } from "@/components/ProfileRing";
 import { StreakWidget, StreakInfoPanel } from "@/components/StreakWidget";
 import { XPWidget, XPInfoPanel } from "@/components/XPWidget";
+import { CheckInWidget } from "@/components/CheckInWidget";
 import { getLevelFromXP, getActualLevel, XP_LEVELS } from "@/lib/xp";
 import {
   CreditCard, FileText, ChevronRight, ChevronDown, LogOut,
@@ -1595,153 +1596,17 @@ export default function HomePage() {
           NEXT CLASS / GAME DAY CARD
           ════════════════════════════════════════════════════ */}
       {nextClass && (
-        <div className="mx-5 mb-4 stagger-child" data-card-interactive="true">
-          <div style={{
-            background: isGameDay ? 'linear-gradient(135deg, #141008, #1A1402)' : '#141414',
-            border: isGameDay ? '1px solid rgba(200,162,76,0.4)' : '1px solid #1A1A1A',
-            borderLeft: `3px solid ${isGameDay ? '#FFD700' : '#C8A24C'}`,
-            borderRadius: 14,
-            padding: isGameDay ? '16px 18px' : '14px 16px',
-            display: 'flex', alignItems: 'center', gap: 12,
-            boxShadow: isGameDay ? '0 0 24px rgba(200,162,76,0.1)' : 'none',
-          }}>
-            <a href="/#/schedule" style={{ textDecoration: 'none', flex: 1 }}>
-              {isGameDay && (
-                <span className="gameday-label">
-                  <Sword size={12} color="#FFD700" className="gameday-sword" />
-                  GAME DAY
-                </span>
-              )}
-              <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', color: isGameDay ? '#C8A24C' : '#C8A24C', textTransform: 'uppercase' as const, marginBottom: 4 }}>
-                {isGameDay ? nextClass.name : 'Next Class'}
-              </div>
-              {!isGameDay && <div style={{ fontSize: 16, fontWeight: 700, color: '#F0F0F0', marginBottom: 2 }}>{nextClass.name}</div>}
-              <div style={{ fontSize: 12, color: '#666' }}>{nextClass.dayLabel} · {formatClassTime(nextClass.time)}</div>
-              {nextClass.instructor && <div style={{ fontSize: 11, color: '#555', marginTop: 1 }}>w/ {nextClass.instructor}</div>}
-              {timeUntilClass && (
-                <div className="next-class-countdown" style={{ color: isGameDay ? '#FFD700' : 'var(--lbj-gold)' }}>
-                  <ClockCountdownIcon size={12} color="currentColor" aria-hidden="true" />
-                  <span style={{ fontVariantNumeric: 'tabular-nums' }}>{timeUntilClass}</span>
-                </div>
-              )}
-            </a>
-            {nextClass.isToday && (() => {
-              const alreadyCheckedIn = checkedInClasses.includes(nextClass.name || '');
-              return (
-                <div style={{ position: 'relative' }}>
-                  {checkinPhase === 'success' && (
-                    <div style={{
-                      position: 'absolute', inset: 0, borderRadius: 10,
-                      background: 'linear-gradient(90deg, transparent 0%, rgba(200,162,76,0.3) 50%, transparent 100%)',
-                      backgroundSize: '200% 100%',
-                      animation: 'checkin-shimmer 600ms ease-out 400ms both',
-                      pointerEvents: 'none', zIndex: 1,
-                    }}/>
-                  )}
-                  <button
-                    data-checkin-btn
-                    data-phase={alreadyCheckedIn ? 'done' : checkinPhase === 'success' ? 'success' : checkinPhase === 'pressing' ? 'pressing' : 'idle'}
-                    onMouseDown={() => !alreadyCheckedIn && checkinPhase === 'idle' && setCheckinPhase('pressing')}
-                    onTouchStart={() => !alreadyCheckedIn && checkinPhase === 'idle' && setCheckinPhase('pressing')}
-                    onClick={() => {
-                      if (alreadyCheckedIn || (checkinPhase !== 'idle' && checkinPhase !== 'pressing')) return;
-
-                      // Early gate check
-                      const windowMinutes = parseInt(localStorage.getItem('lbjj_checkin_window_minutes') || '60');
-                      const gateEnabled = localStorage.getItem('lbjj_checkin_gate_enabled') !== 'false';
-
-                      if (gateEnabled && windowMinutes > 0 && nextClass.time) {
-                        const [timePart, meridiem] = (nextClass.time || '').split(' ');
-                        const [hourStr, minStr] = timePart.split(':');
-                        let hour = parseInt(hourStr);
-                        const min = parseInt(minStr || '0');
-                        if (meridiem?.toLowerCase() === 'pm' && hour !== 12) hour += 12;
-                        if (meridiem?.toLowerCase() === 'am' && hour === 12) hour = 0;
-                        const now = new Date();
-                        const classTime = new Date(now);
-                        classTime.setHours(hour, min, 0, 0);
-                        const minutesUntil = (classTime.getTime() - now.getTime()) / 60000;
-
-                        if (minutesUntil > windowMinutes) {
-                          const hrs = Math.floor(minutesUntil / 60);
-                          const mins = Math.round(minutesUntil % 60);
-                          const timeStr = hrs > 0 ? `${hrs}h ${mins}m` : `${mins} minutes`;
-                          setEarlyCheckInMsg(`Class starts in ${timeStr}. Check-in opens ${windowMinutes >= 60 ? (windowMinutes/60)+'h' : windowMinutes+'min'} before class.`);
-                          return;
-                        }
-                      }
-
-                      setCheckinPhase('pressing');
-                      handleHomeCheckIn(nextClass);
-                    }}
-                    disabled={alreadyCheckedIn || checkinPhase === 'success' || checkinPhase === 'done'}
-                    style={{
-                      flexShrink: 0,
-                      padding: isGameDay ? '14px 20px' : '10px 14px',
-                      borderRadius: isGameDay ? 14 : 10,
-                      background: alreadyCheckedIn || checkinPhase === 'success' || checkinPhase === 'done' ? '#333' : '#C8A24C',
-                      border: 'none',
-                      color: alreadyCheckedIn ? '#666' : '#000',
-                      fontWeight: 800, fontSize: isGameDay ? 15 : 13,
-                      cursor: alreadyCheckedIn ? 'default' : 'pointer',
-                      display: 'flex', flexDirection: 'row', alignItems: 'center', gap: 6,
-                      opacity: alreadyCheckedIn ? 0.6 : 1,
-                      transform: checkinPhase === 'pressing' ? 'scale(0.95) translateY(1px)' : checkinPhase === 'success' ? 'scale(1.02)' : 'scale(1)',
-                      transition: 'transform 120ms ease, background 200ms ease',
-                      boxShadow: isGameDay && !alreadyCheckedIn ? '0 0 20px rgba(200,162,76,0.5)' : 'none',
-                      animation: nextClass.isToday && !alreadyCheckedIn && checkinPhase === 'idle' ? (isGameDay ? 'checkin-pulse-game 2s ease-in-out infinite' : 'checkin-pulse 2s ease-in-out infinite') : undefined,
-                    }}
-                  >
-                    {checkinPhase === 'success' || checkinPhase === 'done' ? (
-                      <svg viewBox="0 0 24 24" width={16} height={16}>
-                        <polyline points="3,13 9,19 21,5" fill="none" stroke={alreadyCheckedIn ? '#666' : '#666'} strokeWidth={3} strokeLinecap="round" strokeLinejoin="round"
-                          style={{ strokeDasharray: 30, strokeDashoffset: 30, animation: 'checkin-draw 350ms ease-out 50ms forwards' }}/>
-                      </svg>
-                    ) : (
-                      <GiIcon size={14} color="currentColor" aria-hidden="true" />
-                    )}
-                    <span style={{ fontSize: 12, fontWeight: 700 }}>
-                      {alreadyCheckedIn || checkinPhase === 'done' ? 'Done' : checkinPhase === 'success' ? 'OSS!' : 'Check In'}
-                    </span>
-                  </button>
-                </div>
-              );
-            })()}
-          </div>
-        </div>
+        <CheckInWidget
+          nextClass={nextClass}
+          classesToday={classesToday}
+          timeUntilClass={timeUntilClass}
+          checkinPhase={checkinPhase}
+          alreadyCheckedIn={checkedInClasses.includes(nextClass.name || '')}
+          isGameDay={isGameDay}
+          onCheckIn={() => handleHomeCheckIn(nextClass)}
+          onOpenSchedule={() => { window.location.hash = '#/schedule'; }}
+        />
       )}
-
-      {/* Early check-in gate message */}
-      {earlyCheckInMsg && (
-        <div className="early-checkin-msg" role="alert">
-          <svg viewBox="0 0 24 24" width="14" height="14" fill="none"
-               stroke="var(--lbj-warning)" strokeWidth="1.5" strokeLinecap="round" aria-hidden="true" style={{ flexShrink: 0, marginTop: 1 }}>
-            <path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/>
-            <line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
-          </svg>
-          <span style={{ flex: 1 }}>{earlyCheckInMsg}</span>
-          <button onClick={() => setEarlyCheckInMsg('')} aria-label="Dismiss" style={{ background: 'none', border: 'none', color: 'var(--lbj-text-faint)', cursor: 'pointer', padding: 0, display: 'flex', alignItems: 'center' }}>
-            <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-              <path d="M18 6L6 18M6 6l12 12"/>
-            </svg>
-          </button>
-        </div>
-      )}
-
-      {/* Loading skeleton */}
-      {homeLoading ? (
-        <div className="px-5 space-y-3 mt-2">
-          <div style={{ display: 'flex', gap: 12 }}>
-            <StatSkeleton />
-            <StatSkeleton />
-          </div>
-          <ListSkeleton count={3} />
-          {homeLoadSlow && (
-            <p style={{ textAlign: 'center', color: '#666', fontSize: 12, marginTop: 8 }}>Still loading your dashboard…</p>
-          )}
-        </div>
-      ) : (
-      <>
 
       {/* ════════════════════════════════════════════════════
           WEEKLY XP MULTIPLIER WIDGET
@@ -2049,9 +1914,6 @@ export default function HomePage() {
         </div>
       )}
       {freezeUsed && <div className="mx-5 mb-2" style={{ textAlign: 'center', fontSize: 10, color: '#555' }}>Streak freeze used this month</div>}
-
-      </>
-      )}
 
       {/* ════════════════════════════════════════════════════
           FLOW STATE / COMBO (ambient chips — only if notable)
