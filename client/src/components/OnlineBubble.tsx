@@ -328,3 +328,193 @@ function RecentSection({ members, onOpen }: { members: ChannelMember[]; onOpen: 
     </div>
   );
 }
+
+/**
+ * OnlineAvatarCluster — compact stacked PFP strip for the HomePage header.
+ * Shows up to 3 overlapping avatars of online members (< 5 min) + count badge.
+ * Taps to open the same Active Now / Recently dropdown via portal.
+ */
+export function OnlineAvatarCluster() {
+  const { member, isAuthenticated } = useAuth();
+  const [open, setOpen]       = useState(false);
+  const [members, setMembers] = useState<ChannelMember[]>([]);
+  const [dropPos, setDropPos] = useState<{ top: number; right: number } | null>(null);
+  const wrapRef = useRef<HTMLDivElement>(null);
+
+  const buildSelf = useCallback((): ChannelMember | null => {
+    if (!member?.name) return null;
+    try {
+      const s = JSON.parse(localStorage.getItem('lbjj_game_stats_v2') || '{}');
+      return {
+        name: member.name, email: (member as any).email || '',
+        belt: ((member as any).belt || 'white').toLowerCase(),
+        role: (member as any).role || '',
+        totalPoints: Math.max(s.xp || 0, s.totalXP || 0, (member as any)?.totalPoints || 0),
+        badgeCount: 0,
+        profilePic: localStorage.getItem('lbjj_profile_picture') || undefined,
+        lastSeen: new Date().toISOString(),
+      };
+    } catch { return null; }
+  }, [member]);
+
+  const load = useCallback(async () => {
+    try {
+      const list = await chatGetChannelMembers('general');
+      const self = buildSelf();
+      if (self) {
+        const without = list.filter(m => (m.email || m.name) !== (self.email || self.name));
+        setMembers([self, ...without]);
+      } else {
+        setMembers(list);
+      }
+    } catch {}
+  }, [buildSelf]);
+
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    const self = buildSelf();
+    if (self) setMembers(prev => {
+      const without = prev.filter(m => (m.email || m.name) !== (self.email || self.name));
+      return [self, ...without];
+    });
+    updatePresence().catch(() => {});
+    load();
+    const t = setInterval(() => { updatePresence().catch(() => {}); load(); }, 60000);
+    return () => clearInterval(t);
+  }, [isAuthenticated, load, buildSelf]);
+
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (wrapRef.current && !wrapRef.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
+
+  if (!isAuthenticated || !member) return null;
+
+  const nowMs  = Date.now();
+  const active = members.filter(m => m.lastSeen && (nowMs - new Date(m.lastSeen).getTime()) < 5 * 60 * 1000);
+  const recent = members.filter(m => m.lastSeen && (nowMs - new Date(m.lastSeen).getTime()) >= 5 * 60 * 1000 && (nowMs - new Date(m.lastSeen).getTime()) < 60 * 60 * 1000);
+  const display = active.slice(0, 3);
+  const onlineCount = Math.max(active.length, 1);
+  const overflow = onlineCount > 3 ? onlineCount - 3 : 0;
+
+  const handleToggle = () => {
+    if (wrapRef.current) {
+      const rect = wrapRef.current.getBoundingClientRect();
+      setDropPos({ top: rect.bottom + 6, right: window.innerWidth - rect.right });
+    }
+    setOpen(v => !v);
+  };
+
+  const goToChat = () => { setOpen(false); window.location.hash = '#/chat'; };
+
+  return (
+    <div ref={wrapRef} style={{ position: 'relative' }}>
+      <style>{`@keyframes oac-pulse{0%{transform:scale(1);opacity:.7}50%{transform:scale(1.8);opacity:0}100%{transform:scale(1);opacity:0}}`}</style>
+
+      {/* Stacked avatars button */}
+      <button
+        onClick={handleToggle}
+        style={{
+          display: 'flex', alignItems: 'center', gap: 6,
+          background: 'none', border: 'none', padding: '2px 0',
+          cursor: 'pointer', WebkitTapHighlightColor: 'transparent',
+        }}
+      >
+        {/* Stacked PFPs */}
+        <div style={{ display: 'flex', alignItems: 'center' }}>
+          {display.map((m, i) => (
+            <div key={m.email || m.name} style={{
+              width: 26, height: 26, borderRadius: 8,
+              border: '2px solid #0f0e0d',
+              marginLeft: i === 0 ? 0 : -7,
+              background: avatarGrad((m.belt || 'white')),
+              overflow: 'hidden',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              fontSize: 10, fontWeight: 800, color: '#fff',
+              position: 'relative', zIndex: display.length - i,
+              flexShrink: 0,
+            }}>
+              {m.profilePic
+                ? <img src={m.profilePic} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                : (m.name || '?').charAt(0).toUpperCase()
+              }
+            </div>
+          ))}
+          {/* Overflow badge */}
+          {overflow > 0 && (
+            <div style={{
+              width: 26, height: 26, borderRadius: 8,
+              border: '2px solid #0f0e0d', marginLeft: -7,
+              background: 'rgba(16,185,129,.15)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              fontSize: 9, fontWeight: 800, color: '#10b981',
+              flexShrink: 0,
+            }}>+{overflow}</div>
+          )}
+        </div>
+
+        {/* Green dot + count */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+          <div style={{ position: 'relative', width: 7, height: 7 }}>
+            <div style={{ width: 7, height: 7, borderRadius: '50%', background: '#10b981', boxShadow: '0 0 6px #10b981' }} />
+            <div style={{ position: 'absolute', inset: -2, borderRadius: '50%', background: 'rgba(16,185,129,.3)', animation: 'oac-pulse 2s infinite' }} />
+          </div>
+          <span style={{ fontSize: 11, fontWeight: 700, color: '#10b981' }}>{onlineCount}</span>
+        </div>
+      </button>
+
+      {/* Dropdown — portaled to body */}
+      {createPortal(
+        <div style={{
+          position: 'fixed',
+          top: dropPos?.top ?? 70,
+          right: dropPos?.right ?? 12,
+          width: 272, zIndex: 99999,
+          background: '#161412', border: '1px solid rgba(255,255,255,.12)',
+          borderRadius: 20, padding: 10,
+          boxShadow: '0 20px 60px rgba(0,0,0,.9)',
+          opacity: open ? 1 : 0,
+          transform: open ? 'translateY(0) scale(1)' : 'translateY(-8px) scale(.97)',
+          pointerEvents: open ? 'auto' : 'none',
+          transition: 'all .3s cubic-bezier(0.175,0.885,0.32,1.275)',
+          maxHeight: '70vh', display: 'flex', flexDirection: 'column',
+        }}>
+          {active.length > 0 && (
+            <>
+              <div style={{ fontSize: 10, fontWeight: 800, color: '#10b981', letterSpacing: '.15em', textTransform: 'uppercase', padding: '4px 8px 6px' }}>● Active Now</div>
+              {active.map(m => <MemberRow key={m.email||m.name} m={m} onClick={goToChat} />)}
+            </>
+          )}
+          {recent.length > 0 && (
+            <>
+              {active.length > 0 && <div style={{ height: 1, background: 'rgba(255,255,255,.05)', margin: '6px 0' }} />}
+              <RecentSection members={recent} onOpen={goToChat} />
+            </>
+          )}
+          {active.length === 0 && recent.length === 0 && (
+            <div style={{ fontSize: 12, color: '#57534e', padding: '8px 10px', textAlign: 'center' }}>Just you for now</div>
+          )}
+          <div style={{ height: 1, background: 'rgba(255,255,255,.05)', margin: '8px 0 4px' }} />
+          <button onClick={goToChat} style={{
+            padding: '8px 10px', borderRadius: 10, width: '100%',
+            background: 'rgba(255,255,255,.03)', border: '1px solid rgba(255,255,255,.08)',
+            fontSize: 12, fontWeight: 700, color: '#a8a29e', cursor: 'pointer',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, transition: 'background .2s',
+          }}
+            onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,.07)')}
+            onMouseLeave={e => (e.currentTarget.style.background = 'rgba(255,255,255,.03)')}
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="13" height="13">
+              <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+            </svg>
+            Open Chat
+          </button>
+        </div>
+      , document.body)}
+    </div>
+  );
+}
+

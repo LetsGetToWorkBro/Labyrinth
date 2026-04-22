@@ -19,7 +19,7 @@ import { StatsCards } from "@/components/StatsCards";
 import { SeasonMilestoneWidgets } from "@/components/SeasonMilestoneWidgets";
 import { LiveStreamBanner } from "@/components/LiveStreamBanner";
 import { AnnouncementCard } from "@/components/AnnouncementCard";
-import { OnlineBubble } from "@/components/OnlineBubble";
+import { OnlineAvatarCluster } from "@/components/OnlineBubble";
 import { TournamentWidget } from "@/components/TournamentWidget";
 import { getLevelFromXP, getActualLevel, XP_LEVELS } from "@/lib/xp";
 import {
@@ -1575,9 +1575,12 @@ export default function HomePage() {
       <ScreenHeader
         title="Home"
         right={
-          <button onClick={logout} className="p-2 rounded-lg transition-colors" style={{ color: "#666" }} data-testid="button-logout" aria-label="Sign out">
-            <LogOut size={18} />
-          </button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <OnlineAvatarCluster />
+            <button onClick={logout} className="p-2 rounded-lg transition-colors" style={{ color: "#666" }} data-testid="button-logout" aria-label="Sign out">
+              <LogOut size={18} />
+            </button>
+          </div>
         }
       />
 
@@ -1598,11 +1601,6 @@ export default function HomePage() {
           <AnnouncementCard announcement={pinnedAnnouncement} />
         </div>
       )}
-
-      {/* Online Members Widget */}
-      <div className="mx-5 mb-3">
-        <OnlineBubble />
-      </div>
 
       {/* M5: Tournament Countdown (near-term, cached) */}
       {tournamentData && daysUntilTournament !== null && daysUntilTournament <= 30 && !nextTournament && (
