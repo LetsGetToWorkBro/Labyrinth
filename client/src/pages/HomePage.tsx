@@ -1575,12 +1575,9 @@ export default function HomePage() {
       <ScreenHeader
         title="Home"
         right={
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <OnlineBubble />
-            <button onClick={logout} className="p-2 rounded-lg transition-colors" style={{ color: "#666" }} data-testid="button-logout" aria-label="Sign out">
-              <LogOut size={18} />
-            </button>
-          </div>
+          <button onClick={logout} className="p-2 rounded-lg transition-colors" style={{ color: "#666" }} data-testid="button-logout" aria-label="Sign out">
+            <LogOut size={18} />
+          </button>
         }
       />
 
@@ -1601,6 +1598,11 @@ export default function HomePage() {
           <AnnouncementCard announcement={pinnedAnnouncement} />
         </div>
       )}
+
+      {/* Online Members Widget */}
+      <div className="mx-5 mb-3">
+        <OnlineBubble />
+      </div>
 
       {/* M5: Tournament Countdown (near-term, cached) */}
       {tournamentData && daysUntilTournament !== null && daysUntilTournament <= 30 && !nextTournament && (

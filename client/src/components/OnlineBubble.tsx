@@ -9,6 +9,7 @@
  */
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { getBeltColor } from '@/lib/constants';
 import { getActualLevel } from '@/lib/xp';
 import { chatGetChannelMembers, updatePresence, type ChannelMember } from '@/lib/api';
@@ -167,17 +168,12 @@ export function OnlineBubble({ compact = false }: { compact?: boolean }) {
   };
 
   const handleToggle = () => {
-    if (compact && wrapRef.current) {
-      // For compact (TopHeader): use fixed position so dropdown escapes overflow clipping
+    if (wrapRef.current) {
       const rect = wrapRef.current.getBoundingClientRect();
       setDropPos({ top: rect.bottom + 6, right: window.innerWidth - rect.right });
     }
     setOpen(v => !v);
   };
-
-  const dropStyle: React.CSSProperties = compact && dropPos
-    ? { position: 'fixed', top: dropPos.top, right: dropPos.right, width: 272, zIndex: 9999 }
-    : { position: 'absolute', top: 'calc(100% + 8px)', right: 0, width: 272 };
 
   return (
     <div ref={wrapRef} style={{ position: 'relative', zIndex: 200 }}>
@@ -228,9 +224,14 @@ export function OnlineBubble({ compact = false }: { compact?: boolean }) {
         )}
       </button>
 
-      {/* Dropdown */}
+      {/* Dropdown — always portaled to body to escape any stacking context / overflow clipping */}
+      {createPortal(
       <div style={{
-        ...dropStyle,
+        position: 'fixed',
+        top: dropPos?.top ?? 60,
+        right: dropPos?.right ?? 12,
+        width: 272,
+        zIndex: 99999,
         background: '#161412', border: '1px solid rgba(255,255,255,.12)',
         borderRadius: 20, padding: 10,
         boxShadow: '0 20px 60px rgba(0,0,0,.9), 0 0 0 1px rgba(255,255,255,.04)',
@@ -288,6 +289,7 @@ export function OnlineBubble({ compact = false }: { compact?: boolean }) {
           Open Chat
         </button>
       </div>
+      , document.body)}
     </div>
   );
 }
