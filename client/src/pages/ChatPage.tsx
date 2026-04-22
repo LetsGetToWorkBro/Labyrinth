@@ -1,312 +1,325 @@
 /**
- * ChatPage.tsx — Live chat backed by Google Apps Script (ChatMessages sheet)
+ * ChatPage.tsx — v4 design port
  *
- * - Channels and messages are fetched from / sent to GAS via chatGetChannels,
- *   chatGetMessages, chatSendMessage (defined in AppBackend.gs)
- * - Falls back to a lightweight skeleton UI while loading
- * - Polls for new messages every 20 seconds when a channel is open
- * - Unauthenticated users can read public channels (no token) but must log in to send
+ * Three views: Hub (channel list) → Chat (room) → Profile (member card)
+ * Slide transitions between views, members dropdown on hub, rank directory.
+ * Real data: chatGetChannels, chatGetMessages, chatSendMessage, chatGetChannelMembers, updatePresence.
  */
 
-import { BeltDot, FireIcon } from "@/components/icons/LbjjIcons";
 import React, { useState, useRef, useEffect, useCallback } from "react";
-import { createPortal } from "react-dom";
-import { ListSkeleton } from "@/components/LoadingSkeleton";
-import { EmptyState, SkeletonMessages } from '@/components/StateComponents';
 import { getBeltColor } from "@/lib/constants";
-import { BeltIcon } from "@/components/BeltIcon";
-import { LevelWidget } from "@/components/LevelWidget";
-import { ProfileRing } from "@/components/ProfileRing";
 import { ParagonRing } from "@/components/ParagonRing";
-import { getRingTier, getActualLevel } from "@/lib/xp";
+import { getActualLevel } from "@/lib/xp";
 import { useAuth } from "@/lib/auth-context";
-import { chatGetMessages, chatSendMessage, chatGetChannels, chatGetChannelMembers, updatePresence, type ChatMessage, type ChatChannel, type ChannelMember } from "@/lib/api";
-import { XPBar } from "@/components/XPBar";
-import { getRankProfile } from "@/lib/chat-data";
-import logoMaze from "@assets/maze-gold-md.png";
 import {
-  Send, ArrowLeft, Lock, Users, Hash, ChevronRight, ChevronLeft, ChevronDown, X,
-  Shield, Crown, MessageCircle, Megaphone, Loader2, RefreshCw, Award, Trophy, Star,
-} from "lucide-react";
+  chatGetMessages, chatSendMessage, chatGetChannels, chatGetChannelMembers, updatePresence,
+  type ChatMessage, type ChatChannel, type ChannelMember,
+} from "@/lib/api";
 
-const GOLD = "#C8A24C";
-const POLL_INTERVAL_MS = 20_000; // refresh messages every 20 s
+const GOLD = "#e8af34";
+const POLL_INTERVAL_MS = 20_000;
 
-// Belt rank order for inclusive channel membership display
-const ADULT_BELT_ORDER = ['white', 'blue', 'purple', 'brown', 'black'];
-const KIDS_BELT_ORDER = ['white', 'grey', 'gray', 'yellow', 'orange', 'green'];
+type ViewName = 'hub' | 'chat' | 'profile';
+type ChannelTheme = 'gold' | 'red' | 'blue' | 'purple' | 'green' | 'brown' | 'black';
 
-function getBeltRankIndex(belt: string, isKids: boolean): number {
-  const order = isKids ? KIDS_BELT_ORDER : ADULT_BELT_ORDER;
-  const idx = order.indexOf(belt.toLowerCase());
-  return idx === -1 ? 0 : idx;
-}
-
-function isKidsBelt(belt: string): boolean {
-  return KIDS_BELT_ORDER.includes(belt.toLowerCase()) && belt.toLowerCase() !== 'white';
-}
-
-// ── G2: SystemMessage ──
-function SystemMessage({ text, icon, color }: { text: string; icon: React.ReactNode; color: string }) {
-  return (
-    <div style={{ textAlign: 'center', padding: '8px 20px', margin: '6px 0' }}>
-      <div style={{
-        display: 'inline-flex', alignItems: 'center', gap: 8,
-        padding: '6px 14px', borderRadius: 999,
-        background: `${color}12`,
-        border: `1px solid ${color}25`,
-      }}>
-        <span style={{ fontSize: 14, display: 'inline-flex', alignItems: 'center' }}>{icon}</span>
-        <span style={{ fontSize: 12, fontWeight: 600, color: '#888' }}>{text}</span>
-      </div>
-    </div>
-  );
-}
-
-// ── G3: MemberMiniProfile Bottom Sheet ──
-function MemberMiniProfile({ member, onClose }: { member: ChannelMember; onClose: () => void }) {
-  const level = getActualLevel(member.totalPoints || 0);
-  const tier = getRingTier(level);
-  const beltColor = getBeltColor(member.belt || 'white');
-
-  return createPortal(
-    <div onClick={onClose} style={{
-      position: 'fixed', inset: 0, zIndex: 300,
-      display: 'flex', alignItems: 'flex-end',
-    }}>
-      <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(6px)' }}/>
-      <div onClick={e => e.stopPropagation()} style={{
-        position: 'relative', width: '100%',
-        background: '#111',
-        borderRadius: '20px 20px 0 0',
-        padding: '28px 24px',
-        border: '1px solid #1A1A1A',
-        animation: 'modal-enter 300ms cubic-bezier(0.16,1,0.3,1) both',
-        paddingBottom: 'max(24px, calc(env(safe-area-inset-bottom) + 24px))',
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 20 }}>
-          <ParagonRing level={level} size={64} showOrbit={level >= 6}>
-            <div style={{ width: '100%', height: '100%', borderRadius: '50%', background: 'radial-gradient(circle at 35% 30%, #2A2A2A, #0D0D0D)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24, fontWeight: 800, color: '#F0F0F0' }}>
-              {(member.name || '?').charAt(0)}
-            </div>
-          </ParagonRing>
-          <div style={{ flex: 1 }}>
-            <div style={{ fontSize: 18, fontWeight: 900, color: '#F0F0F0' }}>{member.name}</div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4 }}>
-              <span style={{ fontSize: 12, color: beltColor, fontWeight: 700, textTransform: 'capitalize' }}>
-                {member.belt || 'white'} Belt
-              </span>
-            </div>
-          </div>
-          <div style={{ marginLeft: 'auto', textAlign: 'right' }}>
-            <div style={{ fontSize: 24, fontWeight: 900, color: '#FFD700' }}>LV {level}</div>
-          </div>
-        </div>
-        <XPBar xp={member.totalPoints || 0} compact />
-        {member.lastSeen && (() => {
-          const diff = Date.now() - new Date(member.lastSeen).getTime();
-          const isOnline = diff < 5 * 60 * 1000;
-          return (
-            <div style={{ display:'flex', alignItems:'center', gap:6, marginTop:10 }}>
-              <div style={{ width:8, height:8, borderRadius:'50%', background: isOnline ? '#34D399' : '#555' }}/>
-              <span style={{ fontSize:11, color: isOnline ? '#34D399' : '#666' }}>
-                {isOnline ? 'Online now' : `Last seen ${Math.floor(diff/60000)}m ago`}
-              </span>
-            </div>
-          );
-        })()}
-        {member.badgeCount && member.badgeCount > 0 ? (
-          <div style={{ display:'flex', alignItems:'center', gap:6, marginTop:12, padding:'8px 12px', background:'rgba(200,162,76,0.06)', border:'1px solid rgba(200,162,76,0.12)', borderRadius:10 }}>
-            <Trophy size={14} color="#C8A24C" />
-            <span style={{ fontSize:12, color:'#C8A24C', fontWeight:600 }}>{member.badgeCount} achievement{member.badgeCount !== 1 ? 's' : ''} unlocked</span>
-          </div>
-        ) : null}
-        <button onClick={onClose} style={{
-          marginTop: 16, width: '100%', padding: 12, borderRadius: 12,
-          background: '#1A1A1A', border: '1px solid #222',
-          color: '#999', fontSize: 14, fontWeight: 600, cursor: 'pointer',
-        }}>Close</button>
-      </div>
-    </div>,
-    document.body
-  );
-}
-
-// ── MemberRow component for Online tab ──
-function OnlineMemberRow({ m, status, now, onSelect, isMe }: {
-  m: ChannelMember;
-  status: 'online' | 'recent' | 'offline';
-  now: number;
-  onSelect: (m: ChannelMember) => void;
-  isMe?: boolean;
-}) {
-  const statusColor = status === 'online' ? '#4CAF80' : status === 'recent' ? '#C8A24C' : '#444';
-  const minsAgo = m.lastSeen ? Math.floor((now - new Date(m.lastSeen).getTime()) / 60000) : null;
-  const statusLabel = isMe ? 'You · Online' : status === 'online' ? 'Online' : minsAgo !== null ? (minsAgo < 60 ? `${minsAgo}m ago` : `${Math.floor(minsAgo / 60)}h ago`) : 'Offline';
-  const memberXP = m.totalPoints || 0;
-  const memberLevel = getActualLevel(memberXP);
-  const memberTier = getRingTier(memberLevel);
-
-  return (
-    <button onClick={() => onSelect(m)}
-      style={{ display: 'flex', alignItems: 'center', gap: 12, width: '100%', padding: '10px 8px', background: isMe ? 'rgba(200,162,76,0.06)' : 'none', border: 'none', borderRadius: isMe ? 10 : 0, cursor: 'pointer', textAlign: 'left', borderBottom: isMe ? 'none' : '1px solid #0D0D0D', marginBottom: isMe ? 4 : 0 }}>
-      {/* Portrait with ring */}
-      <div style={{ position: 'relative', flexShrink: 0 }}>
-        <ParagonRing level={memberLevel} size={44} showOrbit={memberLevel >= 6}>
-          <div style={{ width: '100%', height: '100%', borderRadius: '50%', background: 'radial-gradient(circle at 35% 30%, #2A2A2A, #0D0D0D)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 15, fontWeight: 800, color: '#F0F0F0' }}>
-            {m.name.charAt(0)}
-          </div>
-        </ParagonRing>
-        {/* Status dot */}
-        <div style={{ position: 'absolute', bottom: 0, right: 0, width: 12, height: 12, borderRadius: '50%', background: statusColor, border: '2px solid #0A0A0A' }} />
-      </div>
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontSize: 14, fontWeight: 600, color: isMe ? '#C8A24C' : '#F0F0F0', marginBottom: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-            {m.name}{isMe && <span style={{ fontSize: 10, fontWeight: 700, color: '#C8A24C', marginLeft: 6, opacity: 0.8 }}>You</span>}
-          </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-          <BeltIcon belt={m.belt || 'white'} width={24} />
-          <span style={{ fontSize: 11, color: statusColor }}>{statusLabel}</span>
-        </div>
-      </div>
-      <div style={{ textAlign: 'right', flexShrink: 0 }}>
-        <div style={{ fontSize: 12, fontWeight: 700, color: '#C8A24C' }}>Lv {memberLevel}</div>
-        {m.badgeCount ? <div style={{ fontSize: 10, color: '#444' }}>{m.badgeCount} badges</div> : null}
-      </div>
-    </button>
-  );
-}
-
-// ── RankOrb: celestial orb/gemstone SVG per belt ──
-const RankOrb = ({ belt, size = 32 }: { belt: string; size?: number }) => {
-  const id = `orb-${belt}-${size}`;
-  const orbs: Record<string, JSX.Element> = {
-    white: (
-      <svg width={size} height={size} viewBox="0 0 32 32">
-        <defs><radialGradient id={`${id}-g`} cx="40%" cy="35%"><stop offset="0%" stopColor="#FFFFFF"/><stop offset="100%" stopColor="#AAAAAA"/></radialGradient></defs>
-        <circle cx="16" cy="16" r="13" fill={`url(#${id}-g)`} opacity="0.9"/>
-        <circle cx="11" cy="11" r="3" fill="white" opacity="0.6"/>
-      </svg>
-    ),
-    blue: (
-      <svg width={size} height={size} viewBox="0 0 32 32">
-        <defs><radialGradient id={`${id}-g`} cx="40%" cy="35%"><stop offset="0%" stopColor="#60A5FA"/><stop offset="100%" stopColor="#1A5DAB"/></radialGradient></defs>
-        <circle cx="16" cy="16" r="13" fill={`url(#${id}-g)`}/>
-        <circle cx="11" cy="11" r="3" fill="white" opacity="0.4"/>
-        <circle cx="16" cy="16" r="13" fill="none" stroke="#3B82F6" strokeWidth="1" opacity="0.5"/>
-      </svg>
-    ),
-    purple: (
-      <svg width={size} height={size} viewBox="0 0 32 32">
-        <defs><radialGradient id={`${id}-g`} cx="40%" cy="35%"><stop offset="0%" stopColor="#C084FC"/><stop offset="100%" stopColor="#7E3AF2"/></radialGradient></defs>
-        <circle cx="16" cy="16" r="13" fill={`url(#${id}-g)`}/>
-        <circle cx="11" cy="11" r="3" fill="white" opacity="0.35"/>
-        <ellipse cx="16" cy="16" rx="13" ry="13" fill="none" stroke="#A855F7" strokeWidth="1.5" strokeDasharray="3 3" opacity="0.6"/>
-      </svg>
-    ),
-    brown: (
-      <svg width={size} height={size} viewBox="0 0 32 32">
-        <defs><radialGradient id={`${id}-g`} cx="40%" cy="35%"><stop offset="0%" stopColor="#D4845A"/><stop offset="100%" stopColor="#7C3D0D"/></radialGradient></defs>
-        <circle cx="16" cy="16" r="13" fill={`url(#${id}-g)`}/>
-        <circle cx="11" cy="11" r="2.5" fill="white" opacity="0.3"/>
-        <path d="M16 4 L24 12 L24 20 L16 28 L8 20 L8 12 Z" fill="none" stroke="#C4894A" strokeWidth="1" opacity="0.5"/>
-      </svg>
-    ),
-    black: (
-      <svg width={size} height={size} viewBox="0 0 32 32">
-        <defs><radialGradient id={`${id}-g`} cx="40%" cy="35%"><stop offset="0%" stopColor="#555"/><stop offset="100%" stopColor="#111"/></radialGradient></defs>
-        <circle cx="16" cy="16" r="13" fill={`url(#${id}-g)`}/>
-        <circle cx="16" cy="16" r="13" fill="none" stroke="#C8A24C" strokeWidth="1.5"/>
-        <circle cx="11" cy="11" r="2" fill="#C8A24C" opacity="0.5"/>
-        {[0,45,90,135,180,225,270,315].map((deg, i) => (
-          <line key={i} x1="16" y1="16" x2={16 + Math.cos(deg*Math.PI/180)*11} y2={16 + Math.sin(deg*Math.PI/180)*11} stroke="#C8A24C" strokeWidth="0.5" opacity="0.3"/>
-        ))}
-      </svg>
-    ),
-    grey: (
-      <svg width={size} height={size} viewBox="0 0 32 32">
-        <defs><radialGradient id={`${id}-g`} cx="40%" cy="35%"><stop offset="0%" stopColor="#CCCCCC"/><stop offset="100%" stopColor="#555"/></radialGradient></defs>
-        <circle cx="16" cy="16" r="13" fill={`url(#${id}-g)`} opacity="0.8"/>
-        <polygon points="16,5 20,13 29,13 22,19 25,28 16,22 7,28 10,19 3,13 12,13" fill="none" stroke="#AAA" strokeWidth="1" opacity="0.5"/>
-      </svg>
-    ),
-    yellow: (
-      <svg width={size} height={size} viewBox="0 0 32 32">
-        <defs><radialGradient id={`${id}-g`} cx="40%" cy="35%"><stop offset="0%" stopColor="#FDE68A"/><stop offset="100%" stopColor="#C49B1A"/></radialGradient></defs>
-        <circle cx="16" cy="16" r="13" fill={`url(#${id}-g)`}/>
-        <circle cx="11" cy="11" r="2.5" fill="white" opacity="0.4"/>
-        {[0,60,120,180,240,300].map((deg,i)=>(
-          <circle key={i} cx={16+Math.cos(deg*Math.PI/180)*9} cy={16+Math.sin(deg*Math.PI/180)*9} r="1.5" fill="#FDE68A" opacity="0.6"/>
-        ))}
-      </svg>
-    ),
-    orange: (
-      <svg width={size} height={size} viewBox="0 0 32 32">
-        <defs><radialGradient id={`${id}-g`} cx="40%" cy="35%"><stop offset="0%" stopColor="#FDBA74"/><stop offset="100%" stopColor="#C4641A"/></radialGradient></defs>
-        <circle cx="16" cy="16" r="13" fill={`url(#${id}-g)`}/>
-        <circle cx="11" cy="11" r="2.5" fill="white" opacity="0.35"/>
-        <path d="M16 5 Q22 11 22 16 Q22 24 16 27 Q10 24 10 16 Q10 11 16 5Z" fill="none" stroke="#FDBA74" strokeWidth="1" opacity="0.5"/>
-      </svg>
-    ),
-    green: (
-      <svg width={size} height={size} viewBox="0 0 32 32">
-        <defs><radialGradient id={`${id}-g`} cx="40%" cy="35%"><stop offset="0%" stopColor="#6EE7B7"/><stop offset="100%" stopColor="#2D8040"/></radialGradient></defs>
-        <circle cx="16" cy="16" r="13" fill={`url(#${id}-g)`}/>
-        <circle cx="11" cy="11" r="2.5" fill="white" opacity="0.35"/>
-        <path d="M16 4 L28 16 L16 28 L4 16 Z" fill="none" stroke="#6EE7B7" strokeWidth="1.2" opacity="0.5"/>
-      </svg>
-    ),
-  };
-  return orbs[belt] || orbs.white;
+const THEME_LIGHT: Record<ChannelTheme, string> = {
+  gold: 'radial-gradient(ellipse at 50% 0%,rgba(232,175,52,.35) 0%,transparent 60%)',
+  red: 'radial-gradient(ellipse at 50% 0%,rgba(239,68,68,.35) 0%,transparent 60%)',
+  blue: 'radial-gradient(ellipse at 50% 0%,rgba(59,130,246,.35) 0%,transparent 60%)',
+  purple: 'radial-gradient(ellipse at 50% 0%,rgba(168,85,247,.35) 0%,transparent 60%)',
+  green: 'radial-gradient(ellipse at 50% 0%,rgba(16,185,129,.35) 0%,transparent 60%)',
+  brown: 'radial-gradient(ellipse at 50% 0%,rgba(146,64,14,.4) 0%,transparent 60%)',
+  black: 'radial-gradient(ellipse at 50% 0%,rgba(239,68,68,.25) 0%,transparent 60%)',
 };
 
-// ─── Root ──────────────────────────────────────────────────────────
+const BELT_DOT_COLORS: Record<ChannelTheme, string> = {
+  gold: '#e8af34', red: '#ef4444', blue: '#3b82f6', purple: '#a855f7',
+  green: '#10b981', brown: '#92400e', black: '#ef4444',
+};
+
+const BELT_PILL_CLASS: Record<string, { bg: string; color: string; border: string }> = {
+  white:  { bg: 'rgba(245,245,244,.12)', color: '#f5f5f4', border: '1px solid rgba(245,245,244,.25)' },
+  blue:   { bg: 'rgba(59,130,246,.15)',  color: '#60a5fa', border: '1px solid rgba(59,130,246,.3)' },
+  purple: { bg: 'rgba(168,85,247,.15)',  color: '#c084fc', border: '1px solid rgba(168,85,247,.3)' },
+  brown:  { bg: 'rgba(146,64,14,.2)',    color: '#d97706', border: '1px solid rgba(146,64,14,.4)' },
+  black:  { bg: 'rgba(255,255,255,.08)', color: '#fff',   border: '1px solid rgba(255,255,255,.2)' },
+};
+
+function beltPillStyle(belt: string): React.CSSProperties {
+  const key = (belt || 'white').toLowerCase();
+  const s = BELT_PILL_CLASS[key] || BELT_PILL_CLASS.white;
+  return {
+    fontSize: 9, fontWeight: 800, padding: '2px 6px', borderRadius: 4,
+    textTransform: 'uppercase', letterSpacing: '.08em',
+    background: s.bg, color: s.color, border: s.border,
+    ...(key === 'black' ? { borderLeft: '3px solid #ef4444' } : {}),
+  };
+}
+
+function avatarGradient(belt: string): string {
+  const key = (belt || 'white').toLowerCase();
+  const map: Record<string, string> = {
+    white: 'linear-gradient(135deg,#e0e0e0,#888888)',
+    blue: 'linear-gradient(135deg,#3b82f6,#1e3a8a)',
+    purple: 'linear-gradient(135deg,#a855f7,#3b0764)',
+    brown: 'linear-gradient(135deg,#92400e,#451a03)',
+    black: 'linear-gradient(135deg,#171717,#ef4444)',
+    grey: 'linear-gradient(135deg,#a8a8a8,#555)',
+    yellow: 'linear-gradient(135deg,#fde047,#b45309)',
+    orange: 'linear-gradient(135deg,#fb923c,#9a3412)',
+    green: 'linear-gradient(135deg,#22c55e,#14532d)',
+  };
+  return map[key] || map.white;
+}
+
+function channelTheme(ch: ChatChannel): ChannelTheme {
+  if (ch.type === 'announcements') return 'red';
+  if (ch.type === 'coaches') return 'purple';
+  if (ch.type === 'kids') return 'green';
+  if (ch.type === 'rank' || ch.type === 'kids-rank') {
+    const beltKey = ch.id.replace('-belts', '').replace('kids-', '').toLowerCase();
+    if (beltKey === 'blue') return 'blue';
+    if (beltKey === 'purple') return 'purple';
+    if (beltKey === 'brown') return 'brown';
+    if (beltKey === 'black') return 'black';
+    if (beltKey === 'green') return 'green';
+  }
+  return 'gold';
+}
+
+function beltBarColor(belt: string): string {
+  const key = (belt || 'white').toLowerCase();
+  const map: Record<string, string> = {
+    white: 'linear-gradient(90deg,#f5f5f4,#a8a29e)',
+    blue: 'linear-gradient(90deg,#3b82f6,#1e3a8a)',
+    purple: 'linear-gradient(90deg,#a855f7,#7e22ce)',
+    brown: 'linear-gradient(90deg,#92400e,#451a03)',
+    black: 'linear-gradient(90deg,#171717,#ef4444)',
+    grey: 'linear-gradient(90deg,#a8a8a8,#555)',
+    yellow: 'linear-gradient(90deg,#fde047,#b45309)',
+    orange: 'linear-gradient(90deg,#fb923c,#9a3412)',
+    green: 'linear-gradient(90deg,#22c55e,#14532d)',
+  };
+  return map[key] || map.white;
+}
+
+function relTime(ts: string): string {
+  if (!ts) return '';
+  try {
+    const mins = Math.floor((Date.now() - new Date(ts).getTime()) / 60000);
+    if (mins < 1) return 'now';
+    if (mins < 60) return `${mins}m`;
+    const h = Math.floor(mins / 60);
+    if (h < 24) return `${h}h`;
+    return `${Math.floor(h / 24)}d`;
+  } catch { return ''; }
+}
+
+function fmtTime(ts: string): string {
+  try { return new Date(ts).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }); }
+  catch { return ''; }
+}
+
+// Belt -> approximate XP for ring tier (for message avatars when we don't have real XP)
+function beltToMinXP(belt: string, role: string): number {
+  const r = (role || '').toLowerCase();
+  if (r.includes('owner') || r.includes('coach') || r.includes('instructor')) return 19000;
+  const map: Record<string, number> = {
+    black: 8500, brown: 5000, purple: 2700, blue: 1000, white: 0,
+    green: 2700, orange: 1350, yellow: 700, grey: 250, gray: 250,
+  };
+  return map[(belt || 'white').toLowerCase()] ?? 0;
+}
+
+// Adult belts only — no kids belts in rank directory
+const ADULT_BELTS = ['white', 'blue', 'purple', 'brown', 'black'];
+
+// Channel icon SVG
+function channelIcon(ch: ChatChannel) {
+  const type = ch.type;
+  if (type === 'announcements') {
+    return (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" width="20" height="20">
+        <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
+        <path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07" />
+      </svg>
+    );
+  }
+  if (type === 'kids') {
+    return (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" width="20" height="20">
+        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+        <circle cx="9" cy="7" r="4" />
+        <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+        <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+      </svg>
+    );
+  }
+  if (type === 'coaches') {
+    return (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" width="20" height="20">
+        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+      </svg>
+    );
+  }
+  // general / default message icon
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" width="20" height="20">
+      <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+    </svg>
+  );
+}
+
+// Inject motion + component-scoped styles once
+const STYLE_ID = 'chat-v4-styles';
+function injectStyles() {
+  if (document.getElementById(STYLE_ID)) return;
+  const style = document.createElement('style');
+  style.id = STYLE_ID;
+  style.textContent = `
+  @keyframes chatv4-pdot {0%{opacity:1;transform:scale(1);}100%{opacity:.5;transform:scale(1.4);}}
+  @keyframes chatv4-msg-enter {from{opacity:0;transform:translateY(15px);}to{opacity:1;transform:translateY(0);}}
+  @keyframes chatv4-hub-enter {from{opacity:0;transform:translateY(8px);}to{opacity:1;transform:translateY(0);}}
+  .chatv4-view::-webkit-scrollbar{display:none;}
+  .chatv4-msg{display:flex;gap:10px;align-items:flex-end;opacity:0;transform:translateY(15px);transition:all 0.4s cubic-bezier(0.175,0.885,0.32,1.275);}
+  .chatv4-feed.show-msgs .chatv4-msg{opacity:1;transform:translateY(0);}
+  .chatv4-msg.me{flex-direction:row-reverse;}
+  .chatv4-ch-card{background:#0f0e0d;border:1px solid rgba(255,255,255,0.06);border-radius:18px;padding:14px 16px;display:flex;align-items:center;gap:14px;cursor:pointer;transition:all .4s cubic-bezier(0.175,0.885,0.32,1.275);position:relative;overflow:hidden;-webkit-tap-highlight-color:transparent;}
+  .chatv4-ch-card:hover{transform:translateX(5px);border-color:rgba(255,255,255,.11);box-shadow:-4px 8px 28px rgba(0,0,0,.55);}
+  .chatv4-ch-card:active{transform:scale(.98);}
+  .chatv4-ch-card:hover .chatv4-ch-icon{transform:scale(1.06) rotate(-6deg);background:rgba(255,255,255,.08);color:#fff;}
+  .chatv4-ch-card:hover .chatv4-ch-chevron{color:#e7e5e4;transform:translateX(3px);}
+  .chatv4-ch-card.urgent{border-color:rgba(239,68,68,.28);background:linear-gradient(100deg,rgba(239,68,68,.05),transparent 60%);}
+  .chatv4-ch-card.urgent .chatv4-ch-icon{background:rgba(239,68,68,.15);color:#ef4444;border-color:rgba(239,68,68,.35);box-shadow:0 0 18px rgba(239,68,68,.25);}
+  .chatv4-ch-card.urgent .chatv4-ch-unread-dot{background:#ef4444;box-shadow:0 0 10px #ef4444;}
+  .chatv4-ch-card.unread .chatv4-ch-icon{background:rgba(232,175,52,.1);color:#e8af34;border-color:rgba(232,175,52,.3);box-shadow:inset 0 0 10px rgba(232,175,52,.35);}
+  .chatv4-ch-card.unread .chatv4-ch-name{color:#fff;}
+  .chatv4-ch-card.unread .chatv4-ch-time{color:#e8af34;}
+  .chatv4-ch-card.locked{opacity:0.45;cursor:default;}
+  .chatv4-ch-card.locked:hover{transform:none;box-shadow:none;border-color:rgba(255,255,255,.06);}
+  .chatv4-rank-card{background:rgba(255,255,255,.02);border:1px solid rgba(255,255,255,0.06);border-radius:14px;padding:11px 12px;display:flex;align-items:center;gap:10px;cursor:pointer;transition:all .3s;-webkit-tap-highlight-color:transparent;}
+  .chatv4-rank-card:hover{background:rgba(255,255,255,.06);border-color:rgba(255,255,255,.15);transform:translateY(-2px);box-shadow:0 5px 14px rgba(0,0,0,.45);}
+  .chatv4-rank-card:active{transform:scale(.96);}
+  .chatv4-rank-card.locked{opacity:0.45;cursor:default;}
+  .chatv4-rank-card.locked:hover{transform:none;box-shadow:none;background:rgba(255,255,255,.02);border-color:rgba(255,255,255,0.06);}
+  .chatv4-members-btn{display:flex;align-items:center;gap:8px;background:rgba(16,185,129,.06);border:1px solid rgba(16,185,129,.22);padding:9px 14px;border-radius:16px;cursor:pointer;transition:all .3s;-webkit-tap-highlight-color:transparent;user-select:none;}
+  .chatv4-members-btn:hover{background:rgba(16,185,129,.12);border-color:rgba(16,185,129,.4);transform:translateY(-1px);box-shadow:0 6px 20px rgba(16,185,129,.15);}
+  .chatv4-members-btn:active{transform:scale(.96);}
+  .chatv4-pdot{width:7px;height:7px;border-radius:50%;background:#10b981;box-shadow:0 0 10px rgba(16,185,129,.35);animation:chatv4-pdot 2s infinite alternate;}
+  .chatv4-md-member{display:flex;align-items:center;gap:10px;padding:8px;border-radius:12px;cursor:pointer;transition:all .2s;-webkit-tap-highlight-color:transparent;}
+  .chatv4-md-member:hover{background:rgba(255,255,255,.05);}
+  .chatv4-md-member:active{transform:scale(.97);}
+  .chatv4-dir-header{padding:14px 10px;display:flex;justify-content:space-between;align-items:center;font-size:11px;font-weight:800;color:#57534e;letter-spacing:.18em;text-transform:uppercase;cursor:pointer;transition:color .3s;-webkit-tap-highlight-color:transparent;user-select:none;}
+  .chatv4-dir-header:hover{color:#fff;}
+  .chatv4-input-bar{display:flex;align-items:center;gap:10px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,0.13);padding:8px 8px 8px 16px;border-radius:22px;backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);transition:all .3s;}
+  .chatv4-input-bar:focus-within{border-color:#e8af34;box-shadow:0 0 20px rgba(232,175,52,.35);}
+  .chatv4-btn-send{width:35px;height:35px;border-radius:50%;background:#e8af34;display:flex;align-items:center;justify-content:center;color:#000;border:none;cursor:pointer;transition:all .3s cubic-bezier(0.175,0.885,0.32,1.275);box-shadow:0 4px 12px rgba(232,175,52,.35);flex-shrink:0;}
+  .chatv4-btn-send:hover{transform:scale(1.1);}
+  .chatv4-btn-send:active{transform:scale(.9);}
+  .chatv4-btn-send:disabled{opacity:0.45;cursor:default;transform:none;}
+  .chatv4-xp-stat-val,.chatv4-achieve-badge{opacity:0;transform:translateY(10px);transition:all 0.5s cubic-bezier(0.175,0.885,0.32,1.275);}
+  .vProfile-active .chatv4-xp-stat-val{opacity:1;transform:translateY(0);}
+  .vProfile-active .chatv4-achieve-badge{opacity:1;transform:translateY(0);}
+  `;
+  document.head.appendChild(style);
+}
+
+// Small pointer-chevron
+const ChevDown = ({ size = 14, color = 'currentColor', style }: { size?: number; color?: string; style?: React.CSSProperties }) => (
+  <svg viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="3" width={size} height={size} style={style}>
+    <polyline points="6 9 12 15 18 9" />
+  </svg>
+);
+const ChevRight = ({ size = 16, color = 'currentColor', style }: { size?: number; color?: string; style?: React.CSSProperties }) => (
+  <svg viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2.5" width={size} height={size} style={style}>
+    <polyline points="9 18 15 12 9 6" />
+  </svg>
+);
+const ChevLeft = ({ size = 20, color = 'currentColor' }: { size?: number; color?: string }) => (
+  <svg viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" width={size} height={size}>
+    <polyline points="15 18 9 12 15 6" />
+  </svg>
+);
+const LockIcon = ({ size = 12 }: { size?: number }) => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" width={size} height={size}>
+    <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+    <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+  </svg>
+);
+const SendIcon = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" width="14" height="14" style={{ transform: 'translateX(-1px)' }}>
+    <line x1="22" y1="2" x2="11" y2="13" />
+    <polygon points="22 2 15 22 11 13 2 9 22 2" />
+  </svg>
+);
+
+// ─── Root ────────────────────────────────────────────────────────
 
 export default function ChatPage() {
   const { member, isAuthenticated } = useAuth();
 
+  const [view, setView] = useState<ViewName>('hub');
+  const [prevView, setPrevView] = useState<ViewName>('hub');
+  const [profileActive, setProfileActive] = useState(false);
+
   const [channels, setChannels] = useState<ChatChannel[]>([]);
   const [loadingChannels, setLoadingChannels] = useState(true);
   const [activeChannelId, setActiveChannelId] = useState<string | null>(null);
+  const [activeTheme, setActiveTheme] = useState<ChannelTheme>('gold');
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [loadingMsgs, setLoadingMsgs] = useState(false);
-  const [inputText, setInputText] = useState("");
+  const [inputText, setInputText] = useState('');
   const [sending, setSending] = useState(false);
-  const [sendError, setSendError] = useState("");
-  const [collapsed, setCollapsed] = useState<Record<string, boolean>>({ 'Kids Ranks': true });
-  const [showMembers, setShowMembers] = useState(false);
-  const [channelMembers, setChannelMembers] = useState<ChannelMember[]>([]);
-  const [membersLoading, setMembersLoading] = useState(false);
-  const [miniProfileMember, setMiniProfileMember] = useState<ChannelMember | null>(null);
-  const [selectedMember, setSelectedMember] = useState<ChannelMember | null>(null);
-  const [showOnlineTab, setShowOnlineTab] = useState(false);
+  const [sendError, setSendError] = useState('');
+
   const [onlineMembers, setOnlineMembers] = useState<ChannelMember[]>([]);
-  const [onlineLoading, setOnlineLoading] = useState(false);
-  const [onlineExpanded, setOnlineExpanded] = useState(true);
-  const [recentExpanded, setRecentExpanded] = useState(true);
-  const [offlineExpanded, setOfflineExpanded] = useState(false);
-  const [isTyping] = useState(false);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const [membersOpen, setMembersOpen] = useState(false);
+  const [channelMembers, setChannelMembers] = useState<ChannelMember[]>([]);
+
+  const [profileMember, setProfileMember] = useState<ChannelMember | null>(null);
+
+  const [dirOpen, setDirOpen] = useState(true);
+  const [showFeed, setShowFeed] = useState(false);
+
+  const feedRef = useRef<HTMLDivElement>(null);
+  const feedEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const prevMsgCountRef = useRef(0);
-  const initialLoadRef = useRef(true);
-  const initialMsgCountRef = useRef(0);
-  const messagesContainerRef = useRef<HTMLDivElement>(null);
-  const notifPermRef = useRef<NotificationPermission>(
-    typeof Notification !== 'undefined' ? Notification.permission : 'denied'
-  );
+  const membersWrapRef = useRef<HTMLDivElement>(null);
 
-  // ── GAS timeout messaging for channel list ─────────────────────
-  const [channelLoadSlow, setChannelLoadSlow] = useState(false);
+  // Inject styles and maintain ambient #chat-global-light element
+  useEffect(() => {
+    injectStyles();
+    let light = document.getElementById('chat-global-light') as HTMLDivElement | null;
+    if (!light) {
+      light = document.createElement('div');
+      light.id = 'chat-global-light';
+      light.style.position = 'fixed';
+      light.style.top = '-10vh';
+      light.style.left = '50%';
+      light.style.transform = 'translateX(-50%)';
+      light.style.width = '150vw';
+      light.style.height = '60vh';
+      light.style.pointerEvents = 'none';
+      light.style.zIndex = '0';
+      light.style.opacity = '0.3';
+      light.style.transition = 'background 1s, opacity 1s';
+      document.body.appendChild(light);
+    }
+    light.style.background = THEME_LIGHT[activeTheme];
+    return () => {
+      // Clean up ambient light when leaving the chat page
+      const l = document.getElementById('chat-global-light');
+      if (l) l.remove();
+    };
+  }, []); // mount / unmount only
 
   useEffect(() => {
-    if (!loadingChannels) { setChannelLoadSlow(false); return; }
-    const t = setTimeout(() => setChannelLoadSlow(true), 8000);
-    return () => clearTimeout(t);
-  }, [loadingChannels]);
+    const light = document.getElementById('chat-global-light');
+    if (light) light.style.background = THEME_LIGHT[activeTheme];
+  }, [activeTheme]);
 
-  // Chat prefill from badge share or other sources
+  // Prefill from localStorage
   useEffect(() => {
     const prefill = localStorage.getItem('lbjj_chat_prefill');
     if (prefill) {
@@ -315,28 +328,19 @@ export default function ChatPage() {
     }
   }, []);
 
-  // 6a: Inject chat motion styles once
+  // Close members dropdown on outside click
   useEffect(() => {
-    const id = 'chat-motion-styles';
-    if (document.getElementById(id)) return;
-    const style = document.createElement('style');
-    style.id = id;
-    style.textContent = `
-      @keyframes chat-msg-enter {
-        from { opacity: 0; transform: translateY(6px); }
-        to   { opacity: 1; transform: translateY(0); }
+    if (!membersOpen) return;
+    const onDoc = (e: MouseEvent) => {
+      if (membersWrapRef.current && !membersWrapRef.current.contains(e.target as Node)) {
+        setMembersOpen(false);
       }
-      @keyframes reaction-pop {
-        from { transform: scale(0); opacity: 0; }
-        60%  { transform: scale(1.15); opacity: 1; }
-        to   { transform: scale(1); opacity: 1; }
-      }
-      .reaction-new { animation: reaction-pop 140ms cubic-bezier(0.34,1.56,0.64,1) both; }
-    `;
-    document.head.appendChild(style);
-  }, []);
+    };
+    document.addEventListener('mousedown', onDoc);
+    return () => document.removeEventListener('mousedown', onDoc);
+  }, [membersOpen]);
 
-  // ── Load channel list ─────────────────────────────────────────
+  // Load channels
   const loadChannels = useCallback(async () => {
     setLoadingChannels(true);
     const list = await chatGetChannels();
@@ -346,1021 +350,861 @@ export default function ChatPage() {
 
   useEffect(() => { loadChannels(); }, [loadChannels]);
 
-  // ── Load members when panel opens ──────────────────────────────
-  const loadChannelMembers = useCallback(async (channelId: string) => {
-    setMembersLoading(true);
-    const members = await chatGetChannelMembers(channelId);
-    setChannelMembers(members);
-    setMembersLoading(false);
-  }, []);
-
-  // ── Load all members for Online tab (with sessionStorage cache) ──
-  const ONLINE_CACHE_KEY = 'lbjj_online_members';
-  const ONLINE_CACHE_TTL = 2 * 60 * 1000;
-
+  // Load/poll online members for dropdown + chat header
   const loadOnlineMembers = useCallback(async (silent = false) => {
-    // Load from cache immediately
     try {
-      const cached = sessionStorage.getItem(ONLINE_CACHE_KEY);
+      const cached = sessionStorage.getItem('lbjj_online_members');
       if (cached) {
         const { data, ts } = JSON.parse(cached);
-        if (Date.now() - ts < ONLINE_CACHE_TTL) {
+        if (Date.now() - ts < 2 * 60 * 1000) {
           setOnlineMembers(data);
           if (silent) return;
         }
       }
     } catch {}
-
-    if (!silent) setOnlineLoading(true);
     try {
       const members = await chatGetChannelMembers('general');
       setOnlineMembers(members);
-      try { sessionStorage.setItem(ONLINE_CACHE_KEY, JSON.stringify({ data: members, ts: Date.now() })); } catch {}
+      try { sessionStorage.setItem('lbjj_online_members', JSON.stringify({ data: members, ts: Date.now() })); } catch {}
     } catch {}
-    setOnlineLoading(false);
   }, []);
 
-  // ── Presence: update on mount + poll every 60s ───────────────
   useEffect(() => {
     if (!isAuthenticated) return;
-    // Announce self as online immediately
     updatePresence().catch(() => {});
-    // Silently pre-fetch the online list
     loadOnlineMembers(true);
-    // Poll presence + online list every 60s
-    const interval = setInterval(() => {
+    const t = setInterval(() => {
       updatePresence().catch(() => {});
       loadOnlineMembers(true);
     }, 60000);
-    return () => clearInterval(interval);
+    return () => clearInterval(t);
   }, [isAuthenticated, loadOnlineMembers]);
 
-  // ── Load messages for active channel ─────────────────────────
+  // Load messages for a channel
   const loadMessages = useCallback(async (channelId: string) => {
     setLoadingMsgs(true);
     const msgs = await chatGetMessages(channelId, 60);
     setMessages(msgs);
     setLoadingMsgs(false);
-    // Check for new messages and notify if app is in background
-    if (msgs.length > prevMsgCountRef.current && prevMsgCountRef.current > 0) {
-      if (document.hidden && notifPermRef.current === 'granted') {
-        const latest = msgs[msgs.length - 1];
-        try {
-          new Notification('New message from ' + latest.sender, {
-            body: latest.text.substring(0, 80),
-            icon: '/maze-gold-md.png',
-            tag: 'lbjj-chat',
-          });
-        } catch {}
-      }
-    }
-    prevMsgCountRef.current = msgs.length;
-    // After first load, record how many messages were in the initial batch
-    if (initialLoadRef.current) {
-      initialMsgCountRef.current = msgs.length;
-      initialLoadRef.current = false;
-    }
   }, []);
 
+  // When a chat opens, load messages + poll + load channel members
   useEffect(() => {
     if (!activeChannelId) {
       if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null; }
       return;
     }
-    initialLoadRef.current = true;
+    setShowFeed(false);
     loadMessages(activeChannelId);
-    inputRef.current?.focus();
-    // Poll for new messages
+    chatGetChannelMembers(activeChannelId).then(setChannelMembers).catch(() => setChannelMembers([]));
     pollRef.current = setInterval(() => loadMessages(activeChannelId), POLL_INTERVAL_MS);
     return () => { if (pollRef.current) clearInterval(pollRef.current); };
   }, [activeChannelId, loadMessages]);
 
-  // Auto-scroll to bottom (only if near bottom or initial load)
+  // Trigger feed fade-in once messages arrive
   useEffect(() => {
-    const container = messagesContainerRef.current;
-    if (!container) return;
-    const isNearBottom = container.scrollHeight - container.scrollTop - container.clientHeight < 150;
-    if (isNearBottom || initialLoadRef.current) {
-      messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-    }
-  }, [messages.length]);
+    if (view !== 'chat') return;
+    const t = setTimeout(() => {
+      setShowFeed(true);
+      if (feedRef.current) feedRef.current.scrollTop = feedRef.current.scrollHeight;
+    }, 60);
+    return () => clearTimeout(t);
+  }, [messages, view]);
 
-  // ── Send ──────────────────────────────────────────────────────
+  // Navigation helpers
+  const openChannel = useCallback((ch: ChatChannel) => {
+    if (!ch.accessible) return;
+    setMembersOpen(false);
+    setActiveChannelId(ch.id);
+    setActiveTheme(channelTheme(ch));
+    setPrevView('hub');
+    setView('chat');
+  }, []);
+
+  const backToHub = useCallback(() => {
+    setActiveChannelId(null);
+    setMessages([]);
+    setActiveTheme('gold');
+    setView('hub');
+  }, []);
+
+  const openProfile = useCallback((m: ChannelMember) => {
+    setMembersOpen(false);
+    setPrevView(view);
+    setProfileMember(m);
+    setProfileActive(false);
+    setView('profile');
+    setTimeout(() => setProfileActive(true), 100);
+  }, [view]);
+
+  const backFromProfile = useCallback(() => {
+    setProfileActive(false);
+    setView(prevView);
+  }, [prevView]);
+
+  // Send message
   const sendMessage = useCallback(async () => {
     if (!inputText.trim() || !activeChannelId) return;
-    if (!navigator.onLine) { setSendError("No internet connection. Please connect and try again."); return; }
-    if (!isAuthenticated) { setSendError("Sign in to send messages."); return; }
-    setSending(true); setSendError("");
+    if (!navigator.onLine) { setSendError('No internet connection.'); return; }
+    if (!isAuthenticated) { setSendError('Sign in to send messages.'); return; }
+    setSending(true);
+    setSendError('');
     const result = await chatSendMessage(activeChannelId, inputText.trim(), localStorage.getItem('lbjj_profile_picture') || undefined);
     setSending(false);
     if (result.success) {
       try { localStorage.setItem('lbjj_first_message_sent', '1'); } catch {}
-      setInputText("");
-      // Optimistic local append
       const optimistic: ChatMessage = {
         id: result.messageId || `tmp-${Date.now()}`,
-        sender: member?.name || "You",
-        senderBelt: (member?.belt || "white").toLowerCase(),
-        senderRole: member?.role || "",
+        sender: member?.name || 'You',
+        senderBelt: (member?.belt || 'white').toLowerCase(),
+        senderRole: member?.role || '',
         text: inputText.trim(),
         timestamp: new Date().toISOString(),
       };
       setMessages(prev => [...prev, optimistic]);
-      // Refresh channel list so preview text updates
+      setInputText('');
       loadChannels();
     } else {
-      setSendError("Failed to send. Try again.");
+      setSendError('Failed to send. Try again.');
     }
-  }, [inputText, activeChannelId, isAuthenticated, member]);
+  }, [inputText, activeChannelId, isAuthenticated, member, loadChannels]);
 
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendMessage(); }
-  };
-
-  // ─── Shared rank info ──────────────────────────────────────────
-  const myBelt = (member?.belt || "white").toLowerCase();
-
-  // ─── Channel Room ─────────────────────────────────────────────
+  // Derived
+  const announcementChannel = channels.find(c => c.type === 'announcements');
+  const generalChannel = channels.find(c => c.type === 'general');
+  const kidsChannel = channels.find(c => c.type === 'kids');
+  const coachesChannel = channels.find(c => c.type === 'coaches');
+  const adultRankChannels = channels.filter(c => c.type === 'rank');
   const activeChannel = channels.find(c => c.id === activeChannelId);
+  const canPost = activeChannel?.canPost ?? false;
 
-  if (activeChannel) {
-    const canPost = activeChannel.canPost;
-    return (
-      <div style={{ display: "flex", flexDirection: "column", height: "100%", backgroundColor: "#0A0A0A" }}>
-        {/* Header */}
-        <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 16px", borderBottom: "1px solid #1A1A1A", backgroundColor: "#0A0A0A", flexShrink: 0 }}>
-          <button onClick={() => setActiveChannelId(null)} style={{ color: "#999", background: "none", border: "none", cursor: "pointer", padding: 4 }}>
-            <ArrowLeft size={20} />
-          </button>
-          <div style={{ flex: 1, display: "flex", alignItems: "center", gap: 8 }}>
-            <h2 style={{ color: "#F0F0F0", fontSize: 16, fontWeight: 700, margin: 0 }}>{activeChannel.name}</h2>
-            {member && (() => {
-              const now = Date.now();
-              const onlineCount = onlineMembers.filter(m => m.lastSeen && (now - new Date(m.lastSeen).getTime()) < 300000).length;
-              return (
-                <button
-                  onClick={() => { updatePresence(); setShowOnlineTab(true); loadOnlineMembers(); }}
-                  style={{
-                    display: 'inline-flex', alignItems: 'center', gap: 6,
-                    padding: '5px 12px 5px 8px', borderRadius: 20,
-                    background: 'rgba(76,175,128,0.12)',
-                    border: '1px solid rgba(76,175,128,0.3)',
-                    cursor: 'pointer',
-                    boxShadow: onlineCount > 0 ? '0 0 8px rgba(76,175,128,0.15)' : 'none',
-                    transition: 'all 0.2s',
-                  }}
-                >
-                  <div style={{
-                    width: 8, height: 8, borderRadius: '50%', background: '#4CAF80',
-                    boxShadow: '0 0 6px #4CAF80',
-                    animation: 'todayDotPulse 2s ease-in-out infinite',
-                  }}/>
-                  <span style={{ fontSize: 11, fontWeight: 700, color: '#4CAF80', letterSpacing: '0.04em' }}>
-                    {onlineCount > 0 ? `${onlineCount} Online` : 'Members'}
-                  </span>
-                </button>
-              );
-            })()}
-          </div>
-          <button
-            onClick={() => { setShowMembers(true); loadChannelMembers(activeChannel.id); }}
-            style={{
-              display: 'flex', alignItems: 'center', gap: 4,
-              background: 'none', border: 'none', cursor: 'pointer',
-              color: '#666', padding: '4px 8px', borderRadius: 8,
-            }}
-          >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
-              <circle cx="9" cy="7" r="4"/>
-              <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
-              <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
-            </svg>
-            <span style={{ fontSize: 11, fontWeight: 600 }}>Members</span>
-          </button>
-          <button onClick={() => loadMessages(activeChannel.id)} style={{ color: "#555", background: "none", border: "none", cursor: "pointer", padding: 4 }}>
-            <RefreshCw size={15} />
-          </button>
-          {typeof Notification !== 'undefined' && Notification.permission === 'default' && (
-            <button
-              onClick={() => Notification.requestPermission().then(p => { notifPermRef.current = p; })}
-              style={{ fontSize: 12, padding: '4px 8px', borderRadius: 6, background: 'rgba(200,162,76,0.1)', border: '1px solid rgba(200,162,76,0.2)', color: '#C8A24C', cursor: 'pointer', flexShrink: 0 }}
-            >
-              Notify
-            </button>
-          )}
-        </div>
+  const now = Date.now();
+  const onlineNow = onlineMembers.filter(m => m.lastSeen && (now - new Date(m.lastSeen).getTime()) < 5 * 60 * 1000);
+  const offlineMems = onlineMembers.filter(m => !onlineNow.includes(m));
 
-        {/* Members slide-up sheet */}
-        {showMembers && (
-          <div style={{ position: 'fixed', inset: 0, zIndex: 200, display: 'flex', alignItems: 'flex-end' }}
-            onClick={() => setShowMembers(false)}>
-            <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)' }}/>
-            <div onClick={e => e.stopPropagation()} style={{
-              position: 'relative', width: '100%', background: '#111',
-              borderRadius: '20px 20px 0 0', padding: '20px 16px',
-              borderTop: '1px solid #1A1A1A',
-              maxHeight: '75vh', overflowY: 'auto',
-              paddingBottom: 'max(20px, calc(env(safe-area-inset-bottom) + 80px))',
-            }}>
-              <div style={{ width: 36, height: 4, borderRadius: 2, background: '#2A2A2A', margin: '0 auto 16px' }}/>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-                <h3 style={{ fontSize: 15, fontWeight: 700, color: '#F0F0F0', margin: 0 }}>
-                  {activeChannel?.name} · {channelMembers.length} members
-                </h3>
-                <button onClick={() => setShowMembers(false)} style={{ background: 'none', border: 'none', color: '#555', cursor: 'pointer' }}>
-                  <X size={18}/>
-                </button>
-              </div>
+  // Current user as ChannelMember (for self-profile tap)
+  const myEmail = (member?.email || '').toLowerCase();
+  const myXP = (() => {
+    try {
+      const s = JSON.parse(localStorage.getItem('lbjj_game_stats_v2') || '{}');
+      return Math.max(s.xp || 0, s.totalXP || 0, (member as any)?.totalPoints || 0);
+    } catch { return (member as any)?.totalPoints || 0; }
+  })();
+  const myLevel = getActualLevel(myXP);
+  const myPfp = (() => { try { return localStorage.getItem('lbjj_profile_picture') || undefined; } catch { return undefined; } })();
 
-              {membersLoading ? (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                  {[1,2,3].map(i => <div key={i} style={{ height: 52, borderRadius: 12, background: '#1A1A1A', animation: 'shimmer 1.5s ease-in-out infinite' }}/>)}
-                </div>
-              ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                  {channelMembers.map(m => {
-                    const now = Date.now();
-                    const lastSeenMs = m.lastSeen ? new Date(m.lastSeen).getTime() : 0;
-                    const minsAgo = lastSeenMs ? Math.floor((now - lastSeenMs) / 60000) : null;
-                    const isOnline = minsAgo !== null && minsAgo < 5;
-                    const isRecent = minsAgo !== null && minsAgo < 30;
-                    const statusColor = isOnline ? '#4CAF80' : isRecent ? '#C8A24C' : '#555';
-                    const statusLabel = isOnline ? 'Online' : minsAgo !== null ? (minsAgo < 60 ? `${minsAgo}m ago` : minsAgo < 1440 ? `${Math.floor(minsAgo/60)}h ago` : `${Math.floor(minsAgo/1440)}d ago`) : 'Offline';
-
-                    return (
-                      <button key={m.email} onClick={() => setSelectedMember(m)}
-                        style={{
-                          display: 'flex', alignItems: 'center', gap: 12,
-                          padding: '10px 12px', borderRadius: 12, background: '#0D0D0D',
-                          border: '1px solid #1A1A1A', cursor: 'pointer', textAlign: 'left',
-                          width: '100%',
-                        }}>
-                        {/* Belt icon */}
-                        <div style={{ position: 'relative', flexShrink: 0 }}>
-                          <BeltIcon belt={m.belt || 'white'} width={36}/>
-                          <div style={{
-                            position: 'absolute', bottom: -2, right: -2,
-                            width: 10, height: 10, borderRadius: '50%',
-                            background: statusColor, border: '2px solid #0D0D0D',
-                          }}/>
-                        </div>
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={{ fontSize: 13, fontWeight: 600, color: '#F0F0F0', marginBottom: 2 }}>{m.name}</div>
-                          <div style={{ fontSize: 11, color: statusColor }}>{statusLabel}</div>
-                        </div>
-                        <ChevronRight size={14} color="#333"/>
-                      </button>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-
-        {/* Member profile modal */}
-        {selectedMember && <MemberProfileModal member={selectedMember} onClose={() => setSelectedMember(null)} />}
-        {miniProfileMember && <MemberMiniProfile member={miniProfileMember} onClose={() => setMiniProfileMember(null)} />}
-
-        {/* Messages */}
-        <div ref={messagesContainerRef} style={{ flex: 1, overflowY: "auto", padding: "12px 16px", display: "flex", flexDirection: "column", gap: 4 }}>
-          {loadingMsgs && messages.length === 0 ? (
-            <SkeletonMessages count={5} />
-          ) : messages.length === 0 ? (
-            <div style={{
-              flex: 1,
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              justifyContent: 'center',
-              padding: '40px 24px',
-              gap: 16,
-              textAlign: 'center',
-            }}>
-              {activeChannel?.type === 'rank' || activeChannel?.type === 'kids-rank' ? (
-                /* Belt channel welcome — animated rank orb + personalized message */
-                <>
-                  <div style={{
-                    position: 'relative',
-                    animation: 'badge-appear 500ms cubic-bezier(0.34,1.56,0.64,1) both',
-                  }}>
-                    <RankOrb belt={activeChannel.id.replace('-belts','').replace('kids-','')} size={72} />
-                    <div style={{
-                      position: 'absolute', inset: -16, borderRadius: '50%',
-                      background: `radial-gradient(circle, ${getBeltColor(activeChannel.id.replace('-belts','').replace('kids-',''))}18 0%, transparent 70%)`,
-                      animation: 'ring-pulse 2.5s ease-in-out infinite',
-                    }}/>
-                  </div>
-                  <div>
-                    <p style={{ fontSize: 16, fontWeight: 800, color: '#F0F0F0', margin: '0 0 6px' }}>
-                      Welcome to {activeChannel.name}
-                    </p>
-                    <p style={{ fontSize: 13, color: '#666', margin: 0, maxWidth: 240, lineHeight: 1.6 }}>
-                      You earned your way in here. Say hi — your teammates are watching.
-                    </p>
-                  </div>
-                  <div style={{
-                    padding: '10px 18px', borderRadius: 20,
-                    background: `rgba(${activeChannel.id.includes('black') ? '200,162,76' : activeChannel.id.includes('blue') ? '26,93,171' : activeChannel.id.includes('purple') ? '126,58,242' : activeChannel.id.includes('brown') ? '146,64,14' : '200,200,200'},0.12)`,
-                    border: `1px solid ${getBeltColor(activeChannel.id.replace('-belts','').replace('kids-',''))}30`,
-                    fontSize: 12, color: '#888', fontStyle: 'italic',
-                  }}>
-                    Be the first to post in this channel
-                  </div>
-                </>
-              ) : (
-                /* Generic channel empty state */
-                <div style={{ padding: '24px 20px' }}>
-                  <EmptyState illustration="chat" heading="Nothing here yet" description="Coaches will post updates, class notes, and announcements here." compact />
-                </div>
-              )}
-            </div>
-          ) : (
-            messages.map((msg, idx) => {
-              const isNew = !initialLoadRef.current && idx >= initialMsgCountRef.current;
-              // G2: System messages get special treatment
-              if ((msg as any).sender === 'system' || (msg as any).type === 'system') {
-                const txt = msg.text || '';
-                const emojiMatch = txt.match(/^(\S{1,2})/);
-                const icon: React.ReactNode = emojiMatch && emojiMatch[1].codePointAt(0)! > 127 ? emojiMatch[1] : <Trophy size={14} color="#C8A24C" />;
-                const color = '#C8A24C';
-                return (
-                  <div key={msg.id} className="chat-message-entry" style={isNew ? { animation: 'chat-msg-enter 160ms cubic-bezier(0.16, 1, 0.3, 1) both' } : undefined}>
-                    <SystemMessage text={txt} icon={icon} color={color} />
-                  </div>
-                );
-              }
-              return (
-                <div
-                  key={msg.id}
-                  className="chat-message-entry"
-                  style={isNew ? {
-                    animation: 'chat-msg-enter 160ms cubic-bezier(0.16, 1, 0.3, 1) both',
-                  } : undefined}
-                >
-                  <MessageBubble
-                    msg={msg}
-                    myName={member?.name || ""}
-                    myPfp={(() => { try { return localStorage.getItem('lbjj_profile_picture') || undefined; } catch { return undefined; } })()}
-                    myBelt={(member as any)?.belt || 'white'}
-                    myXP={(() => { try { const s = JSON.parse(localStorage.getItem('lbjj_game_stats_v2') || '{}'); return Math.max(s.xp || 0, s.totalXP || 0, (member as any)?.totalPoints || 0); } catch { return (member as any)?.totalPoints || 0; } })()}
-                    onTapSender={(m) => setSelectedMember(m)}
-                  />
-                </div>
-              );
-            })
-          )}
-          {isTyping && (
-            <div style={{ display: 'flex', gap: 4, padding: '8px 12px', alignItems: 'center' }}>
-              <span className="typing-dot" />
-              <span className="typing-dot" />
-              <span className="typing-dot" />
-            </div>
-          )}
-          <div ref={messagesEndRef} />
-        </div>
-
-        {/* Input */}
-        {canPost ? (
-          <div style={{ padding: "8px 12px", borderTop: "1px solid #1A1A1A", backgroundColor: "#0A0A0A", flexShrink: 0, paddingBottom: "max(8px, env(safe-area-inset-bottom, 8px))" }}>
-            {sendError && <p style={{ fontSize: 12, color: "#E05555", margin: "0 0 6px 4px" }}>{sendError}</p>}
-            <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-              {member && (() => {
-                const chatXP = (() => { try { const s = JSON.parse(localStorage.getItem('lbjj_game_stats_v2') || '{}'); return Math.max(s.xp || 0, s.totalXP || 0, (member as any)?.totalPoints || 0); } catch { return (member as any)?.totalPoints || 0; } })();
-                const chatLevel = getActualLevel(chatXP);
-                const chatRingTier = getRingTier(chatLevel);
-                const chatPfp = (() => { try { return localStorage.getItem('lbjj_profile_picture') || undefined; } catch { return undefined; } })();
-                const chatInitials = member.name ? member.name.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase() : '?';
-                return (
-                  <ParagonRing level={chatLevel} size={30} showOrbit={chatLevel >= 6}>
-                    {chatPfp
-                      ? <img src={chatPfp} style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%', display: 'block' }} alt="" />
-                      : <div style={{ width: '100%', height: '100%', borderRadius: '50%', background: 'rgba(200,162,76,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 800, color: '#C8A24C' }}>{chatInitials}</div>
-                    }
-                  </ParagonRing>
-                );
-              })()}
-              <input
-                ref={inputRef}
-                type="text"
-                value={inputText}
-                onChange={e => setInputText(e.target.value)}
-                onKeyDown={handleKeyDown}
-                placeholder={isAuthenticated ? "Type a message..." : "Sign in to send messages"}
-                disabled={!isAuthenticated}
-                style={{ flex: 1, backgroundColor: "#111", border: "1px solid #222", borderRadius: 20, padding: "10px 16px", fontSize: 14, color: "#F0F0F0", outline: "none" }}
-              />
-              <button
-                onClick={sendMessage}
-                disabled={!inputText.trim() || sending || !isAuthenticated}
-                style={{ width: 40, height: 40, borderRadius: "50%", backgroundColor: (inputText.trim() && isAuthenticated) ? GOLD : "#1A1A1A", color: (inputText.trim() && isAuthenticated) ? "#0A0A0A" : "#444", border: "none", cursor: (inputText.trim() && isAuthenticated) ? "pointer" : "default", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, transition: "all 0.2s" }}
-              >
-                {sending ? <Loader2 size={16} className="animate-spin" /> : <Send size={18} />}
-              </button>
-            </div>
-          </div>
-        ) : (
-          <div style={{ padding: "12px 16px", borderTop: "1px solid #1A1A1A", backgroundColor: "#0A0A0A", textAlign: "center", flexShrink: 0 }}>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6, color: "#666", fontSize: 12 }}>
-              <Shield size={14} />
-              Only coaches can post here
-            </div>
-          </div>
-        )}
-      </div>
-    );
-  }
-
-  // ─── Channel list ─────────────────────────────────────────────
-  // Announcements pinned to top
-  const announcementChannel = channels.find(c => c.type === "announcements");
-  const mainChannels = channels.filter(c => ["general", "kids", "coaches"].includes(c.type));
-  const adultRankChannels = channels.filter(c => c.type === "rank");
-  const kidsRankChannels = channels.filter(c => c.type === "kids-rank");
-
-  const toggleSection = (label: string) => {
-    setCollapsed(prev => ({ ...prev, [label]: !prev[label] }));
+  // ─── View style (slide transitions) ────────────────────────────
+  const viewBaseStyle: React.CSSProperties = {
+    position: 'absolute', inset: 0, width: '100%', height: '100%',
+    display: 'flex', flexDirection: 'column', overflowY: 'auto', overflowX: 'hidden',
+    transition: 'transform 0.45s cubic-bezier(0.16,1,0.3,1), opacity 0.45s cubic-bezier(0.16,1,0.3,1)',
   };
+  const hubStyle: React.CSSProperties = { ...viewBaseStyle, zIndex: 1, padding: '0 20px 80px', background: '#030303' };
+  const chatStyle: React.CSSProperties = { ...viewBaseStyle, zIndex: 2, background: '#030303' };
+  const profileStyle: React.CSSProperties = { ...viewBaseStyle, zIndex: 3, background: '#030303' };
 
-  // ── Online tab full-screen view ──────────────────────────────
-  if (showOnlineTab) {
-    const now = Date.now();
-    const myEmail = member?.email?.toLowerCase() || '';
-    const online = onlineMembers.filter(m => m.lastSeen && (now - new Date(m.lastSeen).getTime()) < 300000);
-    const recent = onlineMembers.filter(m => m.lastSeen && (now - new Date(m.lastSeen).getTime()) >= 300000 && (now - new Date(m.lastSeen).getTime()) < 1800000);
-    const offline = onlineMembers.filter(m => !m.lastSeen || (now - new Date(m.lastSeen).getTime()) >= 1800000);
-
-    return (
-      <div style={{ display: 'flex', flexDirection: 'column', height: '100%', backgroundColor: '#0A0A0A' }}>
-        {/* Header */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px', borderBottom: '1px solid #1A1A1A' }}>
-          <button onClick={() => setShowOnlineTab(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#888', padding: 4 }}>
-            <ChevronLeft size={20} />
-          </button>
-          <div style={{ flex: 1 }}>
-            <div style={{ fontSize: 16, fontWeight: 700, color: '#F0F0F0' }}>Members</div>
-            <div style={{ fontSize: 11, color: '#555' }}>{onlineMembers.length} members</div>
-          </div>
-        </div>
-
-        {/* Member list */}
-        <div style={{ flex: 1, overflowY: 'auto', padding: '12px 16px' }}>
-          {onlineLoading ? (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              {[1, 2, 3, 4, 5].map(i => <div key={i} style={{ height: 64, borderRadius: 14, background: '#1A1A1A', animation: 'shimmer 1.5s ease-in-out infinite' }} />)}
-            </div>
-          ) : (
-            <>
-              {online.length > 0 && (
-                <>
-                  <button onClick={() => setOnlineExpanded(v => !v)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', background: 'none', border: 'none', cursor: 'pointer', padding: '4px 0 8px' }}>
-                    <span style={{ fontSize: 10, fontWeight: 700, color: '#4CAF80', letterSpacing: '0.1em', textTransform: 'uppercase' }}>Online — {online.length}</span>
-                    <ChevronDown size={14} color="#4CAF80" style={{ transform: onlineExpanded ? 'rotate(0deg)' : 'rotate(-90deg)', transition: 'transform 0.2s' }}/>
-                  </button>
-                  {onlineExpanded && online.map(m => <OnlineMemberRow key={m.email} m={m} status="online" now={now} onSelect={setSelectedMember} isMe={m.email?.toLowerCase() === myEmail} />)}
-                  <div style={{ height: 16 }} />
-                </>
-              )}
-              {recent.length > 0 && (
-                <>
-                  <button onClick={() => setRecentExpanded(v => !v)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', background: 'none', border: 'none', cursor: 'pointer', padding: '4px 0 8px', marginTop: 4 }}>
-                    <span style={{ fontSize: 10, fontWeight: 700, color: '#C8A24C', letterSpacing: '0.1em', textTransform: 'uppercase' }}>Recent — {recent.length}</span>
-                    <ChevronDown size={14} color="#C8A24C" style={{ transform: recentExpanded ? 'rotate(0deg)' : 'rotate(-90deg)', transition: 'transform 0.2s' }}/>
-                  </button>
-                  {recentExpanded && recent.map(m => <OnlineMemberRow key={m.email} m={m} status="recent" now={now} onSelect={setSelectedMember} isMe={m.email?.toLowerCase() === myEmail} />)}
-                  <div style={{ height: 16 }} />
-                </>
-              )}
-              {offline.length > 0 && (
-                <>
-                  <button onClick={() => setOfflineExpanded(v => !v)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', background: 'none', border: 'none', cursor: 'pointer', padding: '4px 0 8px', marginTop: 4 }}>
-                    <span style={{ fontSize: 10, fontWeight: 700, color: '#444', letterSpacing: '0.1em', textTransform: 'uppercase' }}>Offline — {offline.length}</span>
-                    <ChevronDown size={14} color="#444" style={{ transform: offlineExpanded ? 'rotate(0deg)' : 'rotate(-90deg)', transition: 'transform 0.2s' }}/>
-                  </button>
-                  {offlineExpanded && offline.map(m => <OnlineMemberRow key={m.email} m={m} status="offline" now={now} onSelect={setSelectedMember} isMe={m.email?.toLowerCase() === myEmail} />)}
-                </>
-              )}
-            </>
-          )}
-        </div>
-
-        {/* Member profile modal (accessible from Online tab) */}
-        {selectedMember && <MemberProfileModal member={selectedMember} onClose={() => setSelectedMember(null)} />}
-        {miniProfileMember && <MemberMiniProfile member={miniProfileMember} onClose={() => setMiniProfileMember(null)} />}
-      </div>
-    );
+  if (view === 'hub') {
+    hubStyle.transform = 'translateX(0)';
+    hubStyle.pointerEvents = 'auto';
+    chatStyle.transform = 'translateX(100%)'; chatStyle.pointerEvents = 'none';
+    profileStyle.transform = 'translateX(100%)'; profileStyle.pointerEvents = 'none';
+  } else if (view === 'chat') {
+    hubStyle.transform = 'translateX(-30%)'; hubStyle.opacity = 0; hubStyle.pointerEvents = 'none';
+    chatStyle.transform = 'translateX(0)'; chatStyle.pointerEvents = 'auto';
+    profileStyle.transform = 'translateX(100%)'; profileStyle.pointerEvents = 'none';
+  } else {
+    // profile
+    if (prevView === 'chat') {
+      chatStyle.transform = 'translateX(-30%)'; chatStyle.opacity = 0; chatStyle.pointerEvents = 'none';
+      hubStyle.transform = 'translateX(-30%)'; hubStyle.opacity = 0; hubStyle.pointerEvents = 'none';
+    } else {
+      hubStyle.transform = 'translateX(-30%)'; hubStyle.opacity = 0; hubStyle.pointerEvents = 'none';
+      chatStyle.transform = 'translateX(100%)'; chatStyle.pointerEvents = 'none';
+    }
+    profileStyle.transform = 'translateX(0)'; profileStyle.pointerEvents = 'auto';
   }
+
+  // Build a synthetic ChannelMember representing self (for profile use)
+  const selfMember: ChannelMember = {
+    name: member?.name || 'You',
+    email: member?.email || '',
+    belt: (member?.belt || 'white').toLowerCase(),
+    role: member?.role || '',
+    totalPoints: myXP,
+    badgeCount: 0,
+    profilePic: myPfp,
+    lastSeen: new Date().toISOString(),
+  };
 
   return (
-    <div className="app-content">
-      <div style={{ padding: "16px 20px 12px", paddingTop: "max(16px, env(safe-area-inset-top, 16px))" }}>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-          <div>
-            <h1 style={{ fontSize: 20, fontWeight: 800, color: "#F0F0F0", margin: 0 }}>Chat</h1>
-            <p style={{ fontSize: 12, color: "#666", margin: "2px 0 0" }}>Gym channels</p>
+    <div style={{
+      width: '100%', height: '100%', position: 'relative', overflow: 'hidden',
+      background: '#030303', color: '#e7e5e4',
+      fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif',
+    }}>
+      {/* HUB VIEW */}
+      <div style={hubStyle} className="chatv4-view">
+        {/* Header */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', padding: '52px 0 28px', flexShrink: 0 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+            <div style={{ fontSize: 34, fontWeight: 900, color: '#fff', letterSpacing: '-0.02em', lineHeight: 1 }}>Chat</div>
+            <div style={{ fontSize: 13, fontWeight: 600, color: '#57534e' }}>Labyrinth BJJ</div>
           </div>
-          {member && (
-            <button
-              onClick={() => { updatePresence(); setShowOnlineTab(true); loadOnlineMembers(); }}
-              style={{
-                display: 'inline-flex', alignItems: 'center', gap: 6,
-                padding: '5px 12px 5px 8px', borderRadius: 20,
-                background: 'rgba(76,175,128,0.1)',
-                border: '1px solid rgba(76,175,128,0.25)',
-                cursor: 'pointer',
-              }}
+
+          <div ref={membersWrapRef} style={{ position: 'relative', zIndex: 600 }}>
+            <div
+              className="chatv4-members-btn"
+              onClick={(e) => { e.stopPropagation(); setMembersOpen(v => !v); }}
+              role="button"
+              aria-label="Online members"
             >
-              <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#4CAF80', boxShadow: '0 0 5px #4CAF80' }}/>
-              <span style={{ fontSize: 11, fontWeight: 700, color: '#4CAF80', letterSpacing: '0.05em', textTransform: 'uppercase' }}>
-                Members Online
-              </span>
-            </button>
-          )}
+              <div className="chatv4-pdot" />
+              <span style={{ fontSize: 11, fontWeight: 800, color: '#10b981', letterSpacing: '.1em', textTransform: 'uppercase' }}>Online</span>
+              <span style={{ fontSize: 11, fontWeight: 700, color: '#10b981', background: 'rgba(16,185,129,.2)', padding: '1px 7px', borderRadius: 8 }}>{onlineNow.length}</span>
+              <ChevDown size={14} color="#10b981" style={{ transition: 'transform .35s cubic-bezier(0.175,0.885,0.32,1.275)', transform: membersOpen ? 'rotate(180deg)' : 'rotate(0deg)' }} />
+            </div>
+
+            {/* Dropdown */}
+            <div style={{
+              position: 'absolute', top: 'calc(100% + 8px)', right: 0, width: 280,
+              background: '#161412', border: '1px solid rgba(255,255,255,.13)', borderRadius: 20,
+              padding: 12, boxShadow: '0 20px 60px rgba(0,0,0,.9), 0 0 0 1px rgba(255,255,255,.04)',
+              opacity: membersOpen ? 1 : 0, transform: membersOpen ? 'translateY(0) scale(1)' : 'translateY(-8px) scale(.97)',
+              pointerEvents: membersOpen ? 'auto' : 'none',
+              transition: 'all .35s cubic-bezier(0.175,0.885,0.32,1.275)', zIndex: 9999,
+              maxHeight: '70vh', overflowY: 'auto',
+            }}>
+              {onlineNow.length > 0 && (
+                <>
+                  <div style={{ fontSize: 10, fontWeight: 800, color: '#10b981', letterSpacing: '.15em', textTransform: 'uppercase', padding: '6px 8px 4px' }}>● Active Now</div>
+                  {onlineNow.map(m => (
+                    <MemberDropdownRow key={m.email || m.name} m={m} online onClick={() => openProfile(m)} />
+                  ))}
+                </>
+              )}
+              {offlineMems.length > 0 && (
+                <>
+                  {onlineNow.length > 0 && <div style={{ height: 1, background: 'rgba(255,255,255,0.06)', margin: '6px 0' }} />}
+                  <div style={{ fontSize: 10, fontWeight: 800, color: '#57534e', letterSpacing: '.15em', textTransform: 'uppercase', padding: '6px 8px 4px' }}>○ Offline</div>
+                  {offlineMems.slice(0, 20).map(m => (
+                    <MemberDropdownRow key={m.email || m.name} m={m} online={false} onClick={() => openProfile(m)} />
+                  ))}
+                </>
+              )}
+              {onlineMembers.length === 0 && (
+                <div style={{ fontSize: 12, color: '#57534e', padding: 12, textAlign: 'center' }}>No members loaded</div>
+              )}
+            </div>
+          </div>
         </div>
-      </div>
 
-      <div style={{ padding: "0 20px" }}>
-        {loadingChannels ? (
-          <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 8 }}>
-            {[1, 2, 3, 4].map(i => <div key={i} style={{ height: 60, borderRadius: 14, backgroundColor: "#111", border: "1px solid #1A1A1A", opacity: 1 - i * 0.15 }} />)}
-            {channelLoadSlow && (
-              <p style={{ textAlign: 'center', color: '#666', fontSize: 12, padding: 16 }}>
-                Taking longer than usual…
-              </p>
-            )}
+        {/* Announcements (urgent) */}
+        {announcementChannel && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8, animation: 'chatv4-hub-enter 0.35s cubic-bezier(0.16,1,0.3,1) both' }}>
+            <ChannelCard
+              channel={announcementChannel}
+              variant="urgent"
+              onlineCount={onlineNow.length}
+              members={onlineMembers}
+              onClick={() => openChannel(announcementChannel)}
+              onMemberClick={openProfile}
+            />
           </div>
-        ) : channels.length === 0 ? (
-          <div style={{ padding: '24px 20px' }}>
-            <EmptyState illustration="chat" heading="No channels yet" description="Check back soon — channels will appear here." compact />
-          </div>
-        ) : (
+        )}
+
+        {/* General section */}
+        {(generalChannel || kidsChannel || coachesChannel) && (
           <>
-            {/* Announcements pinned to top */}
-            {announcementChannel && (
-              <ChannelRow key={announcementChannel.id} channel={announcementChannel} onOpen={() => setActiveChannelId(announcementChannel.id)} />
-            )}
-
-            {/* Main section (not collapsible) */}
-            {mainChannels.length > 0 && (
-              <>
-                <SectionLabel>Main</SectionLabel>
-                {mainChannels.map(ch => <ChannelRow key={ch.id} channel={ch} onOpen={() => setActiveChannelId(ch.id)} />)}
-              </>
-            )}
-
-            {/* Adult Ranks (collapsible, default open) */}
-            {adultRankChannels.length > 0 && (
-              <>
-                <CollapsibleSectionLabel
-                  label="Adult Ranks"
-                  collapsed={!!collapsed['Adult Ranks']}
-                  onToggle={() => toggleSection('Adult Ranks')}
+            <div style={{ fontSize: 10, fontWeight: 800, color: '#57534e', letterSpacing: '.2em', textTransform: 'uppercase', margin: '20px 0 10px 10px' }}>General</div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {generalChannel && (
+                <ChannelCard
+                  channel={generalChannel}
+                  variant={generalChannel.lastTimestamp ? 'unread' : 'default'}
+                  onlineCount={onlineNow.length}
+                  members={onlineMembers}
+                  onClick={() => openChannel(generalChannel)}
+                  onMemberClick={openProfile}
                 />
-                {!collapsed['Adult Ranks'] && adultRankChannels.map(ch => (
-                  <ChannelRow key={ch.id} channel={ch} isRank onOpen={() => setActiveChannelId(ch.id)} />
-                ))}
-              </>
-            )}
-
-            {/* Kids Ranks (collapsible, default closed) — show all, greyed if not accessible */}
-            {kidsRankChannels.length > 0 && (
-              <>
-                <CollapsibleSectionLabel
-                  label="Kids Ranks"
-                  collapsed={!!collapsed['Kids Ranks']}
-                  onToggle={() => toggleSection('Kids Ranks')}
+              )}
+              {kidsChannel && (
+                <ChannelCard
+                  channel={kidsChannel}
+                  variant="default"
+                  onlineCount={0}
+                  members={onlineMembers}
+                  onClick={() => openChannel(kidsChannel)}
+                  onMemberClick={openProfile}
                 />
-                {!collapsed['Kids Ranks'] && kidsRankChannels.map(ch => (
-                  <ChannelRow key={ch.id} channel={ch} isRank onOpen={() => setActiveChannelId(ch.id)} />
-                ))}
-              </>
-            )}
+              )}
+              {coachesChannel && (
+                <ChannelCard
+                  channel={coachesChannel}
+                  variant="default"
+                  onlineCount={0}
+                  members={onlineMembers}
+                  onClick={() => openChannel(coachesChannel)}
+                  onMemberClick={openProfile}
+                />
+              )}
+            </div>
           </>
         )}
-      </div>
 
-      <div style={{ height: 20 }} />
-    </div>
-  );
-}
-
-// ─── Member Profile Modal (rich version) ──────────────────────────
-
-function MemberProfileModal({ member: sm, onClose }: { member: ChannelMember; onClose: () => void }) {
-  const memberXP = sm.totalPoints || 0;
-  const memberLevel = getActualLevel(memberXP);
-  const memberTier = getRingTier(memberLevel);
-  const beltColor = getBeltColor(sm.belt || 'white');
-  const rankProfile = getRankProfile(sm.belt || 'white');
-  const badgeCount = sm.badgeCount || 0;
-  const initials = sm.name ? sm.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase() : '?';
-
-  // Belt journey — order and display names
-  const BELT_ORDER = ['white', 'blue', 'purple', 'brown', 'black'];
-  const BELT_LABELS: Record<string, string> = {
-    white: 'White', blue: 'Blue', purple: 'Purple', brown: 'Brown', black: 'Black'
-  };
-  const currentBeltIdx = BELT_ORDER.indexOf((sm.belt || 'white').toLowerCase());
-
-  return createPortal(
-    <div style={{ position: 'fixed', inset: 0, zIndex: 600, display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}
-      onClick={onClose}>
-      <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(8px)' }} />
-      <div onClick={e => e.stopPropagation()} style={{
-        position: 'relative', width: '100%', maxWidth: 480,
-        background: 'linear-gradient(180deg,#141414 0%,#0F0F0F 100%)',
-        borderRadius: '24px 24px 0 0',
-        border: '1px solid #1A1A1A',
-        maxHeight: '92vh', overflowY: 'auto',
-        paddingBottom: 'max(24px, env(safe-area-inset-bottom, 24px))',
-        animation: 'modalSlideUp 0.3s cubic-bezier(0.34,1.28,0.64,1)',
-      }}>
-        {/* Drag handle */}
-        <div style={{ display: 'flex', justifyContent: 'center', paddingTop: 10, paddingBottom: 4 }}>
-          <div style={{ width: 36, height: 4, borderRadius: 2, background: '#2A2A2A' }} />
-        </div>
-
-        {/* Hero: portrait + name + belt */}
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '12px 20px 16px' }}>
-          <ParagonRing level={memberLevel} size={80} showOrbit={memberLevel >= 6}>
-            {sm.profilePic
-              ? <img src={sm.profilePic} style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%', display: 'block' }} alt={sm.name} />
-              : <div style={{ width: '100%', height: '100%', borderRadius: '50%', background: `${beltColor}20`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 30, fontWeight: 800, color: beltColor }}>{initials}</div>
-            }
-          </ParagonRing>
-          <div style={{ fontSize: 20, fontWeight: 800, color: '#F0F0F0', marginTop: 12 }}>{sm.name}</div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4 }}>
-            <BeltIcon belt={sm.belt || 'white'} width={32} />
-            <span style={{ fontSize: 12, color: beltColor, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase' }}>
-              {rankProfile.title}
-            </span>
-            {sm.role && sm.role.toLowerCase().includes('coach') && (
-              <span style={{ fontSize: 9, fontWeight: 700, color: '#C8A24C', background: 'rgba(200,162,76,0.15)', border: '1px solid rgba(200,162,76,0.3)', borderRadius: 4, padding: '1px 6px', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Coach</span>
-            )}
-          </div>
-        </div>
-
-        <div style={{ padding: '0 16px' }}>
-          {/* Stats row: Level, XP, Badges */}
-          <div style={{ display: 'flex', gap: 8, marginBottom: 14 }}>
-            {[
-              { label: 'Level', value: memberLevel > 1 ? `LV ${memberLevel}` : '—', color: '#C8A24C' },
-              { label: 'Total XP', value: memberXP > 0 ? memberXP.toLocaleString() : '—', color: '#F0F0F0' },
-              { label: 'Badges', value: badgeCount > 0 ? badgeCount : '—', color: '#F0F0F0' },
-            ].map(stat => (
-              <div key={stat.label} style={{ flex: 1, background: '#111', borderRadius: 12, padding: '10px 8px', textAlign: 'center', border: '1px solid #1A1A1A' }}>
-                <div style={{ fontSize: 16, fontWeight: 800, color: stat.color }}>{String(stat.value)}</div>
-                <div style={{ fontSize: 9, color: '#555', marginTop: 2, textTransform: 'uppercase', letterSpacing: '0.08em' }}>{stat.label}</div>
-              </div>
-            ))}
-          </div>
-
-          {/* XP progress bar */}
-          {memberXP > 0 && (
-            <div style={{ marginBottom: 14 }}>
-              <XPBar xp={memberXP} compact />
+        {/* Rank directory (adult only) */}
+        {adultRankChannels.length > 0 && (
+          <div style={{ marginTop: 18 }}>
+            <div className="chatv4-dir-header" onClick={() => setDirOpen(v => !v)} style={{ color: dirOpen ? '#fff' : '#57534e' }}>
+              Adult Rank Channels
+              <ChevRight size={15} color={dirOpen ? '#e8af34' : 'currentColor'} style={{ transition: 'transform .4s cubic-bezier(0.175,0.885,0.32,1.275)', transform: dirOpen ? 'rotate(90deg)' : 'rotate(0deg)' }} />
             </div>
-          )}
-
-          {/* Belt Journey strip */}
-          <div style={{ background: '#111', borderRadius: 14, padding: '12px 14px', marginBottom: 14, border: '1px solid #1A1A1A' }}>
-            <div style={{ fontSize: 10, fontWeight: 700, color: '#555', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 10 }}>Belt Journey</div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 0 }}>
-              {BELT_ORDER.map((b, idx) => {
-                const isReached = idx <= currentBeltIdx;
-                const isCurrent = idx === currentBeltIdx;
-                const bc = getBeltColor(b);
+            <div style={{
+              display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, padding: '0 8px',
+              maxHeight: dirOpen ? 600 : 0, overflow: 'hidden',
+              opacity: dirOpen ? 1 : 0,
+              transition: 'max-height 0.4s cubic-bezier(0.16,1,0.3,1), opacity 0.4s',
+            }}>
+              {ADULT_BELTS.map(beltKey => {
+                const ch = adultRankChannels.find(c => {
+                  const k = c.id.replace('-belts', '').replace('kids-', '').toLowerCase();
+                  return k === beltKey;
+                });
+                if (!ch) return null;
+                const count = onlineMembers.filter(m => (m.belt || '').toLowerCase() === beltKey).length;
                 return (
-                  <React.Fragment key={b}>
-                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, flex: 1 }}>
-                      <div style={{
-                        width: isCurrent ? 28 : 20,
-                        height: isCurrent ? 28 : 20,
-                        borderRadius: '50%',
-                        background: isReached ? bc : '#1A1A1A',
-                        border: isCurrent ? `2px solid ${bc}` : `1px solid ${isReached ? bc + '60' : '#2A2A2A'}`,
-                        boxShadow: isCurrent ? `0 0 10px ${bc}60` : 'none',
-                        transition: 'all 0.2s',
-                      }} />
-                      <span style={{ fontSize: 8, color: isReached ? bc : '#333', fontWeight: isCurrent ? 700 : 400 }}>
-                        {BELT_LABELS[b]}
-                      </span>
-                    </div>
-                    {idx < BELT_ORDER.length - 1 && (
-                      <div style={{ flex: 1, height: 2, background: idx < currentBeltIdx ? beltColor : '#1A1A1A', marginBottom: 18, borderRadius: 1 }} />
-                    )}
-                  </React.Fragment>
+                  <RankCardItem
+                    key={beltKey}
+                    beltKey={beltKey}
+                    name={ch.name}
+                    count={count}
+                    accessible={ch.accessible}
+                    onClick={() => openChannel(ch)}
+                  />
                 );
               })}
             </div>
           </div>
+        )}
 
-          {/* Achievements preview */}
-          {badgeCount > 0 && (
-            <div style={{ background: '#111', borderRadius: 14, padding: '12px 14px', marginBottom: 14, border: '1px solid #1A1A1A' }}>
-              <div style={{ fontSize: 10, fontWeight: 700, color: '#555', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 10 }}>Achievements</div>
-              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                {Array.from({ length: Math.min(badgeCount, 8) }).map((_, i) => (
-                  <div key={i} style={{ width: 40, height: 40, borderRadius: 10, background: '#0D0D0D', border: '1px solid #1A1A1A', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <Award size={18} color="#C8A24C" opacity={0.6} />
-                  </div>
-                ))}
-                {badgeCount > 8 && (
-                  <div style={{ width: 40, height: 40, borderRadius: 10, background: '#0D0D0D', border: '1px solid #1A1A1A', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700, color: '#555' }}>
-                    +{badgeCount - 8}
-                  </div>
-                )}
+        {/* Loading state */}
+        {loadingChannels && channels.length === 0 && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 20 }}>
+            {[1, 2, 3, 4].map(i => (
+              <div key={i} style={{ height: 74, borderRadius: 18, background: '#0f0e0d', border: '1px solid rgba(255,255,255,.06)', opacity: 1 - i * 0.15 }} />
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* CHAT VIEW */}
+      <div style={chatStyle} className="chatv4-view">
+        <div style={{
+          position: 'sticky', top: 0, background: 'rgba(3,3,3,.88)',
+          backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)',
+          borderBottom: '1px solid rgba(255,255,255,.06)',
+          padding: '52px 20px 14px',
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between', zIndex: 50,
+        }}>
+          <div
+            onClick={backToHub}
+            style={{ display: 'flex', alignItems: 'center', gap: 3, color: '#a8a29e', fontWeight: 700, fontSize: 14, cursor: 'pointer' }}
+          >
+            <ChevLeft size={20} />
+            Hub
+          </div>
+          <div style={{ fontSize: 19, fontWeight: 900, color: '#fff', display: 'flex', alignItems: 'center', gap: 8 }}>
+            <div style={{
+              width: 11, height: 11, borderRadius: '50%',
+              background: BELT_DOT_COLORS[activeTheme],
+              boxShadow: `0 0 8px ${BELT_DOT_COLORS[activeTheme]}`,
+            }} />
+            <span>{activeChannel?.name || ''}</span>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            {channelMembers.length > 0 ? (
+              <div style={{
+                display: 'flex', alignItems: 'center', gap: 4,
+                background: 'rgba(255,255,255,.04)', border: '1px solid rgba(255,255,255,.06)',
+                padding: '4px 10px 4px 6px', borderRadius: 10, cursor: 'pointer',
+              }}>
+                <div style={{ display: 'flex' }}>
+                  {channelMembers.slice(0, 3).map(m => (
+                    <div
+                      key={m.email || m.name}
+                      onClick={(e) => { e.stopPropagation(); openProfile(m); }}
+                      style={{
+                        width: 20, height: 20, borderRadius: 6, border: '1.5px solid #030303', marginRight: -4,
+                        background: avatarGradient(m.belt || 'white'), overflow: 'hidden',
+                        fontSize: 9, fontWeight: 800, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      }}
+                    >
+                      {m.profilePic ? (
+                        <img src={m.profilePic} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                      ) : (
+                        (m.name || '?').charAt(0)
+                      )}
+                    </div>
+                  ))}
+                </div>
+                <span style={{ fontSize: 11, fontWeight: 700, color: '#a8a29e', marginLeft: 7 }}>{channelMembers.length} here</span>
               </div>
+            ) : null}
+          </div>
+        </div>
+
+        <div
+          ref={feedRef}
+          className={`chatv4-feed${showFeed ? ' show-msgs' : ''}`}
+          style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 18, padding: '20px 20px 120px' }}
+        >
+          {loadingMsgs && messages.length === 0 ? (
+            <div style={{ color: '#57534e', fontSize: 13, textAlign: 'center', padding: 40 }}>Loading messages…</div>
+          ) : messages.length === 0 ? (
+            <div style={{ color: '#57534e', fontSize: 13, textAlign: 'center', padding: 40 }}>
+              No messages yet. Be the first to post.
+            </div>
+          ) : (
+            messages.map((m, i) => {
+              const isMe = !!member?.name && m.sender === member.name;
+              const senderBelt = (m.senderBelt || 'white').toLowerCase();
+              const senderXP = isMe ? myXP : beltToMinXP(senderBelt, m.senderRole || '');
+              const senderLevel = getActualLevel(senderXP);
+              const senderPfp = isMe ? myPfp : (m.senderProfilePic || undefined);
+              const pillBelt = senderBelt === 'black' || senderBelt === 'brown' || senderBelt === 'purple' || senderBelt === 'blue' || senderBelt === 'white' ? senderBelt : 'white';
+              const displayName = isMe ? 'You' : m.sender;
+              const handleTapSender = () => {
+                const cm: ChannelMember = isMe ? selfMember : {
+                  name: m.sender, email: '', belt: senderBelt, role: m.senderRole || '',
+                  totalPoints: senderXP, badgeCount: 0, profilePic: senderPfp,
+                };
+                openProfile(cm);
+              };
+              return (
+                <div key={m.id} className={`chatv4-msg${isMe ? ' me' : ''}`} style={{ transitionDelay: `${Math.min(i, 10) * 0.04}s` }}>
+                  <div onClick={handleTapSender} style={{ cursor: 'pointer', flexShrink: 0 }}>
+                    <ParagonRing level={senderLevel} size={36} showOrbit={senderLevel >= 6}>
+                      {senderPfp ? (
+                        <img src={senderPfp} alt="" style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover', display: 'block' }} />
+                      ) : (
+                        <div style={{
+                          width: '100%', height: '100%', borderRadius: '50%',
+                          background: avatarGradient(senderBelt),
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          fontSize: 13, fontWeight: 800, color: '#fff',
+                        }}>{(m.sender || '?').charAt(0).toUpperCase()}</div>
+                      )}
+                    </ParagonRing>
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 5, maxWidth: '82%', alignItems: isMe ? 'flex-end' : 'flex-start' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexDirection: isMe ? 'row-reverse' : 'row' }}>
+                      <span style={{ fontSize: 12, fontWeight: 700, color: '#e7e5e4' }}>{displayName}</span>
+                      <span style={beltPillStyle(pillBelt)}>{pillBelt.charAt(0).toUpperCase() + pillBelt.slice(1)}</span>
+                      <span style={{ fontSize: 10, fontWeight: 600, color: '#57534e' }}>{fmtTime(m.timestamp)}</span>
+                    </div>
+                    <div style={isMe ? {
+                      background: 'linear-gradient(135deg,rgba(232,175,52,.15),rgba(232,175,52,.06))',
+                      border: '1px solid rgba(232,175,52,.28)',
+                      padding: '11px 15px', borderRadius: 15, borderBottomRightRadius: 3,
+                      fontSize: 14, fontWeight: 500, color: '#fff', lineHeight: 1.55,
+                      boxShadow: '0 3px 20px rgba(232,175,52,.35)',
+                    } : {
+                      background: '#0f0e0d', border: '1px solid rgba(255,255,255,.06)',
+                      padding: '11px 15px', borderRadius: 15, borderBottomLeftRadius: 3,
+                      fontSize: 14, fontWeight: 500, color: '#fff', lineHeight: 1.55,
+                      boxShadow: '0 3px 14px rgba(0,0,0,.35)',
+                    }}>
+                      {m.text}
+                    </div>
+                  </div>
+                </div>
+              );
+            })
+          )}
+          <div ref={feedEndRef} />
+        </div>
+
+        {/* Input bar */}
+        <div style={{
+          position: 'sticky', bottom: 0, padding: '12px 20px 28px',
+          background: 'linear-gradient(to top, rgba(3,3,3,1) 60%, transparent)',
+          pointerEvents: 'none',
+        }}>
+          {sendError && <p style={{ fontSize: 12, color: '#ef4444', margin: '0 0 6px 4px', pointerEvents: 'auto' }}>{sendError}</p>}
+          {canPost ? (
+            <div className="chatv4-input-bar" style={{ pointerEvents: 'auto' }}>
+              <input
+                ref={inputRef}
+                type="text"
+                className="chatv4-input-field"
+                placeholder={isAuthenticated ? 'Message the mat…' : 'Sign in to send messages'}
+                value={inputText}
+                disabled={!isAuthenticated}
+                onChange={e => setInputText(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); } }}
+                enterKeyHint="send"
+                style={{
+                  flex: 1, background: 'transparent', border: 'none', outline: 'none',
+                  fontSize: 14, color: '#fff',
+                }}
+              />
+              <button
+                className="chatv4-btn-send"
+                onClick={sendMessage}
+                disabled={!inputText.trim() || sending || !isAuthenticated}
+                aria-label="Send message"
+              >
+                <SendIcon />
+              </button>
+            </div>
+          ) : (
+            <div style={{
+              pointerEvents: 'auto',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+              color: '#57534e', fontSize: 12,
+              padding: '12px', borderRadius: 20, background: 'rgba(255,255,255,.03)',
+              border: '1px solid rgba(255,255,255,.06)',
+            }}>
+              <LockIcon size={14} />
+              Only coaches can post here
             </div>
           )}
-
-          {/* Online status */}
-          {sm.lastSeen && (() => {
-            const diff = Date.now() - new Date(sm.lastSeen).getTime();
-            const isOnline = diff < 5 * 60 * 1000;
-            return (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 14, padding: '8px 12px', background: '#111', borderRadius: 10, border: '1px solid #1A1A1A' }}>
-                <div style={{ width: 8, height: 8, borderRadius: '50%', background: isOnline ? '#4CAF80' : '#444', flexShrink: 0 }} />
-                <span style={{ fontSize: 12, color: isOnline ? '#4CAF80' : '#555' }}>
-                  {isOnline ? 'Online now' : `Last seen ${Math.floor(diff / 60000) < 60 ? Math.floor(diff / 60000) + 'm ago' : Math.floor(diff / 3600000) + 'h ago'}`}
-                </span>
-              </div>
-            );
-          })()}
-
-          <button onClick={onClose} style={{
-            width: '100%', padding: '13px', borderRadius: 14,
-            background: '#1A1A1A', border: '1px solid #222',
-            color: '#888', fontSize: 14, fontWeight: 600, cursor: 'pointer',
-          }}>
-            Close
-          </button>
         </div>
       </div>
-    </div>,
-    document.body
-  );
-}
 
-// ─── Belt → minimum XP proxy (so message avatars show appropriate ring) ───
-
-function beltToMinXP(belt: string, role: string): number {
-  const r = (role || '').toLowerCase();
-  if (r.includes('owner') || r.includes('coach') || r.includes('instructor')) return 19000; // paragon
-  const map: Record<string, number> = {
-    black: 8500, brown: 5000, purple: 2700, blue: 1000, white: 0,
-    green: 2700, orange: 1350, yellow: 700, grey: 250, gray: 250,
-  };
-  return map[(belt || 'white').toLowerCase()] ?? 0;
-}
-
-// ─── Message bubble ────────────────────────────────────────────────
-
-function MessageBubble({ msg, myName, myPfp, myBelt, myXP, onTapSender }: { msg: ChatMessage; myName: string; myPfp?: string; myBelt?: string; myXP?: number; onTapSender?: (m: ChannelMember) => void }) {
-  const isMe = msg.sender === myName && !!myName;
-  const rank = getRankProfile(msg.senderBelt || "white");
-  const isHighRank = rank.tier >= 3;
-  const isCoachMsg = (msg.senderRole || "").toLowerCase().includes("coach") || (msg.senderRole || "").toLowerCase().includes("instructor");
-
-  function fmt(ts: string) {
-    try { return new Date(ts).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" }); }
-    catch { return ""; }
-  }
-
-  // System message (e.g. Labyrinth BJJ announcements stored with senderRole='system')
-  if (msg.senderRole === "system") {
-    return (
-      <div style={{ display: "flex", alignItems: "flex-start", gap: 10, padding: "10px 0", marginBottom: 4 }}>
-        <img src={logoMaze} alt="" style={{ width: 28, height: 28, borderRadius: "50%", filter: "invert(0.75) sepia(1) hue-rotate(5deg) saturate(3)", flexShrink: 0 }} />
-        <div style={{ flex: 1 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-            <span style={{ fontSize: 12, fontWeight: 700, color: GOLD }}>Labyrinth BJJ</span>
-            <span style={{ fontSize: 12, color: "#666" }}>{fmt(msg.timestamp)}</span>
-          </div>
-          <p style={{ fontSize: 13, color: "#CCC", margin: "3px 0 0", lineHeight: 1.4 }}>{msg.text}</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (isMe) {
-    // Use real XP for ring tier — NOT belt-proxy XP
-    const myLevel = getActualLevel(myXP || 0);
-    const myRingTier = getRingTier(myLevel);
-    const initials = myName ? myName.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase() : '?';
-    const belt = (myBelt || msg.senderBelt || 'white').toLowerCase();
-    const myRank = getRankProfile(belt);
-    return (
-      <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "flex-start", gap: 8, marginBottom: 2, marginTop: 8 }}>
-        <div style={{ maxWidth: "75%" }}>
-          {/* Header row — mirrors Jonathan's layout but right-aligned */}
-          <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 5, marginBottom: 4, marginRight: 2 }}>
-            <span style={{ fontSize: 10, color: "#555" }}>{fmt(msg.timestamp)}</span>
-            {/* Belt dot */}
-            <div style={{ width: 6, height: 6, borderRadius: '50%', background: getBeltColor(belt), flexShrink: 0 }} />
-            {/* LV chip — smaller than Jonathan's */}
-            <div style={{
-              display: 'inline-flex', alignItems: 'center', gap: 3,
-              padding: '1px 5px', borderRadius: 999,
-              background: `${getBeltColor(belt)}18`,
-              border: `1px solid ${getBeltColor(belt)}35`,
-            }}>
-              <span style={{ fontSize: 9, fontWeight: 700, color: getBeltColor(belt), letterSpacing: '0.05em' }}>LV{myLevel}</span>
-            </div>
-            <span style={{ fontSize: 12, fontWeight: 700, color: myRank.color }}>{myName}</span>
-          </div>
-          <div style={{ backgroundColor: GOLD, color: "#0A0A0A", padding: "9px 14px", borderRadius: "16px 16px 4px 16px", fontSize: 13, fontWeight: 500, lineHeight: 1.4 }}>
-            {msg.text}
-          </div>
-        </div>
-        {/* My PFP — right side, aligned to top of name row */}
-        <ParagonRing level={myLevel} size={34} showOrbit={myLevel >= 6}>
-          {myPfp
-            ? <img src={myPfp} style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%', display: 'block' }} alt="You" />
-            : <div style={{ width: '100%', height: '100%', borderRadius: '50%', background: 'rgba(200,162,76,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 800, color: '#C8A24C' }}>{initials}</div>
-          }
-        </ParagonRing>
-      </div>
-    );
-  }
-
-  const senderXP = beltToMinXP(msg.senderBelt || 'white', msg.senderRole || '');
-
-  const handleTapSender = () => {
-    if (!onTapSender) return;
-    onTapSender({
-      name: msg.sender,
-      email: '',
-      belt: msg.senderBelt || 'white',
-      role: msg.senderRole || '',
-      totalPoints: senderXP,
-      badgeCount: 0,
-      profilePic: msg.senderProfilePic || undefined,
-    } as ChannelMember);
-  };
-
-  return (
-    <div style={{ marginBottom: 2, marginTop: 8 }}>
-      <div
-        style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4, marginLeft: 2, cursor: onTapSender ? 'pointer' : 'default' }}
-        onClick={onTapSender ? handleTapSender : undefined}
-      >
-        <LevelWidget
-          xp={senderXP}
-          memberName={msg.sender}
-          memberBelt={msg.senderBelt}
-          profilePic={msg.senderProfilePic || undefined}
-          size={32}
-          interactive={false}
-        />
-        <span style={{ fontSize: 12, fontWeight: 700, color: rank.color }}>
-          {msg.sender}
-        </span>
-        {/* Belt + Level chip */}
+      {/* PROFILE VIEW */}
+      <div style={profileStyle} className={`chatv4-view${profileActive ? ' vProfile-active' : ''}`}>
         <div style={{
-          display: 'inline-flex', alignItems: 'center', gap: 3,
-          padding: '1px 6px', borderRadius: 999,
-          background: `${getBeltColor(msg.senderBelt || 'white')}18`,
-          border: `1px solid ${getBeltColor(msg.senderBelt || 'white')}35`,
+          position: 'sticky', top: 0, background: 'rgba(3,3,3,.88)',
+          backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)',
+          borderBottom: '1px solid rgba(255,255,255,.06)',
+          padding: '52px 20px 14px', display: 'flex', alignItems: 'center', zIndex: 50,
         }}>
-          <div style={{ width: 6, height: 6, borderRadius: '50%', background: getBeltColor(msg.senderBelt || 'white'), flexShrink: 0 }} />
-          <span style={{ fontSize: 9, fontWeight: 700, color: getBeltColor(msg.senderBelt || 'white'), letterSpacing: '0.05em' }}>
-            LV{getActualLevel(beltToMinXP(msg.senderBelt || 'white', msg.senderRole || ''))}
-          </span>
+          <div
+            onClick={backFromProfile}
+            style={{ display: 'flex', alignItems: 'center', gap: 3, color: '#a8a29e', fontWeight: 700, fontSize: 14, cursor: 'pointer' }}
+          >
+            <ChevLeft size={20} />
+            <span>{prevView === 'chat' ? (activeChannel?.name || 'Chat') : 'Hub'}</span>
+          </div>
         </div>
-        <BeltIcon belt={msg.senderBelt || 'white'} width={32} style={{ flexShrink: 0 }} />
-        {isCoachMsg && (
-          <span style={{ fontSize: 8, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", padding: "1px 5px", borderRadius: 4, backgroundColor: `${GOLD}18`, color: GOLD, border: `1px solid ${GOLD}30`, display: "flex", alignItems: "center", gap: 2 }}>
-            <Crown size={8} /> Coach
-          </span>
-        )}
-        <span style={{ fontSize: 12, color: "#555" }}>{fmt(msg.timestamp)}</span>
-      </div>
-      <div style={{ maxWidth: "85%", backgroundColor: "#1A1A1A", padding: "8px 14px", borderRadius: "4px 16px 16px 16px", fontSize: 13, color: "#E0E0E0", lineHeight: 1.4, borderLeft: isHighRank ? `2px solid ${rank.color}40` : "none" }}>
-        {msg.text}
+        <div style={{ padding: '24px 20px 80px', display: 'flex', flexDirection: 'column', gap: 20 }}>
+          {profileMember && <ProfileBody member={profileMember} />}
+        </div>
       </div>
     </div>
   );
 }
 
-// ─── Channel descriptions ─────────────────────────────────────────
+// ─── MemberDropdownRow ────────────────────────────────────────────
 
-const CHANNEL_DESCRIPTIONS: Record<string, string> = {
-  'announcements': 'Gym news & updates',
-  'adults': 'Adult members',
-  'coaches': 'Coaching staff only',
-  'kids-parents': 'Kids & parent community',
-  'white-belts': 'White belt members',
-  'blue-belts': 'Blue belt members',
-  'purple-belts': 'Purple belt members',
-  'brown-belts': 'Brown belt members',
-  'black-belts': 'Black belt members',
-  'kids-white': 'Kids white belts',
-  'kids-grey': 'Kids grey belts',
-  'kids-yellow': 'Kids yellow belts',
-  'kids-orange': 'Kids orange belts',
-  'kids-green': 'Kids green belts',
-};
-
-// ─── Channel row ───────────────────────────────────────────────────
-
-function ChannelRow({ channel, isRank, onOpen }: { channel: ChatChannel; isRank?: boolean; onOpen: () => void }) {
-  const beltKey = channel.id.replace("-belts", "").replace("kids-", "");
-  const beltColor = isRank ? getBeltColor(beltKey) : GOLD;
-
-  const iconMap: Record<string, React.ReactNode> = {
-    general: <Hash size={16} style={{ color: GOLD }} />,
-    kids: <Users size={16} style={{ color: "#999" }} />,
-    coaches: <Shield size={16} style={{ color: "#999" }} />,
-    announcements: <Megaphone size={16} style={{ color: GOLD }} />,
-  };
-
-  function relTime(ts: string) {
-    if (!ts) return "";
-    try {
-      const mins = Math.floor((Date.now() - new Date(ts).getTime()) / 60000);
-      if (mins < 1) return "now";
-      if (mins < 60) return `${mins}m`;
-      const h = Math.floor(mins / 60);
-      if (h < 24) return `${h}h`;
-      return `${Math.floor(h / 24)}d`;
-    } catch { return ""; }
-  }
-
+function MemberDropdownRow({ m, online, onClick }: { m: ChannelMember; online: boolean; onClick: () => void }) {
+  const level = getActualLevel(m.totalPoints || 0);
+  const beltKey = (m.belt || 'white').toLowerCase();
+  const beltColor = getBeltColor(beltKey);
   return (
-    <button
-      onClick={channel.accessible ? onOpen : undefined}
-      disabled={!channel.accessible}
-      style={{
-        display: "flex", alignItems: "center", gap: 12,
-        padding: channel.accessible ? "12px 14px" : "10px 14px",
-        borderRadius: 14,
-        backgroundColor: channel.accessible ? "#111" : "transparent",
-        border: channel.accessible ? "1px solid #1A1A1A" : "none",
-        cursor: channel.accessible ? "pointer" : "default",
-        opacity: channel.accessible ? 1 : 0.4,
-        width: "100%", textAlign: "left", transition: "all 0.15s",
-        marginBottom: 6,
-      }}
-    >
-      {isRank ? (
-        <div style={{ width: 42, height: 42, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-          <RankOrb belt={beltKey} size={40} />
-        </div>
-      ) : (
-        <div style={{ width: 42, height: 42, borderRadius: 11, backgroundColor: channel.accessible ? "#1A1A1A" : "transparent", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-          {iconMap[channel.type] || <MessageCircle size={16} style={{ color: "#666" }} />}
-        </div>
-      )}
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
-          <span style={{ fontSize: 15, fontWeight: 600, color: channel.accessible ? "#F0F0F0" : "#666" }}>{channel.name}</span>
-          {!channel.accessible && <Lock size={12} style={{ color: "#555" }} />}
-        </div>
-        {channel.accessible && (
-          <p style={{ fontSize: 12, color: channel.lastMessage ? "#666" : "#555", margin: "2px 0 0", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontStyle: channel.lastMessage ? "normal" : "italic" }}>
-            {channel.lastMessage || CHANNEL_DESCRIPTIONS[channel.id] || "No messages yet"}
-          </p>
-        )}
-      </div>
-      {channel.accessible && channel.lastTimestamp && (
-        <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 4, flexShrink: 0 }}>
-          <span style={{ fontSize: 12, color: "#555" }}>{relTime(channel.lastTimestamp)}</span>
-          {(channel as any).unreadCount > 0 ? (
-            <span className="unread-badge-new" style={{
-              background: '#C8A24C', color: '#000',
-              borderRadius: 999, fontSize: 10, fontWeight: 700,
-              padding: '2px 6px', minWidth: 18, textAlign: 'center' as const,
-            }}>
-              {(channel as any).unreadCount}
-            </span>
+    <div className="chatv4-md-member" onClick={onClick} style={{ opacity: online ? 1 : 0.55 }}>
+      <div style={{ position: 'relative', flexShrink: 0 }}>
+        <div style={{
+          width: 32, height: 32, borderRadius: 10,
+          background: avatarGradient(beltKey), overflow: 'hidden',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          fontSize: 13, fontWeight: 800, color: '#fff',
+        }}>
+          {m.profilePic ? (
+            <img src={m.profilePic} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
           ) : (
-            <div style={{ width: 8, height: 8, borderRadius: "50%", backgroundColor: GOLD }} />
+            (m.name || '?').charAt(0).toUpperCase()
           )}
         </div>
-      )}
-      {channel.accessible && !channel.lastTimestamp && <ChevronRight size={16} style={{ color: "#333", flexShrink: 0 }} />}
-    </button>
+        <div style={{
+          position: 'absolute', bottom: -1, right: -1, width: 9, height: 9,
+          borderRadius: '50%', border: '2px solid #161412',
+          background: online ? '#10b981' : '#57534e',
+        }} />
+      </div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 2, flex: 1, minWidth: 0 }}>
+        <div style={{ fontSize: 13, fontWeight: 700, color: '#fff', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{m.name}</div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+          <div style={{ width: 8, height: 8, borderRadius: 2, background: beltColor }} />
+          <span style={{ fontSize: 10, fontWeight: 700, color: '#a8a29e', textTransform: 'capitalize' }}>{beltKey} Belt</span>
+        </div>
+      </div>
+      <div style={{
+        fontSize: 10, fontWeight: 800, color: '#e8af34',
+        background: 'rgba(232,175,52,.12)', padding: '1px 6px', borderRadius: 6,
+        border: '1px solid rgba(232,175,52,.25)',
+      }}>LV {level}</div>
+    </div>
   );
 }
 
-function SectionLabel({ children }: { children: React.ReactNode }) {
-  return <p style={{ fontSize: 12, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.1em", color: "#555", margin: "16px 0 10px" }}>{children}</p>;
+// ─── ChannelCard ──────────────────────────────────────────────────
+
+function ChannelCard({ channel, variant, members, onClick, onMemberClick }: {
+  channel: ChatChannel;
+  variant: 'urgent' | 'unread' | 'default';
+  onlineCount: number;
+  members: ChannelMember[];
+  onClick: () => void;
+  onMemberClick: (m: ChannelMember) => void;
+}) {
+  const accessible = channel.accessible !== false;
+  const cls = `chatv4-ch-card${variant === 'urgent' ? ' urgent' : variant === 'unread' ? ' unread' : ''}${!accessible ? ' locked' : ''}`;
+  const time = relTime(channel.lastTimestamp || '');
+
+  // Preview split — try to find "Name: text"
+  let previewAuthor = '';
+  let previewText = channel.lastMessage || '';
+  if (channel.lastMessage) {
+    const m = channel.lastMessage.match(/^([^:]{1,40}):\s(.+)$/);
+    if (m) { previewAuthor = m[1]; previewText = m[2]; }
+  }
+
+  // Mini avatars — pick up to 3 online members matching channel vibe
+  const miniMembers = members.slice(0, 3);
+
+  return (
+    <div className={cls} onClick={accessible ? onClick : undefined}>
+      <div className="chatv4-ch-icon" style={{
+        position: 'relative',
+        width: 46, height: 46, borderRadius: 13, flexShrink: 0,
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        background: 'rgba(255,255,255,.03)', border: '1px solid rgba(255,255,255,.05)',
+        color: '#57534e',
+        transition: 'all .4s cubic-bezier(0.175,0.885,0.32,1.275)',
+      }}>
+        {channelIcon(channel)}
+        {(variant === 'urgent' || variant === 'unread') && (
+          <div className="chatv4-ch-unread-dot" style={{
+            position: 'absolute', top: -2, right: -2, width: 9, height: 9, borderRadius: '50%',
+            background: variant === 'urgent' ? '#ef4444' : '#e8af34',
+            border: '2px solid #0f0e0d',
+            boxShadow: variant === 'urgent' ? '0 0 10px #ef4444' : '0 0 8px rgba(232,175,52,.35)',
+          }} />
+        )}
+      </div>
+      <div style={{ flex: 1, overflow: 'hidden' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+          <div className="chatv4-ch-name" style={{ fontSize: 17, fontWeight: 800, color: '#e7e5e4', transition: 'color .3s' }}>{channel.name}</div>
+          {!accessible ? (
+            <span style={{ color: '#57534e', display: 'flex' }}><LockIcon size={12} /></span>
+          ) : time ? (
+            <div className="chatv4-ch-time" style={{ fontSize: 11, fontWeight: 600, color: '#57534e' }}>{time}</div>
+          ) : null}
+        </div>
+        <div style={{
+          fontSize: 13, fontWeight: 500, color: previewText ? '#a8a29e' : '#57534e',
+          whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', marginTop: 3,
+          fontStyle: previewText ? 'normal' : 'italic',
+        }}>
+          {previewAuthor && <span style={{ color: '#fff', fontWeight: 700 }}>{previewAuthor}: </span>}
+          {previewText || 'No messages yet'}
+        </div>
+        {miniMembers.length > 0 && channel.type !== 'announcements' && (
+          <div style={{ display: 'flex', alignItems: 'center', marginTop: 5 }}>
+            {miniMembers.map(m => (
+              <div
+                key={m.email || m.name}
+                onClick={(e) => { e.stopPropagation(); onMemberClick(m); }}
+                style={{
+                  width: 18, height: 18, borderRadius: 6, border: '1.5px solid #0f0e0d', marginRight: -5,
+                  background: avatarGradient(m.belt || 'white'), overflow: 'hidden',
+                  fontSize: 8, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontWeight: 800, color: '#fff',
+                }}
+              >
+                {m.profilePic ? (
+                  <img src={m.profilePic} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                ) : (
+                  (m.name || '?').charAt(0)
+                )}
+              </div>
+            ))}
+            <span style={{ fontSize: 10, fontWeight: 700, color: '#57534e', marginLeft: 10, alignSelf: 'center' }}>
+              {miniMembers.length} active
+            </span>
+          </div>
+        )}
+      </div>
+      {variant === 'default' && accessible && (
+        <span className="chatv4-ch-chevron" style={{ color: '#57534e', transition: 'all .3s', flexShrink: 0 }}>
+          <ChevRight size={16} />
+        </span>
+      )}
+    </div>
+  );
 }
 
-function CollapsibleSectionLabel({ label, collapsed, onToggle }: { label: string; collapsed: boolean; onToggle: () => void }) {
+// ─── RankCardItem ─────────────────────────────────────────────────
+
+function RankCardItem({ beltKey, name, count, accessible, onClick }: {
+  beltKey: string; name: string; count: number; accessible: boolean; onClick: () => void;
+}) {
+  const beltStyles: Record<string, React.CSSProperties> = {
+    white: { background: '#f5f5f4' },
+    blue: { background: '#3b82f6', boxShadow: '0 0 8px rgba(59,130,246,.4)' },
+    purple: { background: '#a855f7', boxShadow: '0 0 8px rgba(168,85,247,.4)' },
+    brown: { background: '#92400e', boxShadow: '0 0 8px rgba(146,64,14,.4)' },
+    black: { background: '#111', borderColor: 'rgba(255,255,255,.2)', position: 'relative' },
+  };
   return (
-    <button
-      onClick={onToggle}
-      style={{
-        display: "flex", alignItems: "center", gap: 6, width: "100%",
-        background: "none", border: "none", cursor: "pointer", padding: 0,
-        margin: "16px 0 10px",
-      }}
+    <div
+      className={`chatv4-rank-card${!accessible ? ' locked' : ''}`}
+      onClick={accessible ? onClick : undefined}
     >
-      <p style={{ fontSize: 12, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.1em", color: "#555", margin: 0 }}>{label}</p>
-      <ChevronRight size={14} style={{ color: "#555", transition: "transform 0.2s", transform: collapsed ? "rotate(0deg)" : "rotate(90deg)" }} />
-    </button>
+      <div style={{
+        width: 11, height: 22, borderRadius: 3, flexShrink: 0,
+        border: '1px solid rgba(255,255,255,.1)', position: 'relative',
+        ...(beltStyles[beltKey] || beltStyles.white),
+      }}>
+        {beltKey === 'black' && (
+          <div style={{ position: 'absolute', bottom: 3, left: 0, width: '100%', height: 3, background: '#ef4444' }} />
+        )}
+      </div>
+      <div style={{ fontSize: 14, fontWeight: 800, color: '#e7e5e4' }}>{name}</div>
+      {!accessible ? (
+        <span style={{ marginLeft: 'auto', color: '#57534e', display: 'flex' }}><LockIcon size={11} /></span>
+      ) : (
+        <div style={{ fontSize: 10, fontWeight: 700, color: '#57534e', marginLeft: 'auto' }}>{count}</div>
+      )}
+    </div>
+  );
+}
+
+// ─── ProfileBody ──────────────────────────────────────────────────
+
+function ProfileBody({ member }: { member: ChannelMember }) {
+  const xp = member.totalPoints || 0;
+  const level = getActualLevel(xp);
+  const beltKey = (member.belt || 'white').toLowerCase();
+  const beltColor = getBeltColor(beltKey);
+  const xpForCurrent = Math.floor((level - 1) * 250 + (level - 1) * (level - 1) * 50);
+  const xpForNext = Math.floor(level * 250 + level * level * 50);
+  const denom = Math.max(1, xpForNext - xpForCurrent);
+  const progressPct = Math.max(0, Math.min(100, Math.round(((xp - xpForCurrent) / denom) * 100)));
+
+  // Trigger width animation: start at 0, then jump to real pct on mount
+  const [fillPct, setFillPct] = useState(0);
+  useEffect(() => {
+    setFillPct(0);
+    const t = setTimeout(() => setFillPct(progressPct), 120);
+    return () => clearTimeout(t);
+  }, [progressPct]);
+
+  const classes = (member as any).classesAttended || 0;
+  const subs = (member as any).submissions || 0;
+  const wins = (member as any).eventWins || 0;
+  const badgeCount = member.badgeCount || 0;
+
+  return (
+    <>
+      {/* Hero card */}
+      <div style={{
+        background: '#0f0e0d',
+        border: '1px solid rgba(255,255,255,.06)',
+        borderRadius: 24, padding: '28px 20px',
+        display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16,
+        position: 'relative', overflow: 'hidden',
+      }}>
+        <ParagonRing level={level} size={72} showOrbit={level >= 6}>
+          {member.profilePic ? (
+            <img src={member.profilePic} alt={member.name} style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%', display: 'block' }} />
+          ) : (
+            <div style={{
+              width: '100%', height: '100%', borderRadius: '50%',
+              background: avatarGradient(beltKey),
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              fontSize: 28, fontWeight: 800, color: '#fff',
+            }}>{(member.name || '?').charAt(0).toUpperCase()}</div>
+          )}
+        </ParagonRing>
+        <div style={{ fontSize: 26, fontWeight: 900, color: '#fff', textAlign: 'center' }}>{member.name}</div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <div style={{
+            height: 10, width: 60, borderRadius: 4,
+            background: beltBarColor(beltKey),
+            boxShadow: `0 0 10px ${beltColor}40`,
+          }} />
+          <span style={{ fontSize: 14, fontWeight: 700, color: '#a8a29e', textTransform: 'capitalize' }}>
+            {beltKey} Belt{member.role && member.role.toLowerCase().includes('coach') ? ' · Coach' : ''}
+          </span>
+        </div>
+      </div>
+
+      {/* XP card */}
+      <div style={{ background: '#0f0e0d', border: '1px solid rgba(255,255,255,.06)', borderRadius: 20, padding: 20 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 12 }}>
+          <div style={{ fontSize: 11, fontWeight: 800, color: '#57534e', letterSpacing: '.15em', textTransform: 'uppercase' }}>Paragon XP</div>
+          <div style={{ fontSize: 22, fontWeight: 900, color: '#fff' }}>LV {level}</div>
+        </div>
+        <div style={{ height: 8, background: 'rgba(255,255,255,.06)', borderRadius: 4, overflow: 'hidden', marginBottom: 14 }}>
+          <div style={{
+            height: '100%', borderRadius: 4,
+            background: 'linear-gradient(90deg,#e8af34,#f59e0b)',
+            boxShadow: '0 0 12px rgba(232,175,52,.35)',
+            width: `${fillPct}%`, transition: 'width 1.2s cubic-bezier(0.16,1,0.3,1)',
+          }} />
+        </div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, fontWeight: 600, color: '#57534e', marginTop: -8, marginBottom: 12 }}>
+          <span>{xp.toLocaleString()} XP</span>
+          <span>Next: {xpForNext.toLocaleString()} XP</span>
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8 }}>
+          {[
+            { val: classes || '—', label: 'Classes', delay: '0.1s' },
+            { val: subs || '—', label: 'Submissions', delay: '0.2s' },
+            { val: wins || '—', label: 'Event Wins', delay: '0.3s' },
+          ].map(s => (
+            <div key={s.label} style={{ background: 'rgba(255,255,255,.03)', border: '1px solid rgba(255,255,255,.06)', borderRadius: 12, padding: 10, textAlign: 'center' }}>
+              <div className="chatv4-xp-stat-val" style={{ fontSize: 18, fontWeight: 900, color: '#fff', transitionDelay: s.delay }}>{String(s.val)}</div>
+              <div style={{ fontSize: 10, fontWeight: 700, color: '#57534e', marginTop: 2 }}>{s.label}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Achievements */}
+      {badgeCount > 0 && (
+        <div style={{ background: '#0f0e0d', border: '1px solid rgba(255,255,255,.06)', borderRadius: 20, padding: 20 }}>
+          <div style={{ fontSize: 11, fontWeight: 800, color: '#57534e', letterSpacing: '.15em', textTransform: 'uppercase', marginBottom: 14 }}>Achievements</div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+            {Array.from({ length: Math.min(badgeCount, 6) }).map((_, i) => (
+              <div
+                key={i}
+                className="chatv4-achieve-badge"
+                style={{
+                  background: 'rgba(255,255,255,.03)', border: '1px solid rgba(255,255,255,.06)',
+                  borderRadius: 12, padding: 10, display: 'flex', alignItems: 'center', gap: 8,
+                  fontSize: 12, fontWeight: 700, color: '#e7e5e4',
+                  transitionDelay: `${0.4 + i * 0.1}s`,
+                }}
+              >
+                <svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16" style={{ color: '#e8af34', flexShrink: 0 }}>
+                  <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
+                </svg>
+                Achievement {i + 1}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Last seen */}
+      {member.lastSeen && (() => {
+        const diff = Date.now() - new Date(member.lastSeen).getTime();
+        const isOnline = diff < 5 * 60 * 1000;
+        return (
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: 6, padding: '10px 14px',
+            background: '#0f0e0d', border: '1px solid rgba(255,255,255,.06)', borderRadius: 12,
+          }}>
+            <div style={{ width: 8, height: 8, borderRadius: '50%', background: isOnline ? '#10b981' : '#57534e' }} />
+            <span style={{ fontSize: 12, color: isOnline ? '#10b981' : '#57534e' }}>
+              {isOnline ? 'Online now' : `Last seen ${Math.floor(diff / 60000)}m ago`}
+            </span>
+          </div>
+        );
+      })()}
+    </>
   );
 }
