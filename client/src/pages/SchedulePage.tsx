@@ -168,7 +168,10 @@ export default function SchedulePage() {
   });
 
   const today = new Date().toLocaleDateString("en-US", { weekday: "long" });
-  const totalCheckedInToday = checkedInClasses.length;
+  // Count DISTINCT class names checked in today — prevents duplicate check-ins
+  // from the same class inflating the Double Header / Savage counter.
+  const uniqueCheckedInToday = Array.from(new Set(checkedInClasses)).length;
+  const totalCheckedInToday = uniqueCheckedInToday;
   const floatingTrackState =
     totalCheckedInToday >= 3 ? 3 :
     totalCheckedInToday === 2 ? 2 :
@@ -471,26 +474,48 @@ function ClassCard({
   const stateColors = ['#22c55e', '#0ea5e9', '#ef4444'];
   const stateColor = stateColors[Math.min(cardStateLevel - 1, 2)];
 
-  const isPast = (() => {
-    if (!isToday) return false;
+  // ── Check-in window ─────────────────────────────────────────────
+  // Admin sets how many minutes before class start check-in is allowed.
+  // Check-in is valid from (classStart - windowMins) through (classEnd).
+  const { isPast, isTooEarly, windowLabel } = (() => {
+    if (!isToday) return { isPast: false, isTooEarly: false, windowLabel: '' };
+    const windowMins = (() => {
+      try { return parseInt(localStorage.getItem('lbjj_checkin_window_minutes') || '60', 10); } catch { return 60; }
+    })();
     const now = new Date();
+    const nowMins = now.getHours() * 60 + now.getMinutes();
     const [hm, period] = displayTime.split(" ");
     const [hStr, mStr] = hm.split(":");
     let hours = parseInt(hStr, 10);
     const minutes = parseInt(mStr || "0", 10);
     if (period?.toUpperCase() === "PM" && hours !== 12) hours += 12;
     if (period?.toUpperCase() === "AM" && hours === 12) hours = 0;
-    const endTotalMins = hours * 60 + minutes + getDurationMinutes(cls.name);
-    const classEnd = new Date();
-    classEnd.setHours(Math.floor(endTotalMins / 60), endTotalMins % 60, 0, 0);
-    return now > classEnd;
+    const startTotalMins = hours * 60 + minutes;
+    const endTotalMins   = startTotalMins + getDurationMinutes(cls.name);
+    const openMins       = startTotalMins - windowMins;
+    const wLabel = windowMins >= 60 ? `${windowMins / 60}h` : `${windowMins}m`;
+    return {
+      isPast:    nowMins > endTotalMins,
+      isTooEarly: nowMins < openMins,
+      windowLabel: wLabel,
+    };
   })();
+  const cannotCheckIn = isPast || isTooEarly;
 
   const handleCheckIn = async () => {
     if (!navigator.onLine) { alert('No internet connection.'); return; }
     const geo = await validateGeoIfRequired();
     if (!geo.allowed) { alert(geo.error || 'Location check failed.'); return; }
     if (alreadyCheckedIn || checkInDone || checkingInRef.current) return;
+    // Enforce check-in window
+    if (isTooEarly) {
+      alert(`Check-in opens ${windowLabel} before class. Come back closer to class time!`);
+      return;
+    }
+    if (isPast) {
+      alert('This class has already ended.');
+      return;
+    }
     checkingInRef.current = true;
 
     // Particle burst
@@ -741,6 +766,11 @@ function ClassCard({
               ) : isPast ? (
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: 14, borderRadius: 12, background: 'rgba(74,175,128,0.1)', color: '#4caf80', fontWeight: 600, fontSize: 14, border: '1px solid rgba(74,175,128,0.2)' }}>
                   <CheckCircle size={16} /> Class has ended
+                </div>
+              ) : isTooEarly ? (
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: 14, borderRadius: 12, background: 'rgba(232,175,52,0.08)', color: '#e8af34', fontWeight: 600, fontSize: 13, border: '1px solid rgba(232,175,52,0.2)' }}>
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="16" height="16"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                  Check-in opens {windowLabel} before class
                 </div>
               ) : (
                 <button

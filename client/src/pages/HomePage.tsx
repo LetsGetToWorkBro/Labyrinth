@@ -637,17 +637,20 @@ export default function HomePage() {
         // Also cache the streak separately for fast reads
         if (gasStreak > 0) localStorage.setItem('lbjj_streak_cache', String(gasStreak));
       } catch {}
-      // Today's count + dedup
+      // Today's count + dedup — use UNIQUE class names only
       const today = new Date().toISOString().split('T')[0];
       const todayCheckIns = allCheckIns.filter((c: any) => (c.date || c.timestamp || '').startsWith(today));
-      if (todayCheckIns.length > 0) {
+      // Deduplicate by class name so double-header / savage only counts distinct classes
+      const todayClassNames = todayCheckIns.map((c: any) => c.className || c.class || '').filter(Boolean);
+      const todayClassesUnique = Array.from(new Set(todayClassNames)) as string[];
+      if (todayClassesUnique.length > 0) {
+        setClassesToday(todayClassesUnique.length);
+        localStorage.setItem('lbjj_checkins_today', JSON.stringify({ date: today, count: todayClassesUnique.length }));
+        setCheckedInClasses((prev: string[]) => Array.from(new Set([...prev, ...todayClassesUnique])));
+      } else if (todayCheckIns.length > 0) {
+        // Fallback: no className field, count raw records
         setClassesToday(todayCheckIns.length);
         localStorage.setItem('lbjj_checkins_today', JSON.stringify({ date: today, count: todayCheckIns.length }));
-      }
-      // Today's class dedup for check-in buttons
-      const todayClasses = todayCheckIns.map((c: any) => c.className);
-      if (todayClasses.length > 0) {
-        setCheckedInClasses((prev: string[]) => Array.from(new Set([...prev, ...todayClasses])));
       }
       // Backfill season (monthly) count from API check-ins — only if local key is missing/zero
       try {
