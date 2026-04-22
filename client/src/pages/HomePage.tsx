@@ -5,7 +5,7 @@ import { beltSavePromotion, gasCall, getLeaderboard, getLeaderboardFresh, getMem
 import { BeltIcon } from "@/components/BeltIcon";
 import { ADULT_BELT_OPTIONS } from "@/components/BeltIcon";
 import { getBeltColor, CLASS_SCHEDULE } from "@/lib/constants";
-import { chatGetChannels, fetchCSV, parseCSV, CSV_ENDPOINTS, getPinnedAnnouncement } from "@/lib/api";
+import { chatGetChannels, fetchCSV, parseCSV, CSV_ENDPOINTS, getPinnedAnnouncement, type PinnedAnnouncement } from "@/lib/api";
 import { ALL_ACHIEVEMENTS, checkAndUnlockAchievements } from "@/lib/achievements";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { validateGeoIfRequired } from "@/lib/geo";
@@ -18,6 +18,7 @@ import { ParagonRing } from "@/components/ParagonRing";
 import { StatsCards } from "@/components/StatsCards";
 import { SeasonMilestoneWidgets } from "@/components/SeasonMilestoneWidgets";
 import { LiveStreamBanner } from "@/components/LiveStreamBanner";
+import { AnnouncementCard } from "@/components/AnnouncementCard";
 import { getLevelFromXP, getActualLevel, XP_LEVELS } from "@/lib/xp";
 import {
   CreditCard, FileText, ChevronRight, ChevronDown, LogOut,
@@ -1125,7 +1126,7 @@ export default function HomePage() {
   }, []);
 
   // ─── Pinned announcement ─────────────────────────────────────────
-  const [pinnedAnnouncement, setPinnedAnnouncement] = useState<{ message: string; ts: string } | null>(null);
+  const [pinnedAnnouncement, setPinnedAnnouncement] = useState<PinnedAnnouncement | null>(null);
 
   useEffect(() => {
     getPinnedAnnouncement().then(ann => setPinnedAnnouncement(ann)).catch(() => {});
@@ -1567,13 +1568,7 @@ export default function HomePage() {
       {/* Pinned Announcement */}
       {pinnedAnnouncement && (
         <div className="mx-5 mb-4 stagger-child">
-          <div style={{ background: '#111', borderRadius: 14, border: '1px solid #1A1A1A', padding: '12px 14px', borderLeft: '3px solid #C8A24C' }}>
-            <div style={{ fontSize: 10, fontWeight: 700, color: '#C8A24C', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 6, display: 'flex', alignItems: 'center', gap: 5 }}>
-                <Megaphone size={11} color="#C8A24C" aria-hidden="true" />
-                Announcement
-              </div>
-            <div style={{ fontSize: 13, color: '#CCC', lineHeight: 1.5 }}>{pinnedAnnouncement.message}</div>
-          </div>
+          <AnnouncementCard announcement={pinnedAnnouncement} />
         </div>
       )}
 

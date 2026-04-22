@@ -30,10 +30,13 @@ import {
   cachedGasCall,
   getPinnedAnnouncement,
   clearPinnedAnnouncement,
+  pinAnnouncement,
   type AdminMember,
   type AdminDashboard,
   type MemberComm,
+  type PinnedAnnouncement,
 } from "@/lib/api";
+import { AnnouncementCard } from "@/components/AnnouncementCard";
 import { getBeltColor } from "@/lib/constants";
 import { BeltDot } from "@/components/BeltBadge";
 import {
@@ -540,11 +543,15 @@ function NotesTab() {
   const [saving, setSaving] = useState(false);
   const [search, setSearch] = useState("");
 
-  // Announcement send state
-  const [annText, setAnnText] = useState("");
-  const [annSending, setAnnSending] = useState(false);
-  const [annSent, setAnnSent] = useState(false);
-  const [pinToHome, setPinToHome] = useState(false);
+  // Announcement compose state
+  const [annTitle, setAnnTitle]       = useState("");
+  const [annText, setAnnText]         = useState("");
+  const [annBadge, setAnnBadge]       = useState("Priority Update");
+  const [annLink, setAnnLink]         = useState("");
+  const [annLinkLabel, setAnnLinkLabel] = useState("Learn More");
+  const [annSending, setAnnSending]   = useState(false);
+  const [annSent, setAnnSent]         = useState(false);
+  const [showPreview, setShowPreview] = useState(false);
 
   useEffect(() => {
     adminGetMembers().then(list => { setMembers(list); setLoadingMembers(false); });
@@ -555,9 +562,23 @@ function NotesTab() {
     setAnnSending(true);
     try {
       const token = getToken() || localStorage.getItem('lbjj_session_token') || '';
-      await gasCall('chatSendMessage', { token, channel: 'announcements', text: annText.trim(), pinToHome });
+      // Always pin to home with the new rich format
+      await Promise.all([
+        gasCall('chatSendMessage', { token, channel: 'announcements', text: annText.trim() }),
+        pinAnnouncement({
+          message: annText.trim(),
+          title: annTitle.trim() || undefined,
+          badge: annBadge.trim() || 'Priority Update',
+          link: annLink.trim() || undefined,
+          linkLabel: annLinkLabel.trim() || 'Learn More',
+        }),
+      ]);
+      setAnnTitle('');
       setAnnText('');
-      setPinToHome(false);
+      setAnnBadge('Priority Update');
+      setAnnLink('');
+      setAnnLinkLabel('Learn More');
+      setShowPreview(false);
       setAnnSent(true);
       setTimeout(() => setAnnSent(false), 2500);
     } catch {}
@@ -651,51 +672,126 @@ function NotesTab() {
 
   return (
     <div style={{ padding: "16px" }}>
-      {/* Send Announcement */}
-      <div style={{ backgroundColor: "#111", borderRadius: 12, border: "1px solid #1A1A1A", padding: 14, marginBottom: 16 }}>
-        <div style={{ fontSize: 11, fontWeight: 700, color: '#666', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 10 }}>
-          Send Announcement
+      {/* Compose Announcement */}
+      <div style={{ background: '#0f0e0d', borderRadius: 16, border: '1px solid rgba(239,68,68,0.2)', padding: 16, marginBottom: 16 }}>
+        <div style={{ fontSize: 11, fontWeight: 800, color: '#ef4444', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 14, display: 'flex', alignItems: 'center', gap: 6 }}>
+          <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#ef4444', animation: 'ann-pulse 2s infinite' }} />
+          New Announcement
         </div>
-        <textarea
-          value={annText}
-          onChange={e => setAnnText(e.target.value)}
-          placeholder="Type an announcement for all members..."
-          rows={3}
-          style={{ width: '100%', background: '#0D0D0D', border: '1px solid #222', borderRadius: 8, color: '#F0F0F0', fontSize: 13, padding: '8px 10px', resize: 'none', fontFamily: 'inherit', boxSizing: 'border-box' as const, marginBottom: 10 }}
-        />
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
-          <div>
-            <div style={{ fontSize: 12, fontWeight: 600, color: '#F0F0F0' }}>Pin to Home Dashboard</div>
-            <div style={{ fontSize: 10, color: '#555' }}>Shows this announcement on members' home screens</div>
+
+        {/* Title */}
+        <div style={{ marginBottom: 10 }}>
+          <div style={{ fontSize: 10, fontWeight: 700, color: '#666', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 5 }}>Title</div>
+          <input
+            value={annTitle}
+            onChange={e => setAnnTitle(e.target.value)}
+            placeholder="e.g. Gordon Ryan Seminar"
+            style={{ width: '100%', background: '#1a1918', border: '1px solid #2a2826', borderRadius: 10, color: '#F0F0F0', fontSize: 13, padding: '9px 12px', outline: 'none', boxSizing: 'border-box' as const }}
+          />
+        </div>
+
+        {/* Message */}
+        <div style={{ marginBottom: 10 }}>
+          <div style={{ fontSize: 10, fontWeight: 700, color: '#666', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 5 }}>Message</div>
+          <textarea
+            value={annText}
+            onChange={e => setAnnText(e.target.value)}
+            placeholder="Full announcement text visible when members expand the card..."
+            rows={3}
+            style={{ width: '100%', background: '#1a1918', border: '1px solid #2a2826', borderRadius: 10, color: '#F0F0F0', fontSize: 13, padding: '9px 12px', resize: 'none', fontFamily: 'inherit', boxSizing: 'border-box' as const, outline: 'none' }}
+          />
+        </div>
+
+        {/* Badge label */}
+        <div style={{ marginBottom: 10 }}>
+          <div style={{ fontSize: 10, fontWeight: 700, color: '#666', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 5 }}>Badge Label</div>
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+            {['Priority Update', 'Event', 'Schedule Change', 'Reminder', 'New'].map(opt => (
+              <button key={opt} onClick={() => setAnnBadge(opt)} style={{
+                padding: '5px 10px', borderRadius: 20, fontSize: 11, fontWeight: 700,
+                background: annBadge === opt ? 'rgba(239,68,68,0.15)' : '#1a1918',
+                border: annBadge === opt ? '1px solid rgba(239,68,68,0.4)' : '1px solid #2a2826',
+                color: annBadge === opt ? '#ef4444' : '#a8a29e',
+                cursor: 'pointer', transition: 'all 0.2s',
+              }}>{opt}</button>
+            ))}
+            <input
+              value={['Priority Update','Event','Schedule Change','Reminder','New'].includes(annBadge) ? '' : annBadge}
+              onChange={e => setAnnBadge(e.target.value)}
+              placeholder="Custom…"
+              style={{ width: 80, background: '#1a1918', border: '1px solid #2a2826', borderRadius: 20, color: '#F0F0F0', fontSize: 11, padding: '5px 10px', outline: 'none', boxSizing: 'border-box' as const }}
+            />
           </div>
-          <button
-            type="button"
-            onClick={() => setPinToHome(v => !v)}
-            style={{
-              width: 40, height: 22, borderRadius: 11, border: 'none', cursor: 'pointer',
-              background: pinToHome ? '#C8A24C' : '#333',
-              position: 'relative', transition: 'background 0.2s',
-            }}
-          >
-            <div style={{ width: 16, height: 16, borderRadius: '50%', background: '#FFF', position: 'absolute', top: 3, left: pinToHome ? 21 : 3, transition: 'left 0.2s' }}/>
-          </button>
         </div>
+
+        {/* Optional link */}
+        <div style={{ marginBottom: 14 }}>
+          <div style={{ fontSize: 10, fontWeight: 700, color: '#666', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 5 }}>CTA Link (optional)</div>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <input
+              value={annLink}
+              onChange={e => setAnnLink(e.target.value)}
+              placeholder="https://..."
+              style={{ flex: 2, background: '#1a1918', border: '1px solid #2a2826', borderRadius: 10, color: '#F0F0F0', fontSize: 12, padding: '8px 12px', outline: 'none', boxSizing: 'border-box' as const }}
+            />
+            <input
+              value={annLinkLabel}
+              onChange={e => setAnnLinkLabel(e.target.value)}
+              placeholder="Button text"
+              style={{ flex: 1, background: '#1a1918', border: '1px solid #2a2826', borderRadius: 10, color: '#F0F0F0', fontSize: 12, padding: '8px 12px', outline: 'none', boxSizing: 'border-box' as const }}
+            />
+          </div>
+        </div>
+
+        {/* Preview toggle */}
+        {annText.trim() && (
+          <button onClick={() => setShowPreview(v => !v)} style={{
+            width: '100%', padding: '9px', borderRadius: 10, marginBottom: 10,
+            background: showPreview ? 'rgba(255,255,255,0.06)' : '#1a1918',
+            border: '1px solid rgba(255,255,255,0.08)', color: '#a8a29e',
+            fontSize: 12, fontWeight: 700, cursor: 'pointer',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+          }}>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="14" height="14">
+              <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>
+            </svg>
+            {showPreview ? 'Hide Preview' : 'Preview Card'}
+          </button>
+        )}
+
+        {/* Live preview */}
+        {showPreview && annText.trim() && (
+          <div style={{ marginBottom: 14, opacity: 0.9 }}>
+            <AnnouncementCard announcement={{
+              message: annText,
+              title: annTitle || 'New Announcement',
+              badge: annBadge || 'Priority Update',
+              link: annLink || undefined,
+              linkLabel: annLinkLabel || 'Learn More',
+              ts: new Date().toISOString(),
+            }} />
+          </div>
+        )}
+
+        {/* Send */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <button
             onClick={sendAnnouncement}
             disabled={annSending || !annText.trim()}
             style={{
-              padding: '9px 18px', borderRadius: 8,
-              background: annText.trim() ? '#C8A24C' : '#1A1A1A',
-              color: annText.trim() ? '#000' : '#444',
-              fontWeight: 700, fontSize: 12, border: 'none',
+              flex: 1, padding: '12px', borderRadius: 12,
+              background: annText.trim() ? '#ef4444' : '#1a1918',
+              color: annText.trim() ? '#fff' : '#444',
+              fontWeight: 800, fontSize: 13, border: 'none',
               cursor: annText.trim() ? 'pointer' : 'default',
               opacity: annSending ? 0.7 : 1,
+              boxShadow: annText.trim() ? '0 4px 16px rgba(239,68,68,0.3)' : 'none',
+              transition: 'all 0.3s',
             }}
           >
-            {annSending ? 'Sending…' : 'Send Announcement'}
+            {annSending ? 'Sending…' : 'Pin to All Home Screens'}
           </button>
-          {annSent && <span style={{ fontSize: 12, color: '#4CAF80' }}>Sent ✓</span>}
+          {annSent && <span style={{ fontSize: 12, color: '#10b981', fontWeight: 700 }}>✓ Sent</span>}
         </div>
       </div>
 

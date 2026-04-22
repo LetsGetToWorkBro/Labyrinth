@@ -892,7 +892,17 @@ export interface ChannelMember {
 
 // ─── Pinned Announcements ────────────────────────────────────────
 
-export async function getPinnedAnnouncement(): Promise<{ message: string; ts: string } | null> {
+export interface PinnedAnnouncement {
+  message: string;
+  title?: string;
+  badge?: string;
+  link?: string;
+  linkLabel?: string;
+  ts: string;
+  pinnedBy?: string;
+}
+
+export async function getPinnedAnnouncement(): Promise<PinnedAnnouncement | null> {
   try {
     const result = await gasCall('getPinnedAnnouncement', {});
     return result?.announcement || null;
@@ -902,6 +912,20 @@ export async function getPinnedAnnouncement(): Promise<{ message: string; ts: st
 export async function clearPinnedAnnouncement(): Promise<void> {
   const token = getToken() || localStorage.getItem('lbjj_session_token') || '';
   await gasCall('clearPinnedAnnouncement', { token });
+}
+
+export async function pinAnnouncement(data: {
+  message: string;
+  title?: string;
+  badge?: string;
+  link?: string;
+  linkLabel?: string;
+}): Promise<{ success: boolean }> {
+  const token = getToken() || localStorage.getItem('lbjj_session_token') || '';
+  if (!token) return { success: false };
+  try {
+    return await gasCall('pinAnnouncement', { token, ...data });
+  } catch { return { success: false }; }
 }
 
 export async function chatGetChannelMembers(channelId: string): Promise<ChannelMember[]> {
