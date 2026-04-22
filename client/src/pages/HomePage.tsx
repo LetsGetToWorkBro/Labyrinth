@@ -14,6 +14,7 @@ import { ProfileRing } from "@/components/ProfileRing";
 import { StreakWidget, StreakInfoPanel } from "@/components/StreakWidget";
 import { XPWidget, XPInfoPanel } from "@/components/XPWidget";
 import { CheckInWidget } from "@/components/CheckInWidget";
+import { ParagonRing } from "@/components/ParagonRing";
 import { getLevelFromXP, getActualLevel, XP_LEVELS } from "@/lib/xp";
 import {
   CreditCard, FileText, ChevronRight, ChevronDown, LogOut,
@@ -428,6 +429,9 @@ export default function HomePage() {
   const LEADERBOARD_CACHE_KEY = 'lbjj_home_leaderboard';
   const LEADERBOARD_TTL = 5 * 60 * 1000;
   const [leaderboard, setLeaderboard] = useState<any[]>([]);
+  const [prevPositions] = useState<Record<string, number>>(() => {
+    try { return JSON.parse(localStorage.getItem('lbjj_lb_positions_v1') || '{}'); } catch { return {}; }
+  });
 
   // Load leaderboard from cache on mount
   useEffect(() => {
