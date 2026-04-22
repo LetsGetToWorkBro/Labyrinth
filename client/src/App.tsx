@@ -34,6 +34,7 @@ const MessagesPage       = lazy(() => import("@/pages/MessagesPage"));
 const AchievementsPage   = lazy(() => import("@/pages/AchievementsPage"));
 const LivePage           = lazy(() => import("@/pages/LivePage"));
 const CheckInHistoryPage = lazy(() => import("@/pages/CheckInHistoryPage"));
+const SeasonPage         = lazy(() => import("@/pages/SeasonPage"));
 const NotFound           = lazy(() => import("@/pages/not-found"));
 import logoMaze from './assets/logo-maze.webp';
 import {
@@ -1841,6 +1842,7 @@ function AppShell() {
             <Route path="/achievements" component={AchievementsPage} />
             <Route path="/live"      component={LivePage} />
             <Route path="/history"   component={CheckInHistoryPage} />
+            <Route path="/season"    component={SeasonPage} />
             <Route path="/more"      component={MorePage} />
             <Route path="/account"    component={AccountPage} />
             <Route path="/messages"  component={MessagesPage} />

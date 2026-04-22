@@ -16,6 +16,7 @@ import { XPWidget, XPInfoPanel } from "@/components/XPWidget";
 import { CheckInWidget } from "@/components/CheckInWidget";
 import { ParagonRing } from "@/components/ParagonRing";
 import { StatsCards } from "@/components/StatsCards";
+import { SeasonMilestoneWidgets } from "@/components/SeasonMilestoneWidgets";
 import { getLevelFromXP, getActualLevel, XP_LEVELS } from "@/lib/xp";
 import {
   CreditCard, FileText, ChevronRight, ChevronDown, LogOut,
@@ -1572,6 +1573,27 @@ export default function HomePage() {
           xp={memberXP}
           memberName={member.name}
           onOpenInfo={() => setShowRankInfo(true)}
+        />
+      )}
+
+      {/* ════════════════════════════════════════════════════
+          SEASON + MILESTONE WIDGETS
+          ════════════════════════════════════════════════════ */}
+      {trainingSeasonData && nextMilestoneData && (
+        <SeasonMilestoneWidgets
+          season={{
+            thisMonthClasses: trainingSeasonData.thisMonthClasses,
+            goalClasses: trainingSeasonData.goalClasses,
+            progress: trainingSeasonData.progress,
+            monthName: trainingSeasonData.monthName,
+          }}
+          milestone={{
+            label: nextMilestoneData.label,
+            xpNeeded: Math.max(0, nextMilestoneData.need),
+            ready: nextMilestoneData.need <= 0,
+          }}
+          onOpenSeason={() => { window.location.hash = '#/season'; }}
+          onOpenMilestone={() => setShowRankInfo(true)}
         />
       )}
 
