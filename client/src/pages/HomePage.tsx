@@ -1526,78 +1526,6 @@ export default function HomePage() {
       )}
 
       {/* ════════════════════════════════════════════════════
-          NARRATIVE HERO — "Where am I right now?"
-          ════════════════════════════════════════════════════ */}
-      <div style={{ margin: '0 20px 18px', cursor: 'pointer' }} className="stagger-child" onClick={() => { haptic(); setShowNarrativeInfo(true); }}>
-        <div style={{
-          background: isGameDay
-            ? 'linear-gradient(135deg, #141008, #1A1500)'
-            : isPerfectWeek
-              ? 'linear-gradient(135deg, #0F0E00, #1A1600)'
-              : 'linear-gradient(135deg, #0D0D0D, #111)',
-          border: `1px solid ${isGameDay ? 'rgba(200,162,76,0.35)' : isPerfectWeek ? 'rgba(255,215,0,0.3)' : '#1A1A1A'}`,
-          borderRadius: 18,
-          padding: '12px 16px',
-          position: 'relative',
-          overflow: 'hidden',
-        }}>
-          {/* Belt-color ambient glow strip at top */}
-          <div style={{
-            position: 'absolute', top: 0, left: 0, right: 0, height: 2,
-            background: `linear-gradient(90deg, transparent 0%, ${beltColor} 40%, ${beltColor} 60%, transparent 100%)`,
-            opacity: 0.7,
-          }} />
-
-          {/* Accent chip */}
-          {narrative.accent && (
-            <div
-              onClick={(e) => { e.stopPropagation(); haptic(); isGameDay ? setShowGameDayInfo(true) : setShowNarrativeInfo(true); }}
-              style={{
-              display: 'inline-flex', alignItems: 'center', gap: 5,
-              padding: '3px 9px', borderRadius: 999, marginBottom: 10,
-              background: isGameDay ? 'rgba(200,162,76,0.15)' : isPerfectWeek ? 'rgba(255,215,0,0.12)' : 'rgba(200,162,76,0.1)',
-              border: `1px solid ${isGameDay ? 'rgba(200,162,76,0.3)' : isPerfectWeek ? 'rgba(255,215,0,0.25)' : 'rgba(200,162,76,0.2)'}`,
-              animation: isGameDay || isPerfectWeek ? 'xp-pulse 2s ease-in-out infinite' : undefined,
-              cursor: 'pointer',
-            }}>
-              <span style={{ display: 'inline-flex', alignItems: 'center' }}>{isGameDay ? <Swords size={9} /> : isPerfectWeek ? <Trophy size={9} color="#FFD700" /> : comboMultiplier >= 3 ? <FireIcon size={9} color="#F97316" /> : <BoltIcon size={9} />}</span>
-              <span style={{ fontSize: 9, fontWeight: 800, letterSpacing: '0.12em', color: isGameDay ? '#C8A24C' : isPerfectWeek ? '#FFD700' : '#C8A24C' }}>
-                {narrative.accent}
-              </span>
-            </div>
-          )}
-
-          {/* Main narrative lines */}
-          <div style={{ fontSize: 17, fontWeight: 900, color: '#F0F0F0', lineHeight: 1.15, marginBottom: 4, letterSpacing: '-0.01em' }}>
-            {narrative.line1}
-          </div>
-          <div style={{ fontSize: 12, color: '#666', lineHeight: 1.5, fontWeight: 500 }}>
-            {narrative.line2}
-          </div>
-        </div>
-      </div>
-
-      {/* LIVE banner */}
-      {stream?.isLive && (
-        <a href="/#/live" style={{ textDecoration: 'none', display: 'block' }}>
-          <div style={{
-            background: 'linear-gradient(135deg, #1A0A0A, #1A1010)',
-            border: '1px solid #EF444430',
-            borderRadius: 14, padding: '12px 16px',
-            margin: '0 20px 14px', cursor: 'pointer',
-            display: 'flex', alignItems: 'center', gap: 12,
-          }}>
-            <span style={{ width: 10, height: 10, borderRadius: '50%', background: '#EF4444', flexShrink: 0, display: 'inline-block', animation: 'livePulse 1.5s ease-in-out infinite', boxShadow: '0 0 8px #EF4444' }} />
-            <div style={{ flex: 1 }}>
-              <div style={{ fontSize: 12, fontWeight: 800, color: '#EF4444', letterSpacing: '0.08em', textTransform: 'uppercase' }}>Live Now</div>
-              <div style={{ fontSize: 14, fontWeight: 600, color: '#F0F0F0', marginTop: 2 }}>{stream.className}</div>
-            </div>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#EF4444" strokeWidth="2"><polygon points="5 3 19 12 5 21 5 3" /></svg>
-          </div>
-        </a>
-      )}
-
-      {/* ════════════════════════════════════════════════════
           NEXT CLASS / GAME DAY CARD
           ════════════════════════════════════════════════════ */}
       {nextClass && (
@@ -1681,7 +1609,7 @@ export default function HomePage() {
 
             {/* Rows */}
             <div style={{ position:'relative', zIndex:2 }}>
-              {leaderboard.slice(0, 5).map((entry, i) => {
+              {leaderboard.slice(0, 3).map((entry, i) => {
                 const rank = i + 1;
                 const entryXP = (entry.totalPoints || 0) || ((entry.classCount || 0) * 10);
                 const entryLevel = getActualLevel(entryXP);
@@ -1707,7 +1635,7 @@ export default function HomePage() {
                   <div key={i} style={{
                     display:'flex', alignItems:'center', gap:0,
                     padding:'16px 20px',
-                    borderBottom: i < 4 ? '1px solid rgba(255,255,255,0.03)' : 'none',
+                    borderBottom: i < 2 ? '1px solid rgba(255,255,255,0.03)' : 'none',
                     background: isMe ? 'rgba(232,175,52,0.04)' : 'transparent',
                     transition:'background 0.2s',
                   }}>
@@ -1760,34 +1688,6 @@ export default function HomePage() {
               })}
             </div>
           </div>
-        </div>
-      )}
-
-      {/* ════════════════════════════════════════════════════
-          TECHNIQUE OF THE DAY
-          ════════════════════════════════════════════════════ */}
-      {techniqueOfDay && (
-        <div
-          style={{
-            margin: '0 20px 14px', padding: '14px 16px',
-            background: 'linear-gradient(135deg, #0D0D0D, #0A0A10)',
-            border: '1px solid #C8A24C14', borderRadius: 14,
-            cursor: member?.isAdmin ? 'pointer' : 'default',
-          }}
-          className="stagger-child"
-          onClick={member?.isAdmin ? () => { haptic(); setShowTechniqueEditor(true); } : undefined}
-        >
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-            <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.15em', textTransform: 'uppercase', color: '#C8A24C', display: 'flex', alignItems: 'center', gap: 6 }}>
-              Technique of the Day
-              {member?.isAdmin && <span style={{ fontSize: 8, color: '#444', background: '#1A1A1A', padding: '1px 5px', borderRadius: 4, border: '1px solid #2A2A2A' }}>✏️ Edit</span>}
-            </div>
-            <div style={{ fontSize: 9, fontWeight: 700, color: '#444', letterSpacing: '0.08em', textTransform: 'uppercase', padding: '2px 8px', borderRadius: 999, background: '#111', border: '1px solid #222' }}>
-              {techniqueOfDay.category}
-            </div>
-          </div>
-          <div style={{ fontSize: 16, fontWeight: 800, color: '#F0F0F0', marginBottom: 6 }}>{techniqueOfDay.name}</div>
-          <div style={{ fontSize: 12, color: '#666', lineHeight: 1.5 }}>{techniqueOfDay.tip}</div>
         </div>
       )}
 
