@@ -327,6 +327,23 @@ export default function ChatPage() {
       setInputText(prefill);
       localStorage.removeItem('lbjj_chat_prefill');
     }
+    // Auto-open profile from OnlineAvatarCluster / OnlineBubble navigation
+    const profileEmail = localStorage.getItem('lbjj_open_profile_email');
+    if (profileEmail) {
+      localStorage.removeItem('lbjj_open_profile_email');
+      // Find the member in onlineMembers or load a stub — open their profile
+      setTimeout(() => {
+        const found = onlineMembers.find(m => m.email === profileEmail || m.name === profileEmail);
+        if (found) openProfile(found);
+        else {
+          // Load from channel members as fallback
+          chatGetChannelMembers('general').then(list => {
+            const m = list.find(m => m.email === profileEmail);
+            if (m) openProfile(m);
+          }).catch(() => {});
+        }
+      }, 600);
+    }
   }, []);
 
   // Close members dropdown on outside click

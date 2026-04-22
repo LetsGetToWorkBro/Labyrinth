@@ -11,11 +11,17 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { dispatchOpenDM } from '@/components/FloatingDMTray';
-import { dmGetUnread } from '@/lib/api';
+import { dmGetUnread, chatGetChannelMembers, updatePresence, type ChannelMember } from '@/lib/api';
 import { getBeltColor } from '@/lib/constants';
 import { getActualLevel } from '@/lib/xp';
-import { chatGetChannelMembers, updatePresence, type ChannelMember } from '@/lib/api';
+
 import { useAuth } from '@/lib/auth-context';
+
+// Navigate to chat and open the profile modal for a member
+function openMemberProfile(m: ChannelMember) {
+  try { localStorage.setItem('lbjj_open_profile_email', m.email || ''); } catch {}
+  window.location.hash = '#/chat';
+}
 
 const ONLINE_MS   = 5  * 60 * 1000;  // 5 min  → "Active Now"
 const RECENT_MS   = 60 * 60 * 1000;  // 60 min → "Recently Online"
@@ -35,15 +41,14 @@ function avatarGrad(belt: string) {
   return map[(belt||'white').toLowerCase()] || map.white;
 }
 
-function MemberRow({ m, dimmed, onClick }: { m: ChannelMember; dimmed?: boolean; onClick: () => void }) {
+function MemberRow({ m, dimmed, onClick, onProfile }: { m: ChannelMember; dimmed?: boolean; onClick: () => void; onProfile?: () => void }) {
   const level = getActualLevel(m.totalPoints || 0);
   const belt  = (m.belt || 'white').toLowerCase();
   return (
     <div
-      onClick={onClick}
       style={{
         display: 'flex', alignItems: 'center', gap: 9,
-        padding: '7px 8px', borderRadius: 11, cursor: 'pointer',
+        padding: '7px 8px', borderRadius: 11,
         opacity: dimmed ? 0.55 : 1, transition: 'background .15s',
       }}
       onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,.05)')}
@@ -83,12 +88,45 @@ function MemberRow({ m, dimmed, onClick }: { m: ChannelMember; dimmed?: boolean;
         </div>
       </div>
 
-      <div style={{
-        fontSize: 9, fontWeight: 800, color: '#e8af34',
-        background: 'rgba(232,175,52,.12)', padding: '1px 5px',
-        borderRadius: 5, border: '1px solid rgba(232,175,52,.22)', flexShrink: 0,
-      }}>
-        LV {level}
+      {/* LV + action buttons */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
+        <div style={{
+          fontSize: 9, fontWeight: 800, color: '#e8af34',
+          background: 'rgba(232,175,52,.12)', padding: '1px 5px',
+          borderRadius: 5, border: '1px solid rgba(232,175,52,.22)',
+        }}>LV {level}</div>
+
+        {/* Message button */}
+        <button onClick={e => { e.stopPropagation(); onClick(); }} title="Message" style={{
+          width: 24, height: 24, borderRadius: 7, border: 'none',
+          background: 'rgba(232,175,52,.12)', cursor: 'pointer',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          color: '#e8af34', transition: 'background .2s',
+        }}
+          onMouseEnter={e => (e.currentTarget.style.background = 'rgba(232,175,52,.25)')}
+          onMouseLeave={e => (e.currentTarget.style.background = 'rgba(232,175,52,.12)')}
+        >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" width="12" height="12">
+            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+          </svg>
+        </button>
+
+        {/* Profile button */}
+        {onProfile && (
+          <button onClick={e => { e.stopPropagation(); onProfile(); }} title="View Profile" style={{
+            width: 24, height: 24, borderRadius: 7, border: 'none',
+            background: 'rgba(255,255,255,.06)', cursor: 'pointer',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            color: '#a8a29e', transition: 'background .2s',
+          }}
+            onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,.12)')}
+            onMouseLeave={e => (e.currentTarget.style.background = 'rgba(255,255,255,.06)')}
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" width="12" height="12">
+              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
+            </svg>
+          </button>
+        )}
       </div>
     </div>
   );
@@ -252,7 +290,7 @@ export function OnlineBubble({ compact = false }: { compact?: boolean }) {
             </div>
             <div>
               {active.map(m => (
-                <MemberRow key={m.email || m.name} m={m} onClick={() => openMemberDM(m)} />
+                <MemberRow key={m.email || m.name} m={m} onClick={() => openMemberDM(m)} onProfile={() => openMemberProfile(m)} />
               ))}
             </div>
           </>
@@ -514,7 +552,7 @@ export function OnlineAvatarCluster() {
           {active.length > 0 && (
             <>
               <div style={{ fontSize: 10, fontWeight: 800, color: '#10b981', letterSpacing: '.15em', textTransform: 'uppercase', padding: '4px 8px 6px' }}>● Active Now</div>
-              {active.map(m => <MemberRow key={m.email||m.name} m={m} onClick={() => openDM(m)} />)}
+              {active.map(m => <MemberRow key={m.email||m.name} m={m} onClick={() => openDM(m)} onProfile={() => openMemberProfile(m)} />)}
             </>
           )}
           {recent.length > 0 && (
