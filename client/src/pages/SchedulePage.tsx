@@ -133,11 +133,11 @@ export default function SchedulePage() {
   useEffect(() => {
     getScheduleClasses().then((gasClasses) => {
       if (!gasClasses.length) return;
+      const norm = (s: string) => (s || '').toLowerCase().replace(/[\u2013\u2014]/g, '-').trim();
       const merged = CLASS_SCHEDULE.map((cls) => {
         const match = gasClasses.find(
           (g: any) =>
-            (g.classId && g.classId === `${cls.day}-${cls.time}-${cls.name}`) ||
-            (g.day === cls.day && g.time === cls.time && g.title === cls.name)
+            (g.day === cls.day && g.time === cls.time && norm(g.title) === norm(cls.name))
         );
         if (!match) return cls;
         return {
@@ -560,11 +560,11 @@ function ClassCard({
         }
         if (result?.pointsAwarded || result?.success) {
           try {
-            const { data: statsData } = await saveMemberStats({
-              email: memberEmail, classesAttended: gameStats.classesAttended || 0,
-              totalXP: gameStats.totalXP || 0, currentStreak: gameStats.currentStreak || 0,
+            const statsData = await saveMemberStats({
+              xp: gameStats.totalXP || gameStats.xp || 0,
+              streak: gameStats.currentStreak || 0,
               maxStreak: gameStats.maxStreak || 0,
-            }) as any;
+            });
             if (statsData) {
               const raw2 = localStorage.getItem('lbjj_game_stats_v2');
               const s2 = raw2 ? JSON.parse(raw2) : {};

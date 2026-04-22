@@ -75,51 +75,51 @@ export interface ClassScheduleItem {
 
 export const CLASS_SCHEDULE: ClassScheduleItem[] = [
   // ── Monday ──────────────────────────────────────────────────
-  { day: "Monday", time: "6:30 AM",  name: "Adult BJJ",           type: "gi",   category: "adult" },
-  { day: "Monday", time: "11:00 AM", name: "Adult BJJ",           type: "gi",   category: "adult" },
-  { day: "Monday", time: "4:45 PM",  name: "Kids BJJ (3–6)",      type: "gi",   category: "kids"  },
-  { day: "Monday", time: "5:15 PM",  name: "Kids BJJ (7–12)",     type: "gi",   category: "kids"  },
-  { day: "Monday", time: "6:30 PM",  name: "Adult BJJ",           type: "gi",   category: "adult" },
+  { day: "Monday", time: "6:30 AM",  name: "Adult BJJ",              type: "gi",       category: "adult", instructor: "Anthony Curry" },
+  { day: "Monday", time: "11:00 AM", name: "Adult BJJ",              type: "gi",       category: "adult", instructor: "Anthony Curry" },
+  { day: "Monday", time: "4:45 PM",  name: "Kids BJJ (3-6)",         type: "gi",       category: "kids",  instructor: "Anthony Curry" },
+  { day: "Monday", time: "5:15 PM",  name: "Kids BJJ (7-12)",        type: "gi",       category: "kids",  instructor: "Anthony Curry" },
+  { day: "Monday", time: "6:30 PM",  name: "Adult BJJ",              type: "gi",       category: "adult", instructor: "Anthony Curry" },
 
   // ── Tuesday ─────────────────────────────────────────────────
-  { day: "Tuesday", time: "6:30 AM", name: "Adult BJJ",                type: "nogi", category: "adult" },
-  { day: "Tuesday", time: "5:15 PM", name: "Kids Grappling (7–12)",    type: "nogi", category: "kids"  },
-  { day: "Tuesday", time: "5:15 PM", name: "Teens Grappling (12–15)",  type: "nogi", category: "kids"  },
-  { day: "Tuesday", time: "6:30 PM", name: "Adult BJJ",                type: "nogi", category: "adult" },
+  { day: "Tuesday", time: "6:30 AM",  name: "Adult BJJ",               type: "nogi",     category: "adult", instructor: "Anthony Curry"  },
+  { day: "Tuesday", time: "5:15 PM",  name: "Kids Grappling (7-12)",   type: "nogi",     category: "kids",  instructor: "Anthony Curry"  },
+  { day: "Tuesday", time: "5:15 PM",  name: "Teens Grappling (12-15)", type: "nogi",     category: "kids",  instructor: "Anthony Curry"  },
+  { day: "Tuesday", time: "6:30 PM",  name: "Adult BJJ",               type: "nogi",     category: "adult", instructor: "Anthony Curry"  },
 
   // ── Wednesday ───────────────────────────────────────────────
-  { day: "Wednesday", time: "11:00 AM", name: "Adult BJJ",          type: "nogi",      category: "adult" },
-  { day: "Wednesday", time: "4:45 PM",  name: "Kids BJJ (3–6)",     type: "gi",        category: "kids"  },
-  { day: "Wednesday", time: "5:15 PM",  name: "Kids BJJ (7–12)",    type: "gi",        category: "kids"  },
-  { day: "Wednesday", time: "6:30 PM",  name: "Adult BJJ",          type: "gi",        category: "adult" },
-  { day: "Wednesday", time: "7:30 PM",  name: "Wrestling (7–17)",   type: "wrestling", category: "kids"  },
+  { day: "Wednesday", time: "11:00 AM", name: "Adult BJJ",               type: "nogi",     category: "adult", instructor: "Anthony Curry" },
+  { day: "Wednesday", time: "4:45 PM",  name: "Kids BJJ (3-6)",          type: "gi",       category: "kids",  instructor: "Anthony Curry" },
+  { day: "Wednesday", time: "5:15 PM",  name: "Kids BJJ (7-12)",         type: "gi",       category: "kids",  instructor: "Anthony Curry" },
+  { day: "Wednesday", time: "6:30 PM",  name: "Adult BJJ",               type: "gi",       category: "adult", instructor: "Anthony Curry" },
+  { day: "Wednesday", time: "7:30 PM",  name: "Wrestling (7-17)",        type: "wrestling", category: "kids",  instructor: "Malik Pickett" },
 
   // ── Thursday ────────────────────────────────────────────────
-  { day: "Thursday", time: "6:30 AM", name: "Adult BJJ",                type: "nogi",      category: "adult" },
-  { day: "Thursday", time: "5:15 PM", name: "Kids Grappling (7–12)",    type: "nogi",      category: "kids"  },
-  { day: "Thursday", time: "5:15 PM", name: "Teens Grappling (12–15)",  type: "nogi",      category: "kids"  },
-  { day: "Thursday", time: "6:30 PM", name: "Adult BJJ",                type: "nogi",      category: "adult" },
-  { day: "Thursday", time: "7:30 PM", name: "Wrestling (7–17)",         type: "wrestling", category: "kids"  },
+  { day: "Thursday", time: "6:30 AM",  name: "Adult BJJ",               type: "nogi",     category: "adult", instructor: "Christian Solano" },
+  { day: "Thursday", time: "5:15 PM",  name: "Kids Grappling (7-12)",   type: "nogi",     category: "kids",  instructor: "Anthony Curry"    },
+  { day: "Thursday", time: "5:15 PM",  name: "Teens Grappling (12-15)", type: "nogi",     category: "kids",  instructor: "Anthony Curry"    },
+  { day: "Thursday", time: "6:30 PM",  name: "Adult BJJ",               type: "nogi",     category: "adult", instructor: "Anthony Curry"    },
+  { day: "Thursday", time: "7:30 PM",  name: "Wrestling (7-17)",        type: "wrestling", category: "kids",  instructor: "Malik Pickett"    },
 
   // ── Friday ──────────────────────────────────────────────────
-  { day: "Friday", time: "6:30 AM",  name: "Adult BJJ",               type: "gi",   category: "adult" },
-  { day: "Friday", time: "11:00 AM", name: "Adult BJJ",               type: "gi",   category: "adult" },
-  { day: "Friday", time: "4:45 PM",  name: "Kids BJJ (3–6)",          type: "gi",   category: "kids"  },
-  { day: "Friday", time: "5:15 PM",  name: "Kids BJJ Comp (7–12)",    type: "comp", category: "kids"  },
-  { day: "Friday", time: "5:15 PM",  name: "Teens BJJ Comp (12–15)",  type: "comp", category: "kids"  },
-  { day: "Friday", time: "6:30 PM",  name: "Adult Comp",              type: "comp", category: "adult" },
+  { day: "Friday", time: "6:30 AM",  name: "Adult BJJ",               type: "gi",   category: "adult", instructor: "Jake Maronge"    },
+  { day: "Friday", time: "11:00 AM", name: "Adult BJJ",               type: "gi",   category: "adult", instructor: "Anthony Curry"   },
+  { day: "Friday", time: "4:45 PM",  name: "Kids BJJ (3-6)",          type: "gi",   category: "kids",  instructor: "Anthony Curry"   },
+  { day: "Friday", time: "5:15 PM",  name: "Kids BJJ Comp (7-12)",    type: "comp", category: "kids",  instructor: "Anthony Curry"   },
+  { day: "Friday", time: "5:15 PM",  name: "Teens BJJ Comp (12-15)",  type: "comp", category: "kids",  instructor: "Anthony Curry"   },
+  { day: "Friday", time: "6:30 PM",  name: "Adult Comp",              type: "comp", category: "adult", instructor: "Anthony Curry"   },
 
   // ── Saturday ────────────────────────────────────────────────
-  { day: "Saturday", time: "9:00 AM",  name: "Adult Comp",              type: "comp", category: "adult" },
-  { day: "Saturday", time: "10:00 AM", name: "Kids Grappling (7–12)",   type: "nogi", category: "kids"  },
-  { day: "Saturday", time: "11:00 AM", name: "Adult & Teens",           type: "nogi", category: "adult" },
-  { day: "Saturday", time: "12:00 PM", name: "Kids Grappling (7–12)",   type: "nogi", category: "kids"  },
-  { day: "Saturday", time: "12:00 PM", name: "Teens Grappling (12–15)", type: "nogi", category: "kids"  },
+  { day: "Saturday", time: "9:00 AM",  name: "Adult Comp",              type: "comp", category: "adult", instructor: "Anthony Curry" },
+  { day: "Saturday", time: "10:00 AM", name: "Kids Grappling (7-12)",   type: "nogi", category: "kids",  instructor: "Anthony Curry" },
+  { day: "Saturday", time: "11:00 AM", name: "Adult & Teens",           type: "nogi", category: "adult", instructor: "Anthony Curry" },
+  { day: "Saturday", time: "12:00 PM", name: "Kids Grappling (7-12)",   type: "nogi", category: "kids",  instructor: "Anthony Curry" },
+  { day: "Saturday", time: "12:00 PM", name: "Teens Grappling (12-15)", type: "nogi", category: "kids",  instructor: "Anthony Curry" },
 
   // ── Sunday ──────────────────────────────────────────────────
-  { day: "Sunday", time: "10:30 AM", name: "Open Mat",           type: "open",      category: "adult" },
-  { day: "Sunday", time: "12:00 PM", name: "Pans Prep",          type: "comp",      category: "kids" },
-  { day: "Sunday", time: "1:00 PM",  name: "Wrestling (7–17)",   type: "wrestling", category: "kids"  },
+  { day: "Sunday", time: "10:30 AM", name: "Open Mat",          type: "open",      category: "adult", instructor: "Anthony Curry" },
+  { day: "Sunday", time: "12:00 PM", name: "Pans Prep",         type: "comp",      category: "kids",  instructor: "Anthony Curry" },
+  { day: "Sunday", time: "1:00 PM",  name: "Wrestling (7-17)",  type: "wrestling", category: "kids",  instructor: "Malik Pickett" },
 ];
 
 export const CLASS_TYPE_COLORS: Record<string, { bg: string; text: string; label: string }> = {
