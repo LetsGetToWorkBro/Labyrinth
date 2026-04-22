@@ -640,29 +640,7 @@ export function XPWidget({ xp, memberName: _memberName, onOpenInfo }: XPWidgetPr
         </div>
       </div>
 
-      {/* ── Action pill ─────────────────────────────────────────────── */}
-      <div style={{
-        display: 'flex', justifyContent: 'center',
-        margin: '-8px 20px 16px',
-      }}>
-        <button
-          onClick={onOpenInfo}
-          style={{
-            background: 'rgba(255,255,255,0.04)',
-            border: '1px solid rgba(255,255,255,0.08)',
-            borderRadius: 999,
-            padding: '6px 16px',
-            fontSize: 11,
-            fontWeight: 700,
-            color: '#6a6864',
-            cursor: 'pointer',
-            letterSpacing: '0.04em',
-            transition: 'all 0.2s',
-          }}
-        >
-          Tap for XP details
-        </button>
-      </div>
+
     </>
   );
 }

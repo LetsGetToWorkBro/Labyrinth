@@ -755,6 +755,49 @@ function AccountPage() {
           </div>
         </>)}
 
+        {/* ── Waiver & Agreement Status ── */}
+        <div style={{ marginTop: 24 }}>
+          <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#555', marginBottom: 10 }}>Documents</div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {/* Waiver */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '14px 16px', borderRadius: 14, background: (member as any)?.waiverSigned ? 'rgba(76,175,128,0.06)' : 'rgba(224,82,82,0.06)', border: `1px solid ${(member as any)?.waiverSigned ? 'rgba(76,175,128,0.25)' : 'rgba(224,82,82,0.25)'}` }}>
+              <div style={{ width: 36, height: 36, borderRadius: 10, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: (member as any)?.waiverSigned ? 'rgba(76,175,128,0.12)' : 'rgba(224,82,82,0.1)' }}>
+                {(member as any)?.waiverSigned
+                  ? <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#4CAF80" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                  : <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#E05252" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                }
+              </div>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: 14, fontWeight: 700, color: '#F0F0F0' }}>Liability Waiver</div>
+                <div style={{ fontSize: 11, color: (member as any)?.waiverSigned ? '#4CAF80' : '#E05252', fontWeight: 600, marginTop: 2 }}>
+                  {(member as any)?.waiverSigned ? '✓ Signed' : 'Not signed'}
+                </div>
+              </div>
+              {!(member as any)?.waiverSigned && (
+                <a href="/#/waiver" style={{ padding: '6px 14px', borderRadius: 8, background: '#E05252', color: '#fff', fontSize: 12, fontWeight: 700, textDecoration: 'none' }}>Sign Now</a>
+              )}
+            </div>
+            {/* Membership Agreement */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '14px 16px', borderRadius: 14, background: (member as any)?.agreementSigned ? 'rgba(76,175,128,0.06)' : 'rgba(224,82,82,0.06)', border: `1px solid ${(member as any)?.agreementSigned ? 'rgba(76,175,128,0.25)' : 'rgba(224,82,82,0.25)'}` }}>
+              <div style={{ width: 36, height: 36, borderRadius: 10, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: (member as any)?.agreementSigned ? 'rgba(76,175,128,0.12)' : 'rgba(224,82,82,0.1)' }}>
+                {(member as any)?.agreementSigned
+                  ? <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#4CAF80" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                  : <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#E05252" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                }
+              </div>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: 14, fontWeight: 700, color: '#F0F0F0' }}>Membership Agreement</div>
+                <div style={{ fontSize: 11, color: (member as any)?.agreementSigned ? '#4CAF80' : '#E05252', fontWeight: 600, marginTop: 2 }}>
+                  {(member as any)?.agreementSigned ? '✓ Signed' : 'Not signed'}
+                </div>
+              </div>
+              {!(member as any)?.agreementSigned && (
+                <a href="/#/waiver" style={{ padding: '6px 14px', borderRadius: 8, background: '#E05252', color: '#fff', fontSize: 12, fontWeight: 700, textDecoration: 'none' }}>Sign Now</a>
+              )}
+            </div>
+          </div>
+        </div>
+
         {/* Class History link */}
         <a href="/#/history" style={{
           display: 'flex', alignItems: 'center', gap: 12, marginTop: 20,

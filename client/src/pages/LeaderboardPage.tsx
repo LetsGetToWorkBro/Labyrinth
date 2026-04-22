@@ -26,6 +26,7 @@ const BELT_TINTS: Record<string, string> = {
   white: '#E0E0E0', blue: '#3B82F6', purple: '#8B5CF6',
   brown: '#92400E', black: '#2A2A2A', grey: '#9CA3AF',
   yellow: '#EAB308', orange: '#F97316', green: '#22C55E',
+  gray: '#9CA3AF',  // alias
 };
 
 type Tab = 'classes' | 'games';
@@ -167,11 +168,17 @@ export default function LeaderboardPage() {
         <div className="lb-filter-scroll" style={{ display: 'flex', overflowX: 'auto', gap: 8, marginBottom: 12, paddingBottom: 2, scrollbarWidth: 'none' }}>
           {([
             { key: null,     label: 'All Belts', color: '#888' },
+            // Adult belts
             { key: 'black',  label: 'Black',    color: '#C8A24C', belt: 'black'  },
             { key: 'brown',  label: 'Brown',    color: '#92400E', belt: 'brown'  },
             { key: 'purple', label: 'Purple',   color: '#8B5CF6', belt: 'purple' },
             { key: 'blue',   label: 'Blue',     color: '#3B82F6', belt: 'blue'   },
             { key: 'white',  label: 'White',    color: '#E0E0E0', belt: 'white'  },
+            // Kids belts
+            { key: 'grey',   label: 'Grey',     color: '#9CA3AF', belt: 'grey'   },
+            { key: 'yellow', label: 'Yellow',   color: '#EAB308', belt: 'yellow' },
+            { key: 'orange', label: 'Orange',   color: '#F97316', belt: 'orange' },
+            { key: 'green',  label: 'Green',    color: '#22C55E', belt: 'green'  },
           ] as { key: string | null; label: string; color: string; belt?: string }[]).map(chip => {
             const isActive = selectedBelt === chip.key;
             return (

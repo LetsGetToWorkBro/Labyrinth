@@ -34,6 +34,9 @@ export default function AchievementsPage() {
   const [selectedAchievement, setSelectedAchievement] = useState<Achievement | null>(null);
   const [isSelectedEarned, setIsSelectedEarned] = useState(false);
   const [newBadgeKeys, setNewBadgeKeys] = useState<string[]>([]);
+  const [claimedXpKeys, setClaimedXpKeys] = useState<string[]>(() => {
+    try { return JSON.parse(localStorage.getItem('lbjj_achievement_xp_claimed') || '[]'); } catch { return []; }
+  });
   // K2: Secret reveal overlay state
   const [secretReveal, setSecretReveal] = useState<Achievement | null>(null);
   // K3: Member stats for progress
@@ -372,20 +375,65 @@ export default function AchievementsPage() {
                 </div>
               )}
             </div>
-            {isSelectedEarned && (
-              <button
-                onClick={() => { setSelectedAchievement(null); handleShareBadge(selectedAchievement); }}
-                style={{
-                  marginTop: 12, width: '100%', padding: '11px',
-                  borderRadius: 12, background: 'rgba(200,162,76,0.1)',
-                  border: '1px solid rgba(200,162,76,0.25)',
-                  color: '#C8A24C', fontSize: 13, fontWeight: 600,
-                  cursor: 'pointer',
-                }}
-              >
-                Share to Community Chat
-              </button>
-            )}
+            {isSelectedEarned && (() => {
+              const isClaimed = claimedXpKeys.includes(selectedAchievement.key);
+              const XP_REWARD = 150;
+              return (
+                <>
+                  {/* XP Claim button */}
+                  <button
+                    onClick={() => {
+                      if (isClaimed) return;
+                      const newClaimed = [...claimedXpKeys, selectedAchievement.key];
+                      setClaimedXpKeys(newClaimed);
+                      localStorage.setItem('lbjj_achievement_xp_claimed', JSON.stringify(newClaimed));
+                      // Award XP
+                      try {
+                        const s = JSON.parse(localStorage.getItem('lbjj_game_stats_v2') || '{}');
+                        s.xp = (s.xp || 0) + XP_REWARD;
+                        s.totalXP = (s.totalXP || 0) + XP_REWARD;
+                        localStorage.setItem('lbjj_game_stats_v2', JSON.stringify(s));
+                        window.dispatchEvent(new CustomEvent('xp-updated'));
+                      } catch {}
+                      // Spawn floating XP
+                      const el = document.createElement('div');
+                      el.textContent = `+${XP_REWARD} XP`;
+                      el.style.cssText = 'position:fixed;bottom:30%;left:50%;transform:translate(-50%,-50%);font-family:var(--font-display,system-ui);font-size:28px;font-weight:900;color:#C8A24C;text-shadow:0 0 20px rgba(200,162,76,0.8);pointer-events:none;z-index:9999;';
+                      document.body.appendChild(el);
+                      el.animate([{opacity:0,transform:'translate(-50%,-50%) scale(0.7)'},{opacity:1,transform:'translate(-50%,-80%) scale(1.1)',offset:0.3},{opacity:0,transform:'translate(-50%,-150%) scale(0.9)'}],{duration:1200,easing:'cubic-bezier(0.16,1,0.3,1)',fill:'forwards'}).onfinish = () => el.remove();
+                    }}
+                    style={{
+                      marginTop: 12, width: '100%', padding: '13px',
+                      borderRadius: 12,
+                      background: isClaimed ? 'rgba(76,175,128,0.08)' : 'linear-gradient(135deg,#C8A24C,#FFD700)',
+                      border: isClaimed ? '1px solid rgba(76,175,128,0.25)' : 'none',
+                      color: isClaimed ? '#4CAF80' : '#000',
+                      fontSize: 14, fontWeight: 800, cursor: isClaimed ? 'default' : 'pointer',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                      boxShadow: isClaimed ? 'none' : '0 4px 16px rgba(200,162,76,0.35)',
+                      transition: 'all 0.3s',
+                    }}
+                  >
+                    {isClaimed
+                      ? <><span style={{fontSize:16}}>✓</span> +{XP_REWARD} XP Claimed</>
+                      : <><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" width="16" height="16"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg> Claim +{XP_REWARD} XP</>
+                    }
+                  </button>
+                  {/* Share button */}
+                  <button
+                    onClick={() => { setSelectedAchievement(null); handleShareBadge(selectedAchievement); }}
+                    style={{
+                      marginTop: 8, width: '100%', padding: '11px',
+                      borderRadius: 12, background: 'rgba(200,162,76,0.08)',
+                      border: '1px solid rgba(200,162,76,0.2)',
+                      color: '#C8A24C', fontSize: 13, fontWeight: 600, cursor: 'pointer',
+                    }}
+                  >
+                    Share to Community Chat
+                  </button>
+                </>
+              );
+            })()}
             <button
               onClick={() => setSelectedAchievement(null)}
               style={{

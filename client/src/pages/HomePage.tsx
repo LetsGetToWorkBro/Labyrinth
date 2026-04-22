@@ -539,6 +539,20 @@ export default function HomePage() {
   });
 
   // ─── Total classes count-up animation ─────────────────────────
+  // Keep memberXP live — re-read from cache whenever xp-updated fires
+  useEffect(() => {
+    const syncXP = () => {
+      try {
+        const s = JSON.parse(localStorage.getItem('lbjj_game_stats_v2') || '{}');
+        const cached = Math.max(s.xp || 0, s.totalXP || 0);
+        setMemberXP(prev => Math.max(prev, cached, (member as any)?.totalPoints || 0));
+      } catch {}
+    };
+    window.addEventListener('xp-updated', syncXP);
+    window.addEventListener('checkin-complete', syncXP);
+    return () => { window.removeEventListener('xp-updated', syncXP); window.removeEventListener('checkin-complete', syncXP); };
+  }, [member]);
+
   const [displayTotalClasses, setDisplayTotalClasses] = useState(0);
   const totalClassesAnimated = useRef(false);
   const readClassesToday = useCallback(() => {
@@ -1842,166 +1856,6 @@ export default function HomePage() {
           }}>
             <span style={{ display: 'inline-flex', alignItems: 'center' }}><BoltIcon size={12} color="rgba(130,170,255,0.9)" /></span>
             <span style={{ fontSize: 10, fontWeight: 700, color: 'rgba(130,170,255,0.9)', letterSpacing: '0.1em', textTransform: 'uppercase' }}>Flow State</span>
-          </div>
-        </div>
-      )}
-
-      {/* ════════════════════════════════════════════════════
-          PROFILE CARD — collapsible, stays at bottom
-          ════════════════════════════════════════════════════ */}
-      <input ref={avatarFileRef} type="file" accept="image/*" onChange={handleAvatarPhoto} style={{ display: 'none' }} />
-      <div className="mx-5 mb-3 stagger-child" style={{ transition: 'all 0.2s ease' }}>
-        {/* Collapsed header row */}
-        <div onClick={() => setProfileExpanded(p => !p)} style={{
-          background: '#141414', border: '1px solid #1A1A1A',
-          borderRadius: profileExpanded ? '16px 16px 0 0' : 16,
-          padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 12,
-          cursor: 'pointer', transition: 'border-radius 0.2s ease',
-        }}>
-          <div onClick={(e) => e.stopPropagation()} style={{ flexShrink: 0 }}>
-            <LevelWidget xp={memberXP} memberName={member?.name} memberBelt={member?.belt} size={72} profilePic={profilePic || undefined} />
-          </div>
-          <div style={{ flex: 1 }}>
-            <div style={{ fontSize: 16, fontWeight: 700, color: '#F0F0F0' }} data-testid="text-member-name">{member?.name}</div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 2 }}>
-              <BeltVisual belt={member?.belt || 'white'} />
-              <span style={{ fontSize: 12, color: getBeltColor(member?.belt || 'white'), fontWeight: 600, textTransform: 'capitalize' }}>{member?.belt || 'White'} Belt</span>
-            </div>
-            {(() => {
-              const xp = (member as any)?.totalPoints || 0;
-              const { title } = getLevelFromXP(xp);
-              const lvl = getActualLevel(xp);
-              return (
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 4 }}>
-                  <div style={{ fontSize: 10, fontWeight: 800, color: '#000', background: 'linear-gradient(135deg, #C8A24C, #FFD700)', padding: '1px 6px', borderRadius: 8, letterSpacing: '0.03em' }}>Lv {lvl}</div>
-                  <span style={{ fontSize: 11, color: '#C8A24C', fontWeight: 600 }}>{title}</span>
-                </div>
-              );
-            })()}
-          </div>
-          <ChevronDown size={16} style={{ color: '#444', transform: profileExpanded ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s', flexShrink: 0 }} />
-        </div>
-
-        {/* Expanded details */}
-        {profileExpanded && (
-          <div style={{ background: '#141414', border: '1px solid #1A1A1A', borderTop: 'none', borderRadius: '0 0 16px 16px', padding: '0 16px 16px' }}>
-            <div style={{ borderTop: '1px solid #1A1A1A', paddingTop: 14, display: 'flex', flexDirection: 'column', gap: 8 }}>
-              <div style={{ fontSize: 12, color: '#666' }}>Member since <span style={{ color: '#999' }}>{joinDate}</span></div>
-              {member.phone && <div style={{ fontSize: 12, color: '#666' }}>Phone <span style={{ color: '#999' }}>{member.phone}</span></div>}
-              {member.email && member.email !== member.name && <div style={{ fontSize: 12, color: '#666' }}>Email <span style={{ color: '#999' }}>{member.email}</span></div>}
-              <button onClick={() => avatarFileRef.current?.click()} style={{ fontSize: 11, color: '#C8A24C', background: 'none', border: 'none', cursor: 'pointer', padding: '4px 0', fontWeight: 600 }} aria-label="Change profile photo">Change Photo</button>
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 14 }}>
-              {hasFamily && (
-                <button onClick={(e) => { e.stopPropagation(); setShowFamilySwitcher(!showFamilySwitcher); }}
-                  className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all active:scale-[0.97]"
-                  style={{ backgroundColor: showFamilySwitcher ? "rgba(200,162,76,0.15)" : "#1A1A1A", color: showFamilySwitcher ? "#C8A24C" : "#999", border: showFamilySwitcher ? "1px solid rgba(200,162,76,0.3)" : "1px solid #222" }}
-                  data-testid="button-family-switcher">
-                  <Users size={13} /> Family
-                </button>
-              )}
-              <button onClick={(e) => { e.stopPropagation(); haptic(); setShowRankRequest(true); setRankBelt(member.belt || "white"); setRankStripes(0); setRankNote(""); setRankSent(false); }}
-                style={{ background: "none", border: "none", padding: 0, cursor: "pointer", position: "relative", overflow: "visible" }} title="Tap to request a rank update" aria-label="Request belt update">
-                <BeltIcon belt={member.belt || "white"} stripes={0} width={72} style={{ filter: `drop-shadow(0 1px 6px ${getBeltColor(member.belt)}40)` }} />
-                <span style={{ position: "absolute", bottom: -2, right: -2, width: 14, height: 14, borderRadius: "50%", backgroundColor: "#C8A24C", border: "2px solid #141414", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                  <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="#0A0A0A" strokeWidth="2.5"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-                </span>
-              </button>
-              <div style={{ flex: 1 }} />
-              <a href="/#/account" style={{ fontSize: 12, color: '#C8A24C', fontWeight: 600, textDecoration: 'none' }}>Edit Profile →</a>
-            </div>
-            {hasFamily && showFamilySwitcher && (
-              <div className="mt-3 rounded-xl overflow-hidden" style={{ border: "1px solid #222" }}>
-                <p className="text-[10px] uppercase tracking-wider px-3 pt-2.5 pb-1.5 font-medium" style={{ color: "#555", backgroundColor: "#0D0D0D" }}>Switch Profile</p>
-                {switchError && <p className="text-xs px-3 py-1.5" style={{ color: "#E05555", backgroundColor: "rgba(224,85,85,0.07)" }}>{switchError}</p>}
-                {familyMembers.map((fm) => {
-                  const isActive = fm.row === member.row;
-                  const isLoading = switchingRow === fm.row;
-                  return (
-                    <button key={fm.row} onClick={(e) => { e.stopPropagation(); handleSwitchProfile(fm); }} disabled={!!switchingRow}
-                      className="w-full flex items-center gap-3 px-3 py-2.5 transition-colors text-left"
-                      style={{ backgroundColor: isActive ? "rgba(200,162,76,0.08)" : "#0D0D0D", borderTop: "1px solid #181818", opacity: switchingRow && !isLoading ? 0.5 : 1 }}>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium truncate" style={{ color: isActive ? "#C8A24C" : "#E0E0E0" }}>{fm.name}</p>
-                        <p className="text-[10px] mt-0.5" style={{ color: "#555" }}>{fm.type} · {fm.belt || "White"} belt{fm.isPrimary ? " · Primary" : ""}</p>
-                      </div>
-                      <div className="flex-shrink-0">
-                        {isLoading ? <Loader2 size={14} className="animate-spin" style={{ color: "#C8A24C" }} />
-                          : isActive ? <Check size={14} style={{ color: "#C8A24C" }} />
-                          : <ChevronRight size={14} style={{ color: "#333" }} />}
-                      </div>
-                    </button>
-                  );
-                })}
-              </div>
-            )}
-            <div className="flex gap-3 mt-3 pt-3" style={{ borderTop: "1px solid #1A1A1A" }}>
-              <a href="/#/waiver" className="flex items-center gap-1.5 flex-1 text-xs" style={{ textDecoration: "none" }}>
-                {member.waiverSigned ? <CheckCircle size={13} style={{ color: "#4CAF80", flexShrink: 0 }} /> : <FileText size={13} style={{ color: "#E08228", flexShrink: 0 }} />}
-                <span style={{ color: member.waiverSigned ? "#4CAF80" : "#E08228" }}>{member.waiverSigned ? "Waiver signed" : "Sign waiver"}</span>
-              </a>
-              <a href="/#/waiver" className="flex items-center gap-1.5 flex-1 text-xs" style={{ textDecoration: "none" }}>
-                {member.agreementSigned ? <CheckCircle size={13} style={{ color: "#4CAF80", flexShrink: 0 }} /> : <FileText size={13} style={{ color: "#E08228", flexShrink: 0 }} />}
-                <span style={{ color: member.agreementSigned ? "#4CAF80" : "#E08228" }}>{member.agreementSigned ? "Agreement signed" : "Sign agreement"}</span>
-              </a>
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* Rank request modal */}
-      {showRankRequest && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', zIndex: 1000, display: 'flex', alignItems: 'flex-end', justifyContent: 'center', animation: 'fadeInOverlay 0.25s ease-out', touchAction: 'none' as any }} onTouchMove={e => e.stopPropagation()}>
-          <div style={{ width: '100%', maxWidth: 480, background: '#0F0F0F', borderRadius: '24px 24px 0 0', padding: '24px 20px', maxHeight: '90vh', overflowY: 'auto', touchAction: 'pan-y' as any }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
-              <h2 style={{ fontSize: 18, fontWeight: 800, color: '#F0F0F0', margin: 0 }}>Request Belt Update</h2>
-              <button onClick={() => setShowRankRequest(false)} aria-label="Close" style={{ background: 'none', border: 'none', color: '#666', cursor: 'pointer', fontSize: 22, lineHeight: 1 }}>✕</button>
-            </div>
-            {rankSent ? (
-              <div style={{ textAlign: 'center', padding: '20px 0' }}>
-                <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 12 }}><CheckCircle2 size={40} color="#C8A24C" /></div>
-                <div style={{ fontSize: 18, fontWeight: 800, color: '#C8A24C', marginBottom: 8 }}>Request Sent!</div>
-                <div style={{ fontSize: 13, color: '#888' }}>Your coach will review and confirm the update.</div>
-                <button onClick={() => setShowRankRequest(false)} style={{ marginTop: 20, padding: '10px 24px', borderRadius: 10, background: '#C8A24C', color: '#000', fontWeight: 700, border: 'none', cursor: 'pointer' }}>Done</button>
-              </div>
-            ) : (
-              <>
-                <label style={{ display: "block", fontSize: 11, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.06em", color: "#666", marginBottom: 8 }}>Belt</label>
-                <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 20 }}>
-                  {ADULT_BELT_OPTIONS.map((b) => (
-                    <button key={b} onClick={() => setRankBelt(b)}
-                      style={{ padding: "8px 14px", borderRadius: 10, border: `1.5px solid ${rankBelt === b ? "#C8A24C" : "#222"}`, background: rankBelt === b ? "rgba(200,162,76,0.15)" : "#111", color: rankBelt === b ? "#C8A24C" : "#888", fontWeight: 600, fontSize: 13, cursor: "pointer", textTransform: "capitalize" }}>
-                      {b}
-                    </button>
-                  ))}
-                </div>
-                <label style={{ display: "block", fontSize: 11, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.06em", color: "#666", marginBottom: 8 }}>Stripes</label>
-                <div style={{ display: "flex", gap: 8, marginBottom: 20 }}>
-                  {[0, 1, 2, 3, 4].map((s) => (
-                    <button key={s} onClick={() => setRankStripes(s)}
-                      style={{ width: 40, height: 40, borderRadius: 10, border: `1.5px solid ${rankStripes === s ? "#C8A24C" : "#222"}`, background: rankStripes === s ? "rgba(200,162,76,0.15)" : "#111", color: rankStripes === s ? "#C8A24C" : "#888", fontWeight: 700, fontSize: 14, cursor: "pointer" }}>
-                      {s}
-                    </button>
-                  ))}
-                </div>
-                <label style={{ display: "block", fontSize: 11, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.06em", color: "#666", marginBottom: 8 }}>Note <span style={{ color: "#555", fontWeight: 400 }}>(optional)</span></label>
-                <textarea value={rankNote} onChange={e => setRankNote(e.target.value)}
-                  placeholder="e.g. Competed at Houston Open, won gold…" rows={2}
-                  style={{ width: "100%", backgroundColor: "#0D0D0D", border: "1px solid #222", borderRadius: 10, padding: "10px 12px", fontSize: 13, color: "#F0F0F0", outline: "none", resize: "none", boxSizing: "border-box", marginBottom: 20, fontFamily: "inherit" }} />
-                <button onClick={async () => {
-                  haptic();
-                  if (!rankBelt) return;
-                  setRankSubmitting(true);
-                  const today = new Date().toISOString().split("T")[0];
-                  const result = await beltSavePromotion({ belt: rankBelt, stripes: rankStripes, date: today, note: rankNote });
-                  setRankSubmitting(false);
-                  if (result?.success) setRankSent(true);
-                }} disabled={!rankBelt || rankSubmitting}
-                  style={{ width: "100%", padding: "13px", borderRadius: 12, fontSize: 14, fontWeight: 700, backgroundColor: rankBelt ? "#C8A24C" : "#1A1A1A", color: rankBelt ? "#0A0A0A" : "#444", border: "none", cursor: rankBelt ? "pointer" : "default", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, opacity: rankSubmitting ? 0.7 : 1 }}>
-                  {rankSubmitting ? <><Loader2 size={15} className="animate-spin" /> Sending…</> : "Submit for Coach Approval"}
-                </button>
-              </>
-            )}
           </div>
         </div>
       )}
