@@ -257,7 +257,7 @@ export function StreakInfoPanel({ onClose, trainedCount, isEliteWeek, isPerfectW
 // ─── Main Widget ──────────────────────────────────────────────────
 
 export function StreakWidget({ dailyStreakCount, weekDots, trainedCount, comboMultiplier, onOpenInfo, onCheckIn }: StreakWidgetProps) {
-  const [isExpanded, setIsExpanded] = useState(false);
+  // Always expanded — no collapse
   const [sparks, setSparks] = useState<{ id: number; x: number; y: number; color: string; count: number }[]>([]);
   const [impactFlash, setImpactFlash] = useState(false);
   const [levelUpText, setLevelUpText] = useState('');
@@ -267,8 +267,7 @@ export function StreakWidget({ dailyStreakCount, weekDots, trainedCount, comboMu
     RELIC_DAYS.forEach((d, i) => { if (dailyStreakCount >= d) s.add(i); });
     return s;
   });
-  const wrapperRef = useRef<HTMLDivElement>(null);
-  const contentRef = useRef<HTMLDivElement>(null);
+
   const widgetRef = useRef<HTMLDivElement>(null);
   const sparkIdRef = useRef(0);
   const prevStreakRef = useRef(dailyStreakCount);
@@ -324,25 +323,7 @@ export function StreakWidget({ dailyStreakCount, weekDots, trainedCount, comboMu
     }
   }, [dailyStreakCount, relicsUnlocked]);
 
-  // Expand/collapse
-  const expand = () => {
-    if (isExpanded) return;
-    setIsExpanded(true);
-  };
-  const collapse = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    setIsExpanded(false);
-  };
-
-  // Animated expand height
-  const [expandHeight, setExpandHeight] = useState(0);
-  useEffect(() => {
-    if (isExpanded && contentRef.current) {
-      setExpandHeight(contentRef.current.scrollHeight);
-    } else {
-      setExpandHeight(0);
-    }
-  }, [isExpanded, dailyStreakCount, trainedCount]);
+  // Always expanded — content always visible
 
   return (
     <>
@@ -361,8 +342,7 @@ export function StreakWidget({ dailyStreakCount, weekDots, trainedCount, comboMu
         @keyframes sw-impact { 0%{opacity:0.6} 100%{opacity:0} }
         @keyframes sw-level-up { 0%{opacity:1;transform:translate(-50%,-50%) scale(0.5) translateY(40px)} 100%{opacity:0;transform:translate(-50%,-50%) scale(1.2) translateY(-60px)} }
         @keyframes sw-track-head-pulse { 0%,100%{box-shadow:0 0 12px #fff, 0 0 32px ${tc.primary}} 50%{box-shadow:0 0 20px #fff, 0 0 48px ${tc.primary}} }
-        .sw-widget:not(.sw-expanded):active { transform: scale(0.97); }
-        .sw-widget.sw-expanded { cursor: default; }
+        .sw-widget { cursor: default; }
         .sw-day-col.is-active .sw-day-circle::after {
           content:''; position:absolute; inset:-8px; border-radius:999px; border:1px solid ${tc.primary};
           animation: sw-sonar 2s cubic-bezier(0.16,1,0.3,1) infinite;
@@ -371,19 +351,18 @@ export function StreakWidget({ dailyStreakCount, weekDots, trainedCount, comboMu
 
       <div
         ref={widgetRef}
-        className={`sw-widget${isExpanded ? ' sw-expanded' : ''}`}
-        onClick={() => { if (!isExpanded) { expand(); } }}
+        className="sw-widget"
         style={{
           background: `linear-gradient(180deg, #161513 0%, #0f0e0d 100%)`,
           border: `1px solid rgba(255,255,255,0.05)`,
           borderTop: `1px solid rgba(255,255,255,0.15)`,
           borderRadius: 24,
-          padding: isExpanded ? '24px 24px 32px' : '20px 20px',
+          padding: '24px 20px 32px',
           boxShadow: `0 16px 64px -16px rgba(0,0,0,0.8), 0 0 50px ${tc.glow}`,
-          cursor: isExpanded ? 'default' : 'pointer',
+          cursor: 'default',
           position: 'relative',
           overflow: 'hidden',
-          transition: 'box-shadow 0.6s, padding 0.4s',
+          transition: 'box-shadow 0.6s',
           userSelect: 'none',
           WebkitTapHighlightColor: 'transparent',
           margin: '0 20px 16px',
@@ -422,17 +401,7 @@ export function StreakWidget({ dailyStreakCount, weekDots, trainedCount, comboMu
           </div>
         )}
 
-        {/* Close button — only when expanded */}
-        {isExpanded && (
-          <button onClick={collapse} style={{
-            position: 'absolute', top: 20, right: 20, width: 34, height: 34,
-            borderRadius: '50%', background: '#282522', border: '1px solid rgba(255,255,255,0.08)',
-            color: '#a8a6a1', display: 'flex', alignItems: 'center', justifyContent: 'center',
-            cursor: 'pointer', zIndex: 50, transition: 'all 0.2s',
-          }}>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
-          </button>
-        )}
+
 
         {/* ── HEADER ───────────────────────────────────────────── */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', position: 'relative', zIndex: 20 }}>
@@ -498,13 +467,7 @@ export function StreakWidget({ dailyStreakCount, weekDots, trainedCount, comboMu
         </div>
 
         {/* ── EXPANDED CONTENT ─────────────────────────────────── */}
-        <div ref={wrapperRef} style={{
-          height: expandHeight,
-          overflow: isExpanded ? 'visible' : 'hidden',
-          transition: 'height 0.6s cubic-bezier(0.16,1,0.3,1)',
-        }}>
-          <div ref={contentRef}>
-            <div style={{ paddingTop: 28 }}>
+        <div style={{ paddingTop: 28 }}>
 
               {/* ── Phase: Day dots ── */}
               <div style={{ marginBottom: 24 }}>
@@ -533,9 +496,9 @@ export function StreakWidget({ dailyStreakCount, weekDots, trainedCount, comboMu
 
                         {/* Circle */}
                         <div
+                          className="sw-day-circle"
                           onClick={e => {
                             e.stopPropagation();
-                            if (!isExpanded) { expand(); return; }
                             if (isActive && onCheckIn) {
                               const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
                               const wRect = widgetRef.current?.getBoundingClientRect();
@@ -684,8 +647,6 @@ export function StreakWidget({ dailyStreakCount, weekDots, trainedCount, comboMu
               </div>
 
             </div>
-          </div>
-        </div>
       </div>
     </>
   );
