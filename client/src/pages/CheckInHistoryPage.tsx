@@ -240,19 +240,49 @@ export default function CheckInHistoryPage() {
         }
         @keyframes ch-shockwave {
           from { transform: scale(0.2); opacity: 1; }
-          to   { transform: scale(2.2); opacity: 0; }
+          to   { transform: scale(2.4); opacity: 0; }
         }
         @keyframes ch-bar-in {
-          from { height: 0; }
+          from { height: 0 !important; }
         }
-        .ch-stagger-1 { animation: ch-stagger-in 0.9s cubic-bezier(0.16,1,0.3,1) 0.05s both; }
-        .ch-stagger-2 { animation: ch-stagger-in 0.9s cubic-bezier(0.16,1,0.3,1) 0.15s both; }
-        .ch-stagger-3 { animation: ch-stagger-in 0.9s cubic-bezier(0.16,1,0.3,1) 0.25s both; }
-        .ch-bento:hover { transform: translateY(-3px) scale(1.01); border-color: rgba(255,255,255,0.15) !important; z-index: 20; }
-        .ch-bento:active { transform: scale(0.98) !important; }
-        .ch-bar-wrap:hover .ch-bar { filter: brightness(1.25); transform: scaleY(1.05); }
-        .ch-node-card:hover { background: rgba(255,255,255,0.02); }
-        .ch-day-pill:hover { transform: translateY(-2px); border-color: rgba(255,255,255,0.3) !important; }
+        @keyframes ch-energy-pulse {
+          0%,100% { filter: blur(1px) brightness(1); }
+          50% { filter: blur(1.5px) brightness(1.3); }
+        }
+        .ch-stagger-1 { animation: ch-stagger-in 1s cubic-bezier(0.16,1,0.3,1) 0.05s both; }
+        .ch-stagger-2 { animation: ch-stagger-in 1s cubic-bezier(0.16,1,0.3,1) 0.12s both; }
+        .ch-stagger-3 { animation: ch-stagger-in 1s cubic-bezier(0.16,1,0.3,1) 0.20s both; }
+
+        /* Bento cards */
+        .ch-bento {
+          position: relative; overflow: hidden;
+          transition: transform 0.4s cubic-bezier(0.34,1.56,0.64,1), box-shadow 0.4s cubic-bezier(0.16,1,0.3,1), border-color 0.4s !important;
+        }
+        .ch-bento::after {
+          content: ''; position: absolute; inset: 0; z-index: 5; pointer-events: none;
+          background: radial-gradient(circle at var(--mx,50%) var(--my,50%), rgba(255,255,255,0.09) 0%, transparent 55%);
+          opacity: 0; transition: opacity 0.4s;
+          border-radius: inherit;
+        }
+        .ch-bento:hover { transform: translateY(-3px) scale(1.015); border-color: rgba(255,255,255,0.18) !important; z-index: 20;
+          box-shadow: 0 24px 48px rgba(0,0,0,0.8), inset 0 1px 2px rgba(255,255,255,0.18) !important; }
+        .ch-bento:hover::after { opacity: 1; }
+        .ch-bento:active { transform: translateY(0) scale(0.97) !important; }
+
+        /* Bento icon */
+        .ch-bento:hover .ch-bento-icon { transform: scale(1.12) rotate(-5deg) !important; background: rgba(255,255,255,0.15) !important; }
+        .ch-bento.ch-lb:hover .ch-bento-icon { transform: scale(1.12) rotate(-5deg) !important; background: #e8af34 !important; color: #000 !important; box-shadow: 0 4px 12px rgba(232,175,52,0.5) !important; }
+
+        /* Bar chart */
+        .ch-bar-wrap:hover .ch-track { background: rgba(255,255,255,0.06) !important; border-color: rgba(255,255,255,0.12) !important; }
+        .ch-bar-wrap:hover .ch-bar { transform: scaleY(1.06); filter: brightness(1.25); }
+
+        /* Timeline */
+        .ch-node-card:hover { background: rgba(255,255,255,0.025) !important; }
+        .ch-day-pill:hover { transform: translateY(-3px) !important; }
+
+        /* Energy beam pulse */
+        .ch-energy-beam { animation: ch-energy-pulse 2s ease-in-out infinite; }
       `}</style>
 
       <div className="app-content" style={{ background: '#020202', paddingBottom: 80, overflowX: 'hidden', position: 'relative' }}>
@@ -285,13 +315,15 @@ export default function CheckInHistoryPage() {
           {/* ── Bento Grid ── */}
           <div className="ch-stagger-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 36 }}>
 
-            {/* Full-width pulse card */}
+            {/* Full-width pulse card — border reacts to active theme */}
             <div style={{
               gridColumn: '1 / -1',
-              background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.04)',
+              background: `linear-gradient(160deg, ${tc.bg} 0%, rgba(255,255,255,0.02) 100%)`,
+              border: `1px solid ${activeNodeIdx !== null ? tc.border : 'rgba(255,255,255,0.06)'}`,
               borderRadius: 24, padding: 24,
-              boxShadow: '0 16px 32px rgba(0,0,0,0.5), inset 0 1px 1px rgba(255,255,255,0.06)',
+              boxShadow: `0 16px 32px rgba(0,0,0,0.6), inset 0 1px 1px rgba(255,255,255,0.08), 0 0 40px ${activeNodeIdx !== null ? tc.ambientGlow : 'transparent'}`,
               backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)',
+              transition: 'border-color 0.8s, box-shadow 0.8s, background 0.8s',
             }}>
               {/* Stats header */}
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20 }}>
@@ -302,7 +334,7 @@ export default function CheckInHistoryPage() {
                   <div style={{ fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,0.5)', textTransform: 'uppercase', letterSpacing: '0.05em', marginTop: 8 }}>Total Classes</div>
                 </div>
                 <div style={{ textAlign: 'right' }}>
-                  <div style={{ fontFamily: "var(--font-display,'Cabinet Grotesk',system-ui)", fontSize: 24, fontWeight: 800, color: '#e8af34', transition: 'color 0.5s', fontVariantNumeric: 'tabular-nums' }}>
+                  <div style={{ fontFamily: "var(--font-display,'Cabinet Grotesk',system-ui)", fontSize: 24, fontWeight: 800, color: tc.color, transition: 'color 0.8s', fontVariantNumeric: 'tabular-nums', textShadow: activeNodeIdx !== null ? `0 0 20px ${tc.glow}` : 'none' }}>
                     {loading ? '—' : `+${displayXP} XP`}
                   </div>
                   <div style={{ fontSize: 11, fontWeight: 600, color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', letterSpacing: '0.04em', marginTop: 4 }}>Last 7 Days</div>
@@ -330,11 +362,12 @@ export default function CheckInHistoryPage() {
                         onMouseLeave={() => setHudData(null)}
                       >
                         {/* Track */}
-                        <div style={{
+                        <div className="ch-track" style={{
                           position: 'absolute', bottom: 0, left: '50%', transform: 'translateX(-50%)',
                           width: '100%', height: '100%',
                           background: 'rgba(255,255,255,0.02)', borderRadius: 8,
                           border: '1px dashed rgba(255,255,255,0.05)',
+                          transition: 'background 0.3s, border-color 0.3s',
                         }} />
                         {/* Bar */}
                         <div
@@ -395,15 +428,16 @@ export default function CheckInHistoryPage() {
             {/* This Month mini */}
             <div
               className="ch-bento"
+              onMouseMove={e => { const r=(e.currentTarget as HTMLElement).getBoundingClientRect(); (e.currentTarget as HTMLElement).style.setProperty('--mx',`${((e.clientX-r.left)/r.width*100)}%`); (e.currentTarget as HTMLElement).style.setProperty('--my',`${((e.clientY-r.top)/r.height*100)}%`); }}
               style={{
                 background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.04)',
                 borderRadius: 24, padding: 20,
                 boxShadow: '0 16px 32px rgba(0,0,0,0.5), inset 0 1px 1px rgba(255,255,255,0.06)',
                 display: 'flex', flexDirection: 'column', justifyContent: 'space-between',
-                cursor: 'pointer', transition: 'transform 0.4s cubic-bezier(0.34,1.56,0.64,1), border-color 0.4s',
+                cursor: 'pointer',
               }}
             >
-              <div style={{ width: 36, height: 36, borderRadius: 12, background: 'rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'rgba(255,255,255,0.5)', marginBottom: 12, transition: 'all 0.3s' }}>
+              <div className="ch-bento-icon" style={{ width: 36, height: 36, borderRadius: 12, background: 'rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'rgba(255,255,255,0.5)', marginBottom: 12, transition: 'all 0.3s' }}>
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width="18" height="18">
                   <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
                 </svg>
@@ -419,17 +453,17 @@ export default function CheckInHistoryPage() {
             {/* Leaderboard link */}
             <a
               href="/#/leaderboard"
-              className="ch-bento"
+              className="ch-bento ch-lb"
+              onMouseMove={e => { const r=(e.currentTarget as HTMLElement).getBoundingClientRect(); (e.currentTarget as HTMLElement).style.setProperty('--mx',`${((e.clientX-r.left)/r.width*100)}%`); (e.currentTarget as HTMLElement).style.setProperty('--my',`${((e.clientY-r.top)/r.height*100)}%`); }}
               style={{
                 background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.04)',
                 borderRadius: 24, padding: 20,
                 boxShadow: '0 16px 32px rgba(0,0,0,0.5), inset 0 1px 1px rgba(255,255,255,0.06)',
                 display: 'flex', flexDirection: 'column', justifyContent: 'space-between',
-                cursor: 'pointer', transition: 'transform 0.4s cubic-bezier(0.34,1.56,0.64,1), border-color 0.4s',
-                textDecoration: 'none',
+                cursor: 'pointer', textDecoration: 'none',
               }}
             >
-              <div style={{ width: 36, height: 36, borderRadius: 12, background: 'rgba(232,175,52,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#e8af34', marginBottom: 12, transition: 'all 0.3s' }}>
+              <div className="ch-bento-icon" style={{ width: 36, height: 36, borderRadius: 12, background: 'rgba(232,175,52,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#e8af34', marginBottom: 12, transition: 'all 0.3s' }}>
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width="18" height="18">
                   <path d="M8 21h8M12 17v4M7 4h10M5 4h14v5a7 7 0 0 1-14 0V4z"/>
                 </svg>
@@ -456,7 +490,7 @@ export default function CheckInHistoryPage() {
                 <div style={{ position: 'absolute', left: 0, top: 20, bottom: 20, width: 2, background: 'rgba(255,255,255,0.05)', borderRadius: 2 }} />
 
                 {/* Energy beam */}
-                <div style={{
+                <div className={activeNodeIdx !== null ? 'ch-energy-beam' : ''} style={{
                   position: 'absolute', left: -1, top: 20, width: 4,
                   height: activeNodeIdx !== null ? energyHeight : 0,
                   background: `linear-gradient(180deg, transparent, ${tc.color}, ${tc.beamEnd})`,
@@ -530,7 +564,7 @@ export default function CheckInHistoryPage() {
                           border: `1px solid ${isActive ? t.border : 'transparent'}`,
                           background: isActive ? t.bg : 'transparent',
                           transform: isActive ? 'translateX(12px) scale(1.02)' : 'none',
-                          boxShadow: isActive ? `0 16px 32px rgba(0,0,0,0.6), inset 0 1px 1px rgba(255,255,255,0.05)` : 'none',
+                          boxShadow: isActive ? `0 20px 40px rgba(0,0,0,0.7), inset 0 1px 1px rgba(255,255,255,0.08), 0 0 24px ${t.glow}` : 'none',
                           transition: 'all 0.5s cubic-bezier(0.175,0.885,0.32,1.275)',
                           transformOrigin: 'left center',
                         }}
@@ -591,7 +625,7 @@ export default function CheckInHistoryPage() {
                             overflow: 'hidden', border: `1px solid ${t.border}`,
                             marginTop: 12, marginBottom: 12,
                             boxShadow: '0 12px 24px rgba(0,0,0,0.5)',
-                            animation: 'ch-stagger-in 0.4s cubic-bezier(0.16,1,0.3,1) both',
+                            animation: 'ch-stagger-in 0.5s cubic-bezier(0.34,1.56,0.64,1) 0.05s both',
                           }}>
                             <div style={{ background: '#020202', padding: 14 }}>
                               <div style={{ fontSize: 10, fontWeight: 800, color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6 }}>Date</div>
