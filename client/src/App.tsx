@@ -527,12 +527,15 @@ function AccountPage() {
           />
         </div>
 
-        {/* XP Progress Bar */}
-        {(member?.totalPoints || (member as any)?.totalPoints || 0) > 0 && (
-          <div style={{ marginTop: 12 }}>
-            <XPBar xp={member?.totalPoints || (member as any)?.totalPoints || 0} />
-          </div>
-        )}
+        {/* XP Progress Bar — reads from live cache so it stays in sync */}
+        {(() => {
+          const liveXP = (() => { try { const s = JSON.parse(localStorage.getItem('lbjj_game_stats_v2') || '{}'); return Math.max(s.xp || 0, s.totalXP || 0, member?.totalPoints || (member as any)?.totalPoints || 0); } catch { return member?.totalPoints || 0; } })();
+          return liveXP > 0 ? (
+            <div style={{ marginTop: 12 }}>
+              <XPBar xp={liveXP} />
+            </div>
+          ) : null;
+        })()}
 
         {editing ? (
           <>

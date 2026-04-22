@@ -1541,56 +1541,6 @@ export default function HomePage() {
       )}
 
       {/* ════════════════════════════════════════════════════
-          NEXT CLASS / GAME DAY CARD
-          ════════════════════════════════════════════════════ */}
-      {nextClass && (
-        <CheckInWidget
-          nextClass={nextClass}
-          classesToday={classesToday}
-          timeUntilClass={timeUntilClass}
-          checkinPhase={checkinPhase}
-          alreadyCheckedIn={checkedInClasses.includes(nextClass.name || '')}
-          isGameDay={isGameDay}
-          onCheckIn={() => handleHomeCheckIn(nextClass)}
-          onOpenSchedule={() => { window.location.hash = '#/schedule'; }}
-        />
-      )}
-
-      {/* ════════════════════════════════════════════════════
-          WEEKLY XP MULTIPLIER WIDGET
-          ════════════════════════════════════════════════════ */}
-      <StreakWidget
-        dailyStreakCount={dailyStreakCount}
-        weekDots={weekDots}
-        trainedCount={trainedCount}
-        comboMultiplier={comboMultiplier}
-        onOpenInfo={() => setShowStreakInfo(true)}
-        onCheckIn={() => handleHomeCheckIn(nextClass)}
-      />
-
-      {/* ════════════════════════════════════════════════════
-          STATS ROW — Streak + Total classes
-          ════════════════════════════════════════════════════ */}
-      <StatsCards
-        streak={effectiveStreak}
-        totalClasses={totalClasses}
-        classesToday={classesToday}
-        comboMultiplier={comboMultiplier}
-        streakFreezeActive={streakFreezeActive}
-      />
-
-      {/* ════════════════════════════════════════════════════
-          XP PROGRESS WIDGET
-          ════════════════════════════════════════════════════ */}
-      {member && (
-        <XPWidget
-          xp={memberXP}
-          memberName={member.name}
-          onOpenInfo={() => setShowRankInfo(true)}
-        />
-      )}
-
-      {/* ════════════════════════════════════════════════════
           SEASON + MILESTONE WIDGETS
           ════════════════════════════════════════════════════ */}
       {trainingSeasonData && nextMilestoneData && (
@@ -1608,6 +1558,56 @@ export default function HomePage() {
           }}
           onOpenSeason={() => { window.location.hash = '#/season'; }}
           onOpenMilestone={() => setShowRankInfo(true)}
+        />
+      )}
+
+      {/* ════════════════════════════════════════════════════
+          NEXT CLASS / GAME DAY CARD
+          ════════════════════════════════════════════════════ */}
+      {nextClass && (
+        <CheckInWidget
+          nextClass={nextClass}
+          classesToday={classesToday}
+          timeUntilClass={timeUntilClass}
+          checkinPhase={checkinPhase}
+          alreadyCheckedIn={checkedInClasses.includes(nextClass.name || '')}
+          isGameDay={isGameDay}
+          onCheckIn={() => handleHomeCheckIn(nextClass)}
+          onOpenSchedule={() => { window.location.hash = '#/schedule'; }}
+        />
+      )}
+
+      {/* ════════════════════════════════════════════════════
+          STATS ROW — Streak + Total classes
+          ════════════════════════════════════════════════════ */}
+      <StatsCards
+        streak={effectiveStreak}
+        totalClasses={totalClasses}
+        classesToday={classesToday}
+        comboMultiplier={comboMultiplier}
+        streakFreezeActive={streakFreezeActive}
+      />
+
+      {/* ════════════════════════════════════════════════════
+          WEEKLY XP MULTIPLIER WIDGET
+          ════════════════════════════════════════════════════ */}
+      <StreakWidget
+        dailyStreakCount={dailyStreakCount}
+        weekDots={weekDots}
+        trainedCount={trainedCount}
+        comboMultiplier={comboMultiplier}
+        onOpenInfo={() => setShowStreakInfo(true)}
+        onCheckIn={() => handleHomeCheckIn(nextClass)}
+      />
+
+      {/* ════════════════════════════════════════════════════
+          XP PROGRESS WIDGET
+          ════════════════════════════════════════════════════ */}
+      {member && (
+        <XPWidget
+          xp={memberXP}
+          memberName={member.name}
+          onOpenInfo={() => setShowRankInfo(true)}
         />
       )}
 

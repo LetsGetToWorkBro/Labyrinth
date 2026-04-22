@@ -81,6 +81,7 @@ export function CheckInWidget({
   checkinPhase, alreadyCheckedIn, isGameDay,
   onCheckIn, onOpenSchedule,
 }: CheckInWidgetProps) {
+  const [collapsed, setCollapsed] = React.useState(false);
   const cardRef = useRef<HTMLDivElement>(null);
   const btnRef = useRef<HTMLButtonElement>(null);
   const isCheckedIn = alreadyCheckedIn || checkinPhase === 'success' || checkinPhase === 'done';
@@ -229,6 +230,35 @@ export function CheckInWidget({
           WebkitMaskImage: 'linear-gradient(to bottom, black 0%, transparent 80%)',
         }} />
 
+        {/* Collapse toggle — top right */}
+        <button
+          onClick={e => { e.stopPropagation(); setCollapsed(c => !c); }}
+          style={{ position: 'absolute', top: 14, right: 14, zIndex: 20, background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '50%', width: 28, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', transition: 'all 0.25s', color: 'rgba(255,255,255,0.5)' }}
+        >
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" style={{ transition: 'transform 0.3s', transform: collapsed ? 'rotate(-90deg)' : 'rotate(0deg)' }}>
+            <polyline points="6 9 12 15 18 9"/>
+          </svg>
+        </button>
+
+        {/* Collapsed summary row */}
+        {collapsed ? (
+          <div
+            onClick={e => { e.stopPropagation(); onOpenSchedule(); }}
+            style={{ display: 'flex', alignItems: 'center', gap: 12, position: 'relative', zIndex: 2, cursor: 'pointer', paddingRight: 36 }}
+          >
+            {/* Status dot */}
+            <div style={{ width: 10, height: 10, borderRadius: '50%', flexShrink: 0, background: isCheckedIn ? (stateIdx >= 3 ? '#ef4444' : stateIdx === 2 ? '#0ea5e9' : '#22c55e') : '#e8af34', boxShadow: `0 0 8px ${isCheckedIn ? (stateIdx >= 3 ? '#ef4444' : stateIdx === 2 ? '#0ea5e9' : '#22c55e') : '#e8af34'}` }} />
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <span style={{ fontFamily: "var(--font-display,system-ui)", fontSize: 15, fontWeight: 800, color: '#fff', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', display: 'block' }}>
+                {nextClass.name}
+              </span>
+            </div>
+            <span style={{ fontFamily: "var(--font-display,system-ui)", fontSize: 15, fontWeight: 700, color: 'rgba(255,255,255,0.4)', whiteSpace: 'nowrap', flexShrink: 0 }}>
+              {nextClass.time}
+            </span>
+          </div>
+        ) : (
+        <React.Fragment>
         {/* Header: eyebrow + time */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 14, position: 'relative', zIndex: 2 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontFamily: 'var(--font-display, system-ui)', fontSize: 10, fontWeight: 800, color: eyebrowColor, letterSpacing: '0.2em', textTransform: 'uppercase', transition: 'color 0.5s' }}>
@@ -373,6 +403,8 @@ export function CheckInWidget({
             </button>
           )}
         </div>
+        </React.Fragment>
+        )}
       </div>
     </>
   );
