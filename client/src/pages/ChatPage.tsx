@@ -785,20 +785,34 @@ export default function ChatPage() {
                 padding: '4px 10px 4px 6px', borderRadius: 10, cursor: 'pointer',
               }}
             >
-              <div style={{ display: 'flex' }}>
-                {(channelMembers.length > 0 ? channelMembers : onlineMembers).slice(0, 3).map(m => (
-                  <div key={m.email || m.name} style={{
-                    width: 20, height: 20, borderRadius: 6, border: '1.5px solid #030303', marginRight: -4,
-                    background: avatarGradient(m.belt || 'white'), overflow: 'hidden',
-                    fontSize: 9, fontWeight: 800, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  }}>
-                    {m.profilePic ? <img src={m.profilePic} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : (m.name || '?').charAt(0)}
-                  </div>
-                ))}
-              </div>
-              <span style={{ fontSize: 11, fontWeight: 700, color: '#a8a29e', marginLeft: 7 }}>
-                {channelMembers.length > 0 ? `${channelMembers.length} here` : `${onlineNow.length || 1} online`}
-              </span>
+              {(() => {
+                const nowMs = Date.now();
+                // Only show members who are actively online (lastSeen < 5 min)
+                const activeInChannel = (channelMembers.length > 0 ? channelMembers : onlineMembers)
+                  .filter(m => m.lastSeen && (nowMs - new Date(m.lastSeen).getTime()) < 5 * 60 * 1000);
+                // Always include self if authenticated
+                const selfInList = activeInChannel.find(m => member && (m.email === (member as any).email || m.name === member.name));
+                const displayList = selfInList ? activeInChannel : [selfMember, ...activeInChannel].filter(Boolean);
+                const activeCount = displayList.length;
+                return (
+                  <>
+                    <div style={{ display: 'flex' }}>
+                      {displayList.slice(0, 3).map(m => (
+                        <div key={m.email || m.name} style={{
+                          width: 20, height: 20, borderRadius: 6, border: '1.5px solid #030303', marginRight: -4,
+                          background: avatarGradient(m.belt || 'white'), overflow: 'hidden',
+                          fontSize: 9, fontWeight: 800, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        }}>
+                          {m.profilePic ? <img src={m.profilePic} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : (m.name || '?').charAt(0)}
+                        </div>
+                      ))}
+                    </div>
+                    <span style={{ fontSize: 11, fontWeight: 700, color: '#a8a29e', marginLeft: 7 }}>
+                      {activeCount === 1 ? '1 active' : activeCount > 1 ? `${activeCount} active` : 'Just you'}
+                    </span>
+                  </>
+                );
+              })()}
               <ChevDown size={12} color="#a8a29e" style={{ marginLeft: 2, transition: 'transform .3s', transform: channelMembersOpen ? 'rotate(180deg)' : 'rotate(0deg)' }} />
             </div>
 
