@@ -456,6 +456,28 @@ export default function HomePage() {
   const streakCount = rawStreak > 0 ? rawStreak : cachedStreak;
 
   // Daily streak — consecutive calendar days trained (drives 7/14/21/30 day powers)
+  // Increments whenever checkin-complete fires — forces streak/weekDots recompute
+  const [checkinTick, setCheckinTick] = useState(0);
+  useEffect(() => {
+    const handler = () => {
+      // Also update lbjj_checkin_history with today
+      try {
+        const todayStr = new Date().toISOString().split('T')[0];
+        const hist: string[] = JSON.parse(localStorage.getItem('lbjj_checkin_history') || '[]');
+        if (!hist.includes(todayStr)) {
+          hist.push(todayStr);
+          localStorage.setItem('lbjj_checkin_history', JSON.stringify(hist));
+        }
+      } catch {}
+      setCheckinTick(t => t + 1);
+    };
+    window.addEventListener('checkin-complete', handler);
+    return () => window.removeEventListener('checkin-complete', handler);
+  }, []);
+
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  void checkinTick; // consumed to force re-render
+
   const dailyStreakCount = (() => {
     try {
       const history: string[] = JSON.parse(localStorage.getItem('lbjj_checkin_history') || '[]');

@@ -504,8 +504,7 @@ function ClassCard({
 
   const handleCheckIn = async () => {
     if (!navigator.onLine) { alert('No internet connection.'); return; }
-    const geo = await validateGeoIfRequired();
-    if (!geo.allowed) { alert(geo.error || 'Location check failed.'); return; }
+    // Hard guard: class already checked in (localStorage-persisted, survives re-renders)
     if (alreadyCheckedIn || checkInDone || checkingInRef.current) return;
     // Enforce check-in window
     if (isTooEarly) {
@@ -516,7 +515,23 @@ function ClassCard({
       alert('This class has already ended.');
       return;
     }
+    // Adults/kids category enforcement
+    const memberBelt = ((member as any)?.belt || 'white').toLowerCase();
+    const kidsOnlyBelts = ['grey', 'gray', 'yellow', 'orange', 'green'];
+    const memberIsKids = kidsOnlyBelts.includes(memberBelt);
+    const classIsKids = cls.category === 'kids';
+    if (memberIsKids && !classIsKids) {
+      alert('Kids members can only check into kids classes.');
+      return;
+    }
+    if (!memberIsKids && classIsKids) {
+      alert('Adult members can only check into adult classes.');
+      return;
+    }
+    // Set ref synchronously before any await to block concurrent taps
     checkingInRef.current = true;
+    const geo = await validateGeoIfRequired();
+    if (!geo.allowed) { checkingInRef.current = false; alert(geo.error || 'Location check failed.'); return; }
 
     // Particle burst
     if (btnRef.current) {
@@ -611,6 +626,17 @@ function ClassCard({
 
     markClassCheckedIn(cls.name || '');
     setCheckInDone(true);
+    // Update lbjj_weekly_training so StreakWidget picks up today
+    try {
+      const todayStr = new Date().toISOString().split('T')[0];
+      const weekly: string[] = JSON.parse(localStorage.getItem('lbjj_weekly_training') || '[]');
+      if (!weekly.includes(todayStr)) {
+        weekly.push(todayStr);
+        localStorage.setItem('lbjj_weekly_training', JSON.stringify(weekly));
+      }
+      // Fire checkin-complete so StreakWidget and TopHeader re-render
+      window.dispatchEvent(new CustomEvent('checkin-complete'));
+    } catch {}
     try { localStorage.removeItem('lbjj_home_leaderboard'); localStorage.removeItem('lbjj_home_cache'); } catch {}
     triggerConfetti();
     setTimeout(() => {

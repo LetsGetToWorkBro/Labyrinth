@@ -82,9 +82,13 @@ export default function LeaderboardPage() {
       const classes: LeaderboardEntry[] = [];
       const games: LeaderboardEntry[] = [];
       for (const entry of data) {
-        if (entry.classCount && entry.classCount > 0) classes.push(entry);
-        if (entry.wins > 0 || entry.score || entry.bestStreak > 0) games.push(entry);
-        if (!(entry.classCount && entry.classCount > 0) && !(entry.wins > 0 || entry.score || entry.bestStreak > 0)) classes.push(entry);
+        // Include anyone with classes, points, wins, or any score — covers members
+        // who have TotalPoints from the sheet but haven't checked in via app yet
+        const hasActivity = (entry.classCount && entry.classCount > 0)
+          || (entry.totalPoints && entry.totalPoints > 0)
+          || entry.wins > 0 || entry.bestStreak > 0;
+        if (hasActivity) classes.push(entry);
+        if (entry.wins > 0 || entry.bestStreak > 0) games.push(entry);
       }
       setClassEntries(classes);
       setGameEntries(games);
