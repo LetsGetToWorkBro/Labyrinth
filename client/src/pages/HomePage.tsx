@@ -1721,8 +1721,19 @@ export default function HomePage() {
 
             {/* Rows */}
             <div style={{ position:'relative', zIndex:2 }}>
-              {leaderboard.slice(0, 3).map((entry, i) => {
-                const rank = i + 1;
+              {(() => {
+                // Show 3 entries centered on the current user — person above, user, person below.
+                // Falls back to top 3 if user isn't found or is already in top 3.
+                const myIdx = leaderboard.findIndex(e => e.isMe || e.name === member?.name);
+                let startIdx = 0;
+                if (myIdx > 1) {
+                  // User is below top 2 — center them
+                  startIdx = Math.min(myIdx - 1, leaderboard.length - 3);
+                }
+                return leaderboard.slice(startIdx, startIdx + 3);
+              })().map((entry, i, arr) => {
+                // Compute the true rank from the full leaderboard for display
+                const rank = leaderboard.findIndex(e => (e.name && e.name === entry.name)) + 1 || (i + 1);
                 const entryXP = (entry.totalPoints || 0) || ((entry.classCount || 0) * 10);
                 const entryLevel = getActualLevel(entryXP);
                 const isMe = entry.name === member?.name;
@@ -1735,7 +1746,7 @@ export default function HomePage() {
                   { name:'#bae6fd', score:'#bae6fd', rank:'#bae6fd', scoreSz:20 },  // frost blue
                   { name:'#e8af34', score:'#e8af34', rank:'#e8af34', scoreSz:20 },  // ember gold
                 ];
-                const rc = rank <= 5 ? rankColors[i] : { name:'#a8a29e', score:'#f5f5f4', rank:'#57534e', scoreSz:18 };
+                const rc = rank <= 5 ? rankColors[rank - 1] : { name:'#a8a29e', score:'#f5f5f4', rank:'#57534e', scoreSz:18 };
                 const beltKey = (entry.belt || 'white').toLowerCase();
                 const beltTints: Record<string, string> = { white:'#E0E0E0', blue:'#3B82F6', purple:'#8B5CF6', brown:'#92400E', black:'#2A2A2A', grey:'#9CA3AF', yellow:'#EAB308', orange:'#F97316', green:'#22C55E' };
                 const beltTint = beltTints[beltKey] || '#888';
