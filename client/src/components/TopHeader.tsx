@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { OnlineBubble } from '@/components/OnlineBubble';
 import { useAuth } from '@/lib/auth-context';
 import { getLevelFromXP, getActualLevel } from '@/lib/xp';
 import { ParagonRing } from '@/components/ParagonRing';
@@ -177,6 +178,9 @@ export function TopHeader({ onMenuOpen, onXpOpen }: { onMenuOpen: () => void; on
             </span>
           </div>
         </div>
+
+        {/* Online bubble */}
+        <OnlineBubble />
 
         {/* PFP with Paragon frame — tapping opens XP modal */}
         <button onClick={onXpOpen} aria-label="View XP and level" style={{

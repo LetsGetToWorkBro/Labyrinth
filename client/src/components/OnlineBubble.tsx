@@ -1,0 +1,305 @@
+/**
+ * OnlineBubble — global online members pill with dropdown.
+ *
+ * Shows: green pulsing dot + online count.
+ * Dropdown sections:
+ *   ● Active Now   — lastSeen < 5 min
+ *   ◑ Recently     — lastSeen 5–60 min
+ * Clicking a member navigates to chat.
+ */
+
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { getBeltColor } from '@/lib/constants';
+import { getActualLevel } from '@/lib/xp';
+import { chatGetChannelMembers, updatePresence, type ChannelMember } from '@/lib/api';
+import { useAuth } from '@/lib/auth-context';
+
+const ONLINE_MS   = 5  * 60 * 1000;  // 5 min  → "Active Now"
+const RECENT_MS   = 60 * 60 * 1000;  // 60 min → "Recently Online"
+
+function avatarGrad(belt: string) {
+  const map: Record<string, string> = {
+    black:  'linear-gradient(135deg,#171717,#ef4444)',
+    brown:  'linear-gradient(135deg,#92400e,#451a03)',
+    purple: 'linear-gradient(135deg,#a855f7,#3b0764)',
+    blue:   'linear-gradient(135deg,#3b82f6,#1e3a8a)',
+    white:  'linear-gradient(135deg,#404040,#1a1a1a)',
+    grey:   'linear-gradient(135deg,#6b7280,#374151)',
+    yellow: 'linear-gradient(135deg,#fde047,#b45309)',
+    orange: 'linear-gradient(135deg,#fb923c,#9a3412)',
+    green:  'linear-gradient(135deg,#22c55e,#14532d)',
+  };
+  return map[(belt||'white').toLowerCase()] || map.white;
+}
+
+function MemberRow({ m, dimmed, onClick }: { m: ChannelMember; dimmed?: boolean; onClick: () => void }) {
+  const level = getActualLevel(m.totalPoints || 0);
+  const belt  = (m.belt || 'white').toLowerCase();
+  return (
+    <div
+      onClick={onClick}
+      style={{
+        display: 'flex', alignItems: 'center', gap: 9,
+        padding: '7px 8px', borderRadius: 11, cursor: 'pointer',
+        opacity: dimmed ? 0.55 : 1, transition: 'background .15s',
+      }}
+      onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,.05)')}
+      onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+    >
+      <div style={{ position: 'relative', flexShrink: 0 }}>
+        <div style={{
+          width: 30, height: 30, borderRadius: 9,
+          background: avatarGrad(belt), overflow: 'hidden',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          fontSize: 11, fontWeight: 800, color: '#fff',
+        }}>
+          {m.profilePic
+            ? <img src={m.profilePic} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+            : (m.name || '?').charAt(0).toUpperCase()
+          }
+        </div>
+        {!dimmed && (
+          <div style={{
+            position: 'absolute', bottom: -1, right: -1,
+            width: 8, height: 8, borderRadius: '50%',
+            background: '#10b981', border: '1.5px solid #0f0e0d',
+          }} />
+        )}
+      </div>
+
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{
+          fontSize: 12, fontWeight: 700, color: '#fff',
+          overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+        }}>{m.name}</div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 1 }}>
+          <div style={{ width: 7, height: 7, borderRadius: 2, background: getBeltColor(belt) }} />
+          <span style={{ fontSize: 9, fontWeight: 700, color: '#a8a29e', textTransform: 'capitalize' }}>
+            {belt} belt
+          </span>
+        </div>
+      </div>
+
+      <div style={{
+        fontSize: 9, fontWeight: 800, color: '#e8af34',
+        background: 'rgba(232,175,52,.12)', padding: '1px 5px',
+        borderRadius: 5, border: '1px solid rgba(232,175,52,.22)', flexShrink: 0,
+      }}>
+        LV {level}
+      </div>
+    </div>
+  );
+}
+
+export function OnlineBubble() {
+  const { member, isAuthenticated } = useAuth();
+  const [open, setOpen]       = useState(false);
+  const [members, setMembers] = useState<ChannelMember[]>([]);
+  const wrapRef = useRef<HTMLDivElement>(null);
+
+  // Build self entry always-online
+  const buildSelf = useCallback((): ChannelMember | null => {
+    if (!member?.name) return null;
+    try {
+      const s = JSON.parse(localStorage.getItem('lbjj_game_stats_v2') || '{}');
+      return {
+        name:        member.name,
+        email:       (member as any).email || '',
+        belt:        ((member as any).belt || 'white').toLowerCase(),
+        role:        (member as any).role || '',
+        totalPoints: Math.max(s.xp || 0, s.totalXP || 0, (member as any)?.totalPoints || 0),
+        badgeCount:  0,
+        profilePic:  localStorage.getItem('lbjj_profile_picture') || undefined,
+        lastSeen:    new Date().toISOString(),
+      };
+    } catch { return null; }
+  }, [member]);
+
+  const load = useCallback(async () => {
+    try {
+      const list = await chatGetChannelMembers('general');
+      const self = buildSelf();
+      if (self) {
+        const without = list.filter(m => (m.email || m.name) !== (self.email || self.name));
+        setMembers([self, ...without]);
+      } else {
+        setMembers(list);
+      }
+    } catch {}
+  }, [buildSelf]);
+
+  // Inject self immediately, then fetch
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    const self = buildSelf();
+    if (self) setMembers(prev => {
+      const without = prev.filter(m => (m.email || m.name) !== (self.email || self.name));
+      return [self, ...without];
+    });
+    updatePresence().catch(() => {});
+    load();
+    const t = setInterval(() => { updatePresence().catch(() => {}); load(); }, 60000);
+    return () => clearInterval(t);
+  }, [isAuthenticated, load, buildSelf]);
+
+  // Close on outside click
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (wrapRef.current && !wrapRef.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
+
+  if (!isAuthenticated || !member) return null;
+
+  const nowMs    = Date.now();
+  const active   = members.filter(m => m.lastSeen && (nowMs - new Date(m.lastSeen).getTime()) < ONLINE_MS);
+  const recent   = members.filter(m => m.lastSeen && (nowMs - new Date(m.lastSeen).getTime()) >= ONLINE_MS && (nowMs - new Date(m.lastSeen).getTime()) < RECENT_MS);
+
+  // Self always counts as 1
+  const onlineCount = Math.max(active.length, 1);
+
+  const goToChat = () => {
+    setOpen(false);
+    window.location.hash = '#/chat';
+  };
+
+  return (
+    <div ref={wrapRef} style={{ position: 'relative', zIndex: 200 }}>
+      {/* Pill button */}
+      <button
+        onClick={() => setOpen(v => !v)}
+        style={{
+          display: 'flex', alignItems: 'center', gap: 6,
+          background: 'rgba(16,185,129,.07)',
+          border: '1px solid rgba(16,185,129,.22)',
+          padding: '6px 11px', borderRadius: 14,
+          cursor: 'pointer', transition: 'all .25s',
+          WebkitTapHighlightColor: 'transparent',
+        }}
+        onMouseEnter={e => (e.currentTarget.style.background = 'rgba(16,185,129,.13)')}
+        onMouseLeave={e => (e.currentTarget.style.background = 'rgba(16,185,129,.07)')}
+      >
+        {/* Pulsing dot */}
+        <div style={{ position: 'relative', width: 8, height: 8, flexShrink: 0 }}>
+          <div style={{
+            width: 8, height: 8, borderRadius: '50%',
+            background: '#10b981', boxShadow: '0 0 8px #10b981',
+          }} />
+          <div style={{
+            position: 'absolute', inset: -3, borderRadius: '50%',
+            background: 'rgba(16,185,129,.3)',
+            animation: 'ob-pulse 2s infinite',
+          }} />
+        </div>
+        <span style={{ fontSize: 11, fontWeight: 800, color: '#10b981', letterSpacing: '.08em' }}>
+          {onlineCount}
+        </span>
+        <span style={{ fontSize: 11, fontWeight: 700, color: '#10b981', opacity: .8 }}>Online</span>
+        <svg viewBox="0 0 24 24" fill="none" stroke="#10b981" strokeWidth="2.5" width="12" height="12"
+          style={{ transition: 'transform .3s', transform: open ? 'rotate(180deg)' : 'rotate(0deg)', opacity: .7 }}>
+          <polyline points="6 9 12 15 18 9" />
+        </svg>
+      </button>
+
+      {/* Dropdown */}
+      <div style={{
+        position: 'absolute', top: 'calc(100% + 8px)', right: 0, width: 272,
+        background: '#161412', border: '1px solid rgba(255,255,255,.12)',
+        borderRadius: 20, padding: 10,
+        boxShadow: '0 20px 60px rgba(0,0,0,.9), 0 0 0 1px rgba(255,255,255,.04)',
+        opacity: open ? 1 : 0,
+        transform: open ? 'translateY(0) scale(1)' : 'translateY(-8px) scale(.97)',
+        pointerEvents: open ? 'auto' : 'none',
+        transition: 'all .3s cubic-bezier(0.175,0.885,0.32,1.275)',
+        maxHeight: '70vh', display: 'flex', flexDirection: 'column',
+      }}>
+        <style>{`@keyframes ob-pulse{0%{transform:scale(1);opacity:.7}50%{transform:scale(1.8);opacity:0}100%{transform:scale(1);opacity:0}}`}</style>
+
+        {/* Active Now */}
+        {active.length > 0 && (
+          <>
+            <div style={{ fontSize: 10, fontWeight: 800, color: '#10b981', letterSpacing: '.15em', textTransform: 'uppercase', padding: '4px 8px 4px' }}>
+              ● Active Now
+            </div>
+            <div>
+              {active.map(m => (
+                <MemberRow key={m.email || m.name} m={m} onClick={goToChat} />
+              ))}
+            </div>
+          </>
+        )}
+
+        {/* Recently Online */}
+        {recent.length > 0 && (
+          <>
+            {active.length > 0 && <div style={{ height: 1, background: 'rgba(255,255,255,.05)', margin: '6px 0' }} />}
+            <RecentSection members={recent} onOpen={goToChat} />
+          </>
+        )}
+
+        {active.length === 0 && recent.length === 0 && (
+          <div style={{ fontSize: 12, color: '#57534e', padding: '8px 10px', textAlign: 'center' }}>
+            Just you for now
+          </div>
+        )}
+
+        {/* Footer: go to chat */}
+        <div style={{ height: 1, background: 'rgba(255,255,255,.05)', margin: '8px 0 4px' }} />
+        <button
+          onClick={goToChat}
+          style={{
+            padding: '8px 10px', borderRadius: 10, width: '100%',
+            background: 'rgba(255,255,255,.03)', border: '1px solid rgba(255,255,255,.08)',
+            fontSize: 12, fontWeight: 700, color: '#a8a29e', cursor: 'pointer',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+            transition: 'background .2s',
+          }}
+          onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,.07)')}
+          onMouseLeave={e => (e.currentTarget.style.background = 'rgba(255,255,255,.03)')}
+        >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="13" height="13">
+            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+          </svg>
+          Open Chat
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function RecentSection({ members, onOpen }: { members: ChannelMember[]; onOpen: () => void }) {
+  const [expanded, setExpanded] = useState(false);
+  const fmt = (m: ChannelMember) => {
+    if (!m.lastSeen) return '';
+    const mins = Math.floor((Date.now() - new Date(m.lastSeen).getTime()) / 60000);
+    return mins < 60 ? `${mins}m ago` : `${Math.floor(mins/60)}h ago`;
+  };
+  return (
+    <div>
+      <div
+        onClick={() => setExpanded(v => !v)}
+        style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '4px 8px', cursor: 'pointer', userSelect: 'none' }}
+      >
+        <span style={{ fontSize: 10, fontWeight: 800, color: '#57534e', letterSpacing: '.15em', textTransform: 'uppercase' }}>
+          ◑ Recently — {members.length}
+        </span>
+        <svg viewBox="0 0 24 24" fill="none" stroke="#57534e" strokeWidth="2.5" width="12" height="12"
+          style={{ transition: 'transform .3s', transform: expanded ? 'rotate(180deg)' : 'rotate(0deg)' }}>
+          <polyline points="6 9 12 15 18 9" />
+        </svg>
+      </div>
+      {expanded && (
+        <div style={{ maxHeight: 200, overflowY: 'auto', scrollbarWidth: 'none' }}>
+          {members.map(m => (
+            <div key={m.email || m.name} style={{ display: 'flex', alignItems: 'center' }}>
+              <div style={{ flex: 1 }}><MemberRow m={m} dimmed onClick={onOpen} /></div>
+              <span style={{ fontSize: 9, color: '#57534e', paddingRight: 8, flexShrink: 0 }}>{fmt(m)}</span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
