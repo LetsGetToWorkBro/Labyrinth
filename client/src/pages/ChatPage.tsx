@@ -769,7 +769,7 @@ export default function ChatPage() {
                 ))}
               </div>
               <span style={{ fontSize: 11, fontWeight: 700, color: '#a8a29e', marginLeft: 7 }}>
-                {channelMembers.length > 0 ? `${channelMembers.length} here` : `${onlineMembers.length} online`}
+                {channelMembers.length > 0 ? `${channelMembers.length} here` : `${onlineNow.length || 1} online`}
               </span>
               <ChevDown size={12} color="#a8a29e" style={{ marginLeft: 2, transition: 'transform .3s', transform: channelMembersOpen ? 'rotate(180deg)' : 'rotate(0deg)' }} />
             </div>
