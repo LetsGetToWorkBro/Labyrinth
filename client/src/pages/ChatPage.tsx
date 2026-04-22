@@ -132,7 +132,7 @@ function beltToMinXP(belt: string, role: string): number {
 }
 
 // Adult belts only — no kids belts in rank directory
-const ADULT_BELTS = ['white', 'blue', 'purple', 'brown', 'black'];
+const ADULT_BELTS = ['blue', 'purple', 'brown', 'black']; // white belts use General
 
 // Channel icon SVG
 function channelIcon(ch: ChatChannel) {
