@@ -7,6 +7,7 @@ import { Clock, X, User, CheckCircle, Trophy, ChevronRight } from "lucide-react"
 import { checkAndUnlockAchievements, ALL_ACHIEVEMENTS } from "@/lib/achievements";
 import { validateGeoIfRequired } from "@/lib/geo";
 import { getStreamStatus, getLiveBadgeStyle } from "@/lib/streaming";
+import { LiveStreamBanner } from "@/components/LiveStreamBanner";
 import type { StreamStatus } from "@/lib/streaming";
 
 // ── Helpers ─────────────────────────────────────────────────────
@@ -225,6 +226,9 @@ export default function SchedulePage() {
         .sch-timeline::-webkit-scrollbar { display:none; }
         .sch-list::-webkit-scrollbar { display:none; }
       `}</style>
+
+      {/* Live Stream Banner */}
+      <LiveStreamBanner stream={stream} />
 
       {/* Full-screen overlay */}
       <div className="app-content" style={{

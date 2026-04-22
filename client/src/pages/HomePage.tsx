@@ -17,6 +17,7 @@ import { CheckInWidget } from "@/components/CheckInWidget";
 import { ParagonRing } from "@/components/ParagonRing";
 import { StatsCards } from "@/components/StatsCards";
 import { SeasonMilestoneWidgets } from "@/components/SeasonMilestoneWidgets";
+import { LiveStreamBanner } from "@/components/LiveStreamBanner";
 import { getLevelFromXP, getActualLevel, XP_LEVELS } from "@/lib/xp";
 import {
   CreditCard, FileText, ChevronRight, ChevronDown, LogOut,
@@ -1551,6 +1552,9 @@ export default function HomePage() {
           </button>
         }
       />
+
+      {/* Live Stream Banner — slides in from top when a class goes live */}
+      <LiveStreamBanner stream={stream} />
 
       {/* Warning banners */}
       {hasWarnings && (
