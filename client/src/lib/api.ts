@@ -1004,3 +1004,67 @@ export async function getLeaderboardFresh(): Promise<LeaderboardEntry[]> {
     return [];
   }
 }
+
+// ─── Direct Messages ────────────────────────────────────────────────
+
+export interface DmMessage {
+  id: string;
+  sender: string;
+  senderEmail: string;
+  senderBelt: string;
+  senderTotalPoints: number;
+  senderProfilePic?: string;
+  text: string;
+  timestamp: string;
+  read: boolean;
+  isMe: boolean;
+}
+
+export interface DmConversation {
+  partnerEmail: string;
+  partnerName: string;
+  partnerBelt?: string;
+  partnerProfilePic?: string;
+  lastText: string;
+  lastTs: string;
+  unread: boolean;
+}
+
+export async function dmSend(toEmail: string, text: string): Promise<{ success: boolean; messageId?: string }> {
+  const token = getToken() || localStorage.getItem('lbjj_session_token') || '';
+  if (!token) return { success: false };
+  try { return await gasCall('dmSend', { token, toEmail, text }); } catch { return { success: false }; }
+}
+
+export async function dmGetThread(otherEmail: string, limit = 60): Promise<DmMessage[]> {
+  const token = getToken() || localStorage.getItem('lbjj_session_token') || '';
+  if (!token) return [];
+  try {
+    const res = await gasCall('dmGetThread', { token, otherEmail, limit });
+    return res?.messages || [];
+  } catch { return []; }
+}
+
+export async function dmMarkRead(fromEmail: string): Promise<void> {
+  const token = getToken() || localStorage.getItem('lbjj_session_token') || '';
+  if (!token) return;
+  try { await gasCall('dmMarkRead', { token, fromEmail }); } catch {}
+}
+
+export async function dmGetUnread(): Promise<{ count: number; threads: { fromEmail: string; fromName: string; count: number; lastText: string; lastTs: string }[] }> {
+  const token = getToken() || localStorage.getItem('lbjj_session_token') || '';
+  if (!token) return { count: 0, threads: [] };
+  try {
+    const res = await gasCall('dmGetUnread', { token });
+    return { count: res?.count || 0, threads: res?.threads || [] };
+  } catch { return { count: 0, threads: [] }; }
+}
+
+export async function dmGetConversations(): Promise<DmConversation[]> {
+  const token = getToken() || localStorage.getItem('lbjj_session_token') || '';
+  if (!token) return [];
+  try {
+    const res = await gasCall('dmGetConversations', { token });
+    return res?.conversations || [];
+  } catch { return []; }
+}

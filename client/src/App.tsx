@@ -12,6 +12,7 @@ import { GuestProfileProvider } from "@/lib/guest-profile";
 import { GameRecordProvider } from "@/lib/game-records";
 import { lazy, Suspense } from "react";
 import { LevelUpOverlay } from "@/components/LevelUpOverlay";
+import { DMProvider } from "@/components/FloatingDMTray";
 
 // Eager — needed on first render
 import LoginPage from "@/pages/LoginPage";
@@ -2029,13 +2030,15 @@ function App() {
             </div>
           )}
           <AuthProvider>
-            <GuestProfileProvider>
-              <GameRecordProvider>
-                <Router hook={useHashLocation}>
-                  <AppShell />
-                </Router>
-              </GameRecordProvider>
-            </GuestProfileProvider>
+            <DMProvider>
+              <GuestProfileProvider>
+                <GameRecordProvider>
+                  <Router hook={useHashLocation}>
+                    <AppShell />
+                  </Router>
+                </GameRecordProvider>
+              </GuestProfileProvider>
+            </DMProvider>
           </AuthProvider>
         </TooltipProvider>
       </QueryClientProvider>

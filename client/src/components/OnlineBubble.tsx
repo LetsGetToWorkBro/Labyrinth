@@ -10,6 +10,8 @@
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
+import { dispatchOpenDM } from '@/components/FloatingDMTray';
+import { dmGetUnread } from '@/lib/api';
 import { getBeltColor } from '@/lib/constants';
 import { getActualLevel } from '@/lib/xp';
 import { chatGetChannelMembers, updatePresence, type ChannelMember } from '@/lib/api';
@@ -162,9 +164,10 @@ export function OnlineBubble({ compact = false }: { compact?: boolean }) {
   // Self always counts as 1
   const onlineCount = Math.max(active.length, 1);
 
-  const goToChat = () => {
+  const goToChat = () => { setOpen(false); window.location.hash = '#/chat'; };
+  const openMemberDM = (m: ChannelMember) => {
     setOpen(false);
-    window.location.hash = '#/chat';
+    dispatchOpenDM({ email: m.email || '', name: m.name || '', belt: m.belt || 'white', totalPoints: m.totalPoints || 0, profilePic: m.profilePic });
   };
 
   const handleToggle = () => {
@@ -249,7 +252,7 @@ export function OnlineBubble({ compact = false }: { compact?: boolean }) {
             </div>
             <div>
               {active.map(m => (
-                <MemberRow key={m.email || m.name} m={m} onClick={goToChat} />
+                <MemberRow key={m.email || m.name} m={m} onClick={() => openMemberDM(m)} />
               ))}
             </div>
           </>
@@ -259,7 +262,7 @@ export function OnlineBubble({ compact = false }: { compact?: boolean }) {
         {recent.length > 0 && (
           <>
             {active.length > 0 && <div style={{ height: 1, background: 'rgba(255,255,255,.05)', margin: '6px 0' }} />}
-            <RecentSection members={recent} onOpen={goToChat} />
+            <RecentSection members={recent} onOpen={(m) => openMemberDM(m)} />
           </>
         )}
 
@@ -294,7 +297,7 @@ export function OnlineBubble({ compact = false }: { compact?: boolean }) {
   );
 }
 
-function RecentSection({ members, onOpen }: { members: ChannelMember[]; onOpen: () => void }) {
+function RecentSection({ members, onOpen }: { members: ChannelMember[]; onOpen: (m: ChannelMember) => void }) {
   const [expanded, setExpanded] = useState(false);
   const fmt = (m: ChannelMember) => {
     if (!m.lastSeen) return '';
@@ -319,7 +322,7 @@ function RecentSection({ members, onOpen }: { members: ChannelMember[]; onOpen: 
         <div style={{ maxHeight: 200, overflowY: 'auto', scrollbarWidth: 'none' }}>
           {members.map(m => (
             <div key={m.email || m.name} style={{ display: 'flex', alignItems: 'center' }}>
-              <div style={{ flex: 1 }}><MemberRow m={m} dimmed onClick={onOpen} /></div>
+              <div style={{ flex: 1 }}><MemberRow m={m} dimmed onClick={() => onOpen(m)} /></div>
               <span style={{ fontSize: 9, color: '#57534e', paddingRight: 8, flexShrink: 0 }}>{fmt(m)}</span>
             </div>
           ))}
@@ -339,6 +342,7 @@ export function OnlineAvatarCluster() {
   const [open, setOpen]       = useState(false);
   const [members, setMembers] = useState<ChannelMember[]>([]);
   const [dropPos, setDropPos] = useState<{ top: number; right: number } | null>(null);
+  const [dmUnread, setDmUnread] = useState(0);
   const wrapRef = useRef<HTMLDivElement>(null);
 
   const buildSelf = useCallback((): ChannelMember | null => {
@@ -383,6 +387,16 @@ export function OnlineAvatarCluster() {
     return () => clearInterval(t);
   }, [isAuthenticated, load, buildSelf]);
 
+  // Poll DM unread count
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    const poll = async () => { const r = await dmGetUnread(); setDmUnread(r.count); };
+    poll();
+    const t = setInterval(poll, 30000);
+    window.addEventListener('dm-read', poll);
+    return () => { clearInterval(t); window.removeEventListener('dm-read', poll); };
+  }, [isAuthenticated]);
+
   useEffect(() => {
     const handler = (e: MouseEvent) => {
       if (wrapRef.current && !wrapRef.current.contains(e.target as Node)) setOpen(false);
@@ -399,6 +413,11 @@ export function OnlineAvatarCluster() {
   const display = active.slice(0, 3);
   const onlineCount = Math.max(active.length, 1);
   const overflow = onlineCount > 3 ? onlineCount - 3 : 0;
+
+  const openDM = (m: ChannelMember) => {
+    setOpen(false);
+    dispatchOpenDM({ email: m.email||'', name: m.name||'', belt: m.belt||'white', totalPoints: m.totalPoints||0, profilePic: m.profilePic });
+  };
 
   const handleToggle = () => {
     if (wrapRef.current) {
@@ -456,13 +475,23 @@ export function OnlineAvatarCluster() {
           )}
         </div>
 
-        {/* Green dot + count */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+        {/* Green dot + count + DM unread badge */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 4, position: 'relative' }}>
           <div style={{ position: 'relative', width: 7, height: 7 }}>
             <div style={{ width: 7, height: 7, borderRadius: '50%', background: '#10b981', boxShadow: '0 0 6px #10b981' }} />
             <div style={{ position: 'absolute', inset: -2, borderRadius: '50%', background: 'rgba(16,185,129,.3)', animation: 'oac-pulse 2s infinite' }} />
           </div>
           <span style={{ fontSize: 11, fontWeight: 700, color: '#10b981' }}>{onlineCount}</span>
+          {/* DM unread badge */}
+          {dmUnread > 0 && (
+            <div style={{
+              position: 'absolute', top: -8, right: -10,
+              minWidth: 16, height: 16, borderRadius: 8,
+              background: '#ef4444', border: '2px solid #0f0e0d',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              fontSize: 8, fontWeight: 900, color: '#fff', padding: '0 3px',
+            }}>{dmUnread}</div>
+          )}
         </div>
       </button>
 
@@ -485,13 +514,13 @@ export function OnlineAvatarCluster() {
           {active.length > 0 && (
             <>
               <div style={{ fontSize: 10, fontWeight: 800, color: '#10b981', letterSpacing: '.15em', textTransform: 'uppercase', padding: '4px 8px 6px' }}>● Active Now</div>
-              {active.map(m => <MemberRow key={m.email||m.name} m={m} onClick={goToChat} />)}
+              {active.map(m => <MemberRow key={m.email||m.name} m={m} onClick={() => openDM(m)} />)}
             </>
           )}
           {recent.length > 0 && (
             <>
               {active.length > 0 && <div style={{ height: 1, background: 'rgba(255,255,255,.05)', margin: '6px 0' }} />}
-              <RecentSection members={recent} onOpen={goToChat} />
+              <RecentSection members={recent} onOpen={(m) => openDM(m)} />
             </>
           )}
           {active.length === 0 && recent.length === 0 && (
