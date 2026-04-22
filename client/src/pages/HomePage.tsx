@@ -528,13 +528,19 @@ export default function HomePage() {
   // ─── Today's check-in count (immediate, localStorage-based) ────
   const [classesToday, setClassesToday] = useState(0);
   const [totalClasses, setTotalClasses] = useState(0);
+  // Season (monthly) total check-in count — increments on every check-in, not just unique days
+  const [seasonClasses, setSeasonClasses] = useState<number>(() => {
+    try {
+      const ym = new Date().toISOString().slice(0, 7);
+      const key = `lbjj_season_count_${ym}`;
+      return parseInt(localStorage.getItem(key) || '0', 10);
+    } catch { return 0; }
+  });
   const [memberXP, setMemberXP] = useState<number>(() => {
     try {
       const stats = JSON.parse(localStorage.getItem('lbjj_game_stats_v2') || '{}');
-      const cachedXP = stats.totalXP || 0;
-      const profileXP = (member as any)?.totalPoints || 0;
-      // Use whichever is larger — GAS profile or local cache
-      return Math.max(cachedXP, profileXP);
+      // Use highest of all three sources: stats.xp, stats.totalXP, member.totalPoints
+      return Math.max(stats.xp || 0, stats.totalXP || 0, (member as any)?.totalPoints || 0);
     } catch { return (member as any)?.totalPoints || 0; }
   });
 
@@ -544,8 +550,13 @@ export default function HomePage() {
     const syncXP = () => {
       try {
         const s = JSON.parse(localStorage.getItem('lbjj_game_stats_v2') || '{}');
-        const cached = Math.max(s.xp || 0, s.totalXP || 0);
-        setMemberXP(prev => Math.max(prev, cached, (member as any)?.totalPoints || 0));
+        const cached = Math.max(s.xp || 0, s.totalXP || 0, (member as any)?.totalPoints || 0);
+        // Ensure both xp and totalXP fields are consistent
+        if (s.xp !== cached || s.totalXP !== cached) {
+          s.xp = cached; s.totalXP = cached;
+          try { localStorage.setItem('lbjj_game_stats_v2', JSON.stringify(s)); } catch {}
+        }
+        setMemberXP(cached);
       } catch {}
     };
     window.addEventListener('xp-updated', syncXP);
@@ -800,6 +811,14 @@ export default function HomePage() {
       try { window.dispatchEvent(new CustomEvent('xp-updated')); } catch {}
     } catch {}
     setTotalClasses(prev => prev + 1);
+    // Increment season counter
+    setSeasonClasses(prev => {
+      const ym = new Date().toISOString().slice(0, 7);
+      const key = `lbjj_season_count_${ym}`;
+      const next = prev + 1;
+      try { localStorage.setItem(key, String(next)); } catch {}
+      return next;
+    });
 
     // Update today's check-in count
     const today = new Date().toISOString().split('T')[0];
@@ -912,14 +931,15 @@ export default function HomePage() {
       const myBelt = (memberProfile.belt || 'white').toLowerCase();
       const existing = prev.find((e: any) => e.name === myName || e.isMe);
       const newCount = (existing?.classCount || 0) + 1;
-      const newScore = newCount * 10;
+      // totalPoints = XP from stats (used for level calculation)
+      const currentXP = (() => { try { const s = JSON.parse(localStorage.getItem('lbjj_game_stats_v2') || '{}'); return Math.max(s.xp || 0, s.totalXP || 0, (memberProfile as any)?.totalPoints || 0); } catch { return 0; } })();
       const updated = existing
         ? prev.map((e: any) => e.name === myName || e.isMe
-            ? { ...e, classCount: newCount, score: newScore, isMe: true }
+            ? { ...e, classCount: newCount, totalPoints: currentXP, score: currentXP, isMe: true }
             : e)
-        : [...prev, { name: myName, belt: myBelt, classCount: newCount, score: newScore, isMe: true, rank: prev.length + 1 }];
-      // Re-sort by score
-      const sorted = [...updated].sort((a: any, b: any) => b.score - a.score || a.name.localeCompare(b.name));
+        : [...prev, { name: myName, belt: myBelt, classCount: newCount, totalPoints: currentXP, score: currentXP, isMe: true, rank: prev.length + 1 }];
+      // Re-sort by totalPoints/score desc
+      const sorted = [...updated].sort((a: any, b: any) => (b.totalPoints || b.score || 0) - (a.totalPoints || a.score || 0) || a.name.localeCompare(b.name));
       sorted.forEach((e: any, i) => { e.rank = i + 1; });
       const top5 = sorted.slice(0, 5);
       try { localStorage.setItem(LEADERBOARD_CACHE_KEY, JSON.stringify({ data: top5, ts: Date.now() })); } catch {}
@@ -1265,15 +1285,12 @@ export default function HomePage() {
   const trainingSeasonData = (() => {
     try {
       const now = new Date();
-      const yearMonth = now.toISOString().slice(0, 7); // "2026-04"
+      const yearMonth = now.toISOString().slice(0, 7);
       const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
       const dayOfMonth = now.getDate();
-      // Count check-ins from lbjj_checkin_history this month
-      const history: string[] = JSON.parse(localStorage.getItem('lbjj_checkin_history') || '[]');
-      const thisMonthClasses = history.filter(d => d.startsWith(yearMonth)).length;
-      // Also count from game stats as fallback
-      const stats = JSON.parse(localStorage.getItem('lbjj_game_stats_v2') || '{}');
-      const goalClasses = 20; // monthly goal
+      // Use reactive seasonClasses state (increments on every check-in)
+      const thisMonthClasses = seasonClasses;
+      const goalClasses = 20;
       const progress = Math.min(1, thisMonthClasses / goalClasses);
       const monthName = now.toLocaleString('default', { month: 'long' });
       return { thisMonthClasses, goalClasses, progress, monthName, dayOfMonth, daysInMonth };
