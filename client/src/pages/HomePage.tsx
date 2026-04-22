@@ -15,6 +15,7 @@ import { StreakWidget, StreakInfoPanel } from "@/components/StreakWidget";
 import { XPWidget, XPInfoPanel } from "@/components/XPWidget";
 import { CheckInWidget } from "@/components/CheckInWidget";
 import { ParagonRing } from "@/components/ParagonRing";
+import { StatsCards } from "@/components/StatsCards";
 import { getLevelFromXP, getActualLevel, XP_LEVELS } from "@/lib/xp";
 import {
   CreditCard, FileText, ChevronRight, ChevronDown, LogOut,
@@ -1627,57 +1628,13 @@ export default function HomePage() {
       {/* ════════════════════════════════════════════════════
           STATS ROW — Streak + Total classes
           ════════════════════════════════════════════════════ */}
-      <div className="stagger-child" style={{ display: 'flex', gap: 10, margin: '0 20px 16px' }}>
-        <a href="/#/history" style={{
-          flex: 1, background: 'linear-gradient(135deg, rgba(200,162,76,0.1) 0%, rgba(200,162,76,0.03) 100%)',
-          border: '1px solid rgba(200,162,76,0.18)', borderRadius: 12,
-          padding: '12px 14px', display: 'flex', alignItems: 'center', gap: 10,
-          textDecoration: 'none', cursor: 'pointer',
-        }} className="active:scale-[0.95]">
-          <span className="streak-icon" style={{
-            display: 'inline-flex', alignItems: 'center', justifyContent: 'center', color: '#C8A24C',
-            ...(effectiveStreak > 0 ? { animation: 'flame-idle 2.4s ease-in-out infinite' } : {}),
-          }}>
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="#C8A24C" stroke="none">
-              <path d="M12 2c0 0-5 5.5-5 10a5 5 0 0 0 10 0C17 7.5 12 2 12 2zm0 15a3 3 0 0 1-3-3c0-2.5 3-6 3-6s3 3.5 3 6a3 3 0 0 1-3 3z"/>
-            </svg>
-          </span>
-          <div style={{ flex: 1 }}>
-            <div style={{ fontSize: 20, fontWeight: 700, color: '#C8A24C', lineHeight: 1, display: 'flex', alignItems: 'center', gap: 4 }}>
-              {displayStreak}
-              {streakFreezeActive && <span style={{ display: 'inline-flex', alignItems: 'center' }}><ShieldIcon size={14} color="#C8A24C" /></span>}
-            </div>
-            <div style={{ fontSize: 11, color: '#666', marginTop: 2 }}>Week streak</div>
-          </div>
-          <ChevronRight size={14} color="#555" strokeWidth={2} />
-        </a>
-        <a href="/#/history" style={{
-          flex: 1,
-          background: classesToday > 0 ? 'linear-gradient(135deg, rgba(76,175,128,0.12) 0%, rgba(76,175,128,0.04) 100%)' : 'rgba(255,255,255,0.03)',
-          border: classesToday > 0 ? '1px solid rgba(76,175,128,0.2)' : '1px solid #1A1A1A',
-          borderRadius: 12, padding: '12px 14px', display: 'flex', alignItems: 'center', gap: 10,
-          textDecoration: 'none', cursor: 'pointer',
-        }} className="active:scale-[0.95]">
-          {classesToday > 0 ? (
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-              <circle cx="12" cy="12" r="11" fill="rgba(76,175,128,0.15)" stroke="#4CAF80" strokeWidth="1.5"/>
-              <polyline points="7 12 10.5 15.5 17 9" stroke="#4CAF80" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-            </svg>
-          ) : (
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#E0E0E0" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
-            </svg>
-          )}
-          <div style={{ flex: 1 }}>
-            <div style={{ fontSize: 20, fontWeight: 700, color: classesToday > 0 ? '#4CAF80' : '#E0E0E0', lineHeight: 1 }}>
-              {displayTotalClasses}
-            </div>
-            <div style={{ fontSize: 11, color: '#666', marginTop: 2 }}>Total classes</div>
-            {classesToday > 0 && <div style={{ fontSize: 11, color: '#888', marginTop: 1 }}>{classesToday} today</div>}
-          </div>
-          <ChevronRight size={14} color="#555" strokeWidth={2} />
-        </a>
-      </div>
+      <StatsCards
+        streak={effectiveStreak}
+        totalClasses={totalClasses}
+        classesToday={classesToday}
+        comboMultiplier={comboMultiplier}
+        streakFreezeActive={streakFreezeActive}
+      />
 
       {/* ════════════════════════════════════════════════════
           XP PROGRESS WIDGET
