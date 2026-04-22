@@ -465,13 +465,16 @@ export function StreakWidget({ dailyStreakCount, weekDots, trainedCount, comboMu
                 {/* Info button */}
                 <button
                   onClick={e => { e.stopPropagation(); onOpenInfo?.(); }}
+                  aria-label="Streak info"
                   style={{
-                    width: 22, height: 22, borderRadius: '50%', border: '1px solid rgba(255,255,255,0.25)',
+                    width: 22, height: 22, minWidth: 22, minHeight: 22,
+                    borderRadius: '50%', border: '1px solid rgba(255,255,255,0.25)',
                     background: '#282522', color: '#fff',
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    fontStyle: 'italic', fontWeight: 700, fontSize: 12,
+                    fontStyle: 'normal', fontWeight: 700, fontSize: 13,
+                    lineHeight: 1, padding: 0,
                     cursor: 'pointer', boxShadow: '0 4px 8px rgba(0,0,0,0.4)',
-                    transition: 'all 0.2s',
+                    transition: 'all 0.2s', flexShrink: 0,
                   }}
                 >
                   i

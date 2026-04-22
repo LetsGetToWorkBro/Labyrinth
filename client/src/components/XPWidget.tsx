@@ -578,12 +578,13 @@ export function XPWidget({ xp, memberName: _memberName, onOpenInfo }: XPWidgetPr
             <button
               onClick={e => { e.stopPropagation(); onOpenInfo?.(); }}
               style={{
-                width: 18, height: 18, borderRadius: '50%',
+                width: 20, height: 20, minWidth: 20, minHeight: 20,
+                borderRadius: '50%',
                 border: '1px solid rgba(255,255,255,0.2)',
                 background: '#282522',
                 color: '#fff',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
-                fontStyle: 'italic', fontWeight: 700, fontSize: 10,
+                fontStyle: 'normal', fontWeight: 700, fontSize: 12,
                 cursor: 'pointer',
                 padding: 0, lineHeight: 1,
                 boxShadow: '0 2px 6px rgba(0,0,0,0.4)',
