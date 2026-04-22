@@ -19,6 +19,7 @@ import { StatsCards } from "@/components/StatsCards";
 import { SeasonMilestoneWidgets } from "@/components/SeasonMilestoneWidgets";
 import { LiveStreamBanner } from "@/components/LiveStreamBanner";
 import { AnnouncementCard } from "@/components/AnnouncementCard";
+import { TournamentWidget } from "@/components/TournamentWidget";
 import { getLevelFromXP, getActualLevel, XP_LEVELS } from "@/lib/xp";
 import {
   CreditCard, FileText, ChevronRight, ChevronDown, LogOut,
@@ -1575,19 +1576,15 @@ export default function HomePage() {
         </div>
       )}
 
-      {/* M5: Tournament Countdown (near-term) */}
+      {/* M5: Tournament Countdown (near-term, cached) */}
       {tournamentData && daysUntilTournament !== null && daysUntilTournament <= 30 && !nextTournament && (
-        <div style={{ margin: '0 20px 12px', background: '#0D0D0D', border: '1px solid #C8A24C25', borderRadius: 14, padding: '14px 16px' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <div>
-              <div style={{ fontSize: 9, color: '#C8A24C', letterSpacing: '0.12em', textTransform: 'uppercase' }}>Next Tournament</div>
-              <div style={{ fontSize: 15, fontWeight: 800, color: '#F0F0F0', marginTop: 2 }}>{tournamentData.name}</div>
-            </div>
-            <div style={{ textAlign: 'right' }}>
-              <div style={{ fontSize: 28, fontWeight: 900, color: '#FFD700' }}>{daysUntilTournament}</div>
-              <div style={{ fontSize: 9, color: '#555', textTransform: 'uppercase' }}>Days Out</div>
-            </div>
-          </div>
+        <div className="mx-5 mb-3">
+          <TournamentWidget
+            name={tournamentData.name}
+            date={tournamentData.date}
+            location={tournamentData.location}
+            link={tournamentData.link}
+          />
         </div>
       )}
 
@@ -1783,60 +1780,15 @@ export default function HomePage() {
           ════════════════════════════════════════════════════ */}
       {nextTournament && tournamentDaysUntil <= 60 && (
         <div className="mx-5 mb-4 reveal">
-          <div style={{ background: 'linear-gradient(135deg, #141414, #1A1A0A)', border: '1px solid rgba(200,162,76,0.19)', borderRadius: 14, padding: 16, position: 'relative' }}>
-            <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', color: '#C8A24C', textTransform: 'uppercase' as const, marginBottom: 6, display: 'flex', alignItems: 'center', gap: 5 }}>
-                <Trophy size={11} color="#C8A24C" aria-hidden="true" />
-                Upcoming Tournament
-              </div>
-            <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10 }}>
-              <div style={{ flex: 1 }}>
-                <div style={{ fontSize: 16, fontWeight: 700, color: '#F0F0F0', marginBottom: 4 }}>{nextTournament.name}</div>
-                <div style={{ fontSize: 13, color: '#888' }}>{tournamentDaysUntil === 0 ? 'Today!' : tournamentDaysUntil === 1 ? 'Tomorrow' : `${tournamentDaysUntil} days away`}</div>
-                {nextTournament.location && (
-                  <div style={{ fontSize: 11, color: '#666', marginTop: 4 }}>{nextTournament.location}</div>
-                )}
-              </div>
-              <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                <div style={{ fontSize: 28, fontWeight: 900, color: '#FFD700' }}>{tournamentDaysUntil}</div>
-                <div style={{ fontSize: 9, color: '#555', textTransform: 'uppercase' }}>Days Out</div>
-              </div>
-            </div>
-            {/* Map + Website buttons tucked in bottom-right corner */}
-            <div style={{ display: 'flex', gap: 6, marginTop: 12, justifyContent: 'flex-end' }}>
-              {nextTournament.location && (
-                <a
-                  href={`https://maps.google.com/?q=${encodeURIComponent(nextTournament.location)}`}
-                  target="_blank" rel="noopener noreferrer"
-                  style={{
-                    display: 'inline-flex', alignItems: 'center', gap: 4,
-                    padding: '5px 10px', borderRadius: 8,
-                    background: 'rgba(200,162,76,0.1)', border: '1px solid rgba(200,162,76,0.25)',
-                    color: '#C8A24C', fontSize: 11, fontWeight: 600, textDecoration: 'none',
-                  }}
-                >
-                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
-                  Map
-                </a>
-              )}
-              {nextTournament.link && (
-                <a
-                  href={nextTournament.link}
-                  target="_blank" rel="noopener noreferrer"
-                  style={{
-                    display: 'inline-flex', alignItems: 'center', gap: 4,
-                    padding: '5px 10px', borderRadius: 8,
-                    background: 'rgba(200,162,76,0.1)', border: '1px solid rgba(200,162,76,0.25)',
-                    color: '#C8A24C', fontSize: 11, fontWeight: 600, textDecoration: 'none',
-                  }}
-                >
-                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
-                  Website
-                </a>
-              )}
-            </div>
-          </div>
+          <TournamentWidget
+            name={nextTournament.name}
+            date={nextTournament.date}
+            location={nextTournament.location}
+            link={nextTournament.link}
+          />
         </div>
       )}
+
 
       {/* ════════════════════════════════════════════════════
           WEEKLY REPORT (Monday morning)
