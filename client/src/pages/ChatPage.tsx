@@ -275,6 +275,7 @@ export default function ChatPage() {
   const [onlineMembers, setOnlineMembers] = useState<ChannelMember[]>([]);
   const [membersOpen, setMembersOpen] = useState(false);
   const [channelMembers, setChannelMembers] = useState<ChannelMember[]>([]);
+  const [channelMembersOpen, setChannelMembersOpen] = useState(false);
 
   const [profileMember, setProfileMember] = useState<ChannelMember | null>(null);
 
@@ -330,6 +331,12 @@ export default function ChatPage() {
 
   // Close members dropdown on outside click
   useEffect(() => {
+    const handler = () => { setChannelMembersOpen(false); };
+    document.addEventListener('click', handler);
+    return () => document.removeEventListener('click', handler);
+  }, []);
+
+  useEffect(() => {
     if (!membersOpen) return;
     const onDoc = (e: MouseEvent) => {
       if (membersWrapRef.current && !membersWrapRef.current.contains(e.target as Node)) {
@@ -379,6 +386,26 @@ export default function ChatPage() {
     }, 60000);
     return () => clearInterval(t);
   }, [isAuthenticated, loadOnlineMembers]);
+
+  // Always inject the current user into the online list so they see themselves
+  useEffect(() => {
+    if (!isAuthenticated || !member?.name) return;
+    const self: ChannelMember = {
+      name: member.name,
+      email: member.email || '',
+      belt: (member.belt || 'white').toLowerCase(),
+      role: member.role || '',
+      totalPoints: (() => { try { const s = JSON.parse(localStorage.getItem('lbjj_game_stats_v2') || '{}'); return Math.max(s.xp || 0, s.totalXP || 0, (member as any)?.totalPoints || 0); } catch { return (member as any)?.totalPoints || 0; } })(),
+      badgeCount: 0,
+      profilePic: (() => { try { return localStorage.getItem('lbjj_profile_picture') || undefined; } catch { return undefined; } })() as string | undefined,
+      lastSeen: new Date().toISOString(),
+    };
+    setOnlineMembers(prev => {
+      // Replace existing self entry or prepend
+      const without = prev.filter(m => (m.email || m.name) !== (self.email || self.name));
+      return [self, ...without];
+    });
+  }, [isAuthenticated, member]);
 
   // Load messages for a channel
   const loadMessages = useCallback(async (channelId: string) => {
@@ -720,35 +747,72 @@ export default function ChatPage() {
             }} />
             <span>{activeChannel?.name || ''}</span>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            {channelMembers.length > 0 ? (
-              <div style={{
+          {/* Who-strip: click to open channel members dropdown */}
+          <div style={{ position: 'relative' }}>
+            <div
+              onClick={(e) => { e.stopPropagation(); setChannelMembersOpen(v => !v); }}
+              style={{
                 display: 'flex', alignItems: 'center', gap: 4,
                 background: 'rgba(255,255,255,.04)', border: '1px solid rgba(255,255,255,.06)',
                 padding: '4px 10px 4px 6px', borderRadius: 10, cursor: 'pointer',
-              }}>
-                <div style={{ display: 'flex' }}>
-                  {channelMembers.slice(0, 3).map(m => (
-                    <div
-                      key={m.email || m.name}
-                      onClick={(e) => { e.stopPropagation(); openProfile(m); }}
-                      style={{
-                        width: 20, height: 20, borderRadius: 6, border: '1.5px solid #030303', marginRight: -4,
-                        background: avatarGradient(m.belt || 'white'), overflow: 'hidden',
-                        fontSize: 9, fontWeight: 800, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      }}
-                    >
-                      {m.profilePic ? (
-                        <img src={m.profilePic} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                      ) : (
-                        (m.name || '?').charAt(0)
-                      )}
-                    </div>
-                  ))}
-                </div>
-                <span style={{ fontSize: 11, fontWeight: 700, color: '#a8a29e', marginLeft: 7 }}>{channelMembers.length} here</span>
+              }}
+            >
+              <div style={{ display: 'flex' }}>
+                {(channelMembers.length > 0 ? channelMembers : onlineMembers).slice(0, 3).map(m => (
+                  <div key={m.email || m.name} style={{
+                    width: 20, height: 20, borderRadius: 6, border: '1.5px solid #030303', marginRight: -4,
+                    background: avatarGradient(m.belt || 'white'), overflow: 'hidden',
+                    fontSize: 9, fontWeight: 800, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  }}>
+                    {m.profilePic ? <img src={m.profilePic} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : (m.name || '?').charAt(0)}
+                  </div>
+                ))}
               </div>
-            ) : null}
+              <span style={{ fontSize: 11, fontWeight: 700, color: '#a8a29e', marginLeft: 7 }}>
+                {channelMembers.length > 0 ? `${channelMembers.length} here` : `${onlineMembers.length} online`}
+              </span>
+              <ChevDown size={12} color="#a8a29e" style={{ marginLeft: 2, transition: 'transform .3s', transform: channelMembersOpen ? 'rotate(180deg)' : 'rotate(0deg)' }} />
+            </div>
+
+            {/* Channel members dropdown */}
+            <div style={{
+              position: 'absolute', top: 'calc(100% + 8px)', right: 0, width: 260,
+              background: '#161412', border: '1px solid rgba(255,255,255,.13)', borderRadius: 20,
+              padding: 12, boxShadow: '0 20px 60px rgba(0,0,0,.9)',
+              opacity: channelMembersOpen ? 1 : 0,
+              transform: channelMembersOpen ? 'translateY(0) scale(1)' : 'translateY(-8px) scale(.97)',
+              pointerEvents: channelMembersOpen ? 'auto' : 'none',
+              transition: 'all .35s cubic-bezier(0.175,0.885,0.32,1.275)', zIndex: 9999,
+              maxHeight: '60vh', overflowY: 'auto',
+            }}>
+              <div style={{ fontSize: 10, fontWeight: 800, color: '#57534e', letterSpacing: '.15em', textTransform: 'uppercase', padding: '2px 8px 8px' }}>In this channel</div>
+              {(channelMembers.length > 0 ? channelMembers : onlineMembers).map(m => {
+                const mLevel = getActualLevel(m.totalPoints || 0);
+                const isOnline = m.lastSeen && (Date.now() - new Date(m.lastSeen).getTime()) < 5 * 60 * 1000;
+                return (
+                  <div key={m.email || m.name} onClick={() => { setChannelMembersOpen(false); openProfile(m); }}
+                    style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px', borderRadius: 12, cursor: 'pointer', transition: 'background .2s' }}
+                    onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,.05)')}
+                    onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+                  >
+                    <div style={{ position: 'relative', flexShrink: 0 }}>
+                      <div style={{ width: 32, height: 32, borderRadius: 10, background: avatarGradient(m.belt || 'white'), overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 800, color: '#fff', opacity: isOnline ? 1 : 0.5 }}>
+                        {m.profilePic ? <img src={m.profilePic} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : (m.name || '?').charAt(0)}
+                      </div>
+                      <div style={{ position: 'absolute', bottom: -1, right: -1, width: 9, height: 9, borderRadius: '50%', background: isOnline ? '#10b981' : '#57534e', border: '2px solid #161412' }} />
+                    </div>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontSize: 13, fontWeight: 700, color: '#fff', opacity: isOnline ? 1 : 0.55 }}>{m.name}</div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                        <div style={{ width: 8, height: 8, borderRadius: 2, background: getBeltColor(m.belt || 'white') }} />
+                        <span style={{ fontSize: 10, fontWeight: 700, color: '#a8a29e' }}>{(m.belt || 'white').charAt(0).toUpperCase() + (m.belt || 'white').slice(1)} Belt</span>
+                      </div>
+                    </div>
+                    <div style={{ fontSize: 10, fontWeight: 800, color: '#e8af34', background: 'rgba(232,175,52,.12)', padding: '2px 7px', borderRadius: 6, border: '1px solid rgba(232,175,52,.25)' }}>LV {mLevel}</div>
+                  </div>
+                );
+              })}
+            </div>
           </div>
         </div>
 
@@ -767,7 +831,10 @@ export default function ChatPage() {
             messages.map((m, i) => {
               const isMe = !!member?.name && m.sender === member.name;
               const senderBelt = (m.senderBelt || 'white').toLowerCase();
-              const senderXP = isMe ? myXP : beltToMinXP(senderBelt, m.senderRole || '');
+              // Prefer real totalPoints from message (sent by GAS), then fall back to belt estimate
+              const senderXP = isMe
+                ? myXP
+                : ((m as any).senderTotalPoints || beltToMinXP(senderBelt, m.senderRole || ''));
               const senderLevel = getActualLevel(senderXP);
               const senderPfp = isMe ? myPfp : (m.senderProfilePic || undefined);
               const pillBelt = senderBelt === 'black' || senderBelt === 'brown' || senderBelt === 'purple' || senderBelt === 'blue' || senderBelt === 'white' ? senderBelt : 'white';
@@ -796,8 +863,10 @@ export default function ChatPage() {
                     </ParagonRing>
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 5, maxWidth: '82%', alignItems: isMe ? 'flex-end' : 'flex-start' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexDirection: isMe ? 'row-reverse' : 'row' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 5, flexDirection: isMe ? 'row-reverse' : 'row' }}>
                       <span style={{ fontSize: 12, fontWeight: 700, color: '#e7e5e4' }}>{displayName}</span>
+                      {/* LV chip */}
+                      <span style={{ fontSize: 9, fontWeight: 900, color: '#e8af34', background: 'rgba(232,175,52,.12)', border: '1px solid rgba(232,175,52,.25)', padding: '1px 5px', borderRadius: 5 }}>LV {senderLevel}</span>
                       <span style={beltPillStyle(pillBelt)}>{pillBelt.charAt(0).toUpperCase() + pillBelt.slice(1)}</span>
                       <span style={{ fontSize: 10, fontWeight: 600, color: '#57534e' }}>{fmtTime(m.timestamp)}</span>
                     </div>
