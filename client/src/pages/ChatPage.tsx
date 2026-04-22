@@ -357,21 +357,47 @@ export default function ChatPage() {
 
   useEffect(() => { loadChannels(); }, [loadChannels]);
 
-  // Load/poll online members for dropdown + chat header
+  // Load/poll online members — always keeps self at top with fresh lastSeen
   const loadOnlineMembers = useCallback(async (silent = false) => {
+    const buildSelf = (): ChannelMember | null => {
+      try {
+        const m = JSON.parse(localStorage.getItem('lbjj_member_profile') || 'null');
+        if (!m?.name) return null;
+        const s = JSON.parse(localStorage.getItem('lbjj_game_stats_v2') || '{}');
+        return {
+          name: m.name, email: m.email || '',
+          belt: (m.belt || 'white').toLowerCase(),
+          role: m.role || '',
+          totalPoints: Math.max(s.xp || 0, s.totalXP || 0, m.totalPoints || 0),
+          badgeCount: 0,
+          profilePic: localStorage.getItem('lbjj_profile_picture') || undefined,
+          lastSeen: new Date().toISOString(),
+        };
+      } catch { return null; }
+    };
+
+    const mergeSelf = (list: ChannelMember[]) => {
+      const self = buildSelf();
+      if (!self) return list;
+      // Always stamp self as just-seen and put at top
+      const without = list.filter(m => (m.email || m.name) !== (self.email || self.name));
+      return [self, ...without];
+    };
+
     try {
       const cached = sessionStorage.getItem('lbjj_online_members');
       if (cached) {
         const { data, ts } = JSON.parse(cached);
         if (Date.now() - ts < 2 * 60 * 1000) {
-          setOnlineMembers(data);
+          setOnlineMembers(mergeSelf(data));
           if (silent) return;
         }
       }
     } catch {}
     try {
       const members = await chatGetChannelMembers('general');
-      setOnlineMembers(members);
+      const merged = mergeSelf(members);
+      setOnlineMembers(merged);
       try { sessionStorage.setItem('lbjj_online_members', JSON.stringify({ data: members, ts: Date.now() })); } catch {}
     } catch {}
   }, []);
@@ -387,24 +413,26 @@ export default function ChatPage() {
     return () => clearInterval(t);
   }, [isAuthenticated, loadOnlineMembers]);
 
-  // Always inject the current user into the online list so they see themselves
+  // Inject self immediately on auth (before API call completes)
   useEffect(() => {
     if (!isAuthenticated || !member?.name) return;
-    const self: ChannelMember = {
-      name: member.name,
-      email: member.email || '',
-      belt: (member.belt || 'white').toLowerCase(),
-      role: member.role || '',
-      totalPoints: (() => { try { const s = JSON.parse(localStorage.getItem('lbjj_game_stats_v2') || '{}'); return Math.max(s.xp || 0, s.totalXP || 0, (member as any)?.totalPoints || 0); } catch { return (member as any)?.totalPoints || 0; } })(),
-      badgeCount: 0,
-      profilePic: (() => { try { return localStorage.getItem('lbjj_profile_picture') || undefined; } catch { return undefined; } })() as string | undefined,
-      lastSeen: new Date().toISOString(),
-    };
-    setOnlineMembers(prev => {
-      // Replace existing self entry or prepend
-      const without = prev.filter(m => (m.email || m.name) !== (self.email || self.name));
-      return [self, ...without];
-    });
+    try {
+      const s = JSON.parse(localStorage.getItem('lbjj_game_stats_v2') || '{}');
+      const self: ChannelMember = {
+        name: member.name,
+        email: (member as any).email || '',
+        belt: ((member as any).belt || 'white').toLowerCase(),
+        role: (member as any).role || '',
+        totalPoints: Math.max(s.xp || 0, s.totalXP || 0, (member as any)?.totalPoints || 0),
+        badgeCount: 0,
+        profilePic: localStorage.getItem('lbjj_profile_picture') || undefined,
+        lastSeen: new Date().toISOString(),
+      };
+      setOnlineMembers(prev => {
+        const without = prev.filter(m => (m.email || m.name) !== (self.email || self.name));
+        return [self, ...without];
+      });
+    } catch {}
   }, [isAuthenticated, member]);
 
   // Load messages for a channel
@@ -774,45 +802,40 @@ export default function ChatPage() {
               <ChevDown size={12} color="#a8a29e" style={{ marginLeft: 2, transition: 'transform .3s', transform: channelMembersOpen ? 'rotate(180deg)' : 'rotate(0deg)' }} />
             </div>
 
-            {/* Channel members dropdown */}
-            <div style={{
-              position: 'absolute', top: 'calc(100% + 8px)', right: 0, width: 260,
-              background: '#161412', border: '1px solid rgba(255,255,255,.13)', borderRadius: 20,
-              padding: 12, boxShadow: '0 20px 60px rgba(0,0,0,.9)',
-              opacity: channelMembersOpen ? 1 : 0,
-              transform: channelMembersOpen ? 'translateY(0) scale(1)' : 'translateY(-8px) scale(.97)',
-              pointerEvents: channelMembersOpen ? 'auto' : 'none',
-              transition: 'all .35s cubic-bezier(0.175,0.885,0.32,1.275)', zIndex: 9999,
-              maxHeight: '60vh', overflowY: 'auto',
-            }}>
-              <div style={{ fontSize: 10, fontWeight: 800, color: '#57534e', letterSpacing: '.15em', textTransform: 'uppercase', padding: '2px 8px 8px' }}>In this channel</div>
-              {(channelMembers.length > 0 ? channelMembers : onlineMembers).map(m => {
-                const mLevel = getActualLevel(m.totalPoints || 0);
-                const isOnline = m.lastSeen && (Date.now() - new Date(m.lastSeen).getTime()) < 5 * 60 * 1000;
-                return (
-                  <div key={m.email || m.name} onClick={() => { setChannelMembersOpen(false); openProfile(m); }}
-                    style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px', borderRadius: 12, cursor: 'pointer', transition: 'background .2s' }}
-                    onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,.05)')}
-                    onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
-                  >
-                    <div style={{ position: 'relative', flexShrink: 0 }}>
-                      <div style={{ width: 32, height: 32, borderRadius: 10, background: avatarGradient(m.belt || 'white'), overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 800, color: '#fff', opacity: isOnline ? 1 : 0.5 }}>
-                        {m.profilePic ? <img src={m.profilePic} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : (m.name || '?').charAt(0)}
-                      </div>
-                      <div style={{ position: 'absolute', bottom: -1, right: -1, width: 9, height: 9, borderRadius: '50%', background: isOnline ? '#10b981' : '#57534e', border: '2px solid #161412' }} />
-                    </div>
-                    <div style={{ flex: 1 }}>
-                      <div style={{ fontSize: 13, fontWeight: 700, color: '#fff', opacity: isOnline ? 1 : 0.55 }}>{m.name}</div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-                        <div style={{ width: 8, height: 8, borderRadius: 2, background: getBeltColor(m.belt || 'white') }} />
-                        <span style={{ fontSize: 10, fontWeight: 700, color: '#a8a29e' }}>{(m.belt || 'white').charAt(0).toUpperCase() + (m.belt || 'white').slice(1)} Belt</span>
-                      </div>
-                    </div>
-                    <div style={{ fontSize: 10, fontWeight: 800, color: '#e8af34', background: 'rgba(232,175,52,.12)', padding: '2px 7px', borderRadius: 6, border: '1px solid rgba(232,175,52,.25)' }}>LV {mLevel}</div>
-                  </div>
-                );
-              })}
-            </div>
+            {/* Channel members dropdown — online pinned, offline collapsible */}
+            {(() => {
+              const list = channelMembers.length > 0 ? channelMembers : onlineMembers;
+              const nowMs = Date.now();
+              const chOnline  = list.filter(m => m.lastSeen && (nowMs - new Date(m.lastSeen).getTime()) < 5 * 60 * 1000);
+              const chOffline = list.filter(m => !m.lastSeen || (nowMs - new Date(m.lastSeen).getTime()) >= 5 * 60 * 1000);
+              return (
+                <div style={{
+                  position: 'absolute', top: 'calc(100% + 8px)', right: 0, width: 268,
+                  background: '#161412', border: '1px solid rgba(255,255,255,.13)', borderRadius: 20,
+                  padding: 10, boxShadow: '0 20px 60px rgba(0,0,0,.9)',
+                  opacity: channelMembersOpen ? 1 : 0,
+                  transform: channelMembersOpen ? 'translateY(0) scale(1)' : 'translateY(-8px) scale(.97)',
+                  pointerEvents: channelMembersOpen ? 'auto' : 'none',
+                  transition: 'all .35s cubic-bezier(0.175,0.885,0.32,1.275)', zIndex: 9999,
+                  maxHeight: '70vh', display: 'flex', flexDirection: 'column',
+                }}>
+                  {/* Online — always visible, pinned */}
+                  {chOnline.length > 0 && (
+                    <>
+                      <div style={{ fontSize: 10, fontWeight: 800, color: '#10b981', letterSpacing: '.15em', textTransform: 'uppercase', padding: '4px 8px 6px', flexShrink: 0 }}>● Active Now</div>
+                      {chOnline.map(m => <ChMemberRow key={m.email||m.name} m={m} online onClick={() => { setChannelMembersOpen(false); openProfile(m); }} />)}
+                    </>
+                  )}
+                  {/* Offline — collapsible scrollable section */}
+                  {chOffline.length > 0 && (
+                    <ChOfflineSection members={chOffline} onOpen={(m) => { setChannelMembersOpen(false); openProfile(m); }} hasOnline={chOnline.length > 0} />
+                  )}
+                  {list.length === 0 && (
+                    <div style={{ fontSize: 12, color: '#57534e', padding: 12, textAlign: 'center' }}>No members loaded</div>
+                  )}
+                </div>
+              );
+            })()}
           </div>
         </div>
 
@@ -965,6 +988,35 @@ export default function ChatPage() {
 }
 
 // ─── MemberDropdownRow ────────────────────────────────────────────
+
+// Alias used in channel members dropdown — same as MemberDropdownRow
+const ChMemberRow = ({ m, online, onClick }: { m: ChannelMember; online: boolean; onClick: () => void }) =>
+  <MemberDropdownRow m={m} online={online} onClick={onClick} />;
+
+// Offline collapsible section for channel members dropdown
+function ChOfflineSection({ members, onOpen, hasOnline }: { members: ChannelMember[]; onOpen: (m: ChannelMember) => void; hasOnline: boolean }) {
+  const [open, setOpen] = React.useState(false);
+  return (
+    <div style={{ flexShrink: 0 }}>
+      {hasOnline && <div style={{ height: 1, background: 'rgba(255,255,255,0.06)', margin: '6px 0' }} />}
+      <div
+        onClick={() => setOpen(v => !v)}
+        style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '4px 8px 4px', cursor: 'pointer', userSelect: 'none' }}
+      >
+        <span style={{ fontSize: 10, fontWeight: 800, color: '#57534e', letterSpacing: '.15em', textTransform: 'uppercase' }}>○ Offline — {members.length}</span>
+        <svg viewBox="0 0 24 24" fill="none" stroke="#57534e" strokeWidth="2.5" width="13" height="13"
+          style={{ transition: 'transform 0.3s', transform: open ? 'rotate(180deg)' : 'rotate(0deg)' }}>
+          <polyline points="6 9 12 15 18 9" />
+        </svg>
+      </div>
+      {open && (
+        <div style={{ maxHeight: 220, overflowY: 'auto', scrollbarWidth: 'none' }}>
+          {members.map(m => <MemberDropdownRow key={m.email||m.name} m={m} online={false} onClick={() => onOpen(m)} />)}
+        </div>
+      )}
+    </div>
+  );
+}
 
 function MemberDropdownRow({ m, online, onClick }: { m: ChannelMember; online: boolean; onClick: () => void }) {
   const level = getActualLevel(m.totalPoints || 0);
