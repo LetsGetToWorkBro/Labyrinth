@@ -91,10 +91,11 @@ function MemberRow({ m, dimmed, onClick }: { m: ChannelMember; dimmed?: boolean;
   );
 }
 
-export function OnlineBubble() {
+export function OnlineBubble({ compact = false }: { compact?: boolean }) {
   const { member, isAuthenticated } = useAuth();
   const [open, setOpen]       = useState(false);
   const [members, setMembers] = useState<ChannelMember[]>([]);
+  const [dropPos, setDropPos] = useState<{ top: number; right: number } | null>(null);
   const wrapRef = useRef<HTMLDivElement>(null);
 
   // Build self entry always-online
@@ -165,12 +166,32 @@ export function OnlineBubble() {
     window.location.hash = '#/chat';
   };
 
+  const handleToggle = () => {
+    if (compact && wrapRef.current) {
+      // For compact (TopHeader): use fixed position so dropdown escapes overflow clipping
+      const rect = wrapRef.current.getBoundingClientRect();
+      setDropPos({ top: rect.bottom + 6, right: window.innerWidth - rect.right });
+    }
+    setOpen(v => !v);
+  };
+
+  const dropStyle: React.CSSProperties = compact && dropPos
+    ? { position: 'fixed', top: dropPos.top, right: dropPos.right, width: 272, zIndex: 9999 }
+    : { position: 'absolute', top: 'calc(100% + 8px)', right: 0, width: 272 };
+
   return (
     <div ref={wrapRef} style={{ position: 'relative', zIndex: 200 }}>
+      <style>{`@keyframes ob-pulse{0%{transform:scale(1);opacity:.7}50%{transform:scale(1.8);opacity:0}100%{transform:scale(1);opacity:0}}`}</style>
       {/* Pill button */}
       <button
-        onClick={() => setOpen(v => !v)}
-        style={{
+        onClick={handleToggle}
+        style={compact ? {
+          // Compact: tiny ● N pill, no label
+          display: 'flex', alignItems: 'center', gap: 4,
+          background: 'none', border: 'none', padding: '1px 4px',
+          cursor: 'pointer', flexShrink: 0,
+          WebkitTapHighlightColor: 'transparent',
+        } : {
           display: 'flex', alignItems: 'center', gap: 6,
           background: 'rgba(16,185,129,.07)',
           border: '1px solid rgba(16,185,129,.22)',
@@ -178,34 +199,38 @@ export function OnlineBubble() {
           cursor: 'pointer', transition: 'all .25s',
           WebkitTapHighlightColor: 'transparent',
         }}
-        onMouseEnter={e => (e.currentTarget.style.background = 'rgba(16,185,129,.13)')}
-        onMouseLeave={e => (e.currentTarget.style.background = 'rgba(16,185,129,.07)')}
+        onMouseEnter={compact ? undefined : e => (e.currentTarget.style.background = 'rgba(16,185,129,.13)')}
+        onMouseLeave={compact ? undefined : e => (e.currentTarget.style.background = 'rgba(16,185,129,.07)')}
       >
         {/* Pulsing dot */}
-        <div style={{ position: 'relative', width: 8, height: 8, flexShrink: 0 }}>
+        <div style={{ position: 'relative', width: compact ? 6 : 8, height: compact ? 6 : 8, flexShrink: 0 }}>
           <div style={{
-            width: 8, height: 8, borderRadius: '50%',
-            background: '#10b981', boxShadow: '0 0 8px #10b981',
+            width: compact ? 6 : 8, height: compact ? 6 : 8, borderRadius: '50%',
+            background: '#10b981', boxShadow: '0 0 6px #10b981',
           }} />
           <div style={{
-            position: 'absolute', inset: -3, borderRadius: '50%',
+            position: 'absolute', inset: -2, borderRadius: '50%',
             background: 'rgba(16,185,129,.3)',
             animation: 'ob-pulse 2s infinite',
           }} />
         </div>
-        <span style={{ fontSize: 11, fontWeight: 800, color: '#10b981', letterSpacing: '.08em' }}>
+        <span style={{ fontSize: compact ? 9 : 11, fontWeight: 800, color: '#10b981', letterSpacing: '.05em' }}>
           {onlineCount}
         </span>
-        <span style={{ fontSize: 11, fontWeight: 700, color: '#10b981', opacity: .8 }}>Online</span>
-        <svg viewBox="0 0 24 24" fill="none" stroke="#10b981" strokeWidth="2.5" width="12" height="12"
-          style={{ transition: 'transform .3s', transform: open ? 'rotate(180deg)' : 'rotate(0deg)', opacity: .7 }}>
-          <polyline points="6 9 12 15 18 9" />
-        </svg>
+        {!compact && (
+          <>
+            <span style={{ fontSize: 11, fontWeight: 700, color: '#10b981', opacity: .8 }}>Online</span>
+            <svg viewBox="0 0 24 24" fill="none" stroke="#10b981" strokeWidth="2.5" width="12" height="12"
+              style={{ transition: 'transform .3s', transform: open ? 'rotate(180deg)' : 'rotate(0deg)', opacity: .7 }}>
+              <polyline points="6 9 12 15 18 9" />
+            </svg>
+          </>
+        )}
       </button>
 
       {/* Dropdown */}
       <div style={{
-        position: 'absolute', top: 'calc(100% + 8px)', right: 0, width: 272,
+        ...dropStyle,
         background: '#161412', border: '1px solid rgba(255,255,255,.12)',
         borderRadius: 20, padding: 10,
         boxShadow: '0 20px 60px rgba(0,0,0,.9), 0 0 0 1px rgba(255,255,255,.04)',
@@ -215,8 +240,6 @@ export function OnlineBubble() {
         transition: 'all .3s cubic-bezier(0.175,0.885,0.32,1.275)',
         maxHeight: '70vh', display: 'flex', flexDirection: 'column',
       }}>
-        <style>{`@keyframes ob-pulse{0%{transform:scale(1);opacity:.7}50%{transform:scale(1.8);opacity:0}100%{transform:scale(1);opacity:0}}`}</style>
-
         {/* Active Now */}
         {active.length > 0 && (
           <>

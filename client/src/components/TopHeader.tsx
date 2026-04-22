@@ -145,7 +145,7 @@ export function TopHeader({ onMenuOpen, onXpOpen }: { onMenuOpen: () => void; on
             </div>
           </div>
 
-          {/* Row 2: XP bar */}
+          {/* Row 2: XP bar + online bubble inline */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
             <div style={{
               flex: 1, height: 10, borderRadius: 5, background: '#000',
@@ -176,11 +176,10 @@ export function TopHeader({ onMenuOpen, onXpOpen }: { onMenuOpen: () => void; on
             <span style={{ fontSize: 8, color: '#3A3A3A', whiteSpace: 'nowrap', flexShrink: 0 }}>
               {xpInLevel.toLocaleString()}/{xpNeeded.toLocaleString()}
             </span>
+            {/* Online micro-pill — sits at end of XP row */}
+            <OnlineBubble compact />
           </div>
         </div>
-
-        {/* Online bubble */}
-        <OnlineBubble />
 
         {/* PFP with Paragon frame — tapping opens XP modal */}
         <button onClick={onXpOpen} aria-label="View XP and level" style={{
