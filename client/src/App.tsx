@@ -1544,60 +1544,225 @@ function AppShell() {
       <ProfileTray open={trayOpen} onClose={() => setTrayOpen(false)} />
 
       {xpModalOpen && (() => {
-        const memberXP = (member as any)?.totalPoints || 0;
+        const storedXP = (() => { try { const s = JSON.parse(localStorage.getItem('lbjj_game_stats_v2') || '{}'); return Math.max(s.xp || 0, s.totalXP || 0, (member as any)?.totalPoints || 0); } catch { return (member as any)?.totalPoints || 0; } })();
+        const memberXP = storedXP;
         const memberLevel = getActualLevel(memberXP);
         const lvl = getLevelFromXP(memberXP);
+        const pfp = (() => { try { return localStorage.getItem('lbjj_profile_picture') || null; } catch { return null; } })();
+        const initials = member?.name ? member.name.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase() : '?';
+        const belt = ((member as any)?.belt || 'white').toLowerCase();
+
+        type ParagonTheme = 'theme-ember' | 'theme-frost' | 'theme-void' | 'theme-blood' | 'theme-apex';
+        const getTheme = (lvl: number): ParagonTheme => {
+          if (lvl >= 30) return 'theme-apex';
+          if (lvl >= 20) return 'theme-blood';
+          if (lvl >= 12) return 'theme-void';
+          if (lvl >= 6) return 'theme-frost';
+          return 'theme-ember';
+        };
+        const currentTheme = getTheme(memberLevel);
+
+        const PARAGON_TIERS = [
+          { theme: 'theme-ember', name: 'Bronze Forge',       desc: 'The forged bronze ring',        minLevel: 1,  color: '#e8af34', unlocked: memberLevel >= 1  },
+          { theme: 'theme-frost', name: 'Frozen Aura',        desc: 'Crystalline etched aura',       minLevel: 6,  color: '#0ea5e9', unlocked: memberLevel >= 6  },
+          { theme: 'theme-void',  name: 'Void Star',          desc: 'Pulsing amethyst gem',          minLevel: 12, color: '#a855f7', unlocked: memberLevel >= 12 },
+          { theme: 'theme-blood', name: 'Blood Flame',        desc: 'Aggressive crimson flare',      minLevel: 20, color: '#ef4444', unlocked: memberLevel >= 20 },
+          { theme: 'theme-apex',  name: 'Grandmaster Crown',  desc: 'Blinding platinum crown',       minLevel: 30, color: '#e2e8f0', unlocked: memberLevel >= 30 },
+        ] as const;
+
         return (
-          <div style={{ position: 'fixed', inset: 0, zIndex: 600, background: 'rgba(0,0,0,0.75)' }} onClick={() => setXpModalOpen(false)}>
-            <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, background: 'linear-gradient(135deg, #141418, #1A1A1E)', borderRadius: '20px 20px 0 0', border: '1px solid rgba(200,162,76,0.18)', padding: '20px 20px max(24px, calc(env(safe-area-inset-bottom) + 20px))', maxHeight: '75vh', overflowY: 'auto' }}
-              onClick={e => e.stopPropagation()}>
-              <div style={{ width: 36, height: 4, background: '#333', borderRadius: 2, margin: '0 auto 20px' }} />
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
-                <div style={{ fontSize: 28, fontWeight: 900, color: '#C8A24C' }}>{memberLevel}</div>
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: 14, fontWeight: 700, color: '#F0F0F0' }}>{lvl.title}</div>
-                  <div style={{ fontSize: 11, color: '#666' }}>{memberXP.toLocaleString()} XP total</div>
+          <div
+            style={{ position: 'fixed', inset: 0, zIndex: 600, background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(24px)', display: 'flex', justifyContent: 'center', alignItems: 'flex-end', paddingBottom: 24, animation: 'fadeInOverlay 0.25s ease' }}
+            onClick={() => setXpModalOpen(false)}
+          >
+            {/* Paragon CSS injected once */}
+            <style>{`
+              .prg-ring-base { position:absolute; border-radius:50%; pointer-events:none; z-index:2; -webkit-mask:linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0); -webkit-mask-composite:destination-out; mask-composite:exclude; transition:all 1s; }
+              .prg-ring-glow { position:absolute; border-radius:50%; pointer-events:none; z-index:3; transition:all 1s; }
+              .prg-ornaments { position:absolute; inset:-10px; pointer-events:none; z-index:4; }
+              .prg-ornaments div { position:absolute; transition:all 1s; }
+              .prg-orbit { position:absolute; inset:-4px; z-index:5; }
+              .prg-spark { position:absolute; top:0; left:50%; border-radius:50%; transform:translate(-50%,-50%); }
+              @keyframes prg-spin { 100%{ transform:rotate(360deg); } }
+              @keyframes prg-spin-r { 100%{ transform:rotate(-360deg); } }
+              @keyframes prg-float { 0%{transform:translate(-50%,-50%)} 100%{transform:translate(-50%,-65%)} }
+              @keyframes prg-pulse { 0%{opacity:0.7;transform:scale(0.95)} 100%{opacity:1;transform:scale(1.05)} }
+              /* EMBER */
+              .prg-ember .prg-ring-base { inset:-4px; padding:3px; background:conic-gradient(from 0deg,#854d0e,#fde047,#ca8a04,#854d0e,#fde047,#ca8a04,#854d0e) border-box; animation:prg-spin 10s linear infinite; }
+              .prg-ember .prg-ring-glow { inset:-4px; border:1px solid rgba(253,224,71,0.4); box-shadow:inset 0 0 6px #000,0 4px 12px rgba(0,0,0,0.8); }
+              .prg-ember .prg-ot,.prg-ember .prg-ob,.prg-ember .prg-ol,.prg-ember .prg-or { width:8px; height:8px; border-radius:50%; background:radial-gradient(circle,#fde047,#ca8a04,#854d0e); box-shadow:0 2px 4px rgba(0,0,0,1),inset 0 1px 1px rgba(255,255,255,0.8); border:1px solid #333; }
+              .prg-ember .prg-ot { top:0; left:50%; transform:translate(-50%,-50%); }
+              .prg-ember .prg-ob { bottom:0; left:50%; transform:translate(-50%,50%); }
+              .prg-ember .prg-ol { left:0; top:50%; transform:translate(-50%,-50%); }
+              .prg-ember .prg-or { right:0; top:50%; transform:translate(50%,-50%); }
+              /* FROST */
+              .prg-frost .prg-ring-base { inset:-6px; padding:4px; background:conic-gradient(from 0deg,#9ca3af,#fff,#e0f2fe,#0ea5e9,#9ca3af,#fff,#e0f2fe,#0ea5e9,#9ca3af) border-box; animation:prg-spin 8s linear infinite; }
+              .prg-frost .prg-ring-glow { inset:-6px; border:1px solid #e0f2fe; box-shadow:0 0 16px rgba(14,165,233,0.6),inset 0 0 12px #0284c7; }
+              .prg-frost .prg-ot { top:0; left:50%; transform:translate(-50%,-50%) rotate(45deg); width:14px; height:14px; background:linear-gradient(135deg,#fff,#0ea5e9,#0284c7); border:1px solid #fff; box-shadow:0 0 12px #0ea5e9; }
+              .prg-frost .prg-ob { bottom:0; left:50%; transform:translate(-50%,50%) rotate(45deg); width:10px; height:10px; background:linear-gradient(135deg,#fff,#0ea5e9,#0284c7); border:1px solid #fff; }
+              .prg-frost .prg-orbit { animation:prg-spin 4s linear infinite; }
+              .prg-frost .prg-spark { width:4px; height:4px; background:#fff; box-shadow:0 0 8px #fff,0 0 16px #0ea5e9; }
+              /* VOID */
+              .prg-void .prg-ring-base { inset:-7px; padding:6px; background:conic-gradient(from 0deg,#111,#3b0764,#111,#581c87,#111) border-box; }
+              .prg-void .prg-ring-glow { inset:-3px; border:2px dashed #a855f7; animation:prg-spin-r 12s linear infinite; opacity:0.8; box-shadow:0 0 20px #7e22ce,inset 0 0 10px #3b0764; }
+              .prg-void .prg-ot { top:0; left:50%; transform:translate(-50%,-50%); width:18px; height:18px; border-radius:50%; background:radial-gradient(circle at 30% 30%,#f3e8ff,#a855f7,#581c87); box-shadow:0 0 24px #a855f7,inset 0 0 8px #000; border:2px solid #3b0764; animation:prg-pulse 2s infinite alternate; }
+              .prg-void .prg-ob { bottom:0; left:50%; transform:translate(-50%,50%); width:10px; height:10px; border-radius:50%; background:#a855f7; box-shadow:0 0 12px #a855f7; }
+              .prg-void .prg-ol { left:0; top:50%; transform:translate(-50%,-50%); width:4px; height:14px; border-radius:2px; background:#7e22ce; }
+              .prg-void .prg-or { right:0; top:50%; transform:translate(50%,-50%); width:4px; height:14px; border-radius:2px; background:#7e22ce; }
+              .prg-void .prg-orbit { animation:prg-spin 5s linear infinite; }
+              .prg-void .prg-spark { width:6px; height:6px; background:#d8b4fe; box-shadow:0 0 16px #a855f7; animation:prg-pulse 1s infinite alternate; }
+              /* BLOOD */
+              .prg-blood .prg-ring-base { inset:-8px; padding:7px; background:conic-gradient(from 0deg,#000,#450a0a,#000,#7f1d1d,#000) border-box; }
+              .prg-blood .prg-ring-glow { inset:-7px; border:1px solid #fca5a5; box-shadow:0 0 24px #b91c1c,inset 0 0 16px #ef4444; opacity:0.8; }
+              .prg-blood .prg-ot { top:-2px; left:50%; transform:translate(-50%,-50%) rotate(45deg); width:22px; height:22px; background:radial-gradient(circle at 30% 30%,#fca5a5,#dc2626,#7f1d1d); border:2px solid #450a0a; box-shadow:0 0 24px #ef4444,inset 0 0 8px #000; }
+              .prg-blood .prg-ob { bottom:-2px; left:50%; transform:translate(-50%,50%) rotate(45deg); width:14px; height:14px; background:#dc2626; border:1px solid #fca5a5; box-shadow:0 0 12px #ef4444; }
+              .prg-blood .prg-orbit { animation:prg-spin-r 3s linear infinite; }
+              .prg-blood .prg-spark { background:#fca5a5; box-shadow:0 0 16px #ef4444,0 0 32px #b91c1c; border-radius:0; width:3px; height:20px; }
+              /* APEX */
+              .prg-apex .prg-ring-base { inset:-8px; padding:6px; background:conic-gradient(from 0deg,#fff,#fde047,#9ca3af,#fff,#fde047,#9ca3af,#fff) border-box; animation:prg-spin 3s linear infinite; }
+              .prg-apex .prg-ring-glow { inset:-8px; border:2px solid rgba(255,255,255,0.8); box-shadow:0 0 32px rgba(255,255,255,0.9),inset 0 0 20px #fde047; }
+              .prg-apex .prg-ot { top:-2px; left:50%; transform:translate(-50%,-50%) rotate(45deg); animation:prg-float 2s ease-in-out infinite alternate; width:26px; height:26px; background:radial-gradient(circle at 30% 30%,#fff 0%,#fde047 40%,#ca8a04 100%); border:2px solid #fff; box-shadow:0 0 40px #fff,inset 0 0 12px rgba(255,255,255,1); }
+              .prg-apex .prg-ob { bottom:0; left:50%; transform:translate(-50%,50%); width:16px; height:16px; border-radius:50%; background:#fde047; box-shadow:0 0 24px #fff; border:2px solid #fff; }
+              .prg-apex .prg-ol { left:0; top:50%; transform:translate(-50%,-50%) rotate(45deg); width:14px; height:14px; background:#fff; box-shadow:0 0 20px #fff,0 0 32px #fde047; }
+              .prg-apex .prg-or { right:0; top:50%; transform:translate(50%,-50%) rotate(45deg); width:14px; height:14px; background:#fff; box-shadow:0 0 20px #fff,0 0 32px #fde047; }
+              .prg-apex .prg-orbit { animation:prg-spin 6s linear infinite; }
+              .prg-apex .prg-spark { width:8px; height:8px; background:#fff; box-shadow:0 0 20px #fff,0 0 40px #fde047; }
+            `}</style>
+
+            <div
+              style={{
+                width: '100%', maxWidth: 480,
+                background: 'linear-gradient(180deg,#0a0908 0%,#030303 100%)',
+                border: '1px solid rgba(255,255,255,0.06)',
+                borderRadius: '24px 24px 0 0',
+                boxShadow: '0 40px 80px -16px rgba(0,0,0,1)',
+                display: 'flex', flexDirection: 'column',
+                maxHeight: '85vh', overflow: 'hidden',
+                animation: 'modalSlideUp 0.4s cubic-bezier(0.16,1,0.3,1)',
+                paddingBottom: 'max(24px, env(safe-area-inset-bottom, 24px))',
+              }}
+              onClick={e => e.stopPropagation()}
+            >
+              {/* Drag handle */}
+              <div style={{ textAlign: 'center', padding: '12px 24px 8px' }}>
+                <div style={{ width: 36, height: 4, background: '#2a2a2a', borderRadius: 2, margin: '0 auto' }} />
+              </div>
+
+              {/* Header: portrait + current ring + level */}
+              <div style={{ padding: '16px 24px 20px', display: 'flex', alignItems: 'center', gap: 20, borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                {/* Large portrait with active paragon ring */}
+                <div className={`prg-${currentTheme.replace('theme-', '')}`} style={{ position: 'relative', width: 72, height: 72, flexShrink: 0 }}>
+                  <div style={{ position: 'absolute', inset: 0, borderRadius: '50%', overflow: 'hidden', border: '2px solid #000', zIndex: 1 }}>
+                    {pfp
+                      ? <img src={pfp} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} alt="PFP" />
+                      : <div style={{ width: '100%', height: '100%', background: 'radial-gradient(circle at 35% 30%,#2A2A2A,#0D0D0D)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22, fontWeight: 800, color: '#fff' }}>{initials}</div>
+                    }
+                  </div>
+                  <div className="prg-ring-base" />
+                  <div className="prg-ring-glow" />
+                  <div className="prg-ornaments">
+                    <div className="prg-ot" /><div className="prg-ob" /><div className="prg-ol" /><div className="prg-or" />
+                    <div className="prg-orbit"><div className="prg-spark" /></div>
+                  </div>
                 </div>
-                <div style={{ textAlign: 'right' }}>
-                  <div style={{ fontSize: 9, color: '#555', textTransform: 'uppercase', letterSpacing: '0.08em' }}>to next</div>
-                  <div style={{ fontSize: 13, fontWeight: 800, color: '#C8A24C' }}>+{Math.max(0, lvl.xpForNext - memberXP).toLocaleString()}</div>
+
+                {/* Stats */}
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                    <span style={{ fontFamily: "var(--font-display,'Cabinet Grotesk',system-ui)", fontSize: 13, fontWeight: 900, color: '#000', background: 'linear-gradient(135deg,#C8A24C,#FFD700)', padding: '2px 8px', borderRadius: 6 }}>
+                      LV{memberLevel}
+                    </span>
+                    <span style={{ fontSize: 15, fontWeight: 700, color: '#fff', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{lvl.title}</span>
+                  </div>
+                  <div style={{ fontSize: 11, color: '#555', marginBottom: 8 }}>{memberXP.toLocaleString()} XP total · {Math.max(0, lvl.xpForNext - memberXP).toLocaleString()} to next</div>
+                  {/* XP bar */}
+                  <div style={{ height: 8, borderRadius: 4, background: '#0a0a0a', overflow: 'hidden', border: '1px solid #1a1a1a' }}>
+                    <div style={{ height: '100%', borderRadius: 4, width: `${Math.max(lvl.progress * 100, 1.5)}%`, background: 'linear-gradient(90deg,#6B4A00,#C8A24C 40%,#FFD700 70%,#FFF8DC 85%,#FFD700 100%)', backgroundSize: '300% 100%', animation: 'xp-shimmer 2s linear infinite', boxShadow: '0 0 8px rgba(255,215,0,0.4)', transition: 'width 1.2s cubic-bezier(0.4,0,0.2,1)' }} />
+                  </div>
                 </div>
               </div>
-              <div style={{ height: 12, borderRadius: 6, background: '#0A0A0A', overflow: 'hidden', marginBottom: 20, border: '1px solid #1A1A1A' }}>
-                <div style={{ height: '100%', borderRadius: 6, width: `${Math.max(lvl.progress * 100, 1.5)}%`, background: 'linear-gradient(90deg, #6B4A00, #C8A24C 40%, #FFD700 70%, #FFF8DC 85%, #FFD700 100%)', backgroundSize: '300% 100%', animation: 'xp-shimmer 2s linear infinite', transition: 'width 1.2s cubic-bezier(0.4,0,0.2,1)', boxShadow: '0 0 10px rgba(255,215,0,0.5)' }} />
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-around', marginBottom: 20 }}>
-                {[
-                  { icon: <GrapplingIcon size={16} color="#C8A24C" />, xp: '+10 XP', label: 'Check in' },
-                  { icon: <Trophy size={16} color="#C8A24C" />, xp: '+50 XP', label: 'Tournament' },
-                  { icon: <GoldMedalIcon size={16} />, xp: '+150 XP', label: 'Gold' },
-                ].map(item => (
-                  <div key={item.label} style={{ textAlign: 'center' }}>
-                    <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 4 }}>{item.icon}</div>
-                    <div style={{ fontSize: 11, fontWeight: 700, color: '#C8A24C' }}>{item.xp}</div>
-                    <div style={{ fontSize: 10, color: '#555' }}>{item.label}</div>
-                  </div>
-                ))}
-              </div>
-              <div style={{ fontSize: 11, fontWeight: 700, color: '#888', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 10 }}>Next Rewards</div>
-              {[
-                { level: 5, label: 'Bronze Portrait', desc: 'Bronze ring frame unlocks', color: '#CD7F32' },
-                { level: 10, label: 'Silver Portrait', desc: 'Double-ring silver frame', color: '#9CA3AF' },
-                { level: 20, label: 'Gold Portrait', desc: 'Gold crown ring', color: '#C8A24C' },
-                { level: 50, label: 'Paragon Portrait', desc: 'Animated paragon frame', color: '#DC46DC' },
-              ].filter(r => r.level > memberLevel).slice(0, 3).map(reward => (
-                <div key={reward.label} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 0', borderBottom: '1px solid #1A1A1A' }}>
-                  <div style={{ width: 32, height: 32, borderRadius: '50%', border: `2px solid ${reward.color}`, background: `${reward.color}11`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                    <div style={{ width: 20, height: 20, borderRadius: '50%', background: reward.color, opacity: 0.5 }} />
-                  </div>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: 13, fontWeight: 700, color: '#F0F0F0' }}>{reward.label}</div>
-                    <div style={{ fontSize: 11, color: '#666' }}>{reward.desc}</div>
-                  </div>
-                  <div style={{ fontSize: 11, color: reward.color, fontWeight: 700 }}>LV {reward.level}</div>
+
+              {/* Paragon Portraits list */}
+              <div style={{ padding: '16px 0', overflowY: 'auto', flex: 1 }}>
+                <div style={{ padding: '0 24px 12px', fontSize: 11, fontWeight: 800, color: '#555', textTransform: 'uppercase', letterSpacing: '0.1em' }}>
+                  Paragon Portraits
                 </div>
-              ))}
-              <button onClick={() => setXpModalOpen(false)} style={{ marginTop: 20, width: '100%', padding: 13, borderRadius: 12, background: '#1A1A1A', border: '1px solid #2A2A2A', color: '#888', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>Close</button>
+
+                {PARAGON_TIERS.map(tier => {
+                  const themeKey = tier.theme.replace('theme-', '') as 'ember' | 'frost' | 'void' | 'blood' | 'apex';
+                  const isActive = tier.theme === currentTheme;
+                  return (
+                    <div key={tier.name} style={{
+                      display: 'flex', alignItems: 'center', gap: 18, padding: '14px 24px',
+                      background: isActive ? `${tier.color}08` : 'transparent',
+                      borderTop: isActive ? `1px solid ${tier.color}20` : '1px solid transparent',
+                      borderBottom: isActive ? `1px solid ${tier.color}20` : '1px solid transparent',
+                      opacity: tier.unlocked ? 1 : 0.35,
+                      transition: 'all 0.3s',
+                    }}>
+                      {/* Mini portrait with ring */}
+                      <div className={`prg-${themeKey}`} style={{ position: 'relative', width: 48, height: 48, flexShrink: 0 }}>
+                        <div style={{ position: 'absolute', inset: 0, borderRadius: '50%', overflow: 'hidden', border: '2px solid #000', zIndex: 1 }}>
+                          {pfp
+                            ? <img src={pfp} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} alt="" />
+                            : <div style={{ width: '100%', height: '100%', background: 'radial-gradient(circle at 35% 30%,#2A2A2A,#0D0D0D)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 800, color: '#fff' }}>{initials}</div>
+                          }
+                        </div>
+                        <div className="prg-ring-base" />
+                        <div className="prg-ring-glow" />
+                        <div className="prg-ornaments">
+                          <div className="prg-ot" /><div className="prg-ob" /><div className="prg-ol" /><div className="prg-or" />
+                          {['frost','void','blood','apex'].includes(themeKey) && <div className="prg-orbit"><div className="prg-spark" /></div>}
+                        </div>
+                      </div>
+
+                      {/* Info */}
+                      <div style={{ flex: 1 }}>
+                        <div style={{ fontSize: 15, fontWeight: 700, color: tier.unlocked ? '#fff' : '#555', marginBottom: 3 }}>{tier.name}</div>
+                        <div style={{ fontSize: 12, color: '#57534e', lineHeight: 1.3 }}>{tier.desc}</div>
+                      </div>
+
+                      {/* Status badge */}
+                      <div style={{
+                        padding: '5px 10px', borderRadius: 8, fontSize: 10, fontWeight: 800,
+                        letterSpacing: '0.05em', textTransform: 'uppercase',
+                        background: isActive ? `${tier.color}20` : tier.unlocked ? 'rgba(255,255,255,0.05)' : 'rgba(255,255,255,0.03)',
+                        color: isActive ? tier.color : tier.unlocked ? '#a8a29e' : '#333',
+                        border: isActive ? `1px solid ${tier.color}40` : '1px solid rgba(255,255,255,0.06)',
+                        flexShrink: 0,
+                      }}>
+                        {isActive ? 'Active' : tier.unlocked ? `LV${tier.minLevel}` : `LV${tier.minLevel}`}
+                      </div>
+                    </div>
+                  );
+                })}
+
+                {/* XP earn quick ref */}
+                <div style={{ margin: '16px 24px 0', padding: '14px 16px', background: 'rgba(255,255,255,0.02)', borderRadius: 14, border: '1px solid rgba(255,255,255,0.05)' }}>
+                  <div style={{ fontSize: 10, fontWeight: 800, color: '#555', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 12 }}>Earn XP</div>
+                  <div style={{ display: 'flex', justifyContent: 'space-around' }}>
+                    {[
+                      { xp: '+10', label: 'Check-in' },
+                      { xp: '+75', label: 'Bronze' },
+                      { xp: '+100', label: 'Silver' },
+                      { xp: '+150', label: 'Gold' },
+                      { xp: '+500', label: 'Win' },
+                    ].map(item => (
+                      <div key={item.label} style={{ textAlign: 'center' }}>
+                        <div style={{ fontSize: 13, fontWeight: 900, color: '#e8af34', fontFamily: "var(--font-display,'Cabinet Grotesk',system-ui)" }}>{item.xp}</div>
+                        <div style={{ fontSize: 10, color: '#555', marginTop: 2 }}>{item.label}</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {/* Close */}
+              <div style={{ padding: '12px 24px 0' }}>
+                <button onClick={() => setXpModalOpen(false)} style={{ width: '100%', padding: 14, borderRadius: 14, background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', color: '#a8a29e', fontSize: 15, fontWeight: 700, cursor: 'pointer' }}>
+                  Close
+                </button>
+              </div>
             </div>
           </div>
         );
