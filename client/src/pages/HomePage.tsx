@@ -557,6 +557,21 @@ export default function HomePage() {
           try { localStorage.setItem('lbjj_game_stats_v2', JSON.stringify(s)); } catch {}
         }
         setMemberXP(cached);
+        // Also patch the leaderboard widget so the current user's level stays in sync
+        if (member?.name) {
+          setLeaderboard(prev => {
+            const myName = member.name;
+            const hasMe = prev.some(e => e.isMe || e.name === myName);
+            if (!hasMe) return prev;
+            const updated = prev.map(e =>
+              (e.isMe || e.name === myName)
+                ? { ...e, totalPoints: cached, score: cached }
+                : e
+            );
+            // Re-sort by totalPoints desc
+            return [...updated].sort((a: any, b: any) => (b.totalPoints || b.score || 0) - (a.totalPoints || a.score || 0) || a.name.localeCompare(b.name));
+          });
+        }
       } catch {}
     };
     window.addEventListener('xp-updated', syncXP);
@@ -597,20 +612,23 @@ export default function HomePage() {
       const realTotal = allCheckIns.length;
       // Always write to game stats, even if 0, so next boot has a valid cache
       const gasXP = (member as any)?.totalPoints || 0;
-      const derivedXP = Math.max(gasXP, realTotal * 10);
       const gasStreak = (member as any)?.currentStreak || 0;
-      if (realTotal > 0 || gasXP > 0) {
+      // Read current local XP — never clobber it if it's higher than GAS data
+      const localStats = (() => { try { return JSON.parse(localStorage.getItem('lbjj_game_stats_v2') || '{}'); } catch { return {}; } })();
+      const localXP = Math.max(localStats.xp || 0, localStats.totalXP || 0);
+      const derivedXP = Math.max(gasXP, realTotal * 10, localXP);
+      if (realTotal > 0 || gasXP > 0 || localXP > 0) {
         setTotalClasses(realTotal);
         setMemberXP(derivedXP);
       }
+      // Fire xp-updated so TopHeader, XPWidget etc. re-sync
+      try { window.dispatchEvent(new CustomEvent('xp-updated')); } catch {}
       try {
-        const stats = JSON.parse(localStorage.getItem('lbjj_game_stats_v2') || '{}');
+        const stats = { ...localStats };
         stats.classesAttended = realTotal;
         stats.totalXP = derivedXP;
-        // BUG 11: write derived XP to stats.xp so check-ins increment from correct base
-        if (derivedXP > (stats.xp || 0)) {
-          stats.xp = derivedXP;
-        }
+        // Always keep stats.xp up to date with the highest known value
+        stats.xp = derivedXP;
         // Persist streak so it survives across sessions even if GAS is slow
         if (gasStreak > 0) stats.currentStreak = gasStreak;
         localStorage.setItem('lbjj_game_stats_v2', JSON.stringify(stats));
@@ -629,6 +647,20 @@ export default function HomePage() {
       if (todayClasses.length > 0) {
         setCheckedInClasses((prev: string[]) => Array.from(new Set([...prev, ...todayClasses])));
       }
+      // Backfill season (monthly) count from API check-ins — only if local key is missing/zero
+      try {
+        const ym = new Date().toISOString().slice(0, 7);
+        const seasonKey = `lbjj_season_count_${ym}`;
+        const storedSeasonCount = parseInt(localStorage.getItem(seasonKey) || '0', 10);
+        const apiSeasonCount = allCheckIns.filter((c: any) => {
+          const d = (c.date || c.timestamp || '').split('T')[0];
+          return d.startsWith(ym);
+        }).length;
+        if (apiSeasonCount > storedSeasonCount) {
+          localStorage.setItem(seasonKey, String(apiSeasonCount));
+          setSeasonClasses(apiSeasonCount);
+        }
+      } catch {}
       // Hydrate weekly training days from GAS check-in dates
       const cutoff = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
       const recentDays = Array.from(new Set(

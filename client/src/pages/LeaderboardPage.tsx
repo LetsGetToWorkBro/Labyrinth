@@ -59,6 +59,20 @@ export default function LeaderboardPage() {
   const [prevPositions, setPrevPositions] = useState<Record<string, number>>(() => {
     try { return JSON.parse(localStorage.getItem('lbjj_lb_positions_v1') || '{}'); } catch { return {}; }
   });
+  // Live local XP for the current user (re-reads on xp-updated)
+  const [localXP, setLocalXP] = useState<number>(() => {
+    try { const s = JSON.parse(localStorage.getItem('lbjj_game_stats_v2') || '{}'); return Math.max(s.xp || 0, s.totalXP || 0); } catch { return 0; }
+  });
+
+  // Keep local XP fresh
+  useEffect(() => {
+    const sync = () => {
+      try { const s = JSON.parse(localStorage.getItem('lbjj_game_stats_v2') || '{}'); setLocalXP(Math.max(s.xp || 0, s.totalXP || 0)); } catch {}
+    };
+    window.addEventListener('xp-updated', sync);
+    window.addEventListener('checkin-complete', sync);
+    return () => { window.removeEventListener('xp-updated', sync); window.removeEventListener('checkin-complete', sync); };
+  }, []);
 
   const load = useCallback(async (showRefresh = false) => {
     if (showRefresh) setRefreshing(true);
@@ -93,9 +107,14 @@ export default function LeaderboardPage() {
       brown: ['brown'], black: ['black'], grey: ['grey', 'gray'],
       yellow: ['yellow'], orange: ['orange'], green: ['green'],
     };
-    let result = selectedBelt
+    // Inject local XP for the current user so their rank sorts correctly
+    let result = (selectedBelt
       ? entries.filter(e => (BELT_GROUPS[selectedBelt] || [selectedBelt]).includes((e.belt || 'white').toLowerCase()))
-      : [...entries];
+      : [...entries])
+      .map(e => (member && (e.isMe || e.name === member.name) && localXP > (e.totalPoints || 0))
+        ? { ...e, totalPoints: localXP, score: localXP }
+        : e
+      );
     if (sortBy === 'level') {
       result = result.sort((a, b) => {
         const axp = a.totalPoints || ((a.classCount || 0) * 10);
@@ -240,7 +259,10 @@ export default function LeaderboardPage() {
             const rank = i + 1;
             const rc = RANK_COLORS[rank] || DEFAULT_RANK;
             const isMe = entry.isMe || (member && entry.name === member.name);
-            const entryXP = entry.totalPoints || ((entry.classCount || 0) * 10);
+            // For current user: always use local XP (includes unsynced gains); for others use API data
+            const entryXP = isMe
+              ? Math.max(localXP, entry.totalPoints || 0, (entry.classCount || 0) * 10)
+              : (entry.totalPoints || ((entry.classCount || 0) * 10));
             const entryLevel = getActualLevel(entryXP);
             const beltKey = (entry.belt || 'white').toLowerCase();
             const beltTint = BELT_TINTS[beltKey] || '#888';
@@ -341,7 +363,7 @@ export default function LeaderboardPage() {
           if (userIdx < 0 || userIdx < 10) return null;
           const userEntry = filteredEntries[userIdx];
           const userRank = userIdx + 1;
-          const entryXP = userEntry.totalPoints || ((userEntry.classCount || 0) * 10);
+          const entryXP = Math.max(localXP, userEntry.totalPoints || 0, (userEntry.classCount || 0) * 10);
           const entryLevel = getActualLevel(entryXP);
           return (
             <div style={{ position: 'sticky', bottom: 0, background: 'linear-gradient(transparent, #030303 25%)', paddingTop: 16 }}>
