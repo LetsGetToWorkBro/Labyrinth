@@ -578,6 +578,15 @@ export default function ChatPage() {
   })();
   const myLevel = getActualLevel(myXP);
   const myPfp = (() => { try { return localStorage.getItem('lbjj_profile_picture') || undefined; } catch { return undefined; } })();
+  // Belt fallback: if session returned wrong belt (e.g. row shifted), read from cached profile
+  const myBelt = (() => {
+    const sessionBelt = ((member as any)?.belt || '').toLowerCase();
+    if (sessionBelt && sessionBelt !== 'white') return sessionBelt;
+    try {
+      const cached = JSON.parse(localStorage.getItem('lbjj_member_profile') || '{}');
+      return (cached.belt || sessionBelt || 'white').toLowerCase();
+    } catch { return sessionBelt || 'white'; }
+  })();
 
   // ─── View style (slide transitions) ────────────────────────────
   const viewBaseStyle: React.CSSProperties = {
@@ -614,7 +623,7 @@ export default function ChatPage() {
   const selfMember: ChannelMember = {
     name: member?.name || 'You',
     email: member?.email || '',
-    belt: (member?.belt || 'white').toLowerCase(),
+    belt: myBelt,
     role: member?.role || '',
     totalPoints: myXP,
     badgeCount: 0,
@@ -969,6 +978,17 @@ export default function ChatPage() {
           {sendError && <p style={{ fontSize: 12, color: '#ef4444', margin: '0 0 6px 4px', pointerEvents: 'auto' }}>{sendError}</p>}
           {canPost ? (
             <div className="chatv4-input-bar" style={{ pointerEvents: 'auto' }}>
+              {/* My ParagonRing PFP — bottom-left of input bar */}
+              <div style={{ flexShrink: 0 }} onClick={() => openProfile(selfMember)}>
+                <ParagonRing level={myLevel} size={30} showOrbit={false}>
+                  {myPfp
+                    ? <img src={myPfp} alt="" style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }} />
+                    : <div style={{ width: '100%', height: '100%', borderRadius: '50%', background: avatarGradient(myBelt), display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 800, color: '#fff' }}>
+                        {(member?.name || '?').charAt(0).toUpperCase()}
+                      </div>
+                  }
+                </ParagonRing>
+              </div>
               <input
                 ref={inputRef}
                 type="text"
