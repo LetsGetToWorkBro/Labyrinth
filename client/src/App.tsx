@@ -1652,7 +1652,21 @@ function AppShell() {
     );
   }
 
-  if (!isAuthenticated) {
+  // ── Setup token gate — intercept #setup?token= regardless of auth state ──
+  // If the URL contains a setup token, always show LoginPage (which handles the setup flow)
+  // even if the user is already logged in. This handles the case where someone clicks a
+  // setup link from email while already authenticated as a different account.
+  const hashSetupToken = (() => {
+    try {
+      const hash = window.location.hash || '';
+      const qIdx = hash.indexOf('?');
+      if (qIdx === -1) return null;
+      const params = new URLSearchParams(hash.slice(qIdx + 1));
+      return params.get('token') && hash.includes('setup') ? params.get('token') : null;
+    } catch { return null; }
+  })();
+
+  if (!isAuthenticated || hashSetupToken) {
     return (
       <div className="app-shell">
         <LoginPage />
