@@ -54,7 +54,7 @@ import { getBeltColor } from "@/lib/constants";
 import { ProfileRing } from "@/components/ProfileRing";
 import { ParagonRing } from "@/components/ParagonRing";
 import { TopHeader } from "@/components/TopHeader";
-import { ProfileTray } from "@/components/ProfileTray";
+import { LeftDrawer } from "@/components/LeftDrawer";
 import { getRingTier, getActualLevel, getLevelFromXP } from "@/lib/xp";
 import { XPBar } from "@/components/XPBar";
 import { soundSystem } from '@/lib/sounds';
@@ -1432,7 +1432,6 @@ function AppShell() {
   const { isAuthenticated, isLoading, member, familyMembers } = useAuth();
   // location removed from AppShell — AppShell is outside Router, useHashLoc() crashes
   const [levelUpState, setLevelUpState] = useState<{ newLevel: number; prevLevel: number } | null>(null);
-  const [trayOpen, setTrayOpen] = useState(false);
   const [xpModalOpen, setXpModalOpen] = useState(false);
 
   // ── Family profile picker ──────────────────────────────────────
@@ -1622,8 +1621,8 @@ function AppShell() {
       {!onboardingDone && <OnboardingPage />}
       {needsWaiver && <WaiverRedirect />}
       <AdminShortcut />
-      <TopHeader onMenuOpen={() => setTrayOpen(true)} onXpOpen={() => setXpModalOpen(true)} />
-      <ProfileTray open={trayOpen} onClose={() => setTrayOpen(false)} />
+      <TopHeader onMenuOpen={() => window.dispatchEvent(new CustomEvent('open-left-drawer'))} onXpOpen={() => setXpModalOpen(true)} />
+      <LeftDrawer />
 
       {xpModalOpen && (() => {
         const storedXP = (() => { try { const s = JSON.parse(localStorage.getItem('lbjj_game_stats_v2') || '{}'); return Math.max(s.xp || 0, s.totalXP || 0, (member as any)?.totalPoints || 0); } catch { return (member as any)?.totalPoints || 0; } })();
