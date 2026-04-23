@@ -946,7 +946,7 @@ export default function ChatPage() {
               const senderLevel = getActualLevel(senderXP);
               const senderPfp = isMe ? myPfp : (m.senderProfilePic || undefined);
               const pillBelt = senderBelt === 'black' || senderBelt === 'brown' || senderBelt === 'purple' || senderBelt === 'blue' || senderBelt === 'white' ? senderBelt : 'white';
-              const displayName = isMe ? 'You' : m.sender;
+              const displayName = isMe ? (member?.name || 'You') : m.sender;
               const handleTapSender = () => {
                 const cm: ChannelMember = isMe ? selfMember : {
                   name: m.sender, email: '', belt: senderBelt, role: m.senderRole || '',
@@ -1008,7 +1008,14 @@ export default function ChatPage() {
         }}>
           {sendError && <p style={{ fontSize: 12, color: '#ef4444', margin: '0 0 6px 4px', pointerEvents: 'auto' }}>{sendError}</p>}
           {canPost ? (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, pointerEvents: 'auto' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6, pointerEvents: 'auto' }}>
+              {/* "Posting as" preview row — name, belt pill, LV chip */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, paddingLeft: 44 }}>
+                <span style={{ fontSize: 11, fontWeight: 700, color: '#e7e5e4' }}>{member?.name || ''}</span>
+                <span style={{ fontSize: 9, fontWeight: 900, color: '#e8af34', background: 'rgba(232,175,52,.12)', border: '1px solid rgba(232,175,52,.25)', padding: '1px 5px', borderRadius: 5 }}>LV {myLevel}</span>
+                <span style={beltPillStyle(myBelt as any)}>{myBelt.charAt(0).toUpperCase() + myBelt.slice(1)}</span>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
               {/* My ParagonRing PFP — left of input bar */}
               <div style={{ flexShrink: 0, cursor: 'pointer' }} onClick={() => openProfile(selfMember)}>
                 <ParagonRing level={myLevel} size={34} showOrbit={false}>
@@ -1044,6 +1051,7 @@ export default function ChatPage() {
               >
                 <SendIcon />
               </button>
+              </div>
               </div>
             </div>
           ) : (
