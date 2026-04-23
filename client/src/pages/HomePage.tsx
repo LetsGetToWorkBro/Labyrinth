@@ -853,7 +853,7 @@ export default function HomePage() {
       }
       // Update home SWR cache
       try {
-        const cacheData = { totalClasses: realTotal, classesToday: todayClasses.length, weeklyTraining: recentDays, checkedInClasses: todayClasses, leaderboard: leaderboard.length > 0 ? leaderboard : undefined };
+        const cacheData = { totalClasses: realTotal, classesToday: todayClassesUnique.length, weeklyTraining: recentDays, checkedInClasses: todayClassesUnique, leaderboard: leaderboard.length > 0 ? leaderboard : undefined };
         localStorage.setItem(HOME_CACHE_KEY, JSON.stringify({ data: cacheData, ts: Date.now() }));
       } catch {}
       setHomeLoading(false);
@@ -1447,12 +1447,14 @@ export default function HomePage() {
   }, []);
 
   // ─── Logged-in home ───────────────────────────────────────────────
-  // member is guaranteed non-null here (checked by auth guard in parent)
-  if (!member) return null;
-  const hasWarnings = !member.waiverSigned || !member.agreementSigned;
+  // member is guaranteed non-null here (checked by auth guard in parent).
+  // NOTE: We do NOT early-return here — hooks below must run unconditionally to
+  // avoid "Rendered more hooks than during the previous render." The actual
+  // null-guard is at the final return statement.
+  const hasWarnings = !member?.waiverSigned || !member?.agreementSigned;
   const hasFamily = familyMembers.length > 1;
   const joinDate = (() => {
-    const d = member.joinDate || (member as any)?.startDate || (member as any)?.StartDate || (member as any)?.memberSince || (member as any)?.['Start Date'] || (member as any)?.CreatedAt;
+    const d = member?.joinDate || (member as any)?.startDate || (member as any)?.StartDate || (member as any)?.memberSince || (member as any)?.['Start Date'] || (member as any)?.CreatedAt;
     if (!d) return 'Charter Member';
     try {
       return new Date(d).toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
@@ -1978,6 +1980,11 @@ export default function HomePage() {
       </div>
     );
   }
+
+  // Final null-guard AFTER all hooks have been called. This replaces the old
+  // early `if (!member) return null` that used to sit above the hooks —
+  // keeping it here preserves hook call order.
+  if (!member) return null;
 
   return (
     <div

@@ -194,6 +194,10 @@ export function LeftDrawer() {
       'lbjj_active_family_row',
       'lbjj_family_picked',
       'lbjj_widget_layout',
+      'lbjj_streak_cache',
+      'lbjj_belt_promotions_cache',
+      'lbjj_home_cache',
+      'lbjj_classes_cache',
     ];
     clearKeys.forEach(k => { try { localStorage.removeItem(k); } catch {} });
     try { sessionStorage.removeItem('lbjj_family_picked'); } catch {}

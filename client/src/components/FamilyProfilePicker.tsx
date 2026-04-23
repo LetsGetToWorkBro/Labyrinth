@@ -57,15 +57,24 @@ const NAMESPACED_KEYS = [
   'lbjj_weekly_training',
   'lbjj_first_message_sent',
   'lbjj_passkey_registered',
+  // Added: keep per-member state isolated so switching profiles doesn't
+  // bleed streak / belts / cached profile / onboarding state across members.
+  'lbjj_streak_cache',
+  'lbjj_member_profile',
+  'lbjj_account_token_created',
+  'lbjj_onboarding_complete',
+  'lbjj_belt_promotions_cache',
 ] as const;
 
 // Season count keys need special handling (dynamic month suffix)
 function getAllNamespacedKeys() {
   const keys: string[] = [...NAMESPACED_KEYS];
-  // Also grab any lbjj_season_count_* keys
+  // Also grab any lbjj_season_count_* keys and lbjj_game_played_YYYY-MM-DD keys
   for (let i = 0; i < localStorage.length; i++) {
     const k = localStorage.key(i);
-    if (k && k.startsWith('lbjj_season_count_')) keys.push(k);
+    if (k && (k.startsWith('lbjj_season_count_') || k.startsWith('lbjj_game_played_'))) {
+      keys.push(k);
+    }
   }
   return keys;
 }
@@ -263,6 +272,15 @@ export default function FamilyProfilePicker({ onDone }: { onDone: () => void }) 
     // If selecting primary member themselves — just load their namespace and proceed
     if (fm.isPrimary) {
       loadNamespaceForProfile(fm.row);
+      try {
+        window.dispatchEvent(new CustomEvent('family-profile-switched', {
+          detail: {
+            memberRow: fm.row,
+            memberName: fm.name,
+            memberEmail: (fm as any).email || (member as any)?.email || '',
+          },
+        }));
+      } catch {}
       setTransitioning(true);
       setTimeout(() => { setTransitioning(false); onDone(); }, 800);
       return;
@@ -273,6 +291,15 @@ export default function FamilyProfilePicker({ onDone }: { onDone: () => void }) 
       await switchProfile(fm.row);
       // Load that member's personal progress namespace
       loadNamespaceForProfile(fm.row);
+      try {
+        window.dispatchEvent(new CustomEvent('family-profile-switched', {
+          detail: {
+            memberRow: fm.row,
+            memberName: fm.name,
+            memberEmail: (fm as any).email || '',
+          },
+        }));
+      } catch {}
       setTransitioning(true);
       setTimeout(() => { setTransitioning(false); onDone(); }, 800);
     } catch {

@@ -831,11 +831,19 @@ export default function AchievementsPage() {
     filtered = filtered.filter(a => (a.rarity || 'Common') === tierFilter);
   }
 
-  // Sort: earned first, then claimable, then locked; within each group sort by rarity desc
+  // Sort: claimable first (earned but XP not yet claimed), then claimed, then locked;
+  // within each group sort by rarity desc.
   const tierOrder: Record<string, number> = { Common: 1, Rare: 2, Epic: 3, Legendary: 4, Mythic: 5 };
+  const bucket = (key: string) => {
+    const earned = earnedKeys.includes(key);
+    const claimed = claimedXpKeys.includes(key);
+    if (earned && !claimed) return 0; // claimable — highest priority
+    if (earned && claimed) return 1;  // already claimed
+    return 2;                          // locked
+  };
   filtered = [...filtered].sort((a, b) => {
-    const aE = earnedKeys.includes(a.key) ? 0 : claimedXpKeys.includes(a.key) ? 1 : 1;
-    const bE = earnedKeys.includes(b.key) ? 0 : claimedXpKeys.includes(b.key) ? 1 : 1;
+    const aE = bucket(a.key);
+    const bE = bucket(b.key);
     if (aE !== bE) return aE - bE;
     return (tierOrder[b.rarity || 'Common'] || 1) - (tierOrder[a.rarity || 'Common'] || 1);
   });

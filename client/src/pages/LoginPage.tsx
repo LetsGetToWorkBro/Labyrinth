@@ -7,7 +7,7 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useAuth } from "@/lib/auth-context";
-import { setActiveLocation, gasCall } from "@/lib/api";
+import { setActiveLocation, gasCall, memberCompleteSetup } from "@/lib/api";
 import { LOCATIONS, getSavedLocationId, type Location } from "@/lib/locations";
 import logoGold from "@assets/labyrinth-logo-gold.png";
 import { NativeBiometric } from "capacitor-native-biometric";
@@ -79,7 +79,7 @@ function getGreeting() {
 }
 
 // ─── Main component ─────────────────────────────────────────────────
-type Screen = "gateway" | "request";
+type Screen = "gateway" | "request" | "setup";
 
 export default function LoginPage() {
   const { login, loginWithPasskey } = useAuth();
@@ -123,6 +123,102 @@ export default function LoginPage() {
   const [reqSubmitted, setReqSubmitted] = useState(false);
   const [reqError,     setReqError]     = useState("");
   const [reqLoading,   setReqLoading]   = useState(false);
+
+  // Setup account (new-member password flow, triggered by #setup?token=...&email=...)
+  const [setupToken,    setSetupToken]    = useState("");
+  const [setupEmail,    setSetupEmail]    = useState("");
+  const [setupPw,       setSetupPw]       = useState("");
+  const [setupPw2,      setSetupPw2]      = useState("");
+  const [setupShowPw,   setSetupShowPw]   = useState(false);
+  const [setupError,    setSetupError]    = useState("");
+  const [setupLoading,  setSetupLoading]  = useState(false);
+
+  // Parse #setup?token=...&email=... (or ?token=...&email=...) on mount.
+  // If present, switch to the setup screen pre-filled. Strip the params from
+  // the URL after capture so a refresh doesn't re-trigger.
+  useEffect(() => {
+    try {
+      const hash = window.location.hash || "";
+      const search = window.location.search || "";
+      let token = "";
+      let emailFromUrl = "";
+
+      // Hash form: "#setup?token=...&email=..." or "#/setup?token=..."
+      const hashMatch = hash.match(/#\/?setup\?(.+)$/i);
+      if (hashMatch) {
+        const hp = new URLSearchParams(hashMatch[1]);
+        token = hp.get("token") || "";
+        emailFromUrl = hp.get("email") || "";
+      } else if (search) {
+        // Query-string form: "?token=...&email=..."
+        const sp = new URLSearchParams(search);
+        token = sp.get("token") || "";
+        emailFromUrl = sp.get("email") || "";
+      }
+
+      if (token) {
+        setSetupToken(token);
+        setSetupEmail(decodeURIComponent(emailFromUrl));
+        setScreen("setup");
+        // Clean the URL so the token isn't persisted in history / bookmarks.
+        try {
+          const cleanUrl = window.location.pathname;
+          window.history.replaceState(null, "", cleanUrl);
+        } catch {}
+      }
+    } catch {}
+  }, []);
+
+  const handleCompleteSetup = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSetupError("");
+    if (!setupPw || setupPw.length < 8) {
+      setSetupError("Password must be at least 8 characters.");
+      return;
+    }
+    if (setupPw !== setupPw2) {
+      setSetupError("Passwords do not match.");
+      return;
+    }
+    if (!setupToken || !setupEmail) {
+      setSetupError("Setup link is invalid or expired. Request a new one.");
+      return;
+    }
+    setSetupLoading(true);
+    try {
+      const res: any = await memberCompleteSetup(setupToken, setupEmail.trim(), setupPw);
+      if (!res || res.success === false) {
+        setSetupError(res?.error || "Could not complete setup. The link may be expired.");
+        setSetupLoading(false);
+        return;
+      }
+      // Auto-login with the password we just set.
+      if (!location) {
+        // Location may not be picked yet on a fresh device. Fall back to first known location.
+        const first = LOCATIONS[0];
+        if (first) {
+          setLocation(first);
+          setActiveLocation(first);
+        }
+      } else {
+        setActiveLocation(location);
+      }
+      const loginRes = await login(setupEmail.trim(), setupPw);
+      setSetupLoading(false);
+      if (loginRes.success) {
+        setScreen("gateway");
+        runBoot(() => {});
+      } else {
+        // Setup succeeded but auto-login failed — prefill email and send to gateway.
+        setEmail(setupEmail.trim());
+        setScreen("gateway");
+        setError("Account set up. Please sign in.");
+      }
+    } catch {
+      setSetupError("Connection failed. Try again.");
+      setSetupLoading(false);
+    }
+  };
 
   // 3-D parallax card
   const wrapRef = useRef<HTMLDivElement>(null);
@@ -212,7 +308,12 @@ export default function LoginPage() {
     await new Promise(r => setTimeout(r, 1800));
     setBioOpen(false); setBioPhase("idle");
     try {
-      const res = await loginWithPasskey();
+      const passkeyEmail = (email || localStorage.getItem('lbjj_passkey_email') || '').trim();
+      if (!passkeyEmail) {
+        setError("Enter your email to use biometric sign-in.");
+        return;
+      }
+      const res = await loginWithPasskey(passkeyEmail);
       if (res.success) runBoot(() => {});
       else setError("Biometric login failed — sign in with email.");
     } catch { setError("Biometric login failed — sign in with email."); }
@@ -269,6 +370,118 @@ export default function LoginPage() {
       <div style={{ position:"fixed",inset:0,background:"#fff",zIndex:1000,
         opacity:flashActive?1:0,pointerEvents:"none",
         transition:"opacity 0.8s cubic-bezier(0.16,1,0.3,1)" }} />
+    </>
+  );
+
+  // ── SETUP ACCOUNT SCREEN (new-member password setup from emailed link) ──
+  if (screen === "setup") return (
+    <>
+      <GatewayBG />
+      <style>{KF + STYLES}</style>
+      <div className="lg-wrap">
+        <div className="lg-card">
+          <div className="lg-greeting">Welcome to the Labyrinth</div>
+          <img src={logoGold} alt="Labyrinth" className="lg-logo" />
+          <div className="lg-title-grp">
+            <h1 className="lg-title">Set Up Your Account</h1>
+            <div className="lg-sub">Create a password to activate your membership</div>
+          </div>
+
+          <form onSubmit={handleCompleteSetup}>
+            {setupError && <ErrorBox msg={setupError} />}
+
+            <div style={{
+              marginBottom: 18,
+              padding: "10px 14px",
+              background: "rgba(212,175,55,0.06)",
+              border: "1px solid rgba(212,175,55,0.2)",
+              borderRadius: 10,
+              fontSize: 12,
+              color: "#D4AF37",
+              fontWeight: 700,
+              letterSpacing: "0.02em",
+              wordBreak: "break-all",
+            }}>
+              {setupEmail}
+            </div>
+
+            <div style={{ position: "relative", marginBottom: 22 }}>
+              <input
+                type={setupShowPw ? "text" : "password"}
+                required
+                value={setupPw}
+                onChange={e => setSetupPw(e.target.value)}
+                autoCapitalize="none"
+                autoCorrect="off"
+                spellCheck={false}
+                autoComplete="new-password"
+                enterKeyHint="next"
+                className="lg-input"
+              />
+              <label className="lg-label"
+                style={setupPw ? {
+                  top: -10, left: 16, fontSize: "9px", fontWeight: 900, color: GOLD,
+                  background: "#0c0c0c", padding: "2px 8px", borderRadius: 6,
+                  textTransform: "uppercase", letterSpacing: "0.15em",
+                  boxShadow: "0 4px 6px rgba(0,0,0,0.5)",
+                  border: "1px solid rgba(212,175,55,0.3)",
+                } : {}}>
+                New Password
+              </label>
+              <button
+                type="button"
+                aria-label={setupShowPw ? "Hide password" : "Show password"}
+                onClick={() => setSetupShowPw(v => !v)}
+                style={{
+                  position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)",
+                  background: "none", border: "none", color: "#888", cursor: "pointer",
+                  fontSize: 11, fontWeight: 700, letterSpacing: "0.1em",
+                }}
+              >
+                {setupShowPw ? "HIDE" : "SHOW"}
+              </button>
+            </div>
+
+            <div style={{ position: "relative", marginBottom: 22 }}>
+              <input
+                type={setupShowPw ? "text" : "password"}
+                required
+                value={setupPw2}
+                onChange={e => setSetupPw2(e.target.value)}
+                autoCapitalize="none"
+                autoCorrect="off"
+                spellCheck={false}
+                autoComplete="new-password"
+                enterKeyHint="done"
+                className="lg-input"
+              />
+              <label className="lg-label"
+                style={setupPw2 ? {
+                  top: -10, left: 16, fontSize: "9px", fontWeight: 900, color: GOLD,
+                  background: "#0c0c0c", padding: "2px 8px", borderRadius: 6,
+                  textTransform: "uppercase", letterSpacing: "0.15em",
+                  boxShadow: "0 4px 6px rgba(0,0,0,0.5)",
+                  border: "1px solid rgba(212,175,55,0.3)",
+                } : {}}>
+                Confirm Password
+              </label>
+            </div>
+
+            <button type="submit" disabled={setupLoading} className="lg-btn-gold">
+              {setupLoading ? "Setting Up..." : "Create Account"}
+            </button>
+
+            <button type="button" onClick={() => setScreen("gateway")}
+              style={{
+                display: "block", width: "100%", background: "none", border: "none",
+                color: "#555", fontSize: 13, fontWeight: 600, cursor: "pointer",
+                marginTop: 14, padding: "8px",
+              }}>
+              ← Back to Login
+            </button>
+          </form>
+        </div>
+      </div>
     </>
   );
 
