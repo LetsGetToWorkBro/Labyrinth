@@ -159,9 +159,9 @@ function SeasonWidget({ season, onClick }: { season: SeasonData; onClick?: () =>
       onClick={onClick}
       style={{
         position: 'relative', overflow: 'hidden',
-        borderRadius: 20, padding: 16, cursor: 'pointer',
+        borderRadius: 20, padding: 14, cursor: 'pointer',
         height: 110,
-        display: 'flex', flexDirection: 'column', justifyContent: 'space-between',
+        display: 'flex', alignItems: 'center', gap: 14,
         background: `radial-gradient(circle at 100% 0%, ${st.bgAccent}, transparent 70%)`,
         border: `1px solid ${st.borderColor}`,
         boxShadow: `0 12px 24px rgba(0,0,0,0.5), inset 0 1px 1px rgba(255,255,255,0.06), ${st.outerGlow}`,
@@ -192,97 +192,95 @@ function SeasonWidget({ season, onClick }: { season: SeasonData; onClick?: () =>
         </div>
       )}
 
-      {/* Top row */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', position: 'relative', zIndex: 10 }}>
-        <div>
-          <div style={{
-            fontSize: 10, fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase',
-            marginBottom: 4, color: st.color,
-            transition: 'color 0.9s ease',
-            textShadow: pct >= 60 ? `0 0 12px ${st.glow}` : 'none',
-          }}>
-            {season.monthName} Season
-          </div>
-          <div style={{
-            fontSize: 24, fontWeight: 900, color: '#fff', lineHeight: 1,
-            letterSpacing: '-0.02em', fontVariantNumeric: 'tabular-nums',
-            textShadow: pct >= 85 ? `0 0 16px ${st.glow}` : 'none',
-            transition: 'text-shadow 0.9s ease',
-          }}>
-            {maxed ? season.goalClasses : season.thisMonthClasses}
-            {!maxed && <span style={{ fontSize: 14, fontWeight: 700, color: 'rgba(255,255,255,0.25)' }}>/{season.goalClasses}</span>}
-          </div>
-        </div>
-
-        {/* Circular ring — SVG */}
-        <div style={{ position: 'relative', width: 40, height: 40, flexShrink: 0 }}>
-          <svg viewBox="0 0 36 36" style={{ transform: 'rotate(-90deg)', width: '100%', height: '100%', overflow: 'visible' }}>
-            <defs>
-              <linearGradient id="smw-season-grad" x1="0%" y1="0%" x2="100%" y2="100%">
-                <stop offset="0%" stopColor={maxed ? '#6ee7b7' : pct >= 85 ? '#fff' : pct >= 60 ? '#FFD700' : '#fef08a'} style={{ transition: 'stop-color 0.9s ease' }} />
-                <stop offset="100%" stopColor={maxed ? '#10b981' : pct >= 85 ? '#FFD700' : pct >= 60 ? '#e8af34' : '#C8A24C'} style={{ transition: 'stop-color 0.9s ease' }} />
-              </linearGradient>
-            </defs>
-            <circle cx="18" cy="18" r="16" fill="none" stroke="rgba(255,255,255,0.05)" strokeWidth="6" />
-            <circle
-              cx="18" cy="18" r="16" fill="none"
-              stroke="url(#smw-season-grad)"
-              strokeWidth="6" strokeLinecap="round"
-              strokeDasharray={circ}
-              strokeDashoffset={offset}
-              style={{
-                filter: `drop-shadow(0 0 ${pct >= 85 ? 10 : pct >= 60 ? 7 : 5}px ${st.glow})`,
-                transition: 'stroke-dashoffset 1s cubic-bezier(0.16,1,0.3,1), filter 0.9s ease',
-                animation: pct >= 85 && !maxed ? 'smw-ring-pulse 1.4s ease-in-out infinite alternate' : 'none',
-              }}
-            />
-          </svg>
-          {maxed && (
-            <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <svg viewBox="0 0 24 24" fill="none" stroke={st.color} strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" width="16" height="16">
-                <polyline points="20 6 9 17 4 12"/>
-              </svg>
-            </div>
+      {/* Circular ring — centerpiece with stats inside */}
+      <div style={{ position: 'relative', width: 82, height: 82, flexShrink: 0, zIndex: 10 }}>
+        <svg viewBox="0 0 36 36" style={{ transform: 'rotate(-90deg)', width: '100%', height: '100%', overflow: 'visible' }}>
+          <defs>
+            <linearGradient id="smw-season-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stopColor={maxed ? '#6ee7b7' : pct >= 85 ? '#fff' : pct >= 60 ? '#FFD700' : '#fef08a'} style={{ transition: 'stop-color 0.9s ease' }} />
+              <stop offset="100%" stopColor={maxed ? '#10b981' : pct >= 85 ? '#FFD700' : pct >= 60 ? '#e8af34' : '#C8A24C'} style={{ transition: 'stop-color 0.9s ease' }} />
+            </linearGradient>
+          </defs>
+          <circle cx="18" cy="18" r="16" fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth="3" />
+          <circle
+            cx="18" cy="18" r="16" fill="none"
+            stroke="url(#smw-season-grad)"
+            strokeWidth="3" strokeLinecap="round"
+            strokeDasharray={circ}
+            strokeDashoffset={offset}
+            style={{
+              filter: `drop-shadow(0 0 ${pct >= 85 ? 10 : pct >= 60 ? 7 : 5}px ${st.glow})`,
+              transition: 'stroke-dashoffset 1s cubic-bezier(0.16,1,0.3,1), filter 0.9s ease',
+              animation: pct >= 85 && !maxed ? 'smw-ring-pulse 1.4s ease-in-out infinite alternate' : 'none',
+            }}
+          />
+        </svg>
+        {/* Ring center — percentage or checkmark */}
+        <div style={{
+          position: 'absolute', inset: 0,
+          display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+          pointerEvents: 'none',
+        }}>
+          {maxed ? (
+            <svg viewBox="0 0 24 24" fill="none" stroke={st.color} strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" width="28" height="28" style={{ filter: `drop-shadow(0 0 8px ${st.glow})` }}>
+              <polyline points="20 6 9 17 4 12"/>
+            </svg>
+          ) : (
+            <>
+              <div style={{
+                fontSize: 22, fontWeight: 900, color: '#fff', lineHeight: 1,
+                letterSpacing: '-0.03em', fontVariantNumeric: 'tabular-nums',
+                textShadow: pct >= 85 ? `0 0 16px ${st.glow}` : 'none',
+                transition: 'text-shadow 0.9s ease',
+              }}>
+                {pct}<span style={{ fontSize: 11, fontWeight: 800, color: 'rgba(255,255,255,0.45)', marginLeft: 1 }}>%</span>
+              </div>
+              <div style={{
+                fontSize: 9, fontWeight: 800, color: st.color,
+                fontVariantNumeric: 'tabular-nums', letterSpacing: '0.02em',
+                marginTop: 1,
+                transition: 'color 0.9s ease',
+              }}>
+                {season.thisMonthClasses}<span style={{ color: 'rgba(255,255,255,0.3)' }}>/{season.goalClasses}</span>
+              </div>
+            </>
           )}
         </div>
       </div>
 
-      {/* Bottom bar */}
-      <div style={{ position: 'relative', zIndex: 10 }}>
-        {maxed ? (
-          <div style={{
-            display: 'flex', alignItems: 'center', gap: 6,
-            fontSize: 11, fontWeight: 800, color: st.color,
-            textTransform: 'uppercase', letterSpacing: '0.1em',
-            textShadow: `0 0 10px ${st.glow}`,
-          }}>
-            <svg viewBox="0 0 24 24" fill="currentColor" width="14" height="14"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
-            Season Complete
-          </div>
-        ) : (
-          <div style={{ width: '100%', height: 4, background: 'rgba(255,255,255,0.07)', borderRadius: 2, overflow: 'hidden', position: 'relative' }}>
-            <div style={{
-              height: '100%', borderRadius: 2,
-              background: st.barGrad,
-              backgroundSize: '300% 100%',
-              width: `${pct}%`,
-              boxShadow: `0 0 ${pct >= 60 ? 10 : 6}px ${st.glow}`,
-              animation: pct >= 85 ? 'smw-bar-pulse .8s ease-in-out infinite alternate, smw-shimmer 2s linear infinite' : 'smw-shimmer 3s linear infinite',
-              transition: 'width 1s cubic-bezier(0.16,1,0.3,1), box-shadow 0.9s ease',
-            }} />
-            {/* Glowing head dot */}
-            {pct > 2 && (
-              <div style={{
-                position: 'absolute', top: '50%', transform: 'translateY(-50%)',
-                left: `calc(${pct}% - 3px)`,
-                width: 6, height: 6, borderRadius: '50%',
-                background: pct >= 85 ? '#fff' : st.color,
-                boxShadow: `0 0 ${pct >= 85 ? 10 : 6}px ${st.glow}`,
-                transition: 'left 1s cubic-bezier(0.16,1,0.3,1), box-shadow 0.9s ease',
-              }} />
-            )}
-          </div>
-        )}
+      {/* Right side — labels */}
+      <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 4, position: 'relative', zIndex: 10 }}>
+        <div style={{
+          fontSize: 10, fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase',
+          color: st.color,
+          transition: 'color 0.9s ease',
+          textShadow: pct >= 60 ? `0 0 12px ${st.glow}` : 'none',
+        }}>
+          {season.monthName} Season
+        </div>
+        <div style={{
+          fontSize: 13, fontWeight: 900, color: '#fff', lineHeight: 1.1,
+          letterSpacing: '-0.01em',
+          textShadow: pct >= 85 ? `0 0 12px ${st.glow}` : 'none',
+          transition: 'text-shadow 0.9s ease',
+        }}>
+          {maxed ? season.goalClasses : season.thisMonthClasses}
+          <span style={{ fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,0.3)' }}>
+            {!maxed && `/${season.goalClasses}`} classes
+          </span>
+        </div>
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: 5,
+          fontSize: 10, fontWeight: 800, color: st.color,
+          textTransform: 'uppercase', letterSpacing: '0.08em',
+          textShadow: pct >= 60 ? `0 0 10px ${st.glow}` : 'none',
+          transition: 'color 0.9s ease',
+        }}>
+          {maxed && (
+            <svg viewBox="0 0 24 24" fill="currentColor" width="11" height="11"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+          )}
+          {st.label}
+        </div>
       </div>
     </div>
   );
