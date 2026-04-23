@@ -110,16 +110,47 @@ export function checkAndUnlockAchievements(profile: any, stats: any): string[] {
   // Profile complete
   if (localStorage.getItem('lbjj_profile_picture')) unlock('profile_complete');
 
-  // Belt achievements
+  // Belt achievements — higher belts inherit all lower belt achievements
   const belt = (profile.belt || profile.Belt || '').toLowerCase();
-  if (belt === 'blue')   unlock('blue_belt');
-  if (belt === 'purple') unlock('purple_belt');
-  if (belt === 'brown')  unlock('brown_belt');
-  if (belt === 'black')  unlock('black_belt');
+
+  // Kids belts (independent progression)
   if (belt === 'grey' || belt === 'gray') unlock('grey_belt');
-  if (belt === 'yellow') unlock('yellow_belt');
-  if (belt === 'orange') unlock('orange_belt');
-  if (belt === 'green')  unlock('green_belt');
+  if (belt === 'yellow') { unlock('grey_belt'); unlock('yellow_belt'); }
+  if (belt === 'orange') { unlock('grey_belt'); unlock('yellow_belt'); unlock('orange_belt'); }
+  if (belt === 'green')  { unlock('grey_belt'); unlock('yellow_belt'); unlock('orange_belt'); unlock('green_belt'); }
+
+  // Adult belts — cumulative: each belt includes all belts below
+  const ADULT_BELT_ORDER = ['white', 'blue', 'purple', 'brown', 'black'];
+  const beltRank = ADULT_BELT_ORDER.indexOf(belt);
+  if (beltRank >= 1) unlock('first_stripe'); // at least blue = had stripes on white
+  if (beltRank >= 1) unlock('blue_belt');
+  if (beltRank >= 2) unlock('purple_belt');
+  if (beltRank >= 3) unlock('brown_belt');
+  if (beltRank >= 4) unlock('black_belt');
+
+  // ── Belt XP floor — seed starting XP on first login so higher belts start at a meaningful level
+  // Only runs once per device (guarded by lbjj_belt_seeded key)
+  const BELT_XP_FLOOR: Record<string, number> = {
+    white:  0,
+    blue:   1000,   // LV6  — Frost Aura unlocked
+    purple: 2700,   // LV10 — Seasoned Warrior
+    brown:  5000,   // LV15 — Gym Pillar
+    black:  8500,   // LV20 — Blood Flame unlocked
+  };
+  if (!localStorage.getItem('lbjj_belt_seeded') && BELT_XP_FLOOR[belt] !== undefined && BELT_XP_FLOOR[belt] > 0) {
+    try {
+      const s = JSON.parse(localStorage.getItem('lbjj_game_stats_v2') || '{}');
+      const currentXP = Math.max(s.xp || 0, s.totalXP || 0);
+      // Only seed if the member has less XP than the floor (true first login)
+      if (currentXP < BELT_XP_FLOOR[belt]) {
+        const floor = BELT_XP_FLOOR[belt];
+        s.xp = floor; s.totalXP = floor;
+        localStorage.setItem('lbjj_game_stats_v2', JSON.stringify(s));
+        window.dispatchEvent(new CustomEvent('xp-updated'));
+      }
+      localStorage.setItem('lbjj_belt_seeded', '1');
+    } catch {}
+  }
 
   // Attendance
   const classCount = stats.classesAttended || 0;
