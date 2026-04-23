@@ -1834,6 +1834,7 @@ export default function HomePage() {
             xpNeeded: Math.max(0, nextMilestoneData.need),
             ready: nextMilestoneData.need <= 0,
           }}
+          currentLevel={getActualLevel(memberXP)}
           onOpenSeason={() => { window.location.hash = '#/season'; }}
           onOpenMilestone={() => setShowMilestoneModal(true)}
         />
