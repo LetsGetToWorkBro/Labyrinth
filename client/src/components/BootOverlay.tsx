@@ -35,6 +35,8 @@ export function BootOverlay({ onDone }: { onDone: () => void }) {
   const [fadeOut, setFadeOut] = useState(false);
 
   useEffect(() => {
+    // Mark shown immediately on mount — prevents replaying if unmounted before onDone fires
+    markBootShown();
     let cancelled = false;
     let li = 0, ci = 0;
     let built: string[] = [];
@@ -133,5 +135,10 @@ export function shouldShowBoot(): boolean {
 }
 
 export function markBootShown() {
+  try { localStorage.setItem(BOOT_SHOWN_KEY, '1'); } catch {}
+}
+
+// Mark immediately when overlay mounts so navigation/unmount can't prevent it
+export function markBootShownNow() {
   try { localStorage.setItem(BOOT_SHOWN_KEY, '1'); } catch {}
 }
