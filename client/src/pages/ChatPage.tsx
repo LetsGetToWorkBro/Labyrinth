@@ -482,7 +482,14 @@ export default function ChatPage() {
     }
     setShowFeed(false);
     loadMessages(activeChannelId);
-    chatGetChannelMembers(activeChannelId).then(setChannelMembers).catch(() => setChannelMembers([]));
+    chatGetChannelMembers(activeChannelId).then(raw => {
+      // Enrich with PFPs from onlineMembers (who have presence data)
+      const enriched = raw.map(m => {
+        const online = onlineMembers.find(o => o.email === m.email || o.name === m.name);
+        return online?.profilePic ? { ...m, profilePic: online.profilePic } : m;
+      });
+      setChannelMembers(enriched);
+    }).catch(() => setChannelMembers([]));
     pollRef.current = setInterval(() => loadMessages(activeChannelId), POLL_INTERVAL_MS);
     return () => { if (pollRef.current) clearInterval(pollRef.current); };
   }, [activeChannelId, loadMessages]);
@@ -826,13 +833,25 @@ export default function ChatPage() {
               }}
             >
               {(() => {
-                const nowMs = Date.now();
-                // Only show members who are actively online (lastSeen < 5 min)
-                const activeInChannel = (channelMembers.length > 0 ? channelMembers : onlineMembers)
-                  .filter(m => m.lastSeen && (nowMs - new Date(m.lastSeen).getTime()) < 5 * 60 * 1000);
-                // Always include self if authenticated
-                const selfInList = activeInChannel.find(m => member && (m.email === (member as any).email || m.name === member.name));
-                const displayList = selfInList ? activeInChannel : [selfMember, ...activeInChannel].filter(Boolean);
+                // Show recent message senders (from loaded messages), not all channel members
+                const recentSenderNames = Array.from(new Set(
+                  [...messages].reverse().slice(0, 20).map(m => m.sender)
+                ));
+                // Build display list: match senders to channelMembers for PFP/belt, fall back to message data
+                const recentList: ChannelMember[] = recentSenderNames.map(name => {
+                  const cm = channelMembers.find(m => m.name === name);
+                  const om = onlineMembers.find(m => m.name === name);
+                  const msg = messages.find(m => m.sender === name);
+                  return cm || om || {
+                    name, email: '', belt: (msg as any)?.senderBelt || 'white',
+                    role: (msg as any)?.senderRole || '', totalPoints: 0, badgeCount: 0,
+                    profilePic: (msg as any)?.senderProfilePic || undefined,
+                    lastSeen: msg?.timestamp,
+                  };
+                });
+                // Always include self at front if not already
+                const selfInList = recentList.find(m => m.name === member?.name);
+                const displayList = selfInList ? recentList : [selfMember, ...recentList].filter(Boolean);
                 const activeCount = displayList.length;
                 return (
                   <>
@@ -856,10 +875,20 @@ export default function ChatPage() {
               <ChevDown size={12} color="#a8a29e" style={{ marginLeft: 2, transition: 'transform .3s', transform: channelMembersOpen ? 'rotate(180deg)' : 'rotate(0deg)' }} />
             </div>
 
-            {/* Channel members dropdown — online pinned, offline collapsible */}
+            {/* Channel members dropdown — recent senders first, then channel members */}
             {(() => {
-              const list = channelMembers.length > 0 ? channelMembers : onlineMembers;
               const nowMs = Date.now();
+              // Recent senders (from messages) come first
+              const recentNames = Array.from(new Set([...messages].reverse().slice(0, 30).map(m => m.sender)));
+              const recentAsCM: ChannelMember[] = recentNames.map(name => {
+                const found = channelMembers.find(m => m.name === name) || onlineMembers.find(m => m.name === name);
+                const msg = messages.find(m => m.sender === name);
+                return found || { name, email: '', belt: (msg as any)?.senderBelt || 'white', role: '', totalPoints: 0, badgeCount: 0, profilePic: (msg as any)?.senderProfilePic, lastSeen: msg?.timestamp };
+              });
+              // Merge: recent senders + rest of channel members not already listed
+              const alreadyListed = new Set(recentAsCM.map(m => m.name));
+              const rest = channelMembers.filter(m => !alreadyListed.has(m.name));
+              const list = [...recentAsCM, ...rest];
               const chOnline  = list.filter(m => m.lastSeen && (nowMs - new Date(m.lastSeen).getTime()) < 5 * 60 * 1000);
               const chOffline = list.filter(m => !m.lastSeen || (nowMs - new Date(m.lastSeen).getTime()) >= 5 * 60 * 1000);
               return (
