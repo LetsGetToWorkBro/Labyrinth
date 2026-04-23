@@ -283,8 +283,11 @@ export default function LoginPage() {
       if (!res.success) {
         setError(res.error || "Access denied."); setLoading(false); return;
       }
-      // Auth context flips isAuthenticated → App.tsx routes to HomePage.
-      // HomePage renders BootOverlay only on the user's very first login.
+      // Play boot sequence first login only, then auth context routes to HomePage.
+      const bootShown = localStorage.getItem('lbjj_boot_shown');
+      if (!bootShown) {
+        runBoot(() => {});
+      }
     } catch {
       setError("Connection failed. Try again."); setLoading(false);
     }
@@ -320,7 +323,10 @@ export default function LoginPage() {
       }
       const res = await loginWithPasskey(passkeyEmail);
       if (res.success) {
-        // Auth context routes to HomePage. Boot overlay plays only on first login.
+        const bootShown = localStorage.getItem('lbjj_boot_shown');
+        if (!bootShown) {
+          runBoot(() => {});
+        }
       } else setError("Biometric login failed — sign in with email.");
     } catch { setError("Biometric login failed — sign in with email."); }
   };

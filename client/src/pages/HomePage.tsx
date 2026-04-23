@@ -39,7 +39,7 @@ import { pushLocalNotification } from "@/components/NotificationProvider";
 import { StatSkeleton, ListSkeleton } from "@/components/LoadingSkeleton";
 import { getStreamStatus, clearStreamCache } from "@/lib/streaming";
 import type { StreamStatus } from "@/lib/streaming";
-import { BootOverlay, shouldShowBoot, markBootShown } from "@/components/BootOverlay";
+// BootOverlay removed — boot sequence plays in LoginPage only
 
 // ── Badge unlock overlay (shared with SchedulePage pattern) ────
 function showBadgeUnlock(badge: { key: string; label: string; icon: string; desc: string; color?: string }) {
@@ -393,7 +393,7 @@ export default function HomePage() {
 
   // ─── Post-login boot overlay (matrix/typewriter) ────────────────
   // Only plays on the user's very first successful login ever.
-  const [showBoot, setShowBoot] = useState(() => shouldShowBoot());
+  // showBoot removed — boot plays in LoginPage
 
   // ─── Home loading skeleton state ─────────────────────────────────
   const [homeLoading, setHomeLoading] = useState(true);
@@ -2017,7 +2017,7 @@ export default function HomePage() {
 
   return (
     <>
-    {showBoot && <BootOverlay onDone={() => { markBootShown(); setShowBoot(false); }} />}
+    {/* BootOverlay removed — plays in LoginPage only */}
     <div
       ref={scrollContainerRef}
       className={`app-content home-page-bg${isGameDay ? ' home-page-bg--gameday' : isFlowState ? ' home-page-bg--flow' : ''}`}
