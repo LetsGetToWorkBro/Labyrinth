@@ -529,28 +529,32 @@ export function OnlineAvatarCluster() {
           {active.length > 0 && (
             <>
               <div style={{ fontSize: 10, fontWeight: 800, color: '#10b981', letterSpacing: '.15em', textTransform: 'uppercase', padding: '4px 8px 6px' }}>● Active Now</div>
-              {active.map(m => <MemberRow key={m.email||m.name} m={m} onClick={() => { setFocused(m); openDM(m); }} onProfile={() => openMemberProfile(m)} />)}
+              {active.map(m => <MemberRow key={m.email||m.name} m={m}
+                onClick={() => setFocused(prev => prev?.email === m.email && prev?.name === m.name ? null : m)}
+                onProfile={() => openMemberProfile(m)} />)}
             </>
           )}
           {offline.length > 0 && (
             <>
               {active.length > 0 && <div style={{ height: 1, background: 'rgba(255,255,255,.05)', margin: '6px 0' }} />}
-              <RecentSection members={offline} onOpen={(m) => openDM(m)} label="Offline" />
+              <RecentSection members={offline} onOpen={(m) => setFocused(prev => prev?.email === m.email && prev?.name === m.name ? null : m)} label="Offline" />
             </>
           )}
           {active.length === 0 && offline.length === 0 && (
             <div style={{ fontSize: 12, color: '#57534e', padding: '8px 10px', textAlign: 'center' }}>Just you for now</div>
           )}
           <div style={{ height: 1, background: 'rgba(255,255,255,.05)', margin: '8px 0 4px' }} />
-          {focusedMember && (
-            <div style={{ fontSize: 9, fontWeight: 700, color: '#57534e', textAlign: 'center', padding: '0 0 5px', letterSpacing: '.05em' }}>
-              {focusedMember.name}
+          {focusedMember ? (
+            <div style={{ fontSize: 9, fontWeight: 700, color: '#10b981', textAlign: 'center', padding: '0 0 5px', letterSpacing: '.05em' }}>
+              ✓ {focusedMember.name} selected
             </div>
+          ) : (
+            <div style={{ fontSize: 9, color: '#57534e', textAlign: 'center', padding: '0 0 5px' }}>Tap a member to select</div>
           )}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
             {/* Message button — opens DM tray */}
             <button
-              onClick={() => { if (focusedMember) openDM(focusedMember); else goToChat(); }}
+              onClick={() => { if (focusedMember) { openDM(focusedMember); setFocused(null); } else goToChat(); }}
               style={{
                 padding: '9px 8px', borderRadius: 10,
                 background: 'rgba(232,175,52,.1)', border: '1px solid rgba(232,175,52,.2)',
@@ -568,7 +572,7 @@ export function OnlineAvatarCluster() {
             </button>
             {/* View Profile button */}
             <button
-              onClick={() => { if (focusedMember) openMemberProfile(focusedMember); else goToChat(); }}
+              onClick={() => { if (focusedMember) { openMemberProfile(focusedMember); setFocused(null); } else goToChat(); }}
               style={{
                 padding: '9px 8px', borderRadius: 10,
                 background: 'rgba(255,255,255,.04)', border: '1px solid rgba(255,255,255,.1)',
