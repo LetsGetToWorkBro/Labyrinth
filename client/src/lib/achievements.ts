@@ -1,5 +1,7 @@
 import { getActualLevel } from '@/lib/xp';
 
+export type AchievementRarity = 'Common' | 'Rare' | 'Epic' | 'Legendary' | 'Mythic';
+
 export interface Achievement {
   key: string;
   label: string;
@@ -8,74 +10,76 @@ export interface Achievement {
   category: 'attendance' | 'streak' | 'competition' | 'belt' | 'app' | 'games' | 'special' | 'level';
   secret?: boolean;   // hidden until unlocked
   color: string;      // accent color for the card
+  rarity?: AchievementRarity; // tier rarity
+  badgeType?: string; // SVG badge type for holo card
+  badgeColor2?: string; // secondary color for badge SVG
 }
 
 export const ALL_ACHIEVEMENTS: Achievement[] = [
 
   // ── ATTENDANCE ──────────────────────────────────────────────────
-  { key: 'first_class',     label: 'First Step',       icon: '🥋', color: '#C8A24C', category: 'attendance', desc: 'Attend your very first class.' },
-  { key: 'three_in_week',   label: '3-Peat',           icon: '🔥', color: '#F97316', category: 'attendance', desc: 'Attend 3 classes in a single week.' },
-  { key: 'ten_classes',     label: 'Mat Warrior',      icon: '💪', color: '#3B82F6', category: 'attendance', desc: 'Complete 10 total classes.' },
-  { key: 'thirty_classes',  label: 'Consistent',       icon: '📅', color: '#8B5CF6', category: 'attendance', desc: 'Complete 30 total classes.' },
-  { key: 'hundred_classes', label: 'Century Club',     icon: '💯', color: '#C8A24C', category: 'attendance', desc: 'Complete 100 total classes.' },
-  { key: 'fivehundred_classes', label: 'Labyrinth Legend', icon: '🏛️', color: '#C8A24C', category: 'attendance', desc: 'Complete 500 total classes. You are the gym.' },
-  { key: 'early_bird',      label: 'Early Bird',       icon: '⏰', color: '#FCD34D', category: 'attendance', desc: 'Check in to a class before 7:00 AM.' },
-  { key: 'night_owl',       label: 'Night Owl',        icon: '🌙', color: '#6366F1', category: 'attendance', desc: 'Check in to a class after 7:00 PM.' },
-  { key: 'perfect_week',    label: 'Perfect Week',     icon: '📆', color: '#10B981', category: 'attendance', desc: 'Attend 5 classes in a single week.' },
-  { key: 'sunrise_session', label: 'Sunrise Session',  icon: '🌅', color: '#F59E0B', category: 'attendance', desc: 'Check in to a 6:00 AM class.' },
+  { key: 'first_class',     label: 'First Step',       icon: '🥋', color: '#b0c4de', category: 'attendance', rarity: 'Common',    badgeType: 'takedown', badgeColor2: '#064e3b', desc: 'Attend your very first class.' },
+  { key: 'three_in_week',   label: '3-Peat',           icon: '🔥', color: '#cd7f32', category: 'attendance', rarity: 'Rare',      badgeType: 'calendar', badgeColor2: '#1e3a8a', desc: 'Attend 3 classes in a single week.' },
+  { key: 'ten_classes',     label: 'Mat Warrior',      icon: '💪', color: '#cd7f32', category: 'attendance', rarity: 'Rare',      badgeType: 'num_10',   badgeColor2: '#1e3a8a', desc: 'Complete 10 total classes.' },
+  { key: 'thirty_classes',  label: 'Consistent',       icon: '📅', color: '#8a2be2', category: 'attendance', rarity: 'Epic',      badgeType: 'calendar', badgeColor2: '#4c1d95', desc: 'Complete 30 total classes.' },
+  { key: 'hundred_classes', label: 'Century Club',     icon: '💯', color: '#ff4500', category: 'attendance', rarity: 'Legendary', badgeType: 'num_100',  badgeColor2: '#7f1d1d', desc: 'Complete 100 total classes.' },
+  { key: 'fivehundred_classes', label: 'Labyrinth Legend', icon: '🏛️', color: '#ffd700', category: 'attendance', rarity: 'Mythic', badgeType: 'num_500',  badgeColor2: '#b45309', desc: 'Complete 500 total classes. You are the gym.' },
+  { key: 'early_bird',      label: 'Early Bird',       icon: '⏰', color: '#b0c4de', category: 'attendance', rarity: 'Common',    badgeType: 'hex',      badgeColor2: '#064e3b', desc: 'Check in to a class before 7:00 AM.' },
+  { key: 'night_owl',       label: 'Night Owl',        icon: '🌙', color: '#b0c4de', category: 'attendance', rarity: 'Common',    badgeType: 'shield',   badgeColor2: '#064e3b', desc: 'Check in to a class after 7:00 PM.' },
+  { key: 'perfect_week',    label: 'Perfect Week',     icon: '📆', color: '#8a2be2', category: 'attendance', rarity: 'Epic',      badgeType: 'calendar', badgeColor2: '#4c1d95', desc: 'Attend 5 classes in a single week.' },
+  { key: 'sunrise_session', label: 'Sunrise Session',  icon: '🌅', color: '#cd7f32', category: 'attendance', rarity: 'Rare',      badgeType: 'hex',      badgeColor2: '#1e3a8a', desc: 'Check in to a 6:00 AM class.' },
 
   // ── STREAKS ─────────────────────────────────────────────────────
-  { key: 'streak_4',  label: 'On Fire',      icon: '🔥', color: '#F97316', category: 'streak', desc: 'Train 4 consecutive weeks.' },
-  { key: 'streak_8',  label: 'Unstoppable',  icon: '⚡', color: '#8B5CF6', category: 'streak', desc: 'Train 8 consecutive weeks.' },
-  { key: 'streak_12', label: 'Streak King',  icon: '👑', color: '#C8A24C', category: 'streak', desc: 'Train 12 consecutive weeks.' },
-  { key: 'streak_52', label: 'Full Year',    icon: '🌟', color: '#C8A24C', category: 'streak', desc: 'Train every week for an entire year. Legendary.' },
+  { key: 'streak_4',  label: 'On Fire',      icon: '🔥', color: '#cd7f32', category: 'streak', rarity: 'Rare',      badgeType: 'diamond', badgeColor2: '#1e3a8a', desc: 'Train 4 consecutive weeks.' },
+  { key: 'streak_8',  label: 'Unstoppable',  icon: '⚡', color: '#8a2be2', category: 'streak', rarity: 'Epic',      badgeType: 'star',    badgeColor2: '#4c1d95', desc: 'Train 8 consecutive weeks.' },
+  { key: 'streak_12', label: 'Streak King',  icon: '👑', color: '#ff4500', category: 'streak', rarity: 'Legendary', badgeType: 'trophy',  badgeColor2: '#7f1d1d', desc: 'Train 12 consecutive weeks.' },
+  { key: 'streak_52', label: 'Full Year',    icon: '🌟', color: '#ffd700', category: 'streak', rarity: 'Mythic',    badgeType: 'diamond', badgeColor2: '#b45309', desc: 'Train every week for an entire year. Legendary.' },
 
   // ── COMPETITION ─────────────────────────────────────────────────
-  { key: 'first_comp',     label: 'First Competitor', icon: '🎯', color: '#3B82F6', category: 'competition', desc: 'Enter your first tournament.' },
-  { key: 'any_medal',      label: 'Podium',           icon: '🥉', color: '#CD7F32', category: 'competition', desc: 'Win any medal at a tournament.' },
-  { key: 'silver_medal',   label: 'Silver Medalist',  icon: '🥈', color: '#9CA3AF', category: 'competition', desc: 'Win a silver medal.' },
-  { key: 'gold_medal',     label: 'Gold Medalist',    icon: '🥇', color: '#C8A24C', category: 'competition', desc: 'Win a gold medal.' },
-  { key: 'double_gold',    label: 'Double Gold',      icon: '🏆', color: '#C8A24C', category: 'competition', desc: 'Win two gold medals at the same tournament.' },
+  { key: 'first_comp',     label: 'First Competitor', icon: '🎯', color: '#cd7f32', category: 'competition', rarity: 'Rare',      badgeType: 'takedown', badgeColor2: '#1e3a8a', desc: 'Enter your first tournament.' },
+  { key: 'any_medal',      label: 'Podium',           icon: '🥉', color: '#8a2be2', category: 'competition', rarity: 'Epic',      badgeType: 'medal',    badgeColor2: '#4c1d95', desc: 'Win any medal at a tournament.' },
+  { key: 'silver_medal',   label: 'Silver Medalist',  icon: '🥈', color: '#8a2be2', category: 'competition', rarity: 'Epic',      badgeType: 'medal',    badgeColor2: '#4c1d95', desc: 'Win a silver medal.' },
+  { key: 'gold_medal',     label: 'Gold Medalist',    icon: '🥇', color: '#ff4500', category: 'competition', rarity: 'Legendary', badgeType: 'medal',    badgeColor2: '#7f1d1d', desc: 'Win a gold medal.' },
+  { key: 'double_gold',    label: 'Double Gold',      icon: '🏆', color: '#ffd700', category: 'competition', rarity: 'Mythic',    badgeType: 'trophy',   badgeColor2: '#b45309', desc: 'Win two gold medals at the same tournament.' },
 
   // ── BELT PROMOTIONS ─────────────────────────────────────────────
-  { key: 'first_stripe',  label: 'First Stripe',   icon: '⭐', color: '#FFFFFF', category: 'belt', desc: 'Earn your first stripe.' },
-  { key: 'blue_belt',     label: 'Blue Belt',      icon: '💙', color: '#1A56DB', category: 'belt', desc: 'Earn your blue belt. The hardest belt to get.' },
-  { key: 'purple_belt',   label: 'Purple Belt',    icon: '💜', color: '#7E3AF2', category: 'belt', desc: 'Earn your purple belt. You are a force.' },
-  { key: 'brown_belt',    label: 'Brown Belt',     icon: '🤎', color: '#92400E', category: 'belt', desc: 'Earn your brown belt. Black belt is close.' },
-  { key: 'black_belt',    label: 'Black Belt',     icon: '🖤', color: '#C8A24C', category: 'belt', desc: 'Earn your black belt. A lifetime achievement.' },
-  // Kids belt promotions
-  { key: 'grey_belt',     label: 'Grey Belt',      icon: '🛡️', color: '#6B6B6B', category: 'belt', desc: 'Earn your grey belt. The journey has begun.' },
-  { key: 'yellow_belt',   label: 'Yellow Belt',    icon: '⭐', color: '#C49B1A', category: 'belt', desc: 'Earn your yellow belt. Technique is building.' },
-  { key: 'orange_belt',   label: 'Orange Belt',    icon: '🔥', color: '#C4641A', category: 'belt', desc: 'Earn your orange belt. Competing with confidence.' },
-  { key: 'green_belt',    label: 'Green Belt',     icon: '🏆', color: '#2D8040', category: 'belt', desc: 'Earn your green belt. Top of the kids program.' },
+  { key: 'first_stripe',  label: 'First Stripe',   icon: '⭐', color: '#b0c4de', category: 'belt', rarity: 'Common',    badgeType: 'belt_rank', badgeColor2: '#064e3b', desc: 'Earn your first stripe.' },
+  { key: 'blue_belt',     label: 'Blue Belt',      icon: '💙', color: '#cd7f32', category: 'belt', rarity: 'Rare',      badgeType: 'belt_rank', badgeColor2: '#1e3a8a', desc: 'Earn your blue belt. The hardest belt to get.' },
+  { key: 'purple_belt',   label: 'Purple Belt',    icon: '💜', color: '#8a2be2', category: 'belt', rarity: 'Epic',      badgeType: 'belt_rank', badgeColor2: '#4c1d95', desc: 'Earn your purple belt. You are a force.' },
+  { key: 'brown_belt',    label: 'Brown Belt',     icon: '🤎', color: '#ff4500', category: 'belt', rarity: 'Legendary', badgeType: 'belt_rank', badgeColor2: '#7c2d12', desc: 'Earn your brown belt. Black belt is close.' },
+  { key: 'black_belt',    label: 'Black Belt',     icon: '🖤', color: '#ffd700', category: 'belt', rarity: 'Mythic',    badgeType: 'belt_rank', badgeColor2: '#6b4c1a', desc: 'Earn your black belt. A lifetime achievement.' },
+  { key: 'grey_belt',     label: 'Grey Belt',      icon: '🛡️', color: '#b0c4de', category: 'belt', rarity: 'Common',    badgeType: 'belt_rank', badgeColor2: '#064e3b', desc: 'Earn your grey belt. The journey has begun.' },
+  { key: 'yellow_belt',   label: 'Yellow Belt',    icon: '⭐', color: '#b0c4de', category: 'belt', rarity: 'Common',    badgeType: 'belt_rank', badgeColor2: '#064e3b', desc: 'Earn your yellow belt. Technique is building.' },
+  { key: 'orange_belt',   label: 'Orange Belt',    icon: '🔥', color: '#cd7f32', category: 'belt', rarity: 'Rare',      badgeType: 'belt_rank', badgeColor2: '#1e3a8a', desc: 'Earn your orange belt. Competing with confidence.' },
+  { key: 'green_belt',    label: 'Green Belt',     icon: '🏆', color: '#8a2be2', category: 'belt', rarity: 'Epic',      badgeType: 'belt_rank', badgeColor2: '#4c1d95', desc: 'Earn your green belt. Top of the kids program.' },
 
   // ── APP ENGAGEMENT ───────────────────────────────────────────────
-  { key: 'app_day1',          label: 'Day One',           icon: '📱', color: '#3B82F6', category: 'app', desc: 'Log in to the app for the first time.' },
-  { key: 'app_week',          label: 'Week Regular',      icon: '📆', color: '#10B981', category: 'app', desc: 'Log in 7 days in a row.' },
-  { key: 'first_message',     label: 'First Message',     icon: '🗣️', color: '#8B5CF6', category: 'app', desc: 'Send your first chat message.' },
-  { key: 'profile_complete',  label: 'Profile Complete',  icon: '📸', color: '#C8A24C', category: 'app', desc: 'Add a profile photo.' },
+  { key: 'app_day1',          label: 'Day One',           icon: '📱', color: '#b0c4de', category: 'app', rarity: 'Common',    badgeType: 'smartphone', badgeColor2: '#064e3b', desc: 'Log in to the app for the first time.' },
+  { key: 'app_week',          label: 'Week Regular',      icon: '📆', color: '#cd7f32', category: 'app', rarity: 'Rare',      badgeType: 'smartphone', badgeColor2: '#1e3a8a', desc: 'Log in 7 days in a row.' },
+  { key: 'first_message',     label: 'First Message',     icon: '🗣️', color: '#b0c4de', category: 'app', rarity: 'Common',    badgeType: 'smartphone', badgeColor2: '#064e3b', desc: 'Send your first chat message.' },
+  { key: 'profile_complete',  label: 'Profile Complete',  icon: '📸', color: '#b0c4de', category: 'app', rarity: 'Common',    badgeType: 'smartphone', badgeColor2: '#064e3b', desc: 'Add a profile photo.' },
 
   // ── GAMES (BJJ Chess) ────────────────────────────────────────────
-  { key: 'game_first',        label: 'First Move',        icon: '♟️', color: '#6B7280', category: 'games', desc: 'Play your first game of BJJ Chess.' },
-  { key: 'game_win_fast',     label: 'Opening Theory',    icon: '🎯', color: '#3B82F6', category: 'games', desc: 'Win a game in under 10 moves.' },
-  { key: 'game_win_5',        label: 'Strategist',        icon: '🧠', color: '#8B5CF6', category: 'games', desc: 'Win 5 BJJ Chess games total.' },
-  { key: 'game_streak_3',     label: 'Hot Streak',        icon: '🔥', color: '#F97316', category: 'games', desc: 'Win 3 BJJ Chess games in a row.' },
-  { key: 'game_win_10',       label: 'Chess King',        icon: '👑', color: '#C8A24C', category: 'games', desc: 'Win 10 BJJ Chess games in a row.' },
-  { key: 'game_50',           label: 'Addict',            icon: '🎮', color: '#6366F1', category: 'games', desc: 'Play 50 total BJJ Chess games.' },
-  { key: 'game_lb_week',      label: 'Leaderboard Champ', icon: '🏆', color: '#C8A24C', category: 'games', desc: 'Top the weekly games leaderboard.' },
-  { key: 'game_midnight',     label: 'Midnight Roller',   icon: '🌙', color: '#4B5563', category: 'games', desc: 'Play a game after midnight.' },
-  { key: 'game_and_class',    label: 'Mind & Body',       icon: '⚖️', color: '#10B981', category: 'games', desc: 'Play a game AND attend a class on the same day.' },
+  { key: 'game_first',        label: 'First Move',        icon: '♟️', color: '#b0c4de', category: 'games', rarity: 'Common',    badgeType: 'chess',   badgeColor2: '#064e3b', desc: 'Play your first game of BJJ Chess.' },
+  { key: 'game_win_fast',     label: 'Opening Theory',    icon: '🎯', color: '#8a2be2', category: 'games', rarity: 'Epic',      badgeType: 'chess',   badgeColor2: '#4c1d95', desc: 'Win a game in under 10 moves.' },
+  { key: 'game_win_5',        label: 'Strategist',        icon: '🧠', color: '#cd7f32', category: 'games', rarity: 'Rare',      badgeType: 'num_5',   badgeColor2: '#1e3a8a', desc: 'Win 5 BJJ Chess games total.' },
+  { key: 'game_streak_3',     label: 'Hot Streak',        icon: '🔥', color: '#8a2be2', category: 'games', rarity: 'Epic',      badgeType: 'diamond', badgeColor2: '#4c1d95', desc: 'Win 3 BJJ Chess games in a row.' },
+  { key: 'game_win_10',       label: 'Chess King',        icon: '👑', color: '#ff4500', category: 'games', rarity: 'Legendary', badgeType: 'trophy',  badgeColor2: '#7f1d1d', desc: 'Win 10 BJJ Chess games in a row.' },
+  { key: 'game_50',           label: 'Addict',            icon: '🎮', color: '#8a2be2', category: 'games', rarity: 'Epic',      badgeType: 'num_50',  badgeColor2: '#4c1d95', desc: 'Play 50 total BJJ Chess games.' },
+  { key: 'game_lb_week',      label: 'Leaderboard Champ', icon: '🏆', color: '#ff4500', category: 'games', rarity: 'Legendary', badgeType: 'trophy',  badgeColor2: '#7f1d1d', desc: 'Top the weekly games leaderboard.' },
+  { key: 'game_midnight',     label: 'Midnight Roller',   icon: '🌙', color: '#cd7f32', category: 'games', rarity: 'Rare',      badgeType: 'shield',  badgeColor2: '#1e3a8a', desc: 'Play a game after midnight.' },
+  { key: 'game_and_class',    label: 'Mind & Body',       icon: '⚖️', color: '#8a2be2', category: 'games', rarity: 'Epic',      badgeType: 'chess',   badgeColor2: '#4c1d95', desc: 'Play a game AND attend a class on the same day.' },
 
   // ── SPECIAL / SECRET ────────────────────────────────────────────
-  { key: 'birthday_warrior',  label: 'Birthday Warrior',  icon: '🎂', color: '#EC4899', category: 'special', desc: 'Train on your birthday.' },
-  { key: 'holiday_warrior',   label: 'Holiday Warrior',   icon: '🎄', color: '#10B981', category: 'special', desc: 'Train on a holiday.' },
-  { key: 'secret_1',          label: '???',               icon: '🤫', color: '#374151', category: 'special', secret: true, desc: 'A secret achievement. Keep training to discover it.' },
+  { key: 'birthday_warrior',  label: 'Birthday Warrior',  icon: '🎂', color: '#ff4500', category: 'special', rarity: 'Legendary', badgeType: 'star',    badgeColor2: '#7f1d1d', desc: 'Train on your birthday.' },
+  { key: 'holiday_warrior',   label: 'Holiday Warrior',   icon: '🎄', color: '#8a2be2', category: 'special', rarity: 'Epic',      badgeType: 'star',    badgeColor2: '#4c1d95', desc: 'Train on a holiday.' },
+  { key: 'secret_1',          label: '???',               icon: '🤫', color: '#ffd700', category: 'special', rarity: 'Mythic',    badgeType: 'guard',   badgeColor2: '#b45309', secret: true, desc: 'A secret achievement. Keep training to discover it.' },
 
   // ── LEVEL / XP ───────────────────────────────────────────────────
-  { key: 'level_5',   label: 'Rising Star',         icon: '⭐', color: '#C8A24C', category: 'level', desc: 'Reach Level 5.' },
-  { key: 'level_10',  label: 'Seasoned Warrior',    icon: '🕐', color: '#FFD700', category: 'level', desc: 'Reach Level 10.' },
-  { key: 'level_20',  label: 'Labyrinth Veteran',   icon: '🌟', color: '#4FC3F7', category: 'level', desc: 'Reach Level 20.' },
-  { key: 'level_30',  label: 'Legend of the Mat',    icon: '💎', color: '#C084FC', category: 'level', desc: 'Reach Level 30 — a legend.' },
+  { key: 'level_5',   label: 'Rising Star',         icon: '⭐', color: '#b0c4de', category: 'level', rarity: 'Common',    badgeType: 'num_5',  badgeColor2: '#064e3b', desc: 'Reach Level 5.' },
+  { key: 'level_10',  label: 'Seasoned Warrior',    icon: '🕐', color: '#cd7f32', category: 'level', rarity: 'Rare',      badgeType: 'num_10', badgeColor2: '#1e3a8a', desc: 'Reach Level 10.' },
+  { key: 'level_20',  label: 'Labyrinth Veteran',   icon: '🌟', color: '#8a2be2', category: 'level', rarity: 'Epic',      badgeType: 'num_20', badgeColor2: '#4c1d95', desc: 'Reach Level 20.' },
+  { key: 'level_30',  label: 'Legend of the Mat',   icon: '💎', color: '#ff4500', category: 'level', rarity: 'Legendary', badgeType: 'num_30', badgeColor2: '#7f1d1d', desc: 'Reach Level 30 — a legend.' },
 ];
 
 export const ACHIEVEMENT_CATEGORIES = [
