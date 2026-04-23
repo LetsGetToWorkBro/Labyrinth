@@ -331,7 +331,6 @@ function MilestoneWidget({
   const iconBrd  = milestone.ready ? '#a855f7'                : tok.primary;
   const iconClr  = milestone.ready ? '#000'                   : tok.primary;
   const xpClr    = milestone.ready ? '#d8b4fe'                : tok.primary;
-  const barGrad  = `linear-gradient(90deg,${tok.barA},${tok.barB} 55%,${tok.barC} 85%,${tok.barB})`;
 
   return (
     <div
@@ -449,37 +448,18 @@ function MilestoneWidget({
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" width="12" height="12"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
           </div>
         ) : (
-          <div>
-            {/* Mini XP bar strip — exact match to TopHeader bar */}
-            <div style={{
-              width: '100%', height: 3, background: 'rgba(255,255,255,0.07)',
-              borderRadius: 2, overflow: 'hidden', marginBottom: 5, position: 'relative',
+          <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+            <span style={{
+              fontSize: 13, fontWeight: 900, color: xpClr,
+              fontVariantNumeric: 'tabular-nums',
+              textShadow: `0 0 8px ${glowS}`,
+              transition: 'color 0.9s ease, text-shadow 0.9s ease',
             }}>
-              <div style={{
-                height: '100%', borderRadius: 2,
-                background: barGrad,
-                backgroundSize: '300% 100%',
-                animation: 'smw-shimmer 2s linear infinite',
-                // Width driven by how close to next milestone (invert xpNeeded for visual)
-                // Shows at least 8% so it's always visible, max 92% (not done yet)
-                width: '35%',
-                boxShadow: `0 0 6px ${tok.glowS}`,
-                transition: 'background 0.9s ease, box-shadow 0.9s ease',
-              }} />
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-              <span style={{
-                fontSize: 13, fontWeight: 900, color: xpClr,
-                fontVariantNumeric: 'tabular-nums',
-                textShadow: `0 0 8px ${glowS}`,
-                transition: 'color 0.9s ease, text-shadow 0.9s ease',
-              }}>
-                {milestone.xpNeeded.toLocaleString()}
-              </span>
-              <span style={{ fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,0.35)' }}>
-                XP to unlock
-              </span>
-            </div>
+              {milestone.xpNeeded.toLocaleString()}
+            </span>
+            <span style={{ fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,0.35)' }}>
+              XP to unlock
+            </span>
           </div>
         )}
       </div>
