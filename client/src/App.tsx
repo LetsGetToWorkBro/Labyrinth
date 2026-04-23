@@ -49,7 +49,7 @@ import { CalendarSparkIcon, GamepadIcon, GoldMedalIcon, SaunaIcon, ShieldIcon, G
 import React, { useEffect, useCallback, useState, useRef } from "react";
 import { useHashLocation as useHashLoc } from "wouter/use-hash-location";
 import { Redirect } from "wouter";
-import { gasCall, cachedGasCall, beltSavePromotion, updatePresence } from "@/lib/api";
+import { gasCall, cachedGasCall, beltSavePromotion, updatePresence, dmGetUnread } from "@/lib/api";
 import { getBeltColor } from "@/lib/constants";
 import { ProfileRing } from "@/components/ProfileRing";
 import { ParagonRing } from "@/components/ParagonRing";
@@ -110,16 +110,49 @@ function saveNavConfig(paths: string[]) {
 
 // ─── Tab bar ──────────────────────────────────────────────────────
 
+const DM_READ_IDS_KEY = 'lbjj_dm_read_ids';
+
+function loadDmReadIdsLocal(): Set<string> {
+  try {
+    const raw = localStorage.getItem(DM_READ_IDS_KEY);
+    if (!raw) return new Set();
+    const arr = JSON.parse(raw);
+    return new Set(Array.isArray(arr) ? arr : []);
+  } catch { return new Set(); }
+}
+
 function TabBar() {
   const [location] = useLocation();
   const [navPaths, setNavPaths] = useState<string[]>(getNavConfig);
-  const { member } = useAuth();
+  const { member, isAuthenticated } = useAuth();
+  const [dmUnread, setDmUnread] = useState(0);
 
   useEffect(() => {
     const handler = () => setNavPaths(getNavConfig());
     window.addEventListener('navConfigChanged', handler);
     return () => window.removeEventListener('navConfigChanged', handler);
   }, []);
+
+  // Poll DM unread every 30s; subtract locally-read IDs
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    let cancelled = false;
+    const refresh = async () => {
+      try {
+        const res = await dmGetUnread();
+        if (cancelled) return;
+        const readIds = loadDmReadIdsLocal();
+        // Server doesn't expose per-message IDs in the threads payload, so use server count
+        // but let dm-read events zero-out the badge optimistically
+        setDmUnread(res.count || 0);
+      } catch {}
+    };
+    refresh();
+    const t = setInterval(refresh, 30000);
+    const readHandler = () => refresh();
+    window.addEventListener('dm-read', readHandler);
+    return () => { cancelled = true; clearInterval(t); window.removeEventListener('dm-read', readHandler); };
+  }, [isAuthenticated]);
 
   const hiddenPaths = ["/waiver", "/book", "/reset", "/account"];
   if (hiddenPaths.some(p => location.startsWith(p))) return null;
@@ -184,7 +217,27 @@ function TabBar() {
                 }}
               />
             ) : Icon ? (
-              <Icon size={22} strokeWidth={isActive ? 2.2 : 1.5} />
+              <div style={{ position: 'relative', display: 'inline-flex' }}>
+                <Icon size={22} strokeWidth={isActive ? 2.2 : 1.5} />
+                {tab.path === '/chat' && dmUnread > 0 && (
+                  <div
+                    aria-label={`${dmUnread} unread message${dmUnread === 1 ? '' : 's'}`}
+                    style={{
+                      position: 'absolute',
+                      top: -4, right: -8,
+                      minWidth: 16, height: 16, borderRadius: 8,
+                      background: '#ef4444',
+                      border: '2px solid #0A0A0A',
+                      color: '#fff', fontSize: 9, fontWeight: 900,
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      padding: '0 4px', lineHeight: 1,
+                      boxShadow: '0 2px 6px rgba(239,68,68,0.5)',
+                    }}
+                  >
+                    {dmUnread > 99 ? '99+' : dmUnread}
+                  </div>
+                )}
+              </div>
             ) : (
               <span style={{ fontSize: 20, lineHeight: 1 }}>{tab.emoji}</span>
             )}

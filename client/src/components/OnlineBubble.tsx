@@ -452,11 +452,17 @@ export function OnlineAvatarCluster() {
   if (!isAuthenticated || !member) return null;
 
   const nowMs  = Date.now();
-  const active  = members.filter(m => m.lastSeen && (nowMs - new Date(m.lastSeen).getTime()) < 5 * 60 * 1000);
-  const offline = members.filter(m => !m.lastSeen || (nowMs - new Date(m.lastSeen).getTime()) >= 5 * 60 * 1000);
-  const display = active.slice(0, 3);
+  const DAY_MS = 24 * 60 * 60 * 1000;
+  const ACTIVE_MS = 5 * 60 * 1000;
+  // All members seen within last 24h, sorted most-recent first
+  const recent = members
+    .filter(m => m.lastSeen && (nowMs - new Date(m.lastSeen).getTime()) < DAY_MS)
+    .sort((a, b) => new Date(b.lastSeen!).getTime() - new Date(a.lastSeen!).getTime());
+  const active  = recent.filter(m => (nowMs - new Date(m.lastSeen!).getTime()) < ACTIVE_MS);
+  const offline = members.filter(m => !m.lastSeen || (nowMs - new Date(m.lastSeen).getTime()) >= ACTIVE_MS);
+  // Show ALL 24h members in the stacked strip (not just the 5-min active slice)
+  const display = recent;
   const onlineCount = Math.max(active.length, 1);
-  const overflow = onlineCount > 3 ? onlineCount - 3 : 0;
 
   const openDM = (m: ChannelMember) => {
     setOpen(false);
@@ -477,56 +483,80 @@ export function OnlineAvatarCluster() {
     <div ref={wrapRef} style={{ position: 'relative' }}>
       <style>{`@keyframes oac-pulse{0%{transform:scale(1);opacity:.7}50%{transform:scale(1.8);opacity:0}100%{transform:scale(1);opacity:0}}`}</style>
 
-      {/* Stacked avatars button */}
-      <button
-        onClick={handleToggle}
-        style={{
-          display: 'flex', alignItems: 'center', gap: 6,
-          background: 'none', border: 'none', padding: '2px 0',
-          cursor: 'pointer', WebkitTapHighlightColor: 'transparent',
-        }}
-      >
-        {/* Stacked PFPs */}
-        <div style={{ display: 'flex', alignItems: 'center' }}>
-          {display.map((m, i) => (
-            <div key={m.email || m.name} style={{
-              width: 26, height: 26, borderRadius: 8,
-              border: '2px solid #0f0e0d',
-              marginLeft: i === 0 ? 0 : -7,
-              background: avatarGrad((m.belt || 'white')),
-              overflow: 'hidden',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              fontSize: 10, fontWeight: 800, color: '#fff',
-              position: 'relative', zIndex: display.length - i,
-              flexShrink: 0,
-            }}>
-              {m.profilePic
-                ? <img src={m.profilePic} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                : (m.name || '?').charAt(0).toUpperCase()
-              }
-            </div>
-          ))}
-          {/* Overflow badge */}
-          {overflow > 0 && (
-            <div style={{
-              width: 26, height: 26, borderRadius: 8,
-              border: '2px solid #0f0e0d', marginLeft: -7,
-              background: 'rgba(16,185,129,.15)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              fontSize: 9, fontWeight: 800, color: '#10b981',
-              flexShrink: 0,
-            }}>+{overflow}</div>
+      {/* Horizontally-scrollable strip of 24h recent members + status pill */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, maxWidth: 220 }}>
+        <div
+          style={{
+            display: 'flex', alignItems: 'center',
+            overflowX: 'auto', overflowY: 'hidden',
+            scrollbarWidth: 'none', msOverflowStyle: 'none',
+            WebkitOverflowScrolling: 'touch',
+            flex: '0 1 auto',
+            minWidth: 0,
+            paddingLeft: 7,
+          }}
+          onWheel={(e) => {
+            if (e.deltaY !== 0 && Math.abs(e.deltaY) > Math.abs(e.deltaX)) {
+              e.currentTarget.scrollLeft += e.deltaY;
+            }
+          }}
+        >
+          {display.length === 0 ? (
+            <button
+              onClick={handleToggle}
+              style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontSize: 11, fontWeight: 700, color: '#57534e' }}
+            >
+              –
+            </button>
+          ) : (
+            display.map((m, i) => {
+              const isActive = m.lastSeen && (Date.now() - new Date(m.lastSeen).getTime()) < 5 * 60 * 1000;
+              return (
+                <button
+                  key={m.email || m.name}
+                  onClick={(e) => { e.stopPropagation(); openDM(m); }}
+                  aria-label={`Message ${m.name}`}
+                  style={{
+                    width: 28, height: 28, borderRadius: 8,
+                    border: '2px solid #0f0e0d',
+                    marginLeft: i === 0 ? -7 : -7,
+                    background: avatarGrad((m.belt || 'white')),
+                    overflow: 'hidden',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    fontSize: 10, fontWeight: 800, color: '#fff',
+                    position: 'relative', zIndex: display.length - i,
+                    flexShrink: 0,
+                    padding: 0, cursor: 'pointer',
+                    boxShadow: isActive ? '0 0 0 1.5px rgba(16,185,129,.7)' : 'none',
+                    WebkitTapHighlightColor: 'transparent',
+                  }}
+                >
+                  {m.profilePic
+                    ? <img src={m.profilePic} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    : (m.name || '?').charAt(0).toUpperCase()
+                  }
+                </button>
+              );
+            })
           )}
         </div>
 
-        {/* Green dot + count + DM unread badge */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 4, position: 'relative' }}>
+        {/* Green dot + count + DM unread badge — tap to open dropdown */}
+        <button
+          onClick={handleToggle}
+          style={{
+            display: 'flex', alignItems: 'center', gap: 4,
+            background: 'none', border: 'none', padding: '2px 0',
+            cursor: 'pointer', position: 'relative',
+            WebkitTapHighlightColor: 'transparent',
+            flexShrink: 0,
+          }}
+        >
           <div style={{ position: 'relative', width: 7, height: 7 }}>
             <div style={{ width: 7, height: 7, borderRadius: '50%', background: '#10b981', boxShadow: '0 0 6px #10b981' }} />
             <div style={{ position: 'absolute', inset: -2, borderRadius: '50%', background: 'rgba(16,185,129,.3)', animation: 'oac-pulse 2s infinite' }} />
           </div>
           <span style={{ fontSize: 11, fontWeight: 700, color: '#10b981' }}>{onlineCount}</span>
-          {/* DM unread badge */}
           {dmUnread > 0 && (
             <div style={{
               position: 'absolute', top: -8, right: -10,
@@ -536,8 +566,8 @@ export function OnlineAvatarCluster() {
               fontSize: 8, fontWeight: 900, color: '#fff', padding: '0 3px',
             }}>{dmUnread}</div>
           )}
-        </div>
-      </button>
+        </button>
+      </div>
 
       {/* Dropdown — portaled to body */}
       {createPortal(

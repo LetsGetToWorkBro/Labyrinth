@@ -17,7 +17,55 @@ import { useAuth } from '@/lib/auth-context';
 import { ParagonRing } from '@/components/ParagonRing';
 import { getActualLevel } from '@/lib/xp';
 import { getBeltColor } from '@/lib/constants';
-import { dmSend, dmGetThread, dmMarkRead, dmGetUnread, type DmMessage } from '@/lib/api';
+import { dmSend, dmGetThread, dmMarkRead, dmGetUnread, dmGetConversations, type DmMessage, type DmConversation } from '@/lib/api';
+
+// ─── Unread tracking ──────────────────────────────────────────────────────────
+
+const DM_READ_IDS_KEY = 'lbjj_dm_read_ids';
+const DM_SEEN_THREADS_KEY = 'lbjj_dm_seen_threads';
+
+function loadReadIds(): Set<string> {
+  try {
+    const raw = localStorage.getItem(DM_READ_IDS_KEY);
+    if (!raw) return new Set();
+    const arr = JSON.parse(raw);
+    return new Set(Array.isArray(arr) ? arr : []);
+  } catch { return new Set(); }
+}
+
+function saveReadIds(ids: Set<string>) {
+  try {
+    // Cap size at 500 to avoid unbounded growth
+    const arr = Array.from(ids).slice(-500);
+    localStorage.setItem(DM_READ_IDS_KEY, JSON.stringify(arr));
+  } catch {}
+}
+
+export function markDmRead(messageIds: string[]) {
+  if (!messageIds.length) return;
+  const ids = loadReadIds();
+  messageIds.forEach(id => id && ids.add(id));
+  saveReadIds(ids);
+  window.dispatchEvent(new CustomEvent('dm-read'));
+}
+
+// ─── Relative time formatter ──────────────────────────────────────────────────
+
+function fmtRelative(ts: string): string {
+  if (!ts) return '';
+  const then = new Date(ts).getTime();
+  if (!Number.isFinite(then)) return '';
+  const diff = Date.now() - then;
+  if (diff < 60_000) return 'now';
+  const mins = Math.floor(diff / 60_000);
+  if (mins < 60) return `${mins}m ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs}h ago`;
+  if (hrs < 48) return 'Yesterday';
+  const days = Math.floor(hrs / 24);
+  if (days < 7) return `${days}d ago`;
+  return new Date(ts).toLocaleDateString();
+}
 
 // ─── DM Context ───────────────────────────────────────────────────────────────
 
@@ -46,6 +94,11 @@ export function useDM() { return useContext(DMContext); }
 // Global event to open a DM from anywhere
 export function dispatchOpenDM(peer: DMPeer) {
   window.dispatchEvent(new CustomEvent('open-dm', { detail: peer }));
+}
+
+// Open the conversations inbox (list of all threads) from anywhere
+export function dispatchOpenDMInbox() {
+  window.dispatchEvent(new CustomEvent('open-dm-inbox'));
 }
 
 // ─── Belt pill style (matches ChatPage) ───────────────────────────────────────
@@ -132,7 +185,7 @@ function DMTray({
     setMessages(msgs);
     // Mark as read when tray is open and not minimized
     if (!minimized && msgs.some(m => !m.isMe && !m.read)) {
-      dmMarkRead(peer.email).catch(() => {});
+      dmMarkRead(peer.email).catch(() => {}).finally(() => window.dispatchEvent(new CustomEvent('dm-read')));
       setUnread(0);
     } else {
       const newUnread = msgs.filter(m => !m.isMe && !m.read).length;
@@ -195,7 +248,7 @@ function DMTray({
 
       {/* Header */}
       <div
-        onClick={() => { setMinimized(v => !v); if (minimized) { setUnread(0); dmMarkRead(peer.email).catch(()=>{}); } }}
+        onClick={() => { setMinimized(v => !v); if (minimized) { setUnread(0); dmMarkRead(peer.email).catch(()=>{}).finally(() => window.dispatchEvent(new CustomEvent('dm-read'))); } }}
         style={{
           display: 'flex', alignItems: 'center', gap: 10,
           padding: '12px 14px', flexShrink: 0, cursor: 'pointer',
@@ -387,25 +440,260 @@ function DMTray({
 
 // ─── Provider + Manager ───────────────────────────────────────────────────────
 
+// ─── Incoming toast ───────────────────────────────────────────────────────────
+
+interface IncomingToast {
+  key: string;
+  peer: DMPeer;
+  text: string;
+}
+
+function DMToastCard({ toast, onDismiss }: { toast: IncomingToast; onDismiss: () => void }) {
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => {
+    const r = requestAnimationFrame(() => setMounted(true));
+    return () => cancelAnimationFrame(r);
+  }, []);
+  const level = getActualLevel(toast.peer.totalPoints || 0);
+  const preview = toast.text.length > 40 ? toast.text.slice(0, 40) + '…' : toast.text;
+
+  const handleOpen = () => {
+    dispatchOpenDM(toast.peer);
+    onDismiss();
+  };
+
+  return (
+    <div
+      onClick={handleOpen}
+      style={{
+        pointerEvents: 'auto',
+        display: 'flex', alignItems: 'center', gap: 10,
+        background: 'rgba(0,0,0,0.85)',
+        backdropFilter: 'blur(16px)',
+        WebkitBackdropFilter: 'blur(16px)',
+        border: '1px solid rgba(232,175,52,0.35)',
+        boxShadow: '0 10px 32px rgba(0,0,0,0.7), 0 0 0 1px rgba(232,175,52,0.15)',
+        borderRadius: 18,
+        padding: '10px 14px 10px 10px',
+        minWidth: 260, maxWidth: 360,
+        cursor: 'pointer',
+        transform: mounted ? 'translateY(0)' : 'translateY(-18px)',
+        opacity: mounted ? 1 : 0,
+        transition: 'transform .35s cubic-bezier(0.175,0.885,0.32,1.1), opacity .3s',
+      }}
+    >
+      <div style={{ flexShrink: 0 }}>
+        <ParagonRing level={level} size={32} showOrbit={false}>
+          {toast.peer.profilePic
+            ? <img src={toast.peer.profilePic} alt="" style={{ width:'100%', height:'100%', borderRadius:'50%', objectFit:'cover' }} />
+            : <div style={{ width:'100%', height:'100%', borderRadius:'50%', background: avatarGrad(toast.peer.belt), display:'flex', alignItems:'center', justifyContent:'center', fontSize:12, fontWeight:800, color:'#fff' }}>
+                {(toast.peer.name||'?').charAt(0).toUpperCase()}
+              </div>
+          }
+        </ParagonRing>
+      </div>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ fontSize: 13, fontWeight: 800, color: '#fff', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
+          {toast.peer.name}
+        </div>
+        <div style={{ fontSize: 12, color: '#d6d3d1', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', marginTop: 1 }}>
+          {preview}
+        </div>
+      </div>
+      <button
+        onClick={(e) => { e.stopPropagation(); onDismiss(); }}
+        aria-label="Dismiss"
+        style={{ flexShrink:0, width:22, height:22, borderRadius:6, background:'rgba(255,255,255,0.06)', border:'none', color:'#a8a29e', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center' }}
+      >
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" width="12" height="12">
+          <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+        </svg>
+      </button>
+    </div>
+  );
+}
+
+function DMToastStack({ toasts, onDismiss }: { toasts: IncomingToast[]; onDismiss: (key: string) => void }) {
+  return createPortal(
+    <div style={{
+      position: 'fixed',
+      top: 'calc(12px + env(safe-area-inset-top, 0px))',
+      left: 0, right: 0,
+      display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8,
+      zIndex: 10000,
+      pointerEvents: 'none',
+      padding: '0 12px',
+    }}>
+      {toasts.map(t => (
+        <DMToastCard key={t.key} toast={t} onDismiss={() => onDismiss(t.key)} />
+      ))}
+    </div>,
+    document.body
+  );
+}
+
+// ─── Conversations Inbox Tray ─────────────────────────────────────────────────
+
+function DMInboxTray({ onClose }: { onClose: () => void }) {
+  const [conversations, setConversations] = useState<DmConversation[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const load = useCallback(async () => {
+    try {
+      const list = await dmGetConversations();
+      list.sort((a, b) => new Date(b.lastTs || 0).getTime() - new Date(a.lastTs || 0).getTime());
+      setConversations(list);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    load();
+    const t = setInterval(load, 20000);
+    const readHandler = () => load();
+    window.addEventListener('dm-read', readHandler);
+    return () => { clearInterval(t); window.removeEventListener('dm-read', readHandler); };
+  }, [load]);
+
+  return (
+    <div style={{
+      position: 'fixed',
+      bottom: BOTTOM_OFFSET,
+      right: 16,
+      width: TRAY_W,
+      height: TRAY_H,
+      background: '#030303',
+      border: '1px solid rgba(255,255,255,0.08)',
+      borderRadius: 20,
+      boxShadow: '0 24px 64px rgba(0,0,0,0.9), 0 0 0 1px rgba(255,255,255,0.04)',
+      display: 'flex', flexDirection: 'column',
+      overflow: 'hidden',
+      zIndex: 9500,
+    }}>
+      <div style={{
+        display:'flex', alignItems:'center', gap:10,
+        padding:'12px 14px', flexShrink:0,
+        borderBottom:'1px solid rgba(255,255,255,0.06)',
+        background:'rgba(255,255,255,0.02)',
+      }}>
+        <div style={{ width:32, height:32, borderRadius:10, background:'rgba(232,175,52,.14)', border:'1px solid rgba(232,175,52,.28)', display:'flex', alignItems:'center', justifyContent:'center', color:'#e8af34', flexShrink:0 }}>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" width="16" height="16">
+            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+          </svg>
+        </div>
+        <div style={{ flex:1, minWidth:0 }}>
+          <div style={{ fontSize:13, fontWeight:800, color:'#fff' }}>Messages</div>
+          <div style={{ fontSize:10, fontWeight:600, color:'#a8a29e', marginTop:1 }}>
+            {conversations.length} conversation{conversations.length === 1 ? '' : 's'}
+          </div>
+        </div>
+        <button
+          onClick={onClose}
+          aria-label="Close"
+          style={{ width:22, height:22, borderRadius:6, background:'rgba(255,255,255,.05)', border:'none', color:'#a8a29e', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center' }}
+        >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" width="12" height="12">
+            <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+          </svg>
+        </button>
+      </div>
+
+      <div style={{ flex:1, overflowY:'auto', scrollbarWidth:'none' }}>
+        {loading && conversations.length === 0 ? (
+          <div style={{ textAlign:'center', color:'#57534e', fontSize:12, padding:'24px' }}>Loading…</div>
+        ) : conversations.length === 0 ? (
+          <div style={{ textAlign:'center', color:'#57534e', fontSize:12, padding:'32px 20px' }}>
+            No conversations yet.<br/>Tap a member to start a chat.
+          </div>
+        ) : (
+          conversations.map(c => {
+            const level = getActualLevel(0);
+            const belt  = (c.partnerBelt || 'white').toLowerCase();
+            const preview = (c.lastText || '').length > 40 ? (c.lastText || '').slice(0, 40) + '…' : (c.lastText || '');
+            const pillBelt = ['black','brown','purple','blue','white'].includes(belt) ? belt : 'white';
+            return (
+              <button
+                key={c.partnerEmail || c.partnerName}
+                onClick={() => {
+                  dispatchOpenDM({
+                    email: c.partnerEmail || '',
+                    name: c.partnerName || '',
+                    belt: belt,
+                    totalPoints: 0,
+                    profilePic: c.partnerProfilePic,
+                  });
+                  onClose();
+                }}
+                style={{
+                  width:'100%', display:'flex', alignItems:'center', gap:10,
+                  padding:'10px 12px', background:'transparent', border:'none',
+                  borderBottom:'1px solid rgba(255,255,255,.04)',
+                  cursor:'pointer', textAlign:'left',
+                }}
+                onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,.03)')}
+                onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+              >
+                <div style={{ flexShrink:0 }}>
+                  <ParagonRing level={level} size={32} showOrbit={false}>
+                    {c.partnerProfilePic
+                      ? <img src={c.partnerProfilePic} alt="" style={{ width:'100%', height:'100%', borderRadius:'50%', objectFit:'cover' }} />
+                      : <div style={{ width:'100%', height:'100%', borderRadius:'50%', background: avatarGrad(belt), display:'flex', alignItems:'center', justifyContent:'center', fontSize:11, fontWeight:800, color:'#fff' }}>
+                          {(c.partnerName||'?').charAt(0).toUpperCase()}
+                        </div>
+                    }
+                  </ParagonRing>
+                </div>
+                <div style={{ flex:1, minWidth:0 }}>
+                  <div style={{ display:'flex', alignItems:'center', gap:6 }}>
+                    <span style={{ fontSize:12, fontWeight:700, color:'#fff', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
+                      {c.partnerName}
+                    </span>
+                    <span style={beltPill(pillBelt)}>{pillBelt.charAt(0).toUpperCase()+pillBelt.slice(1)}</span>
+                  </div>
+                  <div style={{ fontSize:11, color:'#a8a29e', marginTop:2, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
+                    {preview || 'No messages yet'}
+                  </div>
+                </div>
+                <div style={{ display:'flex', flexDirection:'column', alignItems:'flex-end', gap:4, flexShrink:0 }}>
+                  <span style={{ fontSize:10, color:'#57534e', fontWeight:600 }}>{fmtRelative(c.lastTs)}</span>
+                  {c.unread && (
+                    <div style={{ minWidth:16, height:16, borderRadius:8, background:'#C8A24C', color:'#000', fontSize:9, fontWeight:900, display:'flex', alignItems:'center', justifyContent:'center', padding:'0 5px' }}>
+                      •
+                    </div>
+                  )}
+                </div>
+              </button>
+            );
+          })
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ─── Provider + Manager ───────────────────────────────────────────────────────
+
 export function DMProvider({ children }: { children: React.ReactNode }) {
   const { member, isAuthenticated } = useAuth();
   const [openPeers, setOpenPeers] = useState<DMPeer[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [toasts, setToasts] = useState<IncomingToast[]>([]);
+  const [inboxOpen, setInboxOpen] = useState(false);
+  const firstPollRef = useRef(true);
+  const seenThreadRef = useRef<Record<string, string>>({}); // fromEmail -> last seen lastTs
 
   // Listen for open-dm events from anywhere
   useEffect(() => {
     const handler = (e: Event) => {
       const peer = (e as CustomEvent<DMPeer>).detail;
       if (!peer?.email && !peer?.name) return; // need at least a name
+      setInboxOpen(false);
       setOpenPeers(prev => {
-        // No longer blocking self-DM — useful for testing and echo threads
         const peerEmail = (peer.email || '').toLowerCase().trim();
-        // Already open? Bring to front
-        const matchKey = peerEmail || peer.name;
         if (prev.some(p => (p.email && p.email === peerEmail) || (!peerEmail && p.name === peer.name))) {
           return [peer, ...prev.filter(p => p.email !== peer.email)];
         }
-        // Max 3 open at once
         const next = [peer, ...prev].slice(0, 3);
         return next;
       });
@@ -414,17 +702,65 @@ export function DMProvider({ children }: { children: React.ReactNode }) {
     return () => window.removeEventListener('open-dm', handler);
   }, [member]);
 
-  // Poll unread count every 30s
+  // Listen for inbox open events
+  useEffect(() => {
+    const handler = () => setInboxOpen(v => !v);
+    window.addEventListener('open-dm-inbox', handler);
+    return () => window.removeEventListener('open-dm-inbox', handler);
+  }, []);
+
+  // Poll unread + detect new incoming messages for toast
   useEffect(() => {
     if (!isAuthenticated) return;
+    let cancelled = false;
     const poll = async () => {
       const res = await dmGetUnread();
+      if (cancelled) return;
       setUnreadCount(res.count);
+
+      const isFirst = firstPollRef.current;
+      firstPollRef.current = false;
+
+      // Detect new messages per thread
+      const newToasts: IncomingToast[] = [];
+      for (const t of (res.threads || [])) {
+        const lastKey = seenThreadRef.current[t.fromEmail || t.fromName];
+        const currKey = `${t.lastTs}|${t.count}`;
+        if (lastKey !== currKey) {
+          seenThreadRef.current[t.fromEmail || t.fromName] = currKey;
+          // Skip toast on very first poll so we don't bombard on page load
+          if (!isFirst && t.count > 0) {
+            newToasts.push({
+              key: `${t.fromEmail || t.fromName}-${t.lastTs}-${Date.now()}`,
+              peer: {
+                email: t.fromEmail || '',
+                name: t.fromName || 'Someone',
+                belt: (t as any).fromBelt || 'white',
+                totalPoints: (t as any).fromTotalPoints || 0,
+                profilePic: (t as any).fromProfilePic,
+              },
+              text: t.lastText || '',
+            });
+          }
+        }
+      }
+      if (newToasts.length) {
+        setToasts(prev => [...prev, ...newToasts]);
+        newToasts.forEach(nt => {
+          setTimeout(() => {
+            setToasts(prev => prev.filter(x => x.key !== nt.key));
+          }, 4000);
+        });
+      }
     };
     poll();
     const t = setInterval(poll, 30000);
-    return () => clearInterval(t);
+    return () => { cancelled = true; clearInterval(t); };
   }, [isAuthenticated]);
+
+  const dismissToast = useCallback((key: string) => {
+    setToasts(prev => prev.filter(t => t.key !== key));
+  }, []);
 
   const myName = member?.name || '';
   const myBelt = ((member as any)?.belt || 'white').toLowerCase();
@@ -436,6 +772,13 @@ export function DMProvider({ children }: { children: React.ReactNode }) {
   return (
     <DMContext.Provider value={{ openDM: (peer) => dispatchOpenDM(peer), unreadCount, setUnreadCount }}>
       {children}
+      {isAuthenticated && toasts.length > 0 && (
+        <DMToastStack toasts={toasts} onDismiss={dismissToast} />
+      )}
+      {isAuthenticated && inboxOpen && createPortal(
+        <DMInboxTray onClose={() => setInboxOpen(false)} />,
+        document.body
+      )}
       {isAuthenticated && openPeers.length > 0 && createPortal(
         <>
           {openPeers.map((peer, i) => (
