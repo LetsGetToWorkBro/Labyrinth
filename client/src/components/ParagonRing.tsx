@@ -26,7 +26,8 @@ export function getParagonTheme(level: number): ParagonTheme {
   if (level >= 20) return 'blood';
   if (level >= 12) return 'void';
   if (level >= 6)  return 'frost';
-  return 'ember';
+  if (level >= 3)  return 'ember'; // Bronze Forge unlocks at LV3
+  return 'ember'; // LV1-2 still show the ring but no unlock reward
 }
 
 interface ParagonRingProps {

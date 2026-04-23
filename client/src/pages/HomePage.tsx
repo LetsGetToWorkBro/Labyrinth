@@ -1536,8 +1536,11 @@ export default function HomePage() {
       if (nearestAch && nearestAch.need < xpClassesEquivalent) {
         return { type: 'achievement' as const, label: nearestAch.label, need: nearestAch.need, unit: nearestAch.unit, icon: nearestAch.icon, xpToNext: xpNeeded, nextLevel: actualLvl + 1, nextTitle };
       }
-      // Widget shows the next level's title (e.g. "Rising Competitor", "Dedicated Grappler")
-      return { type: 'xp' as const, label: nextTitle, need: xpNeeded, unit: 'XP', icon: <BoltIcon size={16} color="#C8A24C" />, xpToNext: xpNeeded, nextLevel: actualLvl + 1, nextTitle };
+      // Widget: show forge name if the next milestone is a frame unlock, otherwise the level title
+      const FORGE_UNLOCKS = [{level:3,name:'Bronze Forge'},{level:6,name:'Frozen Aura'},{level:12,name:'Void Star'},{level:20,name:'Blood Flame'},{level:30,name:'Grand Master Crown'}];
+      const nextForge = FORGE_UNLOCKS.find(f => f.level === actualLvl + 1);
+      const milestoneLabel = nextForge ? nextForge.name : nextTitle;
+      return { type: 'xp' as const, label: milestoneLabel, need: xpNeeded, unit: 'XP', icon: <BoltIcon size={16} color="#C8A24C" />, xpToNext: xpNeeded, nextLevel: actualLvl + 1, nextTitle };
     } catch { return null; }
   })();
 
@@ -2651,7 +2654,7 @@ function MiniParagonRing({ theme, size = 28 }: { theme: 'ember' | 'frost' | 'voi
           color: theme === 'blood' ? '#ef4444' : theme === 'void' ? '#a855f7' : theme === 'frost' ? '#0ea5e9' : theme === 'apex' ? '#fff' : '#e8af34' }}>LV</span>
         <span style={{ fontSize: size * 0.34, fontWeight: 900, lineHeight: 1, color: '#fff',
           textShadow: `0 0 ${size*0.2}px ${cfg.glow}80` }}>
-          {theme === 'ember' ? '1' : theme === 'frost' ? '6' : theme === 'void' ? '12' : theme === 'blood' ? '20' : '30'}
+          {theme === 'ember' ? '3' : theme === 'frost' ? '6' : theme === 'void' ? '12' : theme === 'blood' ? '20' : '30'}
         </span>
       </div>
     </div>
@@ -2659,6 +2662,18 @@ function MiniParagonRing({ theme, size = 28 }: { theme: 'ember' | 'frost' | 'voi
 }
 
 const TIER_DATA = [
+  {
+    level: 3,
+    theme: 'ember' as const,
+    color: '#e8af34',
+    bg: 'rgba(232,175,52,0.04)',
+    ringLabel: 'Ember',
+    title: 'Consistent Driller',
+    forgeName: 'Bronze Forge',
+    orbit: false,
+    icon: <svg width="10" height="10" viewBox="0 0 24 24" fill="#e8af34"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>,
+    rewardText: () => <>Unlocks the <strong style={{color:'#e8af34'}}>Bronze Forge</strong> portrait frame. Keep showing up — the mat rewards consistency.</>,
+  },
   {
     level: 6,
     theme: 'frost' as const,
