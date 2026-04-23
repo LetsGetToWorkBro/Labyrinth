@@ -8,7 +8,6 @@
 
 import React, { useState, useRef, useEffect, useCallback } from "react";
 import { getBeltColor } from "@/lib/constants";
-import { BeltIcon } from "@/components/BeltIcon";
 import { ParagonRing } from "@/components/ParagonRing";
 import { getActualLevel } from "@/lib/xp";
 import { useAuth } from "@/lib/auth-context";
@@ -46,17 +45,15 @@ const BELT_PILL_CLASS: Record<string, { bg: string; color: string; border: strin
   black:  { bg: 'rgba(255,255,255,.08)', color: '#fff',   border: '1px solid rgba(255,255,255,.2)' },
 };
 
-// Dark pill with belt-color left bar — matches the design in screenshot
+// Belt pill — exact match to labyrinth-chat-v4-pure.html .belt-pill + .bp-* classes
 function beltPillStyle(belt: string): React.CSSProperties {
   const key = (belt || 'white').toLowerCase();
-  const color = getBeltColor(key);
+  const s = BELT_PILL_CLASS[key] || BELT_PILL_CLASS.white;
   return {
-    fontSize: 9, fontWeight: 800, padding: '2px 8px 2px 6px',
-    borderRadius: 6, textTransform: 'uppercase', letterSpacing: '.1em',
-    background: '#1a1a1a', color: '#fff',
-    border: '1px solid rgba(255,255,255,.08)',
-    borderLeft: `3px solid ${color}`,
-    flexShrink: 0,
+    fontSize: 9, fontWeight: 800, padding: '2px 6px', borderRadius: 4,
+    textTransform: 'uppercase', letterSpacing: '.08em',
+    background: s.bg, color: s.color, border: s.border,
+    ...(key === 'black' ? { borderLeft: '3px solid #ef4444' } : {}),
   };
 }
 
@@ -1214,26 +1211,28 @@ const RANK_TITLES: Record<string, string> = {
 function RankCardItem({ beltKey, name, count, accessible, onClick }: {
   beltKey: string; name: string; count: number; accessible: boolean; onClick: () => void;
 }) {
-  const beltColor = getBeltColor(beltKey);
+  const beltStyles: Record<string, React.CSSProperties> = {
+    white:  { background: '#f5f5f4' },
+    blue:   { background: '#3b82f6', boxShadow: '0 0 8px rgba(59,130,246,.4)' },
+    purple: { background: '#a855f7', boxShadow: '0 0 8px rgba(168,85,247,.4)' },
+    brown:  { background: '#92400e', boxShadow: '0 0 8px rgba(146,64,14,.4)' },
+    black:  { background: '#111', borderColor: 'rgba(255,255,255,.2)', position: 'relative' },
+  };
   return (
     <div
       className={`chatv4-rank-card${!accessible ? ' locked' : ''}`}
       onClick={accessible ? onClick : undefined}
     >
-      {/* Dark pill chip with colored left bar */}
       <div style={{
-        display: 'inline-flex', alignItems: 'center', gap: 6,
-        padding: '4px 12px 4px 10px', borderRadius: 8,
-        background: '#111', border: '1px solid rgba(255,255,255,.08)',
-        borderLeft: `3px solid ${beltColor}`,
-        opacity: accessible ? 1 : 0.4,
+        width: 11, height: 22, borderRadius: 3, flexShrink: 0,
+        border: '1px solid rgba(255,255,255,.1)', position: 'relative',
+        ...(beltStyles[beltKey] || beltStyles.white),
       }}>
-        <div style={{ width: 7, height: 7, borderRadius: '50%', background: beltColor, flexShrink: 0 }} />
-        <span style={{ fontSize: 11, fontWeight: 800, color: '#fff', textTransform: 'uppercase', letterSpacing: '.1em' }}>
-          {beltKey}
-        </span>
+        {beltKey === 'black' && (
+          <div style={{ position: 'absolute', bottom: 3, left: 0, width: '100%', height: 3, background: '#ef4444' }} />
+        )}
       </div>
-      <div style={{ fontSize: 13, fontWeight: 800, color: accessible ? '#e7e5e4' : '#57534e' }}>{name}</div>
+      <div style={{ fontSize: 14, fontWeight: 800, color: '#e7e5e4' }}>{name}</div>
       {!accessible ? (
         <span style={{ marginLeft: 'auto', color: '#57534e', display: 'flex' }}><LockIcon size={11} /></span>
       ) : (
@@ -1292,9 +1291,13 @@ function ProfileBody({ member }: { member: ChannelMember }) {
         </ParagonRing>
         <div style={{ fontSize: 26, fontWeight: 900, color: '#fff', textAlign: 'center' }}>{member.name}</div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <BeltIcon belt={beltKey} stripes={(member as any).stripes || 0} width={80} />
+          <div style={{
+            height: 10, width: 60, borderRadius: 4,
+            background: beltBarColor(beltKey),
+            boxShadow: `0 0 10px ${beltColor}40`,
+          }} />
           <span style={{ fontSize: 14, fontWeight: 700, color: '#a8a29e', textTransform: 'capitalize' }}>
-            {member.role && member.role.toLowerCase().includes('coach') ? 'Coach' : ''}
+            {beltKey} Belt{member.role && member.role.toLowerCase().includes('coach') ? ' · Coach' : ''}
           </span>
         </div>
       </div>
