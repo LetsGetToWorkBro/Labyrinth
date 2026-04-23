@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { OnlineBubble } from '@/components/OnlineBubble';
 import { useAuth } from '@/lib/auth-context';
 import { getLevelFromXP, getActualLevel } from '@/lib/xp';
-import { ParagonRing } from '@/components/ParagonRing';
+import { ParagonRing, getParagonTheme } from '@/components/ParagonRing';
 import logoMaze from '../assets/logo-maze.webp';
 
 // Belt colors — matches app-wide palette
@@ -63,6 +63,22 @@ export function TopHeader({ onMenuOpen, onXpOpen }: { onMenuOpen: () => void; on
   const belt = ((member as any)?.belt || 'white').toLowerCase();
   const xpInLevel = xp - xpForLevel;
   const xpNeeded = Math.max(1, xpForNext - xpForLevel);
+
+  // Paragon theme drives XP bar color
+  const pTheme = getParagonTheme(level);
+  const thBar: Record<typeof pTheme, string> = {
+    ember: 'linear-gradient(90deg,#6B4A00,#C8A24C 40%,#FFD700 70%,#FFF8DC 85%,#FFD700 100%)',
+    frost: 'linear-gradient(90deg,#0369a1,#0ea5e9 40%,#bae6fd 70%,#fff 85%,#bae6fd 100%)',
+    void:  'linear-gradient(90deg,#3b0764,#7e22ce 40%,#d8b4fe 70%,#fff 85%,#d8b4fe 100%)',
+    blood: 'linear-gradient(90deg,#450a0a,#7f1d1d 30%,#ef4444 60%,#fca5a5 80%,#ef4444 100%)',
+    apex:  'linear-gradient(90deg,#374151,#9ca3af 30%,#fff 55%,#fde047 75%,#fff 100%)',
+  };
+  const thGlow: Record<typeof pTheme, string> = {
+    ember: 'rgba(255,215,0,0.4)', frost: 'rgba(14,165,233,0.5)',
+    void: 'rgba(168,85,247,0.5)', blood: 'rgba(239,68,68,0.6)', apex: 'rgba(255,255,255,0.5)',
+  };
+  const barGrad = thBar[pTheme];
+  const barGlow = thGlow[pTheme];
 
   const initials = member.name
     ? member.name.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase()
@@ -147,11 +163,11 @@ export function TopHeader({ onMenuOpen, onXpOpen }: { onMenuOpen: () => void; on
               <div style={{
                 position: 'absolute', left: 0, top: 0, bottom: 0,
                 width: `${Math.max(progress * 100, 2)}%`,
-                background: 'linear-gradient(90deg,#6B4A00,#C8A24C 40%,#FFD700 70%,#FFF8DC 85%,#FFD700 100%)',
+                background: barGrad,
                 backgroundSize: '300% 100%',
                 animation: 'xp-shimmer 2s linear infinite',
                 transition: 'width 1s cubic-bezier(0.4,0,0.2,1)',
-                boxShadow: '0 0 8px rgba(255,215,0,0.4), inset 0 1px 0 rgba(255,255,255,0.15)',
+                boxShadow: `0 0 8px ${barGlow}, inset 0 1px 0 rgba(255,255,255,0.15)`,
                 borderRadius: 5,
               }}>
                 {/* Glowing head */}

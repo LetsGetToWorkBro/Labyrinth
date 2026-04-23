@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { getLevelFromXP, getActualLevel } from '@/lib/xp';
+import { getParagonTheme } from '@/components/ParagonRing';
 
 interface XPBarProps {
   xp: number;
@@ -63,6 +64,17 @@ export function XPBar({ xp, prevXp, deltaXp, compact = false, onLevelUp }: XPBar
   const xpNeeded = xpForNext - xpForLevel;
   const clampedProg = Math.min(1, Math.max(animProgress <= 0 ? 0.012 : animProgress, 0.012)); // min 1.2% so bar always shows
 
+  // ── Paragon theme colors for XP bar ──────────────────────────────
+  const pTheme = getParagonTheme(actualLevel);
+  const themeColors: Record<typeof pTheme, { bar: string; glow: string; nearUp: string; glow2: string }> = {
+    ember: { bar: 'linear-gradient(90deg,#C8A24C 0%,#FFD700 100%)',  glow: 'rgba(200,162,76,0.4)',  nearUp: 'linear-gradient(90deg,#C8A24C,#FFD700,#FFF,#FFD700,#C8A24C)', glow2:'rgba(200,162,76,0.8)' },
+    frost: { bar: 'linear-gradient(90deg,#0ea5e9 0%,#bae6fd 100%)', glow: 'rgba(14,165,233,0.4)', nearUp: 'linear-gradient(90deg,#0ea5e9,#e0f2fe,#fff,#e0f2fe,#0ea5e9)',  glow2:'rgba(14,165,233,0.8)' },
+    void:  { bar: 'linear-gradient(90deg,#7e22ce 0%,#d8b4fe 100%)', glow: 'rgba(168,85,247,0.4)', nearUp: 'linear-gradient(90deg,#7e22ce,#d8b4fe,#fff,#d8b4fe,#7e22ce)',  glow2:'rgba(168,85,247,0.8)' },
+    blood: { bar: 'linear-gradient(90deg,#7f1d1d 0%,#ef4444 60%,#fca5a5 100%)', glow: 'rgba(239,68,68,0.45)', nearUp: 'linear-gradient(90deg,#7f1d1d,#ef4444,#fca5a5,#ef4444,#7f1d1d)', glow2:'rgba(239,68,68,0.9)' },
+    apex:  { bar: 'linear-gradient(90deg,#9ca3af 0%,#fff 50%,#fde047 100%)',   glow: 'rgba(255,255,255,0.5)', nearUp: 'linear-gradient(90deg,#9ca3af,#fff,#fde047,#fff,#9ca3af)', glow2:'rgba(255,255,255,0.9)' },
+  };
+  const tc = themeColors[pTheme];
+
   if (compact) {
     return (
       <div style={{ padding: '10px 14px', background: 'rgba(200,162,76,0.06)', borderRadius: 14, border: '1px solid rgba(200,162,76,0.12)' }}>
@@ -91,17 +103,14 @@ export function XPBar({ xp, prevXp, deltaXp, compact = false, onLevelUp }: XPBar
         {/* Bar — scaleX for GPU-composited animation */}
         <div style={{ height: 8, borderRadius: 4, background: '#111', overflow: 'hidden', position: 'relative' }}>
           <div style={{
-            height: '100%',
-            width: '100%',
+            height: '100%', width: '100%',
             transformOrigin: 'left center',
             transform: `scaleX(${clampedProg})`,
             borderRadius: 4,
-            background: isNearLevelUp
-              ? 'linear-gradient(90deg, #C8A24C, #FFD700, #FFFFFF, #FFD700, #C8A24C)'
-              : 'linear-gradient(90deg, #C8A24C 0%, #FFD700 100%)',
+            background: isNearLevelUp ? tc.nearUp : tc.bar,
             backgroundSize: '300% 100%',
             animation: isNearLevelUp ? 'xp-shimmer 1.5s linear infinite' : undefined,
-            boxShadow: `0 0 ${isNearLevelUp ? '8' : '4'}px rgba(200,162,76,${isNearLevelUp ? '0.8' : '0.4'})`,
+            boxShadow: `0 0 ${isNearLevelUp ? '8' : '4'}px ${isNearLevelUp ? tc.glow2 : tc.glow}`,
           }}/>
           <div style={{
             position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
@@ -110,12 +119,12 @@ export function XPBar({ xp, prevXp, deltaXp, compact = false, onLevelUp }: XPBar
             animation: 'xp-shine 3s ease-in-out infinite',
             borderRadius: 4,
           }}/>
-          {/* Floating delta */}
           {floatingDelta && (
             <div key={floatingDelta.id} style={{
               position: 'absolute', right: 8, top: -28,
-              fontSize: 15, fontWeight: 900, color: '#FFD700',
-              textShadow: '0 0 12px rgba(255,215,0,0.8)',
+              fontSize: 15, fontWeight: 900,
+              color: pTheme === 'blood' ? '#fca5a5' : pTheme === 'void' ? '#d8b4fe' : pTheme === 'frost' ? '#7dd3fc' : pTheme === 'apex' ? '#fff' : '#FFD700',
+              textShadow: `0 0 12px ${tc.glow2}`,
               pointerEvents: 'none',
               animation: 'xp-float-up 1.1s cubic-bezier(0.16,1,0.3,1) forwards',
             }}>
@@ -172,12 +181,12 @@ export function XPBar({ xp, prevXp, deltaXp, compact = false, onLevelUp }: XPBar
           transformOrigin: 'left center',
           transform: `scaleX(${clampedProg})`,
           borderRadius: 6,
-          background: 'linear-gradient(90deg, #8B6914 0%, #C8A24C 30%, #FFD700 60%, #FFF8DC 80%, #FFD700 100%)',
+          background: isNearLevelUp ? tc.nearUp : tc.bar,
           backgroundSize: '200% 100%',
           animation: isNearLevelUp
             ? 'xp-shimmer-full 2s linear infinite, xp-almost-pulse 1.2s ease-in-out infinite'
             : 'xp-shimmer-full 2s linear infinite',
-          boxShadow: `0 0 ${isNearLevelUp ? '14' : '10'}px rgba(200,162,76,${isNearLevelUp ? '0.9' : '0.5'})`,
+          boxShadow: `0 0 ${isNearLevelUp ? '14' : '10'}px ${isNearLevelUp ? tc.glow2 : tc.glow}`,
         }}/>
         <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '50%', background: 'linear-gradient(180deg, rgba(255,255,255,0.15) 0%, transparent 100%)', borderRadius: '6px 6px 0 0', pointerEvents: 'none' }}/>
         {[0.25, 0.5, 0.75].map(pct => (
@@ -187,8 +196,9 @@ export function XPBar({ xp, prevXp, deltaXp, compact = false, onLevelUp }: XPBar
         {floatingDelta && (
           <div key={floatingDelta.id} style={{
             position: 'absolute', right: 8, top: -28,
-            fontSize: 15, fontWeight: 900, color: '#FFD700',
-            textShadow: '0 0 12px rgba(255,215,0,0.8)',
+            fontSize: 15, fontWeight: 900,
+            color: pTheme === 'blood' ? '#fca5a5' : pTheme === 'void' ? '#d8b4fe' : pTheme === 'frost' ? '#7dd3fc' : pTheme === 'apex' ? '#fff' : '#FFD700',
+            textShadow: `0 0 12px ${tc.glow2}`,
             pointerEvents: 'none',
             animation: 'xp-float-up 1.1s cubic-bezier(0.16,1,0.3,1) forwards',
           }}>
