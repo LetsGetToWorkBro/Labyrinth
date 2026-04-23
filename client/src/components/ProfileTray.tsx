@@ -8,7 +8,8 @@ import {
 import { CalendarSparkIcon, SaunaIcon, ShieldIcon, GrapplingIcon, GamepadIcon } from '@/components/icons/LbjjIcons';
 
 export function ProfileTray({ open, onClose }: { open: boolean; onClose: () => void }) {
-  const { logout, isAdmin, member } = useAuth();
+  const { logout, isAdmin, member, familyMembers } = useAuth();
+  const isFamilyAccount = familyMembers && familyMembers.filter(f => !f.isPrimary).length > 0;
 
   const navigate = (path: string) => {
     window.location.hash = path.replace(/^#?\//, '/');
@@ -135,6 +136,30 @@ export function ProfileTray({ open, onClose }: { open: boolean; onClose: () => v
             </button>
           ))}
         </div>
+
+        {/* Switch Profile — family accounts only */}
+        {isFamilyAccount && (
+          <div style={{ padding: '8px 12px 0' }}>
+            <button
+              onClick={() => {
+                onClose();
+                // Clear picked flag so picker re-shows
+                try { sessionStorage.removeItem('lbjj_family_picked'); } catch {}
+                // Small delay then reload to trigger picker
+                setTimeout(() => { window.dispatchEvent(new CustomEvent('family-switch-profile')); }, 200);
+              }}
+              style={{
+                width: '100%', padding: '13px', borderRadius: 12,
+                background: 'transparent', border: '1px solid #2A2A2A',
+                color: '#C8A24C', fontSize: 14, fontWeight: 600, cursor: 'pointer',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+              }}
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="16" height="16"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+              Switch Profile
+            </button>
+          </div>
+        )}
 
         {/* Sign out */}
         <div style={{ padding: '8px 12px 0' }}>

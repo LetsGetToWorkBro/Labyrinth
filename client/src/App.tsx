@@ -57,6 +57,7 @@ import { ProfileTray } from "@/components/ProfileTray";
 import { getRingTier, getActualLevel, getLevelFromXP } from "@/lib/xp";
 import { XPBar } from "@/components/XPBar";
 import { soundSystem } from '@/lib/sounds';
+import FamilyProfilePicker, { saveActiveProfileToNamespace, loadNamespaceForProfile } from '@/components/FamilyProfilePicker';
 
 // ─── Nav config ───────────────────────────────────────────────────
 
@@ -1426,11 +1427,33 @@ function WaiverRedirect() {
 }
 
 function AppShell() {
-  const { isAuthenticated, isLoading, member } = useAuth();
+  const { isAuthenticated, isLoading, member, familyMembers } = useAuth();
   // location removed from AppShell — AppShell is outside Router, useHashLoc() crashes
   const [levelUpState, setLevelUpState] = useState<{ newLevel: number; prevLevel: number } | null>(null);
   const [trayOpen, setTrayOpen] = useState(false);
   const [xpModalOpen, setXpModalOpen] = useState(false);
+
+  // ── Family profile picker ──────────────────────────────────────
+  // Show picker after login when the account has sub-members.
+  // "picked" persists in sessionStorage so navigation within the session doesn't re-show it.
+  const [familyPicked, setFamilyPicked] = useState<boolean>(() => {
+    // If already picked this session, skip
+    try { return sessionStorage.getItem('lbjj_family_picked') === '1'; } catch { return false; }
+  });
+
+  const isFamilyAccount = familyMembers && familyMembers.filter(f => !f.isPrimary).length > 0;
+
+  const handleFamilyPicked = () => {
+    try { sessionStorage.setItem('lbjj_family_picked', '1'); } catch {}
+    setFamilyPicked(true);
+  };
+
+  // Listen for Switch Profile event from ProfileTray
+  useEffect(() => {
+    const handler = () => setFamilyPicked(false);
+    window.addEventListener('family-switch-profile', handler);
+    return () => window.removeEventListener('family-switch-profile', handler);
+  }, []);
   const handleLevelUp = useCallback((newLevel: number, prevLevel: number) => {
     setLevelUpState({ newLevel, prevLevel });
   }, []);
@@ -1573,6 +1596,13 @@ function AppShell() {
         <LoginPage />
       </div>
     );
+  }
+
+  // ── Family profile picker gate ────────────────────────────────
+  // If this is a family account and no profile has been picked yet this session,
+  // show the profile selection screen before entering the app.
+  if (isFamilyAccount && !familyPicked) {
+    return <FamilyProfilePicker onDone={handleFamilyPicked} />;
   }
 
   const GOLD = "#C8A24C";

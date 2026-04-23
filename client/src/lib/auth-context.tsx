@@ -274,6 +274,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setIsAuthenticated(false);
     setMemberState(null);
     setFamilyMembers([]);
+    // Clear family session so picker re-shows on next login
+    try { sessionStorage.removeItem('lbjj_family_picked'); } catch {}
   }, []);
 
   const refreshProfile = useCallback(async () => {
