@@ -38,7 +38,7 @@ import { soundSystem } from '@/lib/sounds';
 import { StatSkeleton, ListSkeleton } from "@/components/LoadingSkeleton";
 import { getStreamStatus, clearStreamCache } from "@/lib/streaming";
 import type { StreamStatus } from "@/lib/streaming";
-import { BootOverlay, consumeBootPending } from "@/components/BootOverlay";
+import { BootOverlay, shouldShowBoot, markBootShown } from "@/components/BootOverlay";
 
 // ── Badge unlock overlay (shared with SchedulePage pattern) ────
 function showBadgeUnlock(badge: { key: string; label: string; icon: string; desc: string; color?: string }) {
@@ -391,9 +391,8 @@ export default function HomePage() {
   const [techniqueCustomCat, setTechniqueCustomCat] = useState('Custom');
 
   // ─── Post-login boot overlay (matrix/typewriter) ────────────────
-  // Consume the flag synchronously on first render so we don't flash content
-  // behind the overlay. useState initializer runs once.
-  const [showBoot, setShowBoot] = useState(() => consumeBootPending());
+  // Only plays on the user's very first successful login ever.
+  const [showBoot, setShowBoot] = useState(() => shouldShowBoot());
 
   // ─── Home loading skeleton state ─────────────────────────────────
   const [homeLoading, setHomeLoading] = useState(true);
@@ -2007,7 +2006,7 @@ export default function HomePage() {
 
   return (
     <>
-    {showBoot && <BootOverlay onDone={() => setShowBoot(false)} />}
+    {showBoot && <BootOverlay onDone={() => { markBootShown(); setShowBoot(false); }} />}
     <div
       ref={scrollContainerRef}
       className={`app-content home-page-bg${isGameDay ? ' home-page-bg--gameday' : isFlowState ? ' home-page-bg--flow' : ''}`}

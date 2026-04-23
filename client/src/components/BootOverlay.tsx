@@ -124,19 +124,14 @@ export function BootOverlay({ onDone }: { onDone: () => void }) {
   );
 }
 
-export const BOOT_PENDING_KEY = 'lbjj_boot_pending';
+// Boot overlay is shown only on a user's very first successful login ever.
+// Once shown, `lbjj_boot_shown` is set in localStorage and never plays again.
+const BOOT_SHOWN_KEY = 'lbjj_boot_shown';
 
-export function markBootPending() {
-  try { sessionStorage.setItem(BOOT_PENDING_KEY, '1'); } catch {}
+export function shouldShowBoot(): boolean {
+  try { return localStorage.getItem(BOOT_SHOWN_KEY) !== '1'; } catch { return false; }
 }
 
-export function consumeBootPending(): boolean {
-  try {
-    const v = sessionStorage.getItem(BOOT_PENDING_KEY);
-    if (v === '1') {
-      sessionStorage.removeItem(BOOT_PENDING_KEY);
-      return true;
-    }
-  } catch {}
-  return false;
+export function markBootShown() {
+  try { localStorage.setItem(BOOT_SHOWN_KEY, '1'); } catch {}
 }

@@ -11,7 +11,6 @@ import { setActiveLocation, gasCall, memberCompleteSetup } from "@/lib/api";
 import { LOCATIONS, getSavedLocationId, type Location } from "@/lib/locations";
 import logoGold from "@assets/labyrinth-logo-gold.png";
 import { NativeBiometric } from "capacitor-native-biometric";
-import { markBootPending } from "@/components/BootOverlay";
 
 // ─── Constants ─────────────────────────────────────────────────────
 const GOLD      = "#D4AF37";
@@ -204,7 +203,6 @@ export default function LoginPage() {
       } else {
         setActiveLocation(location);
       }
-      markBootPending();
       const loginRes = await login(setupEmail.trim(), setupPw);
       setSetupLoading(false);
       if (loginRes.success) {
@@ -281,18 +279,13 @@ export default function LoginPage() {
     setLoading(true);
     try {
       setActiveLocation(location);
-      markBootPending();
       const res = await login(email.trim(), password);
       if (!res.success) {
-        // Login failed — clear the pending boot flag so we don't play a
-        // boot screen on a subsequent unrelated navigation.
-        try { sessionStorage.removeItem('lbjj_boot_pending'); } catch {}
         setError(res.error || "Access denied."); setLoading(false); return;
       }
-      // Auth context will flip isAuthenticated → App.tsx routes to HomePage,
-      // which renders the BootOverlay via the sessionStorage flag.
+      // Auth context flips isAuthenticated → App.tsx routes to HomePage.
+      // HomePage renders BootOverlay only on the user's very first login.
     } catch {
-      try { sessionStorage.removeItem('lbjj_boot_pending'); } catch {}
       setError("Connection failed. Try again."); setLoading(false);
     }
   };
@@ -327,8 +320,7 @@ export default function LoginPage() {
       }
       const res = await loginWithPasskey(passkeyEmail);
       if (res.success) {
-        markBootPending();
-        // Auth context routes to HomePage; it plays the boot overlay.
+        // Auth context routes to HomePage. Boot overlay plays only on first login.
       } else setError("Biometric login failed — sign in with email.");
     } catch { setError("Biometric login failed — sign in with email."); }
   };

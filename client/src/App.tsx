@@ -12,7 +12,7 @@ import { GuestProfileProvider } from "@/lib/guest-profile";
 import { GameRecordProvider } from "@/lib/game-records";
 import { lazy, Suspense } from "react";
 import { LevelUpOverlay } from "@/components/LevelUpOverlay";
-import { DMProvider } from "@/components/FloatingDMTray";
+import { DMProvider, dispatchOpenDMInbox } from "@/components/FloatingDMTray";
 
 // Eager — needed on first render
 import LoginPage from "@/pages/LoginPage";
@@ -167,6 +167,12 @@ function TabBar() {
 
   // Wrap tab navigation with View Transition
   const handleTabClick = (e: React.MouseEvent<HTMLAnchorElement>, path: string) => {
+    // Chat tab with unread DMs → open the inbox sheet instead of navigating.
+    if (path === '/chat' && dmUnread > 0) {
+      e.preventDefault();
+      dispatchOpenDMInbox();
+      return;
+    }
     if (!(document as any).startViewTransition) return; // fallback to CSS class
     e.preventDefault();
     document.documentElement.dataset.nav = 'tab';
