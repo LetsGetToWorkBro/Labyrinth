@@ -128,30 +128,6 @@ export function checkAndUnlockAchievements(profile: any, stats: any): string[] {
   if (beltRank >= 3) unlock('brown_belt');
   if (beltRank >= 4) unlock('black_belt');
 
-  // ── Belt XP floor — seed starting XP on first login so higher belts start at a meaningful level
-  // Only runs once per device (guarded by lbjj_belt_seeded key)
-  const BELT_XP_FLOOR: Record<string, number> = {
-    white:  0,
-    blue:   1000,   // LV6  — Frost Aura unlocked
-    purple: 2700,   // LV10 — Seasoned Warrior
-    brown:  5000,   // LV15 — Gym Pillar
-    black:  8500,   // LV20 — Blood Flame unlocked
-  };
-  if (!localStorage.getItem('lbjj_belt_seeded') && BELT_XP_FLOOR[belt] !== undefined && BELT_XP_FLOOR[belt] > 0) {
-    try {
-      const s = JSON.parse(localStorage.getItem('lbjj_game_stats_v2') || '{}');
-      const currentXP = Math.max(s.xp || 0, s.totalXP || 0);
-      // Only seed if the member has less XP than the floor (true first login)
-      if (currentXP < BELT_XP_FLOOR[belt]) {
-        const floor = BELT_XP_FLOOR[belt];
-        s.xp = floor; s.totalXP = floor;
-        localStorage.setItem('lbjj_game_stats_v2', JSON.stringify(s));
-        window.dispatchEvent(new CustomEvent('xp-updated'));
-      }
-      localStorage.setItem('lbjj_belt_seeded', '1');
-    } catch {}
-  }
-
   // Attendance
   const classCount = stats.classesAttended || 0;
   if (classCount >= 1)   unlock('first_class');

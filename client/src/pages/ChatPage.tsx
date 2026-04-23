@@ -857,7 +857,7 @@ export default function ChatPage() {
                 const recentSenderNames = Array.from(new Set(
                   [...messages].reverse().slice(0, 20)
                     .map(m => m.sender)
-                    .filter(name => name && name.trim().length >= 2 && !/^\d+$/.test(name.trim()))
+                    .filter(name => name && name.trim().length > 1 && !/^\d+$/.test(name.trim()))
                 ));
                 const recentList: ChannelMember[] = recentSenderNames.map(name => {
                   const cm = channelMembers.find(m => m.name === name);
@@ -903,17 +903,16 @@ export default function ChatPage() {
               const recentNames = Array.from(new Set(
                 [...messages].reverse().slice(0, 30)
                   .map(m => m.sender)
-                  .filter(name => name && name.trim().length >= 2 && !/^\d+$/.test(name.trim()))
+                  .filter(name => name && name.trim().length > 1 && !/^\d+$/.test(name.trim()))
               ));
               const recentAsCM: ChannelMember[] = recentNames.map(name => {
                 const found = channelMembers.find(m => m.name === name) || onlineMembers.find(m => m.name === name);
                 const msg = messages.find(m => m.sender === name);
                 return found || { name, email: '', belt: (msg as any)?.senderBelt || 'white', role: '', totalPoints: 0, badgeCount: 0, profilePic: (msg as any)?.senderProfilePic, lastSeen: msg?.timestamp };
               });
-              // Merge: recent senders + rest of channel members (also filter ghosts)
-              const alreadyListed = new Set(recentAsCM.map(m => m.name));
-              const rest = channelMembers.filter(m => !alreadyListed.has(m.name) && m.name && m.name.trim().length >= 2);
-              const list = [...recentAsCM, ...rest];
+              // Only show people who have actually sent a message in this channel
+              // Don't append all channelMembers (alphabetical) — that's what was showing "A" names
+              const list = recentAsCM;
               const chOnline  = list.filter(m => m.lastSeen && (nowMs - new Date(m.lastSeen).getTime()) < 5 * 60 * 1000);
               const chOffline = list.filter(m => !m.lastSeen || (nowMs - new Date(m.lastSeen).getTime()) >= 5 * 60 * 1000);
               return (
