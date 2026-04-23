@@ -1,41 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { OnlineBubble } from '@/components/OnlineBubble';
+import { BeltIcon } from '@/components/BeltIcon';
 import { useAuth } from '@/lib/auth-context';
 import { getLevelFromXP, getActualLevel } from '@/lib/xp';
 import { ParagonRing } from '@/components/ParagonRing';
 import logoMaze from '../assets/logo-maze.webp';
 
 // Belt colors — matches app-wide palette
-const BELT_COLORS: Record<string, { fill: string; tip: string; tipStripe: string }> = {
-  white:  { fill: '#DCDCDC', tip: '#111111', tipStripe: '#DCDCDC' },
-  blue:   { fill: '#1A5DAB', tip: '#0A0A0A', tipStripe: '#1A5DAB' },
-  purple: { fill: '#7E3AF2', tip: '#0A0A0A', tipStripe: '#7E3AF2' },
-  brown:  { fill: '#92400E', tip: '#0A0A0A', tipStripe: '#92400E' },
-  black:  { fill: '#1A1A1A', tip: '#C8A24C', tipStripe: '#0A0A0A' },
-  grey:   { fill: '#9CA3AF', tip: '#0A0A0A', tipStripe: '#9CA3AF' },
-  yellow: { fill: '#EAB308', tip: '#0A0A0A', tipStripe: '#EAB308' },
-  orange: { fill: '#F97316', tip: '#0A0A0A', tipStripe: '#F97316' },
-  green:  { fill: '#22C55E', tip: '#0A0A0A', tipStripe: '#22C55E' },
-};
 
-function BeltSVG({ belt, width = 36, height = 14 }: { belt: string; width?: number; height?: number }) {
-  const b = (belt || 'white').toLowerCase();
-  const c = BELT_COLORS[b] || BELT_COLORS.white;
-  const tipW = Math.round(width * 0.28);
-  const tipX = width - tipW;
-  const r = Math.round(height * 0.28);
-  return (
-    <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`} fill="none">
-      <rect x="0" y="0" width={width} height={height} rx={r}
-        fill={c.fill} stroke="rgba(0,0,0,0.3)" strokeWidth="0.5"/>
-      <rect x={tipX} y="0" width={tipW} height={height} rx={r} fill={c.tip}/>
-      <rect
-        x={tipX + Math.round(tipW * 0.35)} y={Math.round(height * 0.18)}
-        width={Math.max(2, Math.round(tipW * 0.18))} height={Math.round(height * 0.64)}
-        rx={1} fill={c.tipStripe} opacity="0.85"/>
-    </svg>
-  );
-}
 
 function readLiveXP(memberTotalPoints?: number): number {
   try {
@@ -138,7 +110,7 @@ export function TopHeader({ onMenuOpen, onXpOpen }: { onMenuOpen: () => void; on
               {title}
             </span>
             <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
-              <BeltSVG belt={belt} width={36} height={13} />
+              <BeltIcon belt={belt} stripes={(member as any)?.stripes || 0} width={52} />
               <span style={{ fontSize: 9, color: '#555', textTransform: 'capitalize', whiteSpace: 'nowrap' }}>
                 {belt}
               </span>
