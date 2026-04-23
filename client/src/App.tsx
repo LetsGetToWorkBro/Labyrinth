@@ -1441,7 +1441,9 @@ function AppShell() {
     try { return sessionStorage.getItem('lbjj_family_picked') === '1'; } catch { return false; }
   });
 
-  const isFamilyAccount = familyMembers && familyMembers.filter(f => !f.isPrimary).length > 0;
+  // Only show the family picker when there are genuinely multiple distinct profiles to choose
+  // (at least 2 total members, not just the primary alone)
+  const isFamilyAccount = familyMembers && familyMembers.length > 1;
 
   const handleFamilyPicked = () => {
     try { sessionStorage.setItem('lbjj_family_picked', '1'); } catch {}

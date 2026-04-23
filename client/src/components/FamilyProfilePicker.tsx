@@ -306,10 +306,28 @@ export default function FamilyProfilePicker({ onDone }: { onDone: () => void }) 
     profilePic: (() => { try { return localStorage.getItem('lbjj_profile_picture') || undefined; } catch { return undefined; } })(),
   };
 
-  // Sub-members: family members that are NOT the primary
-  const subMembers = familyMembers.filter(f => !f.isPrimary);
+  // Build profile list from familyMembers directly (GAS includes all rows with same email).
+  // The primary member is already in familyMembers as isPrimary:true — use that as the first card
+  // enriched with local XP/PFP. Avoid showing duplicates by de-duping on row number.
+  const primaryRow = (member as any)?.row || 0;
+  const seenRows = new Set<number>();
 
-  const allProfiles = [enrichedPrimary, ...subMembers.map(f => ({ ...f, totalPoints: (f as any).totalPoints || 0, stripes: (f as any).stripes || 0, profilePic: undefined }))];
+  // First card = the logged-in member (enriched)
+  const allProfiles: typeof enrichedPrimary[] = [];
+  if (primaryRow) seenRows.add(primaryRow);
+  allProfiles.push(enrichedPrimary);
+
+  // Remaining cards = other family members (different rows)
+  for (const f of familyMembers) {
+    if (seenRows.has(f.row)) continue; // skip duplicates
+    seenRows.add(f.row);
+    allProfiles.push({
+      ...f,
+      totalPoints: (f as any).totalPoints || 0,
+      stripes: (f as any).stripes || 0,
+      profilePic: undefined,
+    });
+  }
 
   return (
     <>
@@ -342,30 +360,37 @@ export default function FamilyProfilePicker({ onDone }: { onDone: () => void }) 
         transition: 'opacity 0.8s ease 0.2s',
       }} />
 
-      {/* Main screen */}
+      {/* Main screen — scrollable so it never clips on small screens */}
       <div style={{
         position: 'fixed', inset: 0, background: '#030303',
-        zIndex: 1000, display: 'flex', flexDirection: 'column',
-        alignItems: 'center', justifyContent: 'center',
-        overflow: 'hidden',
+        zIndex: 1000, overflowY: 'auto', overflowX: 'hidden',
+        WebkitOverflowScrolling: 'touch',
       }}>
-        {/* Ambient glow */}
+        {/* Ambient glow — fixed so it doesn't scroll */}
         <div style={{
-          position: 'absolute', top: '50%', left: '50%',
+          position: 'fixed', top: '50%', left: '50%',
           width: '150vw', height: '150vh',
           transform: 'translate(-50%,-50%)',
           background: 'radial-gradient(circle at center, rgba(255,255,255,0.03) 0%, transparent 60%)',
-          pointerEvents: 'none',
+          pointerEvents: 'none', zIndex: 0,
         }} />
+
+        {/* Scrollable content column */}
+        <div style={{
+          minHeight: '100dvh', display: 'flex', flexDirection: 'column',
+          alignItems: 'center', justifyContent: 'center',
+          padding: 'max(48px, env(safe-area-inset-top, 48px)) 24px max(64px, env(safe-area-inset-bottom, 64px))',
+          position: 'relative', zIndex: 1,
+        }}>
 
         {/* Header */}
         <div style={{
-          textAlign: 'center', marginBottom: 56, zIndex: 10,
+          textAlign: 'center', marginBottom: 48, width: '100%',
           animation: 'fpp-fade-down 1s cubic-bezier(0.16,1,0.3,1) both',
         }}>
           <h1 style={{
             fontFamily: "system-ui,'Cabinet Grotesk',sans-serif",
-            fontSize: 38, fontWeight: 900, textTransform: 'uppercase',
+            fontSize: 34, fontWeight: 900, textTransform: 'uppercase',
             letterSpacing: '0.05em', margin: 0, lineHeight: 1,
             background: 'linear-gradient(180deg,#fff 0%,#888 100%)',
             WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
@@ -374,7 +399,7 @@ export default function FamilyProfilePicker({ onDone }: { onDone: () => void }) 
             Select Profile
           </h1>
           <div style={{
-            fontSize: 13, color: '#555', textTransform: 'uppercase',
+            fontSize: 12, color: '#555', textTransform: 'uppercase',
             letterSpacing: '0.22em', marginTop: 8, fontWeight: 700,
           }}>
             Labyrinth BJJ · Family Account
@@ -384,8 +409,7 @@ export default function FamilyProfilePicker({ onDone }: { onDone: () => void }) 
         {/* Profile cards */}
         <div style={{
           display: 'flex', gap: 36, justifyContent: 'center',
-          flexWrap: 'wrap', maxWidth: 840,
-          padding: '0 24px', zIndex: 10,
+          flexWrap: 'wrap', maxWidth: 840, width: '100%',
         }}>
           {allProfiles.map((fm, i) => (
             <ProfileCard
@@ -400,15 +424,16 @@ export default function FamilyProfilePicker({ onDone }: { onDone: () => void }) 
 
         {/* Footer hint */}
         <div style={{
-          position: 'absolute', bottom: 'max(32px,env(safe-area-inset-bottom,32px))',
-          textAlign: 'center', zIndex: 10,
+          marginTop: 40, textAlign: 'center',
           fontSize: 11, color: '#333', letterSpacing: '0.1em', textTransform: 'uppercase',
           fontWeight: 700,
           animation: 'fpp-slide-up 1s cubic-bezier(0.16,1,0.3,1) 0.6s both',
         }}>
           Tap a profile to enter the app
         </div>
-      </div>
+
+        </div> {/* end scrollable content column */}
+      </div> {/* end scrollable outer */}
     </>
   );
 }
