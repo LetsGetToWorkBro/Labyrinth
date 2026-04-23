@@ -11,8 +11,9 @@ import { getBeltColor } from "@/lib/constants";
 import { ParagonRing } from "@/components/ParagonRing";
 import { getActualLevel } from "@/lib/xp";
 import { useAuth } from "@/lib/auth-context";
+import { dispatchOpenDM } from "@/components/FloatingDMTray";
 import {
-  chatGetMessages, chatSendMessage, chatGetChannels, chatGetChannelMembers, updatePresence,
+  chatGetMessages, chatSendMessage, chatGetChannels, chatGetChannelMembers, updatePresence, gasCall,
   type ChatMessage, type ChatChannel, type ChannelMember,
 } from "@/lib/api";
 
@@ -685,7 +686,7 @@ export default function ChatPage() {
                 <>
                   <div style={{ fontSize: 10, fontWeight: 800, color: '#10b981', letterSpacing: '.15em', textTransform: 'uppercase', padding: '6px 8px 4px' }}>● Active Now</div>
                   {onlineNow.map(m => (
-                    <MemberDropdownRow key={m.email || m.name} m={m} online onClick={() => openProfile(m)} />
+                    <MemberDropdownRow key={m.email || m.name} m={m} online onClick={() => openProfile(m)} onDM={() => dispatchOpenDM(m)} />
                   ))}
                 </>
               )}
@@ -694,7 +695,7 @@ export default function ChatPage() {
                   {onlineNow.length > 0 && <div style={{ height: 1, background: 'rgba(255,255,255,0.06)', margin: '6px 0' }} />}
                   <div style={{ fontSize: 10, fontWeight: 800, color: '#57534e', letterSpacing: '.15em', textTransform: 'uppercase', padding: '6px 8px 4px' }}>○ Offline</div>
                   {offlineMems.slice(0, 20).map(m => (
-                    <MemberDropdownRow key={m.email || m.name} m={m} online={false} onClick={() => openProfile(m)} />
+                    <MemberDropdownRow key={m.email || m.name} m={m} online={false} onClick={() => openProfile(m)} onDM={() => dispatchOpenDM(m)} />
                   ))}
                 </>
               )}
@@ -923,7 +924,7 @@ export default function ChatPage() {
                   {chOnline.length > 0 && (
                     <>
                       <div style={{ fontSize: 10, fontWeight: 800, color: '#10b981', letterSpacing: '.15em', textTransform: 'uppercase', padding: '4px 8px 6px', flexShrink: 0 }}>● Active Now</div>
-                      {chOnline.map(m => <ChMemberRow key={m.email||m.name} m={m} online onClick={() => { setChannelMembersOpen(false); openProfile(m); }} />)}
+                      {chOnline.map(m => <ChMemberRow key={m.email||m.name} m={m} online onClick={() => { setChannelMembersOpen(false); openProfile(m); }} onDM={() => { setChannelMembersOpen(false); dispatchOpenDM(m); }} />)}
                     </>
                   )}
                   {/* Offline — collapsible scrollable section */}
@@ -1112,8 +1113,8 @@ export default function ChatPage() {
 // ─── MemberDropdownRow ────────────────────────────────────────────
 
 // Alias used in channel members dropdown — same as MemberDropdownRow
-const ChMemberRow = ({ m, online, onClick }: { m: ChannelMember; online: boolean; onClick: () => void }) =>
-  <MemberDropdownRow m={m} online={online} onClick={onClick} />;
+const ChMemberRow = ({ m, online, onClick, onDM }: { m: ChannelMember; online: boolean; onClick: () => void; onDM?: () => void }) =>
+  <MemberDropdownRow m={m} online={online} onClick={onClick} onDM={onDM} />;
 
 // Offline collapsible section for channel members dropdown
 function ChOfflineSection({ members, onOpen, hasOnline }: { members: ChannelMember[]; onOpen: (m: ChannelMember) => void; hasOnline: boolean }) {
@@ -1140,7 +1141,7 @@ function ChOfflineSection({ members, onOpen, hasOnline }: { members: ChannelMemb
   );
 }
 
-function MemberDropdownRow({ m, online, onClick }: { m: ChannelMember; online: boolean; onClick: () => void }) {
+function MemberDropdownRow({ m, online, onClick, onDM }: { m: ChannelMember; online: boolean; onClick: () => void; onDM?: () => void }) {
   const level = getActualLevel(m.totalPoints || 0);
   const beltKey = (m.belt || 'white').toLowerCase();
   const beltColor = getBeltColor(beltKey);
@@ -1175,6 +1176,15 @@ function MemberDropdownRow({ m, online, onClick }: { m: ChannelMember; online: b
         background: 'rgba(232,175,52,.12)', padding: '1px 6px', borderRadius: 6,
         border: '1px solid rgba(232,175,52,.25)',
       }}>LV {level}</div>
+      {onDM && (
+        <button
+          onClick={e => { e.stopPropagation(); onDM(); }}
+          style={{ width: 26, height: 26, borderRadius: 7, border: 'none', background: 'rgba(232,175,52,.12)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#e8af34', flexShrink: 0 }}
+          title="Send message"
+        >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" width="12" height="12"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+        </button>
+      )}
     </div>
   );
 }
@@ -1320,16 +1330,34 @@ function RankCardItem({ beltKey, name, count, accessible, onClick }: {
 // ─── ProfileBody ──────────────────────────────────────────────────
 
 function ProfileBody({ member, onDM }: { member: ChannelMember; onDM?: (m: ChannelMember) => void }) {
-  const xp = member.totalPoints || 0;
+  // ── Live enrichment from GAS ──────────────────────────────────────
+  // ChannelMember only has name/belt/totalPoints from presence.
+  // Fetch full profile (classesAttended, XP, achievements) by email.
+  const [enriched, setEnriched] = useState<any>(null);
+  const [badges, setBadges] = useState<any[]>([]);
+
+  useEffect(() => {
+    const email = (member as any).email || '';
+    if (!email) return;
+    // Fetch rich member profile
+    gasCall('getMemberByEmail', { email }).then((res: any) => {
+      if (res?.member) setEnriched(res.member);
+    }).catch(() => {});
+    // Fetch badges
+    gasCall('getMemberBadges', { email }).then((res: any) => {
+      if (res?.badges) setBadges(res.badges);
+    }).catch(() => {});
+  }, [(member as any).email]);
+
+  const xp = enriched?.totalPoints || member.totalPoints || 0;
   const level = getActualLevel(xp);
-  const beltKey = (member.belt || 'white').toLowerCase();
+  const beltKey = (enriched?.belt || member.belt || 'white').toLowerCase();
   const beltColor = getBeltColor(beltKey);
   const xpForCurrent = Math.floor((level - 1) * 250 + (level - 1) * (level - 1) * 50);
   const xpForNext = Math.floor(level * 250 + level * level * 50);
   const denom = Math.max(1, xpForNext - xpForCurrent);
   const progressPct = Math.max(0, Math.min(100, Math.round(((xp - xpForCurrent) / denom) * 100)));
 
-  // Trigger width animation: start at 0, then jump to real pct on mount
   const [fillPct, setFillPct] = useState(0);
   useEffect(() => {
     setFillPct(0);
@@ -1337,10 +1365,17 @@ function ProfileBody({ member, onDM }: { member: ChannelMember; onDM?: (m: Chann
     return () => clearTimeout(t);
   }, [progressPct]);
 
-  const classes = (member as any).classesAttended || 0;
+  const classes = enriched?.classesAttended || (member as any).classesAttended || 0;
   const subs = (member as any).submissions || 0;
   const wins = (member as any).eventWins || 0;
-  const badgeCount = member.badgeCount || 0;
+  const badgeCount = badges.length || member.badgeCount || 0;
+
+  // Merge enriched data back so DM gets the email
+  const fullMember: ChannelMember = {
+    ...member,
+    ...(enriched ? { belt: enriched.belt, totalPoints: enriched.totalPoints } : {}),
+    email: (member as any).email || enriched?.email || '',
+  };
 
   return (
     <>
@@ -1455,7 +1490,7 @@ function ProfileBody({ member, onDM }: { member: ChannelMember; onDM?: (m: Chann
       {/* Send Message CTA — only shown for others (onDM provided) */}
       {onDM && (
         <button
-          onClick={() => onDM(member)}
+          onClick={() => onDM(fullMember)}
           style={{
             width: '100%', padding: '11px', borderRadius: 12, border: 'none', cursor: 'pointer',
             background: 'rgba(232,175,52,.15)', color: '#e8af34',
