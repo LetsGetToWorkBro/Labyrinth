@@ -52,15 +52,15 @@ function MemberRow({ m, dimmed, onClick, onProfile }: { m: ChannelMember; dimmed
   const belt  = (m.belt || 'white').toLowerCase();
   return (
     <div
-      onClick={onClick}
       style={{
         display: 'flex', alignItems: 'center', gap: 9,
-        padding: '7px 8px', borderRadius: 11, cursor: 'pointer',
+        padding: '6px 8px', borderRadius: 11,
         opacity: dimmed ? 0.55 : 1, transition: 'background .15s',
       }}
       onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,.05)')}
       onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
     >
+      {/* Avatar */}
       <div style={{ position: 'relative', flexShrink: 0 }}>
         <div style={{
           width: 30, height: 30, borderRadius: 9,
@@ -74,33 +74,33 @@ function MemberRow({ m, dimmed, onClick, onProfile }: { m: ChannelMember; dimmed
           }
         </div>
         {!dimmed && (
-          <div style={{
-            position: 'absolute', bottom: -1, right: -1,
-            width: 8, height: 8, borderRadius: '50%',
-            background: '#10b981', border: '1.5px solid #0f0e0d',
-          }} />
+          <div style={{ position: 'absolute', bottom: -1, right: -1, width: 8, height: 8, borderRadius: '50%', background: '#10b981', border: '1.5px solid #0f0e0d' }} />
         )}
       </div>
 
+      {/* Name + belt */}
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{
-          fontSize: 12, fontWeight: 700, color: '#fff',
-          overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-        }}>{m.name}</div>
+        <div style={{ fontSize: 12, fontWeight: 700, color: '#fff', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{m.name}</div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 1 }}>
           <div style={{ width: 7, height: 7, borderRadius: 2, background: getBeltColor(belt) }} />
-          <span style={{ fontSize: 9, fontWeight: 700, color: '#a8a29e', textTransform: 'capitalize' }}>
-            {belt} belt
-          </span>
+          <span style={{ fontSize: 9, fontWeight: 700, color: '#a8a29e', textTransform: 'capitalize' }}>{belt} belt</span>
         </div>
       </div>
 
-      {/* LV chip only — row click opens DM */}
-      <div style={{
-        fontSize: 9, fontWeight: 800, color: '#e8af34',
-        background: 'rgba(232,175,52,.12)', padding: '1px 5px',
-        borderRadius: 5, border: '1px solid rgba(232,175,52,.22)', flexShrink: 0,
-      }}>LV {level}</div>
+      {/* LV + action buttons inline */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
+        <span style={{ fontSize: 9, fontWeight: 800, color: '#e8af34', background: 'rgba(232,175,52,.12)', padding: '1px 5px', borderRadius: 5, border: '1px solid rgba(232,175,52,.22)' }}>LV {level}</span>
+        {/* Message */}
+        <button onClick={e => { e.stopPropagation(); onClick(); }} style={{ width: 24, height: 24, borderRadius: 6, border: 'none', background: 'rgba(232,175,52,.12)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#e8af34' }}>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" width="12" height="12"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+        </button>
+        {/* Profile */}
+        {onProfile && (
+          <button onClick={e => { e.stopPropagation(); onProfile(); }} style={{ width: 24, height: 24, borderRadius: 6, border: 'none', background: 'rgba(255,255,255,.06)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#a8a29e' }}>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" width="12" height="12"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+          </button>
+        )}
+      </div>
     </div>
   );
 }
@@ -273,7 +273,7 @@ export function OnlineBubble({ compact = false }: { compact?: boolean }) {
         {offline.length > 0 && (
           <>
             {active.length > 0 && <div style={{ height: 1, background: 'rgba(255,255,255,.05)', margin: '6px 0' }} />}
-            <RecentSection members={offline} onOpen={(m) => openMemberDM(m)} label="Offline" />
+            <RecentSection members={offline} onOpen={(m) => openMemberDM(m)} onProfile={(m) => openMemberProfile(m)} label="Offline" />
           </>
         )}
 
@@ -308,7 +308,7 @@ export function OnlineBubble({ compact = false }: { compact?: boolean }) {
   );
 }
 
-function RecentSection({ members, onOpen, label = 'Recently' }: { members: ChannelMember[]; onOpen: (m: ChannelMember) => void; label?: string }) {
+function RecentSection({ members, onOpen, onProfile, label = 'Recently' }: { members: ChannelMember[]; onOpen: (m: ChannelMember) => void; onProfile?: (m: ChannelMember) => void; label?: string }) {
   const [expanded, setExpanded] = useState(false);
   const fmt = (m: ChannelMember) => {
     if (!m.lastSeen) return 'offline';
@@ -335,10 +335,9 @@ function RecentSection({ members, onOpen, label = 'Recently' }: { members: Chann
       {expanded && (
         <div style={{ maxHeight: 200, overflowY: 'auto', scrollbarWidth: 'none' }}>
           {members.map(m => (
-            <div key={m.email || m.name} style={{ display: 'flex', alignItems: 'center' }}>
-              <div style={{ flex: 1 }}><MemberRow m={m} dimmed onClick={() => onOpen(m)} /></div>
-              <span style={{ fontSize: 9, color: '#57534e', paddingRight: 8, flexShrink: 0 }}>{fmt(m)}</span>
-            </div>
+            <MemberRow key={m.email || m.name} m={m} dimmed
+              onClick={() => onOpen(m)}
+              onProfile={onProfile ? () => onProfile(m) : undefined} />
           ))}
         </div>
       )}
@@ -530,7 +529,7 @@ export function OnlineAvatarCluster() {
             <>
               <div style={{ fontSize: 10, fontWeight: 800, color: '#10b981', letterSpacing: '.15em', textTransform: 'uppercase', padding: '4px 8px 6px' }}>● Active Now</div>
               {active.map(m => <MemberRow key={m.email||m.name} m={m}
-                onClick={() => setFocused(prev => prev?.email === m.email && prev?.name === m.name ? null : m)}
+                onClick={() => openDM(m)}
                 onProfile={() => openMemberProfile(m)} />)}
             </>
           )}
@@ -544,51 +543,20 @@ export function OnlineAvatarCluster() {
             <div style={{ fontSize: 12, color: '#57534e', padding: '8px 10px', textAlign: 'center' }}>Just you for now</div>
           )}
           <div style={{ height: 1, background: 'rgba(255,255,255,.05)', margin: '8px 0 4px' }} />
-          {focusedMember ? (
-            <div style={{ fontSize: 9, fontWeight: 700, color: '#10b981', textAlign: 'center', padding: '0 0 5px', letterSpacing: '.05em' }}>
-              ✓ {focusedMember.name} selected
-            </div>
-          ) : (
-            <div style={{ fontSize: 9, color: '#57534e', textAlign: 'center', padding: '0 0 5px' }}>Tap a member to select</div>
-          )}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
-            {/* Message button — opens DM tray */}
-            <button
-              onClick={() => { if (focusedMember) { openDM(focusedMember); setFocused(null); } else goToChat(); }}
-              style={{
-                padding: '9px 8px', borderRadius: 10,
-                background: 'rgba(232,175,52,.1)', border: '1px solid rgba(232,175,52,.2)',
-                fontSize: 11, fontWeight: 800, color: '#e8af34', cursor: 'pointer',
-                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5,
-                transition: 'background .2s',
-              }}
-              onMouseEnter={e => (e.currentTarget.style.background = 'rgba(232,175,52,.2)')}
-              onMouseLeave={e => (e.currentTarget.style.background = 'rgba(232,175,52,.1)')}
-            >
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" width="12" height="12">
-                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
-              </svg>
-              Message
-            </button>
-            {/* View Profile button */}
-            <button
-              onClick={() => { if (focusedMember) { openMemberProfile(focusedMember); setFocused(null); } else goToChat(); }}
-              style={{
-                padding: '9px 8px', borderRadius: 10,
-                background: 'rgba(255,255,255,.04)', border: '1px solid rgba(255,255,255,.1)',
-                fontSize: 11, fontWeight: 800, color: '#a8a29e', cursor: 'pointer',
-                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5,
-                transition: 'background .2s',
-              }}
-              onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,.1)')}
-              onMouseLeave={e => (e.currentTarget.style.background = 'rgba(255,255,255,.04)')}
-            >
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" width="12" height="12">
-                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
-              </svg>
-              Profile
-            </button>
-          </div>
+          <button onClick={goToChat} style={{
+            padding: '8px 10px', borderRadius: 10, width: '100%',
+            background: 'rgba(255,255,255,.03)', border: '1px solid rgba(255,255,255,.08)',
+            fontSize: 12, fontWeight: 700, color: '#a8a29e', cursor: 'pointer',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+          }}
+            onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,.07)')}
+            onMouseLeave={e => (e.currentTarget.style.background = 'rgba(255,255,255,.03)')}
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="13" height="13">
+              <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+            </svg>
+            Open Chat
+          </button>
         </div>
       , document.body)}
     </div>

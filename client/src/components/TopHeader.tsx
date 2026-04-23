@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { OnlineBubble } from '@/components/OnlineBubble';
-import { BeltIcon } from '@/components/BeltIcon';
 import { useAuth } from '@/lib/auth-context';
 import { getLevelFromXP, getActualLevel } from '@/lib/xp';
 import { ParagonRing } from '@/components/ParagonRing';
@@ -109,12 +108,31 @@ export function TopHeader({ onMenuOpen, onXpOpen }: { onMenuOpen: () => void; on
             }}>
               {title}
             </span>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
-              <BeltIcon belt={belt} stripes={(member as any)?.stripes || 0} width={52} />
-              <span style={{ fontSize: 9, color: '#555', textTransform: 'capitalize', whiteSpace: 'nowrap' }}>
-                {belt}
-              </span>
-            </div>
+            {/* Belt chip — same pill style as chat */}
+            {(() => {
+              const beltColors: Record<string, { bg: string; color: string; border: string }> = {
+                white:  { bg: 'rgba(245,245,244,.12)', color: '#f5f5f4', border: '1px solid rgba(245,245,244,.25)' },
+                blue:   { bg: 'rgba(59,130,246,.15)',  color: '#60a5fa', border: '1px solid rgba(59,130,246,.3)' },
+                purple: { bg: 'rgba(168,85,247,.15)',  color: '#c084fc', border: '1px solid rgba(168,85,247,.3)' },
+                brown:  { bg: 'rgba(146,64,14,.2)',    color: '#d97706', border: '1px solid rgba(146,64,14,.4)' },
+                black:  { bg: 'rgba(255,255,255,.08)', color: '#fff',    border: '1px solid rgba(255,255,255,.2)' },
+                grey:   { bg: 'rgba(156,163,175,.12)', color: '#9ca3af', border: '1px solid rgba(156,163,175,.25)' },
+                yellow: { bg: 'rgba(234,179,8,.15)',   color: '#fde047', border: '1px solid rgba(234,179,8,.3)' },
+                orange: { bg: 'rgba(249,115,22,.15)',  color: '#fb923c', border: '1px solid rgba(249,115,22,.3)' },
+                green:  { bg: 'rgba(34,197,94,.15)',   color: '#4ade80', border: '1px solid rgba(34,197,94,.3)' },
+              };
+              const s = beltColors[belt] || beltColors.white;
+              return (
+                <div style={{
+                  fontSize: 9, fontWeight: 800, padding: '2px 6px', borderRadius: 4,
+                  textTransform: 'uppercase', letterSpacing: '.08em',
+                  background: s.bg, color: s.color, border: s.border, flexShrink: 0,
+                  ...(belt === 'black' ? { borderLeft: '3px solid #ef4444' } : {}),
+                }}>
+                  {belt}
+                </div>
+              );
+            })()}
           </div>
 
           {/* Row 2: XP bar + online bubble inline */}

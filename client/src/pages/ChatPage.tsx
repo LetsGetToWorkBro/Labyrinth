@@ -909,9 +909,11 @@ export default function ChatPage() {
               const isMe = !!member?.name && m.sender === member.name;
               const senderBelt = (m.senderBelt || 'white').toLowerCase();
               // Prefer real totalPoints from message (sent by GAS), then fall back to belt estimate
+              // Use senderTotalPoints if GAS sent it (col 9), else 0 — don't use belt estimate
+              // Belt-based estimation gives wrong levels (yellow belt doesn't mean high level)
               const senderXP = isMe
                 ? myXP
-                : ((m as any).senderTotalPoints || beltToMinXP(senderBelt, m.senderRole || ''));
+                : ((m as any).senderTotalPoints || 0);
               const senderLevel = getActualLevel(senderXP);
               const senderPfp = isMe ? myPfp : (m.senderProfilePic || undefined);
               const pillBelt = senderBelt === 'black' || senderBelt === 'brown' || senderBelt === 'purple' || senderBelt === 'blue' || senderBelt === 'white' ? senderBelt : 'white';
@@ -977,18 +979,19 @@ export default function ChatPage() {
         }}>
           {sendError && <p style={{ fontSize: 12, color: '#ef4444', margin: '0 0 6px 4px', pointerEvents: 'auto' }}>{sendError}</p>}
           {canPost ? (
-            <div className="chatv4-input-bar" style={{ pointerEvents: 'auto' }}>
-              {/* My ParagonRing PFP — bottom-left of input bar */}
-              <div style={{ flexShrink: 0 }} onClick={() => openProfile(selfMember)}>
-                <ParagonRing level={myLevel} size={30} showOrbit={false}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, pointerEvents: 'auto' }}>
+              {/* My ParagonRing PFP — left of input bar */}
+              <div style={{ flexShrink: 0, cursor: 'pointer' }} onClick={() => openProfile(selfMember)}>
+                <ParagonRing level={myLevel} size={34} showOrbit={false}>
                   {myPfp
                     ? <img src={myPfp} alt="" style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }} />
-                    : <div style={{ width: '100%', height: '100%', borderRadius: '50%', background: avatarGradient(myBelt), display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 800, color: '#fff' }}>
+                    : <div style={{ width: '100%', height: '100%', borderRadius: '50%', background: avatarGradient(myBelt), display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 800, color: '#fff' }}>
                         {(member?.name || '?').charAt(0).toUpperCase()}
                       </div>
                   }
                 </ParagonRing>
               </div>
+              <div className="chatv4-input-bar" style={{ flex: 1 }}>
               <input
                 ref={inputRef}
                 type="text"
@@ -1012,6 +1015,7 @@ export default function ChatPage() {
               >
                 <SendIcon />
               </button>
+              </div>
             </div>
           ) : (
             <div style={{
