@@ -393,12 +393,8 @@ export function DMProvider({ children }: { children: React.ReactNode }) {
       const peer = (e as CustomEvent<DMPeer>).detail;
       if (!peer?.email && !peer?.name) return; // need at least a name
       setOpenPeers(prev => {
-        // Don't open DM with yourself (only block if both emails are non-empty and match)
-        const myEmail = ((member as any)?.email || '').toLowerCase().trim();
+        // No longer blocking self-DM — useful for testing and echo threads
         const peerEmail = (peer.email || '').toLowerCase().trim();
-        if (myEmail && peerEmail && myEmail === peerEmail) return prev;
-        // Also block by name if that's all we have
-        if (!peerEmail && peer.name === member?.name) return prev;
         // Already open? Bring to front
         const matchKey = peerEmail || peer.name;
         if (prev.some(p => (p.email && p.email === peerEmail) || (!peerEmail && p.name === peer.name))) {

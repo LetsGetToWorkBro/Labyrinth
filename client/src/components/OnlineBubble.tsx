@@ -59,14 +59,23 @@ function avatarGrad(belt: string) {
   return map[(belt||'white').toLowerCase()] || map.white;
 }
 
+// MemberRow — clicking the row opens the profile; one chat icon on the right (hidden for self)
 function MemberRow({ m, dimmed, onClick, onProfile, isSelf }: { m: ChannelMember; dimmed?: boolean; onClick: () => void; onProfile?: () => void; isSelf?: boolean }) {
   const level = getActualLevel(m.totalPoints || 0);
   const belt  = (m.belt || 'white').toLowerCase();
+
+  const handleRowClick = () => {
+    // Row tap → open profile (if handler exists), else open DM
+    if (onProfile) onProfile();
+    else onClick();
+  };
+
   return (
     <div
+      onClick={handleRowClick}
       style={{
         display: 'flex', alignItems: 'center', gap: 9,
-        padding: '6px 8px', borderRadius: 11,
+        padding: '6px 8px', borderRadius: 11, cursor: 'pointer',
         opacity: dimmed ? 0.55 : 1, transition: 'background .15s',
       }}
       onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,.05)')}
@@ -85,31 +94,25 @@ function MemberRow({ m, dimmed, onClick, onProfile, isSelf }: { m: ChannelMember
         )}
       </div>
 
-      {/* Name + belt */}
+      {/* Name + belt + LV */}
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ fontSize: 12, fontWeight: 700, color: '#fff', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{m.name}</div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 1 }}>
           <div style={{ width: 7, height: 7, borderRadius: 2, background: getBeltColor(belt) }} />
-          <span style={{ fontSize: 9, fontWeight: 700, color: '#a8a29e', textTransform: 'capitalize' }}>{belt} belt</span>
+          <span style={{ fontSize: 9, fontWeight: 700, color: '#a8a29e', textTransform: 'capitalize' }}>{belt}</span>
+          <span style={{ fontSize: 9, fontWeight: 800, color: '#e8af34', background: 'rgba(232,175,52,.12)', padding: '0px 4px', borderRadius: 4 }}>LV {level}</span>
         </div>
       </div>
 
-      {/* LV + action buttons inline */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
-        <span style={{ fontSize: 9, fontWeight: 800, color: '#e8af34', background: 'rgba(232,175,52,.12)', padding: '1px 5px', borderRadius: 5, border: '1px solid rgba(232,175,52,.22)' }}>LV {level}</span>
-        {/* Message — hidden for self */}
-        {!isSelf && (
-          <button onClick={e => { e.stopPropagation(); onClick(); }} style={{ width: 24, height: 24, borderRadius: 6, border: 'none', background: 'rgba(232,175,52,.12)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#e8af34' }}>
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" width="12" height="12"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-          </button>
-        )}
-        {/* Profile */}
-        {onProfile && (
-          <button onClick={e => { e.stopPropagation(); onProfile(); }} style={{ width: 24, height: 24, borderRadius: 6, border: 'none', background: 'rgba(255,255,255,.06)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#a8a29e' }}>
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" width="12" height="12"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-          </button>
-        )}
-      </div>
+      {/* Chat button — only for others */}
+      {!isSelf && (
+        <button
+          onClick={e => { e.stopPropagation(); onClick(); }}
+          style={{ width: 26, height: 26, borderRadius: 7, border: 'none', background: 'rgba(232,175,52,.12)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#e8af34', flexShrink: 0 }}
+        >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" width="12" height="12"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+        </button>
+      )}
     </div>
   );
 }
@@ -120,6 +123,7 @@ export function OnlineBubble({ compact = false }: { compact?: boolean }) {
   const [members, setMembers] = useState<ChannelMember[]>([]);
   const [dropPos, setDropPos] = useState<{ top: number; right: number } | null>(null);
   const wrapRef = useRef<HTMLDivElement>(null);
+  const dropRef = useRef<HTMLDivElement>(null);
 
   // Build self entry always-online
   const buildSelf = useCallback((): ChannelMember | null => {
@@ -166,10 +170,13 @@ export function OnlineBubble({ compact = false }: { compact?: boolean }) {
     return () => clearInterval(t);
   }, [isAuthenticated, load, buildSelf]);
 
-  // Close on outside click
+  // Close on outside click — must check both button wrapper AND the portaled dropdown
   useEffect(() => {
     const handler = (e: MouseEvent) => {
-      if (wrapRef.current && !wrapRef.current.contains(e.target as Node)) setOpen(false);
+      const t = e.target as Node;
+      const inWrap = wrapRef.current?.contains(t);
+      const inDrop = dropRef.current?.contains(t);
+      if (!inWrap && !inDrop) setOpen(false);
     };
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
@@ -249,7 +256,7 @@ export function OnlineBubble({ compact = false }: { compact?: boolean }) {
 
       {/* Dropdown — always portaled to body to escape any stacking context / overflow clipping */}
       {createPortal(
-      <div style={{
+      <div ref={dropRef} style={{
         position: 'fixed',
         top: dropPos?.top ?? 60,
         right: dropPos?.right ?? 12,
@@ -370,6 +377,7 @@ export function OnlineAvatarCluster() {
   const [dmUnread, setDmUnread]       = useState(0);
   const [focusedMember, setFocused]    = useState<ChannelMember | null>(null);
   const wrapRef = useRef<HTMLDivElement>(null);
+  const dropRef = useRef<HTMLDivElement>(null);
 
   const buildSelf = useCallback((): ChannelMember | null => {
     if (!member?.name) return null;
@@ -427,7 +435,8 @@ export function OnlineAvatarCluster() {
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {
-      if (wrapRef.current && !wrapRef.current.contains(e.target as Node)) setOpen(false);
+      const t = e.target as Node;
+      if (!wrapRef.current?.contains(t) && !dropRef.current?.contains(t)) setOpen(false);
     };
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
@@ -525,7 +534,7 @@ export function OnlineAvatarCluster() {
 
       {/* Dropdown — portaled to body */}
       {createPortal(
-        <div style={{
+        <div ref={dropRef} style={{
           position: 'fixed',
           top: dropPos?.top ?? 70,
           right: dropPos?.right ?? 12,

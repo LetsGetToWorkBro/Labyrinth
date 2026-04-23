@@ -1100,10 +1100,7 @@ export default function ChatPage() {
           {profileMember && (
             <ProfileBody
               member={profileMember}
-              onDM={profileMember.email && profileMember.email !== member?.email
-                ? (m) => dispatchOpenDM(m)
-                : undefined
-              }
+              onDM={(m) => dispatchOpenDM(m)}
             />
           )}
         </div>

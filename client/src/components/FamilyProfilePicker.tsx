@@ -168,13 +168,14 @@ function ProfileCard({
       }}
     >
       {/* Avatar with ParagonRing + level badge */}
-      <div style={{ position: 'relative', width: 110, height: 110, marginBottom: 30 }}>
+      {/* ParagonRing owns its CANVAS size — don't constrain it, just let it flex */}
+      <div style={{ position: 'relative', display: 'inline-flex', flexDirection: 'column', alignItems: 'center', marginBottom: 30 }}>
         <ParagonRing level={level} size={110} showOrbit={true}>
           {fm.profilePic ? (
             <img
               src={fm.profilePic}
               alt={fm.name}
-              style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover', border: '3px solid #000' }}
+              style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }}
             />
           ) : (
             <div style={{
@@ -190,16 +191,9 @@ function ProfileCard({
           )}
         </ParagonRing>
 
-        {/* Glass sheen over avatar */}
+        {/* Level badge — sits below the ring canvas, centered */}
         <div style={{
-          position: 'absolute', inset: 0, borderRadius: '50%', zIndex: 15, pointerEvents: 'none',
-          background: 'linear-gradient(180deg, rgba(255,255,255,0.35) 0%, rgba(255,255,255,0.05) 40%, transparent 100%)',
-          clipPath: 'ellipse(100% 45% at 50% 0%)',
-        }} />
-
-        {/* Level badge */}
-        <div style={{
-          position: 'absolute', bottom: -16, left: '50%', transform: 'translateX(-50%)',
+          marginTop: -8,
           background: 'linear-gradient(180deg,#1a1a1a,#050505)',
           border: `2px solid ${badgeColor}`,
           borderRadius: 8, padding: '3px 14px', zIndex: 50,
@@ -297,10 +291,18 @@ export default function FamilyProfilePicker({ onDone }: { onDone: () => void }) 
     isPrimary: true,
   };
 
+  // Read XP from both GAS profile and local game stats — use highest so level is correct
+  const localStats = (() => { try { return JSON.parse(localStorage.getItem('lbjj_game_stats_v2') || '{}'); } catch { return {}; } })();
+  const primaryXP = Math.max(
+    (member as any)?.totalPoints || 0,
+    localStats.xp || 0,
+    localStats.totalXP || 0,
+  );
+
   const enrichedPrimary = {
     ...primaryAsFm,
-    totalPoints: (member as any)?.totalPoints || 0,
-    stripes: (member as any)?.stripes || 0,
+    totalPoints: primaryXP,
+    stripes: (member as any)?.stripes || (member as any)?.Stripes || 0,
     profilePic: (() => { try { return localStorage.getItem('lbjj_profile_picture') || undefined; } catch { return undefined; } })(),
   };
 
