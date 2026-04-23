@@ -831,7 +831,24 @@ export default function ChatPage() {
           {/* Who-strip: click to open channel members dropdown */}
           <div style={{ position: 'relative' }}>
             <div
-              onClick={(e) => { e.stopPropagation(); setChannelMembersOpen(v => !v); }}
+              onClick={(e) => {
+                e.stopPropagation();
+                setChannelMembersOpen(v => {
+                  const next = !v;
+                  // Refresh the channel member list each time we open the dropdown so
+                  // presence (lastSeen) is fresh and PFPs sync with the latest /general presence.
+                  if (next && activeChannelId) {
+                    chatGetChannelMembers(activeChannelId).then(raw => {
+                      const enriched = raw.map(m => {
+                        const online = onlineMembers.find(o => o.email === m.email || o.name === m.name);
+                        return online?.profilePic ? { ...m, profilePic: online.profilePic } : m;
+                      });
+                      setChannelMembers(enriched);
+                    }).catch(() => {});
+                  }
+                  return next;
+                });
+              }}
               style={{
                 display: 'flex', alignItems: 'center', gap: 4,
                 background: 'rgba(255,255,255,.04)', border: '1px solid rgba(255,255,255,.06)',
@@ -896,25 +913,58 @@ export default function ChatPage() {
               <ChevDown size={12} color="#a8a29e" style={{ marginLeft: 2, transition: 'transform .3s', transform: channelMembersOpen ? 'rotate(180deg)' : 'rotate(0deg)' }} />
             </div>
 
-            {/* Channel members dropdown — recent senders first, then channel members */}
+            {/* Channel members dropdown — ALL channel members split into Online / Recently / Offline */}
             {(() => {
               const nowMs = Date.now();
-              // Recent senders (from messages) come first — filter ghost/invalid names
-              const recentNames = Array.from(new Set(
-                [...messages].reverse().slice(0, 30)
-                  .map(m => m.sender)
-                  .filter(name => name && name.trim().length > 1 && !/^\d+$/.test(name.trim()))
-              ));
-              const recentAsCM: ChannelMember[] = recentNames.map(name => {
-                const found = channelMembers.find(m => m.name === name) || onlineMembers.find(m => m.name === name);
-                const msg = messages.find(m => m.sender === name);
-                return found || { name, email: '', belt: (msg as any)?.senderBelt || 'white', role: '', totalPoints: 0, badgeCount: 0, profilePic: (msg as any)?.senderProfilePic, lastSeen: msg?.timestamp };
+              const ONLINE_WINDOW = 5 * 60 * 1000;     // < 5 min
+              const RECENT_WINDOW = 24 * 60 * 60 * 1000; // 5 min – 24 h
+
+              // Start with ALL channel members (the gas backend returns the full roster
+              // for this channel with lastSeen presence), merged with any online presence
+              // we know about from /general so PFPs are up-to-date.
+              const byKey = new Map<string, ChannelMember>();
+              for (const m of channelMembers) {
+                if (!m?.name || m.name.trim().length < 2 || /^\d+$/.test(m.name.trim())) continue;
+                byKey.set((m.email || m.name).toLowerCase(), { ...m });
+              }
+              // Enrich with /general presence (fresher lastSeen + PFP)
+              for (const o of onlineMembers) {
+                if (!o?.name) continue;
+                const k = (o.email || o.name).toLowerCase();
+                const existing = byKey.get(k);
+                if (existing) {
+                  const existingMs = existing.lastSeen ? new Date(existing.lastSeen).getTime() : 0;
+                  const oMs = o.lastSeen ? new Date(o.lastSeen).getTime() : 0;
+                  byKey.set(k, {
+                    ...existing,
+                    profilePic: o.profilePic || existing.profilePic,
+                    totalPoints: existing.totalPoints || o.totalPoints || 0,
+                    lastSeen: oMs > existingMs ? o.lastSeen : existing.lastSeen,
+                  });
+                }
+              }
+
+              const list = Array.from(byKey.values());
+              const chOnline = list.filter(m => m.lastSeen && (nowMs - new Date(m.lastSeen).getTime()) < ONLINE_WINDOW);
+              const chRecent = list.filter(m => {
+                if (!m.lastSeen) return false;
+                const d = nowMs - new Date(m.lastSeen).getTime();
+                return d >= ONLINE_WINDOW && d < RECENT_WINDOW;
               });
-              // Only show people who have actually sent a message in this channel
-              // Don't append all channelMembers (alphabetical) — that's what was showing "A" names
-              const list = recentAsCM;
-              const chOnline  = list.filter(m => m.lastSeen && (nowMs - new Date(m.lastSeen).getTime()) < 5 * 60 * 1000);
-              const chOffline = list.filter(m => !m.lastSeen || (nowMs - new Date(m.lastSeen).getTime()) >= 5 * 60 * 1000);
+              const chOffline = list.filter(m => !m.lastSeen || (nowMs - new Date(m.lastSeen).getTime()) >= RECENT_WINDOW);
+
+              // Sort each bucket by most-recently-seen first (offline stays alphabetical)
+              const byLastSeen = (a: ChannelMember, b: ChannelMember) =>
+                (b.lastSeen ? new Date(b.lastSeen).getTime() : 0) - (a.lastSeen ? new Date(a.lastSeen).getTime() : 0);
+              chOnline.sort(byLastSeen);
+              chRecent.sort(byLastSeen);
+              chOffline.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+
+              const handleOpen = (m: ChannelMember) => { setChannelMembersOpen(false); openProfile(m); };
+              const handleDM = (m: ChannelMember) => { setChannelMembersOpen(false); dispatchOpenDM(m); };
+              const isSelf = (m: ChannelMember) =>
+                !!((m.email && member?.email && m.email === member.email) || (m.name && m.name === member?.name));
+
               return (
                 <div style={{
                   position: 'absolute', top: 'calc(100% + 8px)', right: 0, width: 268,
@@ -924,18 +974,48 @@ export default function ChatPage() {
                   transform: channelMembersOpen ? 'translateY(0) scale(1)' : 'translateY(-8px) scale(.97)',
                   pointerEvents: channelMembersOpen ? 'auto' : 'none',
                   transition: 'all .35s cubic-bezier(0.175,0.885,0.32,1.275)', zIndex: 9999,
-                  maxHeight: '70vh', display: 'flex', flexDirection: 'column',
+                  maxHeight: '70vh', display: 'flex', flexDirection: 'column', overflowY: 'auto', scrollbarWidth: 'none',
                 }}>
                   {/* Online — always visible, pinned */}
                   {chOnline.length > 0 && (
                     <>
-                      <div style={{ fontSize: 10, fontWeight: 800, color: '#10b981', letterSpacing: '.15em', textTransform: 'uppercase', padding: '4px 8px 6px', flexShrink: 0 }}>● Active Now</div>
-                      {chOnline.map(m => <ChMemberRow key={m.email||m.name} m={m} online onClick={() => { setChannelMembersOpen(false); openProfile(m); }} onDM={() => { setChannelMembersOpen(false); dispatchOpenDM(m); }} />)}
+                      <div style={{ fontSize: 10, fontWeight: 800, color: '#10b981', letterSpacing: '.15em', textTransform: 'uppercase', padding: '4px 8px 6px', flexShrink: 0 }}>● Active Now — {chOnline.length}</div>
+                      {chOnline.map(m => (
+                        <ChMemberRow
+                          key={m.email || m.name}
+                          m={m}
+                          online
+                          onClick={() => handleOpen(m)}
+                          onDM={isSelf(m) ? undefined : () => handleDM(m)}
+                        />
+                      ))}
                     </>
                   )}
-                  {/* Offline — collapsible scrollable section */}
+                  {/* Recently Online — collapsible */}
+                  {chRecent.length > 0 && (
+                    <ChCollapsibleSection
+                      label="Recently Online"
+                      dotColor="#e8af34"
+                      members={chRecent}
+                      divider={chOnline.length > 0}
+                      onOpen={handleOpen}
+                      onDM={(m) => !isSelf(m) && handleDM(m)}
+                      isSelf={isSelf}
+                      online={false}
+                    />
+                  )}
+                  {/* Offline — collapsible */}
                   {chOffline.length > 0 && (
-                    <ChOfflineSection members={chOffline} onOpen={(m) => { setChannelMembersOpen(false); openProfile(m); }} hasOnline={chOnline.length > 0} />
+                    <ChCollapsibleSection
+                      label="Offline"
+                      dotColor="#57534e"
+                      members={chOffline}
+                      divider={chOnline.length > 0 || chRecent.length > 0}
+                      onOpen={handleOpen}
+                      onDM={(m) => !isSelf(m) && handleDM(m)}
+                      isSelf={isSelf}
+                      online={false}
+                    />
                   )}
                   {list.length === 0 && (
                     <div style={{ fontSize: 12, color: '#57534e', padding: 12, textAlign: 'center' }}>No members loaded</div>
@@ -1122,25 +1202,44 @@ export default function ChatPage() {
 const ChMemberRow = ({ m, online, onClick, onDM }: { m: ChannelMember; online: boolean; onClick: () => void; onDM?: () => void }) =>
   <MemberDropdownRow m={m} online={online} onClick={onClick} onDM={onDM} />;
 
-// Offline collapsible section for channel members dropdown
-function ChOfflineSection({ members, onOpen, hasOnline }: { members: ChannelMember[]; onOpen: (m: ChannelMember) => void; hasOnline: boolean }) {
+// Collapsible section for channel members dropdown — used for Recently Online + Offline
+function ChCollapsibleSection({ label, dotColor, members, divider, onOpen, onDM, isSelf, online }: {
+  label: string;
+  dotColor: string;
+  members: ChannelMember[];
+  divider: boolean;
+  onOpen: (m: ChannelMember) => void;
+  onDM: (m: ChannelMember) => void;
+  isSelf: (m: ChannelMember) => boolean;
+  online: boolean;
+}) {
   const [open, setOpen] = React.useState(false);
   return (
     <div style={{ flexShrink: 0 }}>
-      {hasOnline && <div style={{ height: 1, background: 'rgba(255,255,255,0.06)', margin: '6px 0' }} />}
+      {divider && <div style={{ height: 1, background: 'rgba(255,255,255,0.06)', margin: '6px 0' }} />}
       <div
         onClick={() => setOpen(v => !v)}
         style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '4px 8px 4px', cursor: 'pointer', userSelect: 'none' }}
       >
-        <span style={{ fontSize: 10, fontWeight: 800, color: '#57534e', letterSpacing: '.15em', textTransform: 'uppercase' }}>○ Offline — {members.length}</span>
+        <span style={{ fontSize: 10, fontWeight: 800, color: dotColor, letterSpacing: '.15em', textTransform: 'uppercase' }}>
+          {online ? '●' : '○'} {label} — {members.length}
+        </span>
         <svg viewBox="0 0 24 24" fill="none" stroke="#57534e" strokeWidth="2.5" width="13" height="13"
           style={{ transition: 'transform 0.3s', transform: open ? 'rotate(180deg)' : 'rotate(0deg)' }}>
           <polyline points="6 9 12 15 18 9" />
         </svg>
       </div>
       {open && (
-        <div style={{ maxHeight: 220, overflowY: 'auto', scrollbarWidth: 'none' }}>
-          {members.map(m => <MemberDropdownRow key={m.email||m.name} m={m} online={false} onClick={() => onOpen(m)} />)}
+        <div style={{ maxHeight: 260, overflowY: 'auto', scrollbarWidth: 'none' }}>
+          {members.map(m => (
+            <MemberDropdownRow
+              key={m.email || m.name}
+              m={m}
+              online={online}
+              onClick={() => onOpen(m)}
+              onDM={isSelf(m) ? undefined : () => onDM(m)}
+            />
+          ))}
         </div>
       )}
     </div>
@@ -1217,8 +1316,21 @@ function ChannelCard({ channel, variant, members, onClick, onMemberClick }: {
     if (m) { previewAuthor = m[1]; previewText = m[2]; }
   }
 
-  // Mini avatars — pick up to 3 online members matching channel vibe
-  const miniMembers = members.slice(0, 3);
+  // Truly-online = lastSeen within 5 min. Do NOT hardcode.
+  const nowMs = Date.now();
+  const trueActive = members.filter(m => m.lastSeen && (nowMs - new Date(m.lastSeen).getTime()) < 5 * 60 * 1000);
+
+  // Mini avatars — only show actual recent senders on this channel.
+  // We don't have per-channel sender lists in the hub data, so the only
+  // recent-sender signal we have is the author parsed out of lastMessage.
+  // Use at most 1 avatar from that. If no data → empty strip.
+  const miniMembers: ChannelMember[] = [];
+  if (previewAuthor) {
+    const senderName = previewAuthor.trim();
+    const found = members.find(m => m.name === senderName);
+    if (found) miniMembers.push(found);
+    else miniMembers.push({ name: senderName, email: '', belt: 'white', role: '', totalPoints: 0, badgeCount: 0 });
+  }
 
   return (
     <div className={cls} onClick={accessible ? onClick : undefined}>
@@ -1257,7 +1369,7 @@ function ChannelCard({ channel, variant, members, onClick, onMemberClick }: {
           {previewAuthor && <span style={{ color: '#fff', fontWeight: 700 }}>{previewAuthor}: </span>}
           {previewText || 'No messages yet'}
         </div>
-        {miniMembers.length > 0 && channel.type !== 'announcements' && (
+        {channel.type !== 'announcements' && (miniMembers.length > 0 || trueActive.length > 0) && (
           <div style={{ display: 'flex', alignItems: 'center', marginTop: 5 }}>
             {miniMembers.map(m => (
               <div
@@ -1277,8 +1389,8 @@ function ChannelCard({ channel, variant, members, onClick, onMemberClick }: {
                 )}
               </div>
             ))}
-            <span style={{ fontSize: 10, fontWeight: 700, color: '#57534e', marginLeft: 10, alignSelf: 'center' }}>
-              {miniMembers.length} active
+            <span style={{ fontSize: 10, fontWeight: 700, color: trueActive.length > 0 ? '#10b981' : '#57534e', marginLeft: miniMembers.length > 0 ? 10 : 0, alignSelf: 'center' }}>
+              {trueActive.length === 0 ? '0 online' : trueActive.length === 1 ? '1 online' : `${trueActive.length} online`}
             </span>
           </div>
         )}

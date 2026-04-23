@@ -1353,11 +1353,18 @@ export default function HomePage() {
       if (member) {
         const enrichWithPfp = (entries: any[]) => {
           const myPfp = localStorage.getItem('lbjj_profile_picture') || undefined;
-          const myEmail = (member as any)?.email || '';
+          // Read presence cache populated by ChatPage/OnlineBubble for PFP injection
+          let presence: any[] = [];
+          try {
+            const cached = sessionStorage.getItem('lbjj_online_members');
+            if (cached) {
+              const parsed = JSON.parse(cached);
+              presence = Array.isArray(parsed?.data) ? parsed.data : [];
+            }
+          } catch {}
           return entries.map((e: any) => {
             if (e.isMe || e.name === member.name) return { ...e, profilePic: myPfp };
-            // Try to match against online members presence cache for their PFP
-            const online = onlineMembers.find(m => m.name === e.name || (m.email && m.email === e.email));
+            const online = presence.find((m: any) => m.name === e.name || (m.email && m.email === e.email));
             if (online?.profilePic) return { ...e, profilePic: online.profilePic };
             return e;
           });

@@ -292,7 +292,13 @@ export function OnlineBubble({ compact = false }: { compact?: boolean }) {
         {offline.length > 0 && (
           <>
             {active.length > 0 && <div style={{ height: 1, background: 'rgba(255,255,255,.05)', margin: '6px 0' }} />}
-            <RecentSection members={offline} onOpen={(m) => openMemberDM(m)} onProfile={(m) => openMemberProfile(m)} label="Offline" />
+            <RecentSection
+              members={offline}
+              onOpen={(m) => openMemberDM(m)}
+              onProfile={(m) => openMemberProfile(m)}
+              label="Offline"
+              isSelf={(m) => !!(m.email && m.email === (member as any)?.email) || m.name === member?.name}
+            />
           </>
         )}
 
@@ -327,7 +333,7 @@ export function OnlineBubble({ compact = false }: { compact?: boolean }) {
   );
 }
 
-function RecentSection({ members, onOpen, onProfile, label = 'Recently' }: { members: ChannelMember[]; onOpen: (m: ChannelMember) => void; onProfile?: (m: ChannelMember) => void; label?: string }) {
+function RecentSection({ members, onOpen, onProfile, label = 'Recently', isSelf }: { members: ChannelMember[]; onOpen: (m: ChannelMember) => void; onProfile?: (m: ChannelMember) => void; label?: string; isSelf?: (m: ChannelMember) => boolean }) {
   const [expanded, setExpanded] = useState(false);
   const fmt = (m: ChannelMember) => {
     if (!m.lastSeen) return 'offline';
@@ -355,6 +361,7 @@ function RecentSection({ members, onOpen, onProfile, label = 'Recently' }: { mem
         <div style={{ maxHeight: 200, overflowY: 'auto', scrollbarWidth: 'none' }}>
           {members.map(m => (
             <MemberRow key={m.email || m.name} m={m} dimmed
+              isSelf={isSelf ? isSelf(m) : false}
               onClick={() => onOpen(m)}
               onProfile={onProfile ? () => onProfile(m) : undefined} />
           ))}
@@ -560,7 +567,13 @@ export function OnlineAvatarCluster() {
           {offline.length > 0 && (
             <>
               {active.length > 0 && <div style={{ height: 1, background: 'rgba(255,255,255,.05)', margin: '6px 0' }} />}
-              <RecentSection members={offline} onOpen={(m) => openDM(m)} onProfile={(m) => openMemberProfile(m)} label="Recently Online" />
+              <RecentSection
+                members={offline}
+                onOpen={(m) => openDM(m)}
+                onProfile={(m) => openMemberProfile(m)}
+                label="Recently Online"
+                isSelf={(m) => !!(m.email && m.email === (member as any)?.email) || m.name === member?.name}
+              />
             </>
           )}
           {active.length === 0 && offline.length === 0 && (
