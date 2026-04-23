@@ -261,6 +261,8 @@ export function StreakWidget({ dailyStreakCount, weekDots, trainedCount, comboMu
   const [sparks, setSparks] = useState<{ id: number; x: number; y: number; color: string; count: number }[]>([]);
   const [impactFlash, setImpactFlash] = useState(false);
   const [levelUpText, setLevelUpText] = useState('');
+  // Multiplier-explainer tooltip anchored to the tapped day dot.
+  const [multTooltip, setMultTooltip] = useState<{ x: number; y: number; day: number } | null>(null);
   const [relicsUnlocked, setRelicsUnlocked] = useState<Set<number>>(() => {
     // Pre-populate from streak count
     const s = new Set<number>();
@@ -322,6 +324,22 @@ export function StreakWidget({ dailyStreakCount, weekDots, trainedCount, comboMu
       prevStreakRef.current = dailyStreakCount;
     }
   }, [dailyStreakCount, relicsUnlocked]);
+
+  // Dismiss multiplier tooltip on tap outside or scroll.
+  useEffect(() => {
+    if (!multTooltip) return;
+    const dismiss = () => setMultTooltip(null);
+    // Use a tiny timeout so the same click that opened it doesn't close it.
+    const t = setTimeout(() => {
+      window.addEventListener('click', dismiss, { once: true });
+      window.addEventListener('scroll', dismiss, { once: true, capture: true });
+    }, 0);
+    return () => {
+      clearTimeout(t);
+      window.removeEventListener('click', dismiss);
+      window.removeEventListener('scroll', dismiss, true);
+    };
+  }, [multTooltip]);
 
   // Always expanded — content always visible
 
@@ -385,6 +403,51 @@ export function StreakWidget({ dailyStreakCount, weekDots, trainedCount, comboMu
               onDone={() => setSparks(p => p.filter(sp => sp.id !== s.id))} />
           ))}
         </div>
+
+        {/* Multiplier explainer tooltip (appears when a day dot is tapped) */}
+        {multTooltip && (
+          <div
+            onClick={e => e.stopPropagation()}
+            style={{
+              position: 'absolute',
+              left: multTooltip.x,
+              top: Math.max(4, multTooltip.y - 12),
+              transform: 'translate(-50%, -100%)',
+              zIndex: 200,
+              width: 240,
+              background: 'rgba(12,11,10,0.92)',
+              backdropFilter: 'blur(12px)',
+              border: '1px solid rgba(255,255,255,0.10)',
+              borderRadius: 14,
+              padding: '12px 14px',
+              boxShadow: '0 12px 40px rgba(0,0,0,0.7), 0 0 0 1px rgba(255,255,255,0.04)',
+              fontSize: 12,
+              color: '#e7e5e4',
+              lineHeight: 1.45,
+              pointerEvents: 'auto',
+              animation: 'fadeInOverlay 0.14s ease-out',
+            }}
+          >
+            <div style={{ fontSize: 10, fontWeight: 900, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#C8A24C', marginBottom: 6 }}>
+              XP Multiplier
+            </div>
+            <div style={{ marginBottom: 6 }}>
+              Attend <b style={{ color: '#fff' }}>3 classes in 3 consecutive days</b> to earn a{' '}
+              <b style={{ color: '#C8A24C' }}>2× XP multiplier</b>.
+            </div>
+            <div>
+              Keep it going for <b style={{ color: '#fff' }}>6 days</b> for a{' '}
+              <b style={{ color: '#a855f7' }}>3× XP multiplier</b>.
+            </div>
+            {/* Arrow */}
+            <div style={{
+              position: 'absolute', bottom: -6, left: '50%', transform: 'translateX(-50%) rotate(45deg)',
+              width: 12, height: 12, background: 'rgba(12,11,10,0.92)',
+              borderRight: '1px solid rgba(255,255,255,0.10)',
+              borderBottom: '1px solid rgba(255,255,255,0.10)',
+            }} />
+          </div>
+        )}
 
         {/* PHASE CLEARED text */}
         {levelUpText && (
@@ -494,19 +557,19 @@ export function StreakWidget({ dailyStreakCount, weekDots, trainedCount, comboMu
                           +{xp}
                         </span>
 
-                        {/* Circle */}
+                        {/* Circle — tap shows multiplier tooltip, does NOT check in */}
                         <div
                           className="sw-day-circle"
                           onClick={e => {
                             e.stopPropagation();
-                            if (isActive && onCheckIn) {
-                              const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
-                              const wRect = widgetRef.current?.getBoundingClientRect();
-                              if (wRect) addSparks(rect.left - wRect.left + rect.width / 2, rect.top - wRect.top + rect.height / 2, tc.primary, 22);
-                              setImpactFlash(true);
-                              setTimeout(() => setImpactFlash(false), 800);
-                              onCheckIn();
-                            }
+                            const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+                            const wRect = widgetRef.current?.getBoundingClientRect();
+                            if (!wRect) return;
+                            setMultTooltip({
+                              x: rect.left - wRect.left + rect.width / 2,
+                              y: rect.top  - wRect.top,
+                              day: d,
+                            });
                           }}
                           style={{
                             width: '100%', maxWidth: 40, maxHeight: 40, aspectRatio: '1',
@@ -523,7 +586,7 @@ export function StreakWidget({ dailyStreakCount, weekDots, trainedCount, comboMu
                               : isActive ? `inset 0 0 16px ${tc.glow}, 0 0 24px ${tc.glow}` : 'none',
                             transform: isCompleted ? 'scale(0.95)' : 'scale(1)',
                             transition: 'all 0.4s cubic-bezier(0.16,1,0.3,1)',
-                            cursor: isActive ? 'pointer' : 'default',
+                            cursor: 'pointer',
                             position: 'relative',
                           }}
                         >

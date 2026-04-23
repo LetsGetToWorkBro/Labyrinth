@@ -38,6 +38,7 @@ import { soundSystem } from '@/lib/sounds';
 import { StatSkeleton, ListSkeleton } from "@/components/LoadingSkeleton";
 import { getStreamStatus, clearStreamCache } from "@/lib/streaming";
 import type { StreamStatus } from "@/lib/streaming";
+import { BootOverlay, consumeBootPending } from "@/components/BootOverlay";
 
 // ── Badge unlock overlay (shared with SchedulePage pattern) ────
 function showBadgeUnlock(badge: { key: string; label: string; icon: string; desc: string; color?: string }) {
@@ -388,6 +389,11 @@ export default function HomePage() {
   const [techniqueCustomName, setTechniqueCustomName] = useState('');
   const [techniqueCustomTip, setTechniqueCustomTip] = useState('');
   const [techniqueCustomCat, setTechniqueCustomCat] = useState('Custom');
+
+  // ─── Post-login boot overlay (matrix/typewriter) ────────────────
+  // Consume the flag synchronously on first render so we don't flash content
+  // behind the overlay. useState initializer runs once.
+  const [showBoot, setShowBoot] = useState(() => consumeBootPending());
 
   // ─── Home loading skeleton state ─────────────────────────────────
   const [homeLoading, setHomeLoading] = useState(true);
@@ -1910,9 +1916,22 @@ export default function HomePage() {
               return leaderboard.slice(startIdx, startIdx + 3);
             })().map((entry, i) => {
               const rank = leaderboard.findIndex(e => (e.name && e.name === entry.name)) + 1 || (i + 1);
-              const entryXP = (entry.totalPoints || 0) || ((entry.classCount || 0) * 10);
-              const entryLevel = getActualLevel(entryXP);
               const isMe = entry.name === member?.name;
+              // Accept both camelCase (api.ts normalized) and PascalCase (raw GAS) field names.
+              const rawXP = Number(entry.totalPoints ?? (entry as any).TotalPoints ?? 0) || 0;
+              // For the current user, the authoritative XP value is the local cache
+              // (includes in-flight gains that GAS may not have persisted yet).
+              let localMeXP = 0;
+              if (isMe) {
+                try {
+                  const s = JSON.parse(localStorage.getItem('lbjj_game_stats_v2') || '{}');
+                  localMeXP = Math.max(Number(s.xp) || 0, Number(s.totalXP) || 0);
+                } catch {}
+              }
+              const entryXP = isMe
+                ? Math.max(localMeXP, rawXP, (entry.classCount || 0) * 10)
+                : (rawXP || ((entry.classCount || 0) * 10));
+              const entryLevel = getActualLevel(entryXP);
               const rankColors = [
                 { name:'#fde047', score:'#fde047', rank:'#fde047', scoreSz:26 },
                 { name:'#fca5a5', score:'#fca5a5', rank:'#fca5a5', scoreSz:24 },
@@ -1987,6 +2006,8 @@ export default function HomePage() {
   if (!member) return null;
 
   return (
+    <>
+    {showBoot && <BootOverlay onDone={() => setShowBoot(false)} />}
     <div
       ref={scrollContainerRef}
       className={`app-content home-page-bg${isGameDay ? ' home-page-bg--gameday' : isFlowState ? ' home-page-bg--flow' : ''}`}
@@ -2678,6 +2699,7 @@ export default function HomePage() {
         </div>
       ), document.body)}
     </div>
+    </>
   );
 }
 

@@ -84,7 +84,11 @@ function fmtTime(ts: string) {
 const TRAY_W = 320;
 const TRAY_H = 420;
 const TRAY_GAP = 12;
-const BOTTOM_OFFSET = 72; // above the tab bar
+// Above the tab bar (~64-72px) + safe-area inset + breathing room.
+// Use string so we can compose with env(safe-area-inset-bottom).
+const BOTTOM_OFFSET = 'calc(80px + env(safe-area-inset-bottom, 0px))';
+// Minimized bubble collapses to a compact pill aligned to the right edge.
+const MIN_W = 220;
 
 // ─── Single DM Tray ───────────────────────────────────────────────────────────
 
@@ -120,7 +124,8 @@ function DMTray({
   const peerLevel = getActualLevel(peer.totalPoints);
 
   // Stack position: rightmost = stackIndex 0, each subsequent shifts left
-  const rightOffset = TRAY_GAP + stackIndex * (TRAY_W + TRAY_GAP);
+  const effectiveW = minimized ? MIN_W : TRAY_W;
+  const rightOffset = 16 + stackIndex * ((minimized ? MIN_W : TRAY_W) + TRAY_GAP);
 
   const loadMessages = useCallback(async () => {
     const msgs = await dmGetThread(peer.email, 60);
@@ -176,15 +181,15 @@ function DMTray({
       position: 'fixed',
       bottom: BOTTOM_OFFSET,
       right: rightOffset,
-      width: TRAY_W,
+      width: effectiveW,
       height: minimized ? 52 : TRAY_H,
       background: '#030303',
       border: '1px solid rgba(255,255,255,0.08)',
-      borderRadius: 20,
+      borderRadius: minimized ? 26 : 20,
       boxShadow: '0 24px 64px rgba(0,0,0,0.9), 0 0 0 1px rgba(255,255,255,0.04)',
       display: 'flex', flexDirection: 'column',
       overflow: 'hidden',
-      transition: 'height 0.35s cubic-bezier(0.175,0.885,0.32,1.1), right 0.3s cubic-bezier(0.16,1,0.3,1)',
+      transition: 'height 0.35s cubic-bezier(0.175,0.885,0.32,1.1), width 0.35s cubic-bezier(0.175,0.885,0.32,1.1), right 0.3s cubic-bezier(0.16,1,0.3,1), border-radius 0.3s',
       zIndex: 9000 + (10 - stackIndex),
     }}>
 

@@ -11,6 +11,7 @@ import { setActiveLocation, gasCall, memberCompleteSetup } from "@/lib/api";
 import { LOCATIONS, getSavedLocationId, type Location } from "@/lib/locations";
 import logoGold from "@assets/labyrinth-logo-gold.png";
 import { NativeBiometric } from "capacitor-native-biometric";
+import { markBootPending } from "@/components/BootOverlay";
 
 // ─── Constants ─────────────────────────────────────────────────────
 const GOLD      = "#D4AF37";
@@ -203,11 +204,12 @@ export default function LoginPage() {
       } else {
         setActiveLocation(location);
       }
+      markBootPending();
       const loginRes = await login(setupEmail.trim(), setupPw);
       setSetupLoading(false);
       if (loginRes.success) {
         setScreen("gateway");
-        runBoot(() => {});
+        // HomePage will render the boot overlay on mount via the sessionStorage flag.
       } else {
         // Setup succeeded but auto-login failed — prefill email and send to gateway.
         setEmail(setupEmail.trim());
@@ -279,10 +281,20 @@ export default function LoginPage() {
     setLoading(true);
     try {
       setActiveLocation(location);
+      markBootPending();
       const res = await login(email.trim(), password);
-      if (!res.success) { setError(res.error || "Access denied."); setLoading(false); return; }
-      runBoot(() => {});
-    } catch { setError("Connection failed. Try again."); setLoading(false); }
+      if (!res.success) {
+        // Login failed — clear the pending boot flag so we don't play a
+        // boot screen on a subsequent unrelated navigation.
+        try { sessionStorage.removeItem('lbjj_boot_pending'); } catch {}
+        setError(res.error || "Access denied."); setLoading(false); return;
+      }
+      // Auth context will flip isAuthenticated → App.tsx routes to HomePage,
+      // which renders the BootOverlay via the sessionStorage flag.
+    } catch {
+      try { sessionStorage.removeItem('lbjj_boot_pending'); } catch {}
+      setError("Connection failed. Try again."); setLoading(false);
+    }
   };
 
   // Bio vault open
@@ -314,8 +326,10 @@ export default function LoginPage() {
         return;
       }
       const res = await loginWithPasskey(passkeyEmail);
-      if (res.success) runBoot(() => {});
-      else setError("Biometric login failed — sign in with email.");
+      if (res.success) {
+        markBootPending();
+        // Auth context routes to HomePage; it plays the boot overlay.
+      } else setError("Biometric login failed — sign in with email.");
     } catch { setError("Biometric login failed — sign in with email."); }
   };
 

@@ -851,13 +851,16 @@ export async function getLeaderboard(): Promise<LeaderboardEntry[]> {
     const result = await gasCall("getLeaderboard", { type: 'weekly' });
     // Handle both leaderboard.gs format and legacy format
     const raw = result?.leaderboard || result?.scores || result?.entries || [];
-    // Normalize numeric fields — GAS may return strings from sheet cells
+    // Normalize numeric fields — GAS may return strings from sheet cells.
+    // Also accept PascalCase field names from the raw sheet (TotalPoints, ClassCount)
+    // so the frontend can rely on camelCase consistently.
+    const toInt = (v: any) => typeof v === 'string' ? (parseInt(v, 10) || 0) : (Number(v) || 0);
     const entries = raw.map((e: any) => ({
       ...e,
-      classCount:  typeof e.classCount  === 'string' ? parseInt(e.classCount,  10) || 0 : (e.classCount  ?? 0),
-      totalPoints: typeof e.totalPoints === 'string' ? parseInt(e.totalPoints, 10) || 0 : (e.totalPoints ?? 0),
-      wins:        typeof e.wins        === 'string' ? parseInt(e.wins,        10) || 0 : (e.wins        ?? 0),
-      score:       typeof e.score       === 'string' ? parseInt(e.score,       10) || 0 : (e.score       ?? 0),
+      classCount:  toInt(e.classCount  ?? e.ClassCount),
+      totalPoints: toInt(e.totalPoints ?? e.TotalPoints),
+      wins:        toInt(e.wins        ?? e.Wins),
+      score:       toInt(e.score       ?? e.Score),
     }));
     return entries;
   } catch (err) {
