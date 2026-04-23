@@ -31,9 +31,13 @@ function openMemberProfile(m: ChannelMember) {
   } else {
     // Navigate to chat, then fire after a delay for ChatPage to mount
     window.location.hash = '#/chat';
+    // Fire at 400ms then 900ms as a safety retry in case ChatPage takes longer to mount
     setTimeout(() => {
       window.dispatchEvent(new CustomEvent('open-member-profile', { detail: m }));
-    }, 500);
+    }, 400);
+    setTimeout(() => {
+      window.dispatchEvent(new CustomEvent('open-member-profile', { detail: m }));
+    }, 900);
   }
 }
 
@@ -55,7 +59,7 @@ function avatarGrad(belt: string) {
   return map[(belt||'white').toLowerCase()] || map.white;
 }
 
-function MemberRow({ m, dimmed, onClick, onProfile }: { m: ChannelMember; dimmed?: boolean; onClick: () => void; onProfile?: () => void }) {
+function MemberRow({ m, dimmed, onClick, onProfile, isSelf }: { m: ChannelMember; dimmed?: boolean; onClick: () => void; onProfile?: () => void; isSelf?: boolean }) {
   const level = getActualLevel(m.totalPoints || 0);
   const belt  = (m.belt || 'white').toLowerCase();
   return (
@@ -93,10 +97,12 @@ function MemberRow({ m, dimmed, onClick, onProfile }: { m: ChannelMember; dimmed
       {/* LV + action buttons inline */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
         <span style={{ fontSize: 9, fontWeight: 800, color: '#e8af34', background: 'rgba(232,175,52,.12)', padding: '1px 5px', borderRadius: 5, border: '1px solid rgba(232,175,52,.22)' }}>LV {level}</span>
-        {/* Message */}
-        <button onClick={e => { e.stopPropagation(); onClick(); }} style={{ width: 24, height: 24, borderRadius: 6, border: 'none', background: 'rgba(232,175,52,.12)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#e8af34' }}>
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" width="12" height="12"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-        </button>
+        {/* Message — hidden for self */}
+        {!isSelf && (
+          <button onClick={e => { e.stopPropagation(); onClick(); }} style={{ width: 24, height: 24, borderRadius: 6, border: 'none', background: 'rgba(232,175,52,.12)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#e8af34' }}>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" width="12" height="12"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+          </button>
+        )}
         {/* Profile */}
         {onProfile && (
           <button onClick={e => { e.stopPropagation(); onProfile(); }} style={{ width: 24, height: 24, borderRadius: 6, border: 'none', background: 'rgba(255,255,255,.06)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#a8a29e' }}>
@@ -266,7 +272,10 @@ export function OnlineBubble({ compact = false }: { compact?: boolean }) {
             </div>
             <div>
               {active.map(m => (
-                <MemberRow key={m.email || m.name} m={m} onClick={() => openMemberDM(m)} onProfile={() => openMemberProfile(m)} />
+                <MemberRow key={m.email || m.name} m={m}
+                  isSelf={!!(m.email && m.email === (member as any)?.email) || m.name === member?.name}
+                  onClick={() => openMemberDM(m)}
+                  onProfile={() => openMemberProfile(m)} />
               ))}
             </div>
           </>
@@ -534,6 +543,7 @@ export function OnlineAvatarCluster() {
             <>
               <div style={{ fontSize: 10, fontWeight: 800, color: '#10b981', letterSpacing: '.15em', textTransform: 'uppercase', padding: '4px 8px 6px' }}>● Active Now</div>
               {active.map(m => <MemberRow key={m.email||m.name} m={m}
+                isSelf={!!(m.email && m.email === (member as any)?.email) || m.name === member?.name}
                 onClick={() => openDM(m)}
                 onProfile={() => openMemberProfile(m)} />)}
             </>

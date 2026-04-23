@@ -336,19 +336,24 @@ export default function ChatPage() {
       localStorage.removeItem('lbjj_open_profile_name');
       const findAndOpen = (list: ChannelMember[]) => {
         const found = list.find(m =>
-          (profileEmail && (m.email === profileEmail)) ||
-          (profileName  && (m.name  === profileName))
+          (profileEmail && m.email && m.email === profileEmail) ||
+          (profileName  && m.name  === profileName)
         );
-        if (found) openProfile(found);
+        if (found) { openProfile(found); return true; }
+        return false;
       };
-      setTimeout(() => {
-        // Try already-loaded members first
-        if (onlineMembers.length > 0) { findAndOpen(onlineMembers); return; }
-        // Fall back to fetching from GAS
-        chatGetChannelMembers('general')
-          .then(findAndOpen)
-          .catch(() => {});
-      }, 400);
+      // Try immediately with whatever members are loaded, then escalate
+      if (!findAndOpen(onlineMembers)) {
+        chatGetChannelMembers('general').then(list => {
+          if (!findAndOpen(list)) {
+            // Last resort: open a stub member built from the stored name/email
+            // ProfileBody will show what data it has
+            openProfile({ name: profileName || '', email: profileEmail || '', belt: 'white', role: '', totalPoints: 0, badgeCount: 0 });
+          }
+        }).catch(() => {
+          openProfile({ name: profileName || '', email: profileEmail || '', belt: 'white', role: '', totalPoints: 0, badgeCount: 0 });
+        });
+      }
     }
 
     // Also listen for the event (when ChatPage is already open)
@@ -833,11 +838,23 @@ export default function ChatPage() {
               }}
             >
               {(() => {
-                // Show recent message senders (from loaded messages), not all channel members
+                // Active count = only members with real presence in last 5 min
+                const NOW = Date.now();
+                const ONLINE_WINDOW = 5 * 60 * 1000;
+                const activeNow = onlineMembers.filter(m =>
+                  m.lastSeen && (NOW - new Date(m.lastSeen).getTime()) < ONLINE_WINDOW
+                );
+                // Self is online if authenticated
+                const selfOnline = isAuthenticated;
+                const selfAlreadyInActive = activeNow.some(m => m.email === member?.email || m.name === member?.name);
+                const trueActiveCount = selfOnline
+                  ? (selfAlreadyInActive ? activeNow.length : activeNow.length + 1)
+                  : activeNow.length;
+
+                // Strip avatars: show recent message senders (last 20 msgs), de-duped
                 const recentSenderNames = Array.from(new Set(
                   [...messages].reverse().slice(0, 20).map(m => m.sender)
                 ));
-                // Build display list: match senders to channelMembers for PFP/belt, fall back to message data
                 const recentList: ChannelMember[] = recentSenderNames.map(name => {
                   const cm = channelMembers.find(m => m.name === name);
                   const om = onlineMembers.find(m => m.name === name);
@@ -849,10 +866,10 @@ export default function ChatPage() {
                     lastSeen: msg?.timestamp,
                   };
                 });
-                // Always include self at front if not already
+                // Self always first in avatar strip
                 const selfInList = recentList.find(m => m.name === member?.name);
                 const displayList = selfInList ? recentList : [selfMember, ...recentList].filter(Boolean);
-                const activeCount = displayList.length;
+                const activeCount = trueActiveCount;
                 return (
                   <>
                     <div style={{ display: 'flex' }}>
@@ -1009,12 +1026,6 @@ export default function ChatPage() {
           {sendError && <p style={{ fontSize: 12, color: '#ef4444', margin: '0 0 6px 4px', pointerEvents: 'auto' }}>{sendError}</p>}
           {canPost ? (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6, pointerEvents: 'auto' }}>
-              {/* "Posting as" preview row — name, belt pill, LV chip */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6, paddingLeft: 44 }}>
-                <span style={{ fontSize: 11, fontWeight: 700, color: '#e7e5e4' }}>{member?.name || ''}</span>
-                <span style={{ fontSize: 9, fontWeight: 900, color: '#e8af34', background: 'rgba(232,175,52,.12)', border: '1px solid rgba(232,175,52,.25)', padding: '1px 5px', borderRadius: 5 }}>LV {myLevel}</span>
-                <span style={beltPillStyle(myBelt as any)}>{myBelt.charAt(0).toUpperCase() + myBelt.slice(1)}</span>
-              </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
               {/* My ParagonRing PFP — left of input bar */}
               <div style={{ flexShrink: 0, cursor: 'pointer' }} onClick={() => openProfile(selfMember)}>
@@ -1086,7 +1097,15 @@ export default function ChatPage() {
           </div>
         </div>
         <div style={{ padding: '24px 20px 80px', display: 'flex', flexDirection: 'column', gap: 20 }}>
-          {profileMember && <ProfileBody member={profileMember} />}
+          {profileMember && (
+            <ProfileBody
+              member={profileMember}
+              onDM={profileMember.email && profileMember.email !== member?.email
+                ? (m) => dispatchOpenDM(m)
+                : undefined
+              }
+            />
+          )}
         </div>
       </div>
     </div>
@@ -1303,7 +1322,7 @@ function RankCardItem({ beltKey, name, count, accessible, onClick }: {
 
 // ─── ProfileBody ──────────────────────────────────────────────────
 
-function ProfileBody({ member }: { member: ChannelMember }) {
+function ProfileBody({ member, onDM }: { member: ChannelMember; onDM?: (m: ChannelMember) => void }) {
   const xp = member.totalPoints || 0;
   const level = getActualLevel(xp);
   const beltKey = (member.belt || 'white').toLowerCase();
@@ -1435,6 +1454,24 @@ function ProfileBody({ member }: { member: ChannelMember }) {
           </div>
         );
       })()}
+
+      {/* Send Message CTA — only shown for others (onDM provided) */}
+      {onDM && (
+        <button
+          onClick={() => onDM(member)}
+          style={{
+            width: '100%', padding: '11px', borderRadius: 12, border: 'none', cursor: 'pointer',
+            background: 'rgba(232,175,52,.15)', color: '#e8af34',
+            fontSize: 13, fontWeight: 800, letterSpacing: '.02em',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7,
+          }}
+        >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" width="14" height="14">
+            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+          </svg>
+          Send Message
+        </button>
+      )}
     </>
   );
 }
