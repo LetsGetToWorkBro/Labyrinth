@@ -34,37 +34,54 @@ function getDurationMinutes(name: string): number {
   return 60;
 }
 
-function triggerConfetti() {
-  const container = document.createElement('div');
-  container.style.cssText = 'position:fixed;inset:0;pointer-events:none;z-index:9999;overflow:hidden;';
-  document.body.appendChild(container);
-  const colors = ['#e8af34', '#fde047', '#FFD700', '#FFF8DC', '#ffffff'];
-  for (let i = 0; i < 40; i++) {
-    const dot = document.createElement('div');
-    const size = Math.random() * 8 + 4;
-    const x = Math.random() * 100;
-    const duration = Math.random() * 800 + 600;
-    const delay = Math.random() * 300;
-    const color = colors[Math.floor(Math.random() * colors.length)];
-    const endY = -(Math.random() * 60 + 40);
-    const endX = (Math.random() - 0.5) * 40;
-    dot.style.cssText = `
-      position:absolute;bottom:30%;left:${x}%;
-      width:${size}px;height:${size}px;
-      border-radius:${Math.random() > 0.5 ? '50%' : '2px'};
-      background:${color};
-      animation:confettiFly_s${i} ${duration}ms ${delay}ms ease-out forwards;
-    `;
-    const style = document.createElement('style');
-    style.textContent = `
-      @keyframes confettiFly_s${i} {
-        0%{transform:translate(0,0) rotate(0deg);opacity:1;}
-        100%{transform:translate(${endX}vw,${endY}vh) rotate(${Math.random()*720}deg);opacity:0;}
-      }`;
-    document.head.appendChild(style);
-    container.appendChild(dot);
+// Polished check-in error modal — dark glass gateway style
+function showCheckInWindowError(title: string, detail: string) {
+  if (document.getElementById('ciw-error-toast')) return;
+  const RED = '#ef4444';
+  if (!document.getElementById('ciw-kf')) {
+    const s = document.createElement('style'); s.id = 'ciw-kf';
+    s.textContent = `@keyframes ciw-shake{0%,100%{transform:translate(-50%,-50%) translateX(0)}20%{transform:translate(-50%,-50%) translateX(-8px)}40%{transform:translate(-50%,-50%) translateX(8px)}60%{transform:translate(-50%,-50%) translateX(-5px)}80%{transform:translate(-50%,-50%) translateX(4px)}}`;
+    document.head.appendChild(s);
   }
-  setTimeout(() => container.remove(), 2000);
+  const backdrop = document.createElement('div');
+  backdrop.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.55);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);z-index:19000;pointer-events:all;';
+  document.body.appendChild(backdrop);
+  const toast = document.createElement('div');
+  toast.id = 'ciw-error-toast';
+  toast.style.cssText = `position:fixed;left:50%;top:50%;z-index:19001;transform:translate(-50%,-50%);width:min(340px,88vw);background:rgba(10,10,10,0.93);border-radius:22px;padding:28px 24px 22px;border:1px solid rgba(239,68,68,0.35);box-shadow:0 32px 80px rgba(0,0,0,0.9),0 0 40px rgba(239,68,68,0.12),inset 0 1px 1px rgba(255,255,255,0.06);backdrop-filter:blur(40px);-webkit-backdrop-filter:blur(40px);text-align:center;animation:ciw-shake 0.45s cubic-bezier(0.16,1,0.3,1) both;pointer-events:all;`;
+  toast.innerHTML = `<div style="width:44px;height:44px;border-radius:50%;background:rgba(239,68,68,0.12);border:1px solid rgba(239,68,68,0.3);display:flex;align-items:center;justify-content:center;margin:0 auto 16px;"><svg viewBox="0 0 24 24" fill="none" stroke="${RED}" stroke-width="2.5" width="22" height="22"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg></div><div style="font-family:system-ui,sans-serif;font-size:16px;font-weight:900;color:#fff;margin-bottom:8px;">${title}</div><div style="font-family:system-ui,sans-serif;font-size:13px;font-weight:500;color:#666;line-height:1.55;margin-bottom:22px;">${detail}</div><div style="height:1px;background:rgba(255,255,255,0.06);margin-bottom:18px;"></div><button id="ciw-dismiss-btn" style="width:100%;padding:13px;border-radius:12px;border:none;cursor:pointer;background:rgba(239,68,68,0.12);color:${RED};font-family:system-ui,sans-serif;font-size:14px;font-weight:800;letter-spacing:0.04em;text-transform:uppercase;">Got It</button>`;
+  document.body.appendChild(toast);
+  toast.animate([{opacity:0,transform:'translate(-50%,-50%) scale(0.88)'},{opacity:1,transform:'translate(-50%,-50%) scale(1)'}],{duration:350,easing:'cubic-bezier(0.16,1,0.3,1)',fill:'forwards'});
+  const dismiss = () => {
+    toast.animate([{opacity:1,transform:'translate(-50%,-50%) scale(1)'},{opacity:0,transform:'translate(-50%,-50%) scale(0.92)'}],{duration:200,easing:'ease-in',fill:'forwards'}).onfinish=()=>{toast.remove();backdrop.remove();};
+    backdrop.animate([{opacity:1},{opacity:0}],{duration:200,easing:'ease-in',fill:'forwards'});
+  };
+  document.getElementById('ciw-dismiss-btn')?.addEventListener('click', dismiss);
+  backdrop.addEventListener('click', dismiss);
+  setTimeout(dismiss, 4500);
+}
+
+// Premium check-in success VFX — shockwave + particle burst
+function triggerCheckInVFX(cx?: number, cy?: number) {
+  const vfx = document.getElementById('sp-vfx-layer') || (() => { const el = document.createElement('div'); el.id='sp-vfx-layer'; el.style.cssText='position:fixed;inset:0;pointer-events:none;z-index:9999;overflow:hidden;'; document.body.appendChild(el); return el; })();
+  const x = cx ?? window.innerWidth/2, y = cy ?? window.innerHeight*0.6;
+  const color = '#22c55e', gold = '#e8af34';
+  const sw = document.createElement('div');
+  sw.style.cssText=`position:absolute;left:${x}px;top:${y}px;width:10px;height:10px;border-radius:50%;transform:translate(-50%,-50%) scale(0.1);border:6px solid ${color};box-shadow:0 0 30px ${color};`;
+  vfx.appendChild(sw);
+  sw.animate([{transform:'translate(-50%,-50%) scale(0.1)',opacity:1,borderWidth:'6px'},{transform:'translate(-50%,-50%) scale(18)',opacity:0,borderWidth:'1px'}],{duration:700,easing:'cubic-bezier(0.1,0.8,0.3,1)'}).onfinish=()=>sw.remove();
+  setTimeout(()=>{
+    const sw2=document.createElement('div'); sw2.style.cssText=`position:absolute;left:${x}px;top:${y}px;width:10px;height:10px;border-radius:50%;transform:translate(-50%,-50%) scale(0.1);border:3px solid ${gold};box-shadow:0 0 20px ${gold};`;
+    vfx.appendChild(sw2); sw2.animate([{transform:'translate(-50%,-50%) scale(0.1)',opacity:0.8,borderWidth:'3px'},{transform:'translate(-50%,-50%) scale(24)',opacity:0,borderWidth:'1px'}],{duration:900,easing:'cubic-bezier(0.1,0.8,0.3,1)'}).onfinish=()=>sw2.remove();
+  },120);
+  for(let i=0;i<32;i++)setTimeout(()=>{
+    const p=document.createElement('div'); const isGold=i%3===0; const size=Math.random()*6+3;
+    p.style.cssText=`position:absolute;width:${size}px;height:${size}px;border-radius:50%;background:${isGold?gold:color};box-shadow:0 0 12px ${isGold?gold:color};left:${x}px;top:${y}px;`;
+    vfx.appendChild(p); const ang=Math.random()*Math.PI*2, v=100+Math.random()*250;
+    p.animate([{transform:'translate(-50%,-50%) scale(1)',opacity:1},{transform:`translate(calc(${Math.cos(ang)*v}px - 50%),calc(${Math.sin(ang)*v}px - 50%)) scale(0)`,opacity:0}],{duration:600+Math.random()*500,easing:'cubic-bezier(0,0.5,0.5,1)',fill:'forwards'}).onfinish=()=>p.remove();
+  },i*8);
+  const flash=document.createElement('div'); flash.style.cssText='position:fixed;inset:0;background:rgba(34,197,94,0.08);pointer-events:none;z-index:9998;';
+  document.body.appendChild(flash); flash.animate([{opacity:1},{opacity:0}],{duration:500,easing:'ease-out'}).onfinish=()=>flash.remove();
 }
 
 function spawnParticles(x: number, y: number, color: string, count = 20) {
@@ -503,16 +520,37 @@ function ClassCard({
   const cannotCheckIn = isPast || isTooEarly;
 
   const handleCheckIn = async () => {
-    if (!navigator.onLine) { alert('No internet connection.'); return; }
+    if (!navigator.onLine) { showCheckInWindowError('No internet connection.', 'Please connect and try again.'); return; }
     // Hard guard: class already checked in (localStorage-persisted, survives re-renders)
     if (alreadyCheckedIn || checkInDone || checkingInRef.current) return;
-    // Enforce check-in window
+    // Enforce check-in window — show polished error, keep button press feel
     if (isTooEarly) {
-      alert(`Check-in opens ${windowLabel} before class. Come back closer to class time!`);
+      if (navigator.vibrate) navigator.vibrate([10, 30, 10]);
+      const minsUntilOpen = (() => {
+        try {
+          const wm = parseInt(localStorage.getItem('lbjj_checkin_window_minutes') || '60', 10);
+          const now = new Date(); const nowMins = now.getHours() * 60 + now.getMinutes();
+          const [hm, period] = displayTime.split(' ');
+          const [hStr, mStr] = hm.split(':'); let h = parseInt(hStr, 10);
+          const m = parseInt(mStr || '0', 10);
+          if (period?.toUpperCase() === 'PM' && h !== 12) h += 12;
+          if (period?.toUpperCase() === 'AM' && h === 12) h = 0;
+          const startMins = h * 60 + m;
+          return Math.max(0, startMins - wm - nowMins);
+        } catch { return 0; }
+      })();
+      const openLabel = minsUntilOpen >= 60
+        ? `${Math.floor(minsUntilOpen / 60)}h ${minsUntilOpen % 60}m`
+        : `${minsUntilOpen}m`;
+      showCheckInWindowError(
+        `Not open yet — ${windowLabel} before class`,
+        minsUntilOpen > 0 ? `Check-in opens in ${openLabel}. Come back closer to class time.` : `Check-in opens ${windowLabel} before class starts.`
+      );
       return;
     }
     if (isPast) {
-      alert('This class has already ended.');
+      if (navigator.vibrate) navigator.vibrate([10, 30, 10]);
+      showCheckInWindowError('Class has ended.', 'Check the schedule for upcoming classes.');
       return;
     }
     // Adults/kids category enforcement
@@ -521,17 +559,17 @@ function ClassCard({
     const memberIsKids = kidsOnlyBelts.includes(memberBelt);
     const classIsKids = cls.category === 'kids';
     if (memberIsKids && !classIsKids) {
-      alert('Kids members can only check into kids classes.');
+      showCheckInWindowError('Wrong class type.', 'Kids members can only check into kids classes.');
       return;
     }
     if (!memberIsKids && classIsKids) {
-      alert('Adult members can only check into adult classes.');
+      showCheckInWindowError('Wrong class type.', 'Adult members can only check into adult classes.');
       return;
     }
     // Set ref synchronously before any await to block concurrent taps
     checkingInRef.current = true;
     const geo = await validateGeoIfRequired();
-    if (!geo.allowed) { checkingInRef.current = false; alert(geo.error || 'Location check failed.'); return; }
+    if (!geo.allowed) { checkingInRef.current = false; showCheckInWindowError('Location check failed.', geo.error || 'Please try again.'); return; }
 
     // Particle burst
     if (btnRef.current) {
@@ -641,7 +679,13 @@ function ClassCard({
       window.dispatchEvent(new CustomEvent('checkin-complete'));
     } catch {}
     try { localStorage.removeItem('lbjj_home_leaderboard'); localStorage.removeItem('lbjj_home_cache'); } catch {}
-    triggerConfetti();
+    // Premium VFX — use button position for centered shockwave
+    if (btnRef.current) {
+      const r = btnRef.current.getBoundingClientRect();
+      triggerCheckInVFX(r.left + r.width/2, r.top + r.height/2);
+    } else {
+      triggerCheckInVFX();
+    }
     setTimeout(() => {
       setIsExpanded(false);
       setCheckInDone(false);

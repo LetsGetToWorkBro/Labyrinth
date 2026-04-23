@@ -325,7 +325,18 @@ export function CheckInWidget({
               ref={btnRef}
               onClick={(e) => {
                 if (isCheckedIn) return;
-                spawnParticles(e);
+                // Visual press-down: scale down briefly, then call onCheckIn
+                // onCheckIn handles window check — if too early it shows the error
+                // The particles only fire on actual success (CheckInWidget spawnParticles
+                // is called from HomePage after the window check passes)
+                const btn = e.currentTarget as HTMLButtonElement;
+                btn.style.transform = 'scale(0.93)';
+                btn.style.transition = 'transform 0.08s ease';
+                setTimeout(() => {
+                  btn.style.transform = '';
+                  btn.style.transition = 'transform 0.2s cubic-bezier(0.175,0.885,0.32,1.275)';
+                  setTimeout(() => { btn.style.transition = ''; }, 220);
+                }, 80);
                 onCheckIn();
               }}
               style={{
