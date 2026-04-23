@@ -502,7 +502,7 @@ export function TopHeader({ onMenuOpen, onXpOpen }: { onMenuOpen: () => void; on
 
           {/* Logo / menu */}
           <button onClick={onMenuOpen} aria-label="Open menu" style={{ background:'none',border:'none',padding:0,cursor:'pointer',flexShrink:0,display:'flex',alignItems:'center' }}>
-            <img src={logoMaze} alt="Labyrinth BJJ" style={{ width:26,height:26,objectFit:'contain',opacity:.9 }} />
+            <img src={logoMaze} alt="Labyrinth BJJ" style={{ width:26,height:26,objectFit:'contain',opacity:.9,mixBlendMode:'screen' }} />
           </button>
 
           {/* Center: LV chip + title + belt + XP bar */}

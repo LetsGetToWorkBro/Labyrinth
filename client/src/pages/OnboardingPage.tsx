@@ -249,7 +249,7 @@ export default function OnboardingPage() {
 
       {/* Logo mark */}
       <div style={{ position: "fixed", top: 36, left: "50%", transform: "translateX(-50%)", zIndex: 100, display: "flex", alignItems: "center", gap: 10, opacity: skipTriggered ? 0 : 1, transition: "opacity 0.5s" }}>
-        <img src={logoMaze} alt="Labyrinth" style={{ width: 28, height: 28, objectFit: "contain", filter: "drop-shadow(0 0 6px rgba(200,162,76,0.6))" }} />
+        <img src={logoMaze} alt="Labyrinth" style={{ width: 28, height: 28, objectFit: "contain", filter: "drop-shadow(0 0 6px rgba(200,162,76,0.6))", mixBlendMode: "screen" }} />
         <span style={{ fontSize: 13, fontWeight: 900, letterSpacing: 4, color: "#444", textTransform: "uppercase" }}>Labyrinth</span>
       </div>
 
