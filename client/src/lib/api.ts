@@ -1068,3 +1068,10 @@ export async function dmGetConversations(): Promise<DmConversation[]> {
     return res?.conversations || [];
   } catch { return []; }
 }
+
+export async function getRecentUsers(windowMs = 3600000): Promise<ChannelMember[]> {
+  try {
+    const res = await gasCall('getRecentUsers', { windowMs });
+    return (res?.members || []) as ChannelMember[];
+  } catch { return []; }
+}

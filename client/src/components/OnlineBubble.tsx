@@ -11,7 +11,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { dispatchOpenDM } from '@/components/FloatingDMTray';
-import { dmGetUnread, chatGetChannelMembers, updatePresence, type ChannelMember } from '@/lib/api';
+import { dmGetUnread, chatGetChannelMembers, getRecentUsers, updatePresence, type ChannelMember } from '@/lib/api';
 import { getBeltColor } from '@/lib/constants';
 import { getActualLevel } from '@/lib/xp';
 
@@ -384,7 +384,8 @@ export function OnlineAvatarCluster() {
 
   const load = useCallback(async () => {
     try {
-      const list = await chatGetChannelMembers('general');
+      // getRecentUsers scans all pr_* presence keys — shows who opened the app recently (not just chat users)
+      const list = await getRecentUsers(3600000);
       const self = buildSelf();
       if (self) {
         const without = list.filter(m => (m.email || m.name) !== (self.email || self.name));
@@ -543,7 +544,7 @@ export function OnlineAvatarCluster() {
           {offline.length > 0 && (
             <>
               {active.length > 0 && <div style={{ height: 1, background: 'rgba(255,255,255,.05)', margin: '6px 0' }} />}
-              <RecentSection members={offline} onOpen={(m) => openDM(m)} onProfile={(m) => openMemberProfile(m)} label="Offline" />
+              <RecentSection members={offline} onOpen={(m) => openDM(m)} onProfile={(m) => openMemberProfile(m)} label="Recently Online" />
             </>
           )}
           {active.length === 0 && offline.length === 0 && (
