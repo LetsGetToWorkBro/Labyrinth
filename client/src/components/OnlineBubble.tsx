@@ -46,9 +46,10 @@ function MemberRow({ m, dimmed, onClick, onProfile }: { m: ChannelMember; dimmed
   const belt  = (m.belt || 'white').toLowerCase();
   return (
     <div
+      onClick={onClick}
       style={{
         display: 'flex', alignItems: 'center', gap: 9,
-        padding: '7px 8px', borderRadius: 11,
+        padding: '7px 8px', borderRadius: 11, cursor: 'pointer',
         opacity: dimmed ? 0.55 : 1, transition: 'background .15s',
       }}
       onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,.05)')}
@@ -88,46 +89,12 @@ function MemberRow({ m, dimmed, onClick, onProfile }: { m: ChannelMember; dimmed
         </div>
       </div>
 
-      {/* LV + action buttons */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
-        <div style={{
-          fontSize: 9, fontWeight: 800, color: '#e8af34',
-          background: 'rgba(232,175,52,.12)', padding: '1px 5px',
-          borderRadius: 5, border: '1px solid rgba(232,175,52,.22)',
-        }}>LV {level}</div>
-
-        {/* Message button */}
-        <button onClick={e => { e.stopPropagation(); onClick(); }} title="Message" style={{
-          width: 24, height: 24, borderRadius: 7, border: 'none',
-          background: 'rgba(232,175,52,.12)', cursor: 'pointer',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          color: '#e8af34', transition: 'background .2s',
-        }}
-          onMouseEnter={e => (e.currentTarget.style.background = 'rgba(232,175,52,.25)')}
-          onMouseLeave={e => (e.currentTarget.style.background = 'rgba(232,175,52,.12)')}
-        >
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" width="12" height="12">
-            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
-          </svg>
-        </button>
-
-        {/* Profile button */}
-        {onProfile && (
-          <button onClick={e => { e.stopPropagation(); onProfile(); }} title="View Profile" style={{
-            width: 24, height: 24, borderRadius: 7, border: 'none',
-            background: 'rgba(255,255,255,.06)', cursor: 'pointer',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            color: '#a8a29e', transition: 'background .2s',
-          }}
-            onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,.12)')}
-            onMouseLeave={e => (e.currentTarget.style.background = 'rgba(255,255,255,.06)')}
-          >
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" width="12" height="12">
-              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
-            </svg>
-          </button>
-        )}
-      </div>
+      {/* LV chip only — row click opens DM */}
+      <div style={{
+        fontSize: 9, fontWeight: 800, color: '#e8af34',
+        background: 'rgba(232,175,52,.12)', padding: '1px 5px',
+        borderRadius: 5, border: '1px solid rgba(232,175,52,.22)', flexShrink: 0,
+      }}>LV {level}</div>
     </div>
   );
 }
@@ -380,7 +347,8 @@ export function OnlineAvatarCluster() {
   const [open, setOpen]       = useState(false);
   const [members, setMembers] = useState<ChannelMember[]>([]);
   const [dropPos, setDropPos] = useState<{ top: number; right: number } | null>(null);
-  const [dmUnread, setDmUnread] = useState(0);
+  const [dmUnread, setDmUnread]       = useState(0);
+  const [focusedMember, setFocused]    = useState<ChannelMember | null>(null);
   const wrapRef = useRef<HTMLDivElement>(null);
 
   const buildSelf = useCallback((): ChannelMember | null => {
@@ -552,7 +520,7 @@ export function OnlineAvatarCluster() {
           {active.length > 0 && (
             <>
               <div style={{ fontSize: 10, fontWeight: 800, color: '#10b981', letterSpacing: '.15em', textTransform: 'uppercase', padding: '4px 8px 6px' }}>● Active Now</div>
-              {active.map(m => <MemberRow key={m.email||m.name} m={m} onClick={() => openDM(m)} onProfile={() => openMemberProfile(m)} />)}
+              {active.map(m => <MemberRow key={m.email||m.name} m={m} onClick={() => { setFocused(m); openDM(m); }} onProfile={() => openMemberProfile(m)} />)}
             </>
           )}
           {recent.length > 0 && (
@@ -565,20 +533,49 @@ export function OnlineAvatarCluster() {
             <div style={{ fontSize: 12, color: '#57534e', padding: '8px 10px', textAlign: 'center' }}>Just you for now</div>
           )}
           <div style={{ height: 1, background: 'rgba(255,255,255,.05)', margin: '8px 0 4px' }} />
-          <button onClick={goToChat} style={{
-            padding: '8px 10px', borderRadius: 10, width: '100%',
-            background: 'rgba(255,255,255,.03)', border: '1px solid rgba(255,255,255,.08)',
-            fontSize: 12, fontWeight: 700, color: '#a8a29e', cursor: 'pointer',
-            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, transition: 'background .2s',
-          }}
-            onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,.07)')}
-            onMouseLeave={e => (e.currentTarget.style.background = 'rgba(255,255,255,.03)')}
-          >
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="13" height="13">
-              <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
-            </svg>
-            Open Chat
-          </button>
+          {focusedMember && (
+            <div style={{ fontSize: 9, fontWeight: 700, color: '#57534e', textAlign: 'center', padding: '0 0 5px', letterSpacing: '.05em' }}>
+              {focusedMember.name}
+            </div>
+          )}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
+            {/* Message button — opens DM tray */}
+            <button
+              onClick={() => { if (focusedMember) openDM(focusedMember); else goToChat(); }}
+              style={{
+                padding: '9px 8px', borderRadius: 10,
+                background: 'rgba(232,175,52,.1)', border: '1px solid rgba(232,175,52,.2)',
+                fontSize: 11, fontWeight: 800, color: '#e8af34', cursor: 'pointer',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5,
+                transition: 'background .2s',
+              }}
+              onMouseEnter={e => (e.currentTarget.style.background = 'rgba(232,175,52,.2)')}
+              onMouseLeave={e => (e.currentTarget.style.background = 'rgba(232,175,52,.1)')}
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" width="12" height="12">
+                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+              </svg>
+              Message
+            </button>
+            {/* View Profile button */}
+            <button
+              onClick={() => { if (focusedMember) openMemberProfile(focusedMember); else goToChat(); }}
+              style={{
+                padding: '9px 8px', borderRadius: 10,
+                background: 'rgba(255,255,255,.04)', border: '1px solid rgba(255,255,255,.1)',
+                fontSize: 11, fontWeight: 800, color: '#a8a29e', cursor: 'pointer',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5,
+                transition: 'background .2s',
+              }}
+              onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,.1)')}
+              onMouseLeave={e => (e.currentTarget.style.background = 'rgba(255,255,255,.04)')}
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" width="12" height="12">
+                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
+              </svg>
+              Profile
+            </button>
+          </div>
         </div>
       , document.body)}
     </div>
