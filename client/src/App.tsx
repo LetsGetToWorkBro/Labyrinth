@@ -55,6 +55,8 @@ import { ProfileRing } from "@/components/ProfileRing";
 import { ParagonRing } from "@/components/ParagonRing";
 import { TopHeader } from "@/components/TopHeader";
 import { LeftDrawer } from "@/components/LeftDrawer";
+import { NotificationProvider } from "@/components/NotificationProvider";
+import { NotificationTray } from "@/components/NotificationTray";
 import { getRingTier, getActualLevel, getLevelFromXP } from "@/lib/xp";
 import { XPBar } from "@/components/XPBar";
 import { soundSystem } from '@/lib/sounds';
@@ -1690,12 +1692,14 @@ function AppShell() {
   const needsWaiver = false;
 
   return (
+    <NotificationProvider>
     <div className="app-shell">
       {!onboardingDone && <OnboardingPage />}
       {needsWaiver && <WaiverRedirect />}
       <AdminShortcut />
       <TopHeader onMenuOpen={() => window.dispatchEvent(new CustomEvent('open-left-drawer'))} onXpOpen={() => setXpModalOpen(true)} />
       <LeftDrawer />
+      <NotificationTray />
 
       {xpModalOpen && (() => {
         const storedXP = (() => { try { const s = JSON.parse(localStorage.getItem('lbjj_game_stats_v2') || '{}'); return Math.max(s.xp || 0, s.totalXP || 0, (member as any)?.totalPoints || 0); } catch { return (member as any)?.totalPoints || 0; } })();
@@ -2018,6 +2022,7 @@ function AppShell() {
         />
       )}
     </div>
+    </NotificationProvider>
   );
 }
 

@@ -8,6 +8,7 @@ import { checkAndUnlockAchievements, ALL_ACHIEVEMENTS } from "@/lib/achievements
 import { validateGeoIfRequired } from "@/lib/geo";
 import { getStreamStatus, getLiveBadgeStyle } from "@/lib/streaming";
 import { LiveStreamBanner } from "@/components/LiveStreamBanner";
+import { pushLocalNotification } from "@/components/NotificationProvider";
 import type { StreamStatus } from "@/lib/streaming";
 
 // ── Helpers ─────────────────────────────────────────────────────
@@ -667,6 +668,14 @@ function ClassCard({
 
     markClassCheckedIn(cls.name || '');
     setCheckInDone(true);
+    try {
+      pushLocalNotification({
+        type: 'checkin',
+        title: 'Checked In! ✅',
+        body: `You're checked in for ${cls.name || 'class'}. OSS!`,
+        data: { route: '/home' },
+      });
+    } catch {}
     // Update lbjj_weekly_training so StreakWidget picks up today
     try {
       const todayStr = new Date().toISOString().split('T')[0];

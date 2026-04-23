@@ -35,6 +35,7 @@ import {
 import React, { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { createPortal } from "react-dom";
 import { soundSystem } from '@/lib/sounds';
+import { pushLocalNotification } from "@/components/NotificationProvider";
 import { StatSkeleton, ListSkeleton } from "@/components/LoadingSkeleton";
 import { getStreamStatus, clearStreamCache } from "@/lib/streaming";
 import type { StreamStatus } from "@/lib/streaming";
@@ -1099,6 +1100,16 @@ export default function HomePage() {
 
     // Premium check-in VFX — shockwave + particle burst
     triggerCheckInVFX();
+
+    // In-app notification for the check-in
+    try {
+      pushLocalNotification({
+        type: 'checkin',
+        title: 'Checked In! ✅',
+        body: `You're checked in for ${cls.name || 'class'}. OSS!`,
+        data: { route: '/home' },
+      });
+    } catch {}
 
     // Morph check-in button to success state
     setCheckinPhase('success');

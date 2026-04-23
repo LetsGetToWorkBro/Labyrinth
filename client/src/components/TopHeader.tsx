@@ -11,6 +11,8 @@ import { OnlineBubble } from '@/components/OnlineBubble';
 import { useAuth } from '@/lib/auth-context';
 import { getLevelFromXP, getActualLevel } from '@/lib/xp';
 import { ParagonRing, getParagonTheme } from '@/components/ParagonRing';
+import { NotificationBell } from '@/components/NotificationTray';
+import { pushLocalNotification } from '@/components/NotificationProvider';
 import logoMaze from '../assets/logo-maze.webp';
 
 // ─── Theme tokens (mirrored from levelup_v4_oss.html) ─────────────
@@ -179,6 +181,14 @@ export function TopHeader({ onMenuOpen, onXpOpen }: { onMenuOpen: () => void; on
 
     if (newLv > oldLv && !lockedRef.current) {
       lockedRef.current = true;
+      try {
+        pushLocalNotification({
+          type: 'level_up',
+          title: 'Level Up! ⚡',
+          body: `You reached Level ${newLv} — ${title}!`,
+          data: { route: '/home' },
+        });
+      } catch {}
       orchestrate(oldLv, newLv, title).finally(() => { lockedRef.current = false; });
     } else if (newLv === oldLv) {
       setBarPct(Math.max(progress * 100, 2));
@@ -557,6 +567,7 @@ export function TopHeader({ onMenuOpen, onXpOpen }: { onMenuOpen: () => void; on
               <span style={{ fontSize:8,color:'#3A3A3A',whiteSpace:'nowrap',flexShrink:0 }}>
                 {xpInLevel.toLocaleString()}/{xpNeeded.toLocaleString()}
               </span>
+              <NotificationBell />
               <OnlineBubble compact />
             </div>
           </div>

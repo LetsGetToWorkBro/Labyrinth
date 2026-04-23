@@ -5,6 +5,7 @@ import { ALL_ACHIEVEMENTS, ACHIEVEMENT_CATEGORIES, checkAndUnlockAchievements } 
 import type { Achievement, AchievementRarity } from '@/lib/achievements';
 import { gasCall, syncAchievements } from '@/lib/api';
 import { useAuth } from '@/lib/auth-context';
+import { pushLocalNotification } from '@/components/NotificationProvider';
 
 // ─── Rarity config ────────────────────────────────────────────────
 const TIERS: { id: 'All' | AchievementRarity; label: string; color: string }[] = [
@@ -574,6 +575,14 @@ function InspectOverlay({
       s.totalXP = (s.totalXP || 0) + 150;
       localStorage.setItem('lbjj_game_stats_v2', JSON.stringify(s));
       window.dispatchEvent(new CustomEvent('xp-updated'));
+    } catch {}
+    try {
+      pushLocalNotification({
+        type: 'achievement',
+        title: 'Achievement Unlocked! 🏅',
+        body: `You earned: ${achievement.label}`,
+        data: { route: '/achievements' },
+      });
     } catch {}
     onClaimed(achievement.key);
     triggerNuclearClaim(rarityColor, () => {
