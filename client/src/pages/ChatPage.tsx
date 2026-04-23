@@ -1123,22 +1123,20 @@ function MemberDropdownRow({ m, online, onClick }: { m: ChannelMember; online: b
   return (
     <div className="chatv4-md-member" onClick={onClick} style={{ opacity: online ? 1 : 0.55 }}>
       <div style={{ position: 'relative', flexShrink: 0 }}>
-        <div style={{
-          width: 32, height: 32, borderRadius: 10,
-          background: avatarGradient(beltKey), overflow: 'hidden',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          fontSize: 13, fontWeight: 800, color: '#fff',
-        }}>
+        <ParagonRing level={level} size={32} showOrbit={false}>
           {m.profilePic ? (
-            <img src={m.profilePic} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+            <img src={m.profilePic} alt="" style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover', display: 'block' }} />
           ) : (
-            (m.name || '?').charAt(0).toUpperCase()
+            <div style={{ width: '100%', height: '100%', borderRadius: '50%', background: avatarGradient(beltKey), display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 800, color: '#fff' }}>
+              {(m.name || '?').charAt(0).toUpperCase()}
+            </div>
           )}
-        </div>
+        </ParagonRing>
         <div style={{
           position: 'absolute', bottom: -1, right: -1, width: 9, height: 9,
           borderRadius: '50%', border: '2px solid #161412',
           background: online ? '#10b981' : '#57534e',
+          zIndex: 10,
         }} />
       </div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 2, flex: 1, minWidth: 0 }}>

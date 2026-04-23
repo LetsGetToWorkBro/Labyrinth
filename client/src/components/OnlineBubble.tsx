@@ -14,6 +14,7 @@ import { dispatchOpenDM } from '@/components/FloatingDMTray';
 import { dmGetUnread, chatGetChannelMembers, getRecentUsers, updatePresence, type ChannelMember } from '@/lib/api';
 import { getBeltColor } from '@/lib/constants';
 import { getActualLevel } from '@/lib/xp';
+import { ParagonRing } from '@/components/ParagonRing';
 
 import { useAuth } from '@/lib/auth-context';
 
@@ -36,8 +37,8 @@ function openMemberProfile(m: ChannelMember) {
   }
 }
 
-const ONLINE_MS   = 5  * 60 * 1000;  // 5 min  → "Active Now"
-const RECENT_MS   = 60 * 60 * 1000;  // 60 min → "Recently Online"
+const ONLINE_MS   = 5  * 60 * 1000;   // 5 min  → "Active Now"
+const RECENT_MS   = 24 * 60 * 60 * 1000; // 24 hr → "Recently Online"
 
 function avatarGrad(belt: string) {
   const map: Record<string, string> = {
@@ -67,21 +68,16 @@ function MemberRow({ m, dimmed, onClick, onProfile }: { m: ChannelMember; dimmed
       onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,.05)')}
       onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
     >
-      {/* Avatar */}
+      {/* Avatar with ParagonRing */}
       <div style={{ position: 'relative', flexShrink: 0 }}>
-        <div style={{
-          width: 30, height: 30, borderRadius: 9,
-          background: avatarGrad(belt), overflow: 'hidden',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          fontSize: 11, fontWeight: 800, color: '#fff',
-        }}>
+        <ParagonRing level={level} size={30} showOrbit={false}>
           {m.profilePic
-            ? <img src={m.profilePic} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-            : (m.name || '?').charAt(0).toUpperCase()
+            ? <img src={m.profilePic} alt="" style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover', display: 'block' }} />
+            : <div style={{ width: '100%', height: '100%', borderRadius: '50%', background: avatarGrad(belt), display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 800, color: '#fff' }}>{(m.name || '?').charAt(0).toUpperCase()}</div>
           }
-        </div>
+        </ParagonRing>
         {!dimmed && (
-          <div style={{ position: 'absolute', bottom: -1, right: -1, width: 8, height: 8, borderRadius: '50%', background: '#10b981', border: '1.5px solid #0f0e0d' }} />
+          <div style={{ position: 'absolute', bottom: -1, right: -1, width: 8, height: 8, borderRadius: '50%', background: '#10b981', border: '1.5px solid #0f0e0d', zIndex: 10 }} />
         )}
       </div>
 
@@ -385,7 +381,8 @@ export function OnlineAvatarCluster() {
   const load = useCallback(async () => {
     try {
       // getRecentUsers scans all pr_* presence keys — shows who opened the app recently (not just chat users)
-      const list = await getRecentUsers(3600000);
+      // 24h window so "Recently Online" shows everyone who logged in today
+      const list = await getRecentUsers(24 * 60 * 60 * 1000);
       const self = buildSelf();
       if (self) {
         const without = list.filter(m => (m.email || m.name) !== (self.email || self.name));
