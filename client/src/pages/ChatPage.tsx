@@ -853,8 +853,11 @@ export default function ChatPage() {
                   : activeNow.length;
 
                 // Strip avatars: show recent message senders (last 20 msgs), de-duped
+                // Filter out ghost/invalid entries: name must be at least 2 chars and not purely numeric
                 const recentSenderNames = Array.from(new Set(
-                  [...messages].reverse().slice(0, 20).map(m => m.sender)
+                  [...messages].reverse().slice(0, 20)
+                    .map(m => m.sender)
+                    .filter(name => name && name.trim().length >= 2 && !/^\d+$/.test(name.trim()))
                 ));
                 const recentList: ChannelMember[] = recentSenderNames.map(name => {
                   const cm = channelMembers.find(m => m.name === name);
@@ -896,16 +899,20 @@ export default function ChatPage() {
             {/* Channel members dropdown — recent senders first, then channel members */}
             {(() => {
               const nowMs = Date.now();
-              // Recent senders (from messages) come first
-              const recentNames = Array.from(new Set([...messages].reverse().slice(0, 30).map(m => m.sender)));
+              // Recent senders (from messages) come first — filter ghost/invalid names
+              const recentNames = Array.from(new Set(
+                [...messages].reverse().slice(0, 30)
+                  .map(m => m.sender)
+                  .filter(name => name && name.trim().length >= 2 && !/^\d+$/.test(name.trim()))
+              ));
               const recentAsCM: ChannelMember[] = recentNames.map(name => {
                 const found = channelMembers.find(m => m.name === name) || onlineMembers.find(m => m.name === name);
                 const msg = messages.find(m => m.sender === name);
                 return found || { name, email: '', belt: (msg as any)?.senderBelt || 'white', role: '', totalPoints: 0, badgeCount: 0, profilePic: (msg as any)?.senderProfilePic, lastSeen: msg?.timestamp };
               });
-              // Merge: recent senders + rest of channel members not already listed
+              // Merge: recent senders + rest of channel members (also filter ghosts)
               const alreadyListed = new Set(recentAsCM.map(m => m.name));
-              const rest = channelMembers.filter(m => !alreadyListed.has(m.name));
+              const rest = channelMembers.filter(m => !alreadyListed.has(m.name) && m.name && m.name.trim().length >= 2);
               const list = [...recentAsCM, ...rest];
               const chOnline  = list.filter(m => m.lastSeen && (nowMs - new Date(m.lastSeen).getTime()) < 5 * 60 * 1000);
               const chOffline = list.filter(m => !m.lastSeen || (nowMs - new Date(m.lastSeen).getTime()) >= 5 * 60 * 1000);

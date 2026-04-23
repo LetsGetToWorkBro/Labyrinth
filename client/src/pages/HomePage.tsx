@@ -1316,21 +1316,32 @@ export default function HomePage() {
       // Leaderboard: always fetch fresh from GAS on mount/login
       // getLeaderboardFresh clears sessionStorage cache so we never show stale data.
       if (member) {
+        const enrichWithPfp = (entries: any[]) => {
+          const myPfp = localStorage.getItem('lbjj_profile_picture') || undefined;
+          const myEmail = (member as any)?.email || '';
+          return entries.map((e: any) => {
+            if (e.isMe || e.name === member.name) return { ...e, profilePic: myPfp };
+            // Try to match against online members presence cache for their PFP
+            const online = onlineMembers.find(m => m.name === e.name || (m.email && m.email === e.email));
+            if (online?.profilePic) return { ...e, profilePic: online.profilePic };
+            return e;
+          });
+        };
+
         getLeaderboardFresh().then(data => {
           if (!data || data.length === 0) return;
-          const top5 = data.slice(0, 5).map((e: any) => ({
+          const top5 = enrichWithPfp(data.slice(0, 5).map((e: any) => ({
             ...e,
             isMe: e.name === member.name || e.isMe,
-          }));
+          })));
           setLeaderboard(top5);
           try { localStorage.setItem(LEADERBOARD_CACHE_KEY, JSON.stringify({ data: top5, ts: Date.now() })); } catch {}
         }).catch(() => {
-          // Fallback to cached getLeaderboard if fresh call fails
           getLeaderboard().then(data => {
-            const top5 = (data || []).slice(0, 5).map((e: any) => ({
+            const top5 = enrichWithPfp((data || []).slice(0, 5).map((e: any) => ({
               ...e,
               isMe: e.name === member.name || e.isMe,
-            }));
+            })));
             setLeaderboard(top5);
           }).catch(() => {});
         });
