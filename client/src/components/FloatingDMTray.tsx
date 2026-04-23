@@ -391,7 +391,7 @@ export function DMProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const handler = (e: Event) => {
       const peer = (e as CustomEvent<DMPeer>).detail;
-      if (!peer?.email) return;
+      if (!peer?.email && !peer?.name) return; // need at least a name
       setOpenPeers(prev => {
         // Don't open DM with yourself
         if (peer.email === (member as any)?.email) return prev;

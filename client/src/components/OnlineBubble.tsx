@@ -19,7 +19,13 @@ import { useAuth } from '@/lib/auth-context';
 
 // Navigate to chat and open the profile modal for a member
 function openMemberProfile(m: ChannelMember) {
-  try { localStorage.setItem('lbjj_open_profile_email', m.email || ''); } catch {}
+  try {
+    // Store both email and name so ChatPage can find the member either way
+    localStorage.setItem('lbjj_open_profile_email', m.email || '');
+    localStorage.setItem('lbjj_open_profile_name', m.name || '');
+  } catch {}
+  // Fire event first so ChatPage catches it if already mounted
+  window.dispatchEvent(new CustomEvent('open-member-profile', { detail: m }));
   window.location.hash = '#/chat';
 }
 
@@ -164,7 +170,7 @@ export function OnlineBubble({ compact = false }: { compact?: boolean }) {
 
   const nowMs    = Date.now();
   const active   = members.filter(m => m.lastSeen && (nowMs - new Date(m.lastSeen).getTime()) < ONLINE_MS);
-  const recent   = members.filter(m => m.lastSeen && (nowMs - new Date(m.lastSeen).getTime()) >= ONLINE_MS && (nowMs - new Date(m.lastSeen).getTime()) < RECENT_MS);
+  const offline  = members.filter(m => !m.lastSeen || (nowMs - new Date(m.lastSeen).getTime()) >= ONLINE_MS);
 
   // Self always counts as 1
   const onlineCount = Math.max(active.length, 1);
@@ -263,15 +269,15 @@ export function OnlineBubble({ compact = false }: { compact?: boolean }) {
           </>
         )}
 
-        {/* Recently Online */}
-        {recent.length > 0 && (
+        {/* Offline — all non-active members, collapsible */}
+        {offline.length > 0 && (
           <>
             {active.length > 0 && <div style={{ height: 1, background: 'rgba(255,255,255,.05)', margin: '6px 0' }} />}
-            <RecentSection members={recent} onOpen={(m) => openMemberDM(m)} />
+            <RecentSection members={offline} onOpen={(m) => openMemberDM(m)} label="Offline" />
           </>
         )}
 
-        {active.length === 0 && recent.length === 0 && (
+        {active.length === 0 && offline.length === 0 && (
           <div style={{ fontSize: 12, color: '#57534e', padding: '8px 10px', textAlign: 'center' }}>
             Just you for now
           </div>
@@ -302,12 +308,15 @@ export function OnlineBubble({ compact = false }: { compact?: boolean }) {
   );
 }
 
-function RecentSection({ members, onOpen }: { members: ChannelMember[]; onOpen: (m: ChannelMember) => void }) {
+function RecentSection({ members, onOpen, label = 'Recently' }: { members: ChannelMember[]; onOpen: (m: ChannelMember) => void; label?: string }) {
   const [expanded, setExpanded] = useState(false);
   const fmt = (m: ChannelMember) => {
-    if (!m.lastSeen) return '';
+    if (!m.lastSeen) return 'offline';
     const mins = Math.floor((Date.now() - new Date(m.lastSeen).getTime()) / 60000);
-    return mins < 60 ? `${mins}m ago` : `${Math.floor(mins/60)}h ago`;
+    if (mins < 1) return 'just now';
+    if (mins < 60) return `${mins}m ago`;
+    if (mins < 1440) return `${Math.floor(mins/60)}h ago`;
+    return 'offline';
   };
   return (
     <div>
@@ -316,7 +325,7 @@ function RecentSection({ members, onOpen }: { members: ChannelMember[]; onOpen: 
         style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '4px 8px', cursor: 'pointer', userSelect: 'none' }}
       >
         <span style={{ fontSize: 10, fontWeight: 800, color: '#57534e', letterSpacing: '.15em', textTransform: 'uppercase' }}>
-          ◑ Recently — {members.length}
+          ◑ {label} — {members.length}
         </span>
         <svg viewBox="0 0 24 24" fill="none" stroke="#57534e" strokeWidth="2.5" width="12" height="12"
           style={{ transition: 'transform .3s', transform: expanded ? 'rotate(180deg)' : 'rotate(0deg)' }}>
@@ -414,8 +423,8 @@ export function OnlineAvatarCluster() {
   if (!isAuthenticated || !member) return null;
 
   const nowMs  = Date.now();
-  const active = members.filter(m => m.lastSeen && (nowMs - new Date(m.lastSeen).getTime()) < 5 * 60 * 1000);
-  const recent = members.filter(m => m.lastSeen && (nowMs - new Date(m.lastSeen).getTime()) >= 5 * 60 * 1000 && (nowMs - new Date(m.lastSeen).getTime()) < 60 * 60 * 1000);
+  const active  = members.filter(m => m.lastSeen && (nowMs - new Date(m.lastSeen).getTime()) < 5 * 60 * 1000);
+  const offline = members.filter(m => !m.lastSeen || (nowMs - new Date(m.lastSeen).getTime()) >= 5 * 60 * 1000);
   const display = active.slice(0, 3);
   const onlineCount = Math.max(active.length, 1);
   const overflow = onlineCount > 3 ? onlineCount - 3 : 0;
@@ -523,13 +532,13 @@ export function OnlineAvatarCluster() {
               {active.map(m => <MemberRow key={m.email||m.name} m={m} onClick={() => { setFocused(m); openDM(m); }} onProfile={() => openMemberProfile(m)} />)}
             </>
           )}
-          {recent.length > 0 && (
+          {offline.length > 0 && (
             <>
               {active.length > 0 && <div style={{ height: 1, background: 'rgba(255,255,255,.05)', margin: '6px 0' }} />}
-              <RecentSection members={recent} onOpen={(m) => openDM(m)} />
+              <RecentSection members={offline} onOpen={(m) => openDM(m)} label="Offline" />
             </>
           )}
-          {active.length === 0 && recent.length === 0 && (
+          {active.length === 0 && offline.length === 0 && (
             <div style={{ fontSize: 12, color: '#57534e', padding: '8px 10px', textAlign: 'center' }}>Just you for now</div>
           )}
           <div style={{ height: 1, background: 'rgba(255,255,255,.05)', margin: '8px 0 4px' }} />

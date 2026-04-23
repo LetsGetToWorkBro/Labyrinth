@@ -329,21 +329,34 @@ export default function ChatPage() {
     }
     // Auto-open profile from OnlineAvatarCluster / OnlineBubble navigation
     const profileEmail = localStorage.getItem('lbjj_open_profile_email');
-    if (profileEmail) {
+    const profileName  = localStorage.getItem('lbjj_open_profile_name');
+    if (profileEmail || profileName) {
       localStorage.removeItem('lbjj_open_profile_email');
-      // Find the member in onlineMembers or load a stub — open their profile
-      setTimeout(() => {
-        const found = onlineMembers.find(m => m.email === profileEmail || m.name === profileEmail);
+      localStorage.removeItem('lbjj_open_profile_name');
+      const findAndOpen = (list: ChannelMember[]) => {
+        const found = list.find(m =>
+          (profileEmail && (m.email === profileEmail)) ||
+          (profileName  && (m.name  === profileName))
+        );
         if (found) openProfile(found);
-        else {
-          // Load from channel members as fallback
-          chatGetChannelMembers('general').then(list => {
-            const m = list.find(m => m.email === profileEmail);
-            if (m) openProfile(m);
-          }).catch(() => {});
-        }
-      }, 600);
+      };
+      setTimeout(() => {
+        // Try already-loaded members first
+        if (onlineMembers.length > 0) { findAndOpen(onlineMembers); return; }
+        // Fall back to fetching from GAS
+        chatGetChannelMembers('general')
+          .then(findAndOpen)
+          .catch(() => {});
+      }, 400);
     }
+
+    // Also listen for the event (when ChatPage is already open)
+    const profileHandler = (e: Event) => {
+      const m = (e as CustomEvent).detail as ChannelMember;
+      if (m) openProfile(m);
+    };
+    window.addEventListener('open-member-profile', profileHandler);
+    return () => window.removeEventListener('open-member-profile', profileHandler);
   }, []);
 
   // Close members dropdown on outside click
