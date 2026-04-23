@@ -496,6 +496,11 @@
   }
   html, body, #root {
     height: 100%;
+    /* Use dynamic viewport height on supporting browsers so the
+       flex-based app shell + tab bar always fits within the visible area.
+       Falls back to 100% (then 100vh on body) for older browsers. */
+    height: 100vh;
+    height: 100dvh;
     overflow: hidden;
   }
 }
@@ -503,7 +508,8 @@
 /* Mobile app feel */
 .app-shell {
   height: 100%;
-  height: 100dvh;
+  min-height: 100vh;
+  min-height: 100dvh;
   display: flex;
   flex-direction: column;
   max-width: 430px;
@@ -535,7 +541,11 @@
   background: var(--color-surface, #0F0F12);
   border-top: 1px solid var(--color-divider, rgba(255,255,255,0.08));
   padding: 8px 0;
-  padding-bottom: max(8px, env(safe-area-inset-bottom, 8px));
+  /* Fallback for browsers that don't support env() (non-iOS).
+     First declaration is the fallback; second overrides where max() + env() are supported. */
+  padding-bottom: 12px;
+  padding-bottom: max(12px, env(safe-area-inset-bottom, 12px));
+  min-height: 56px;
   flex-shrink: 0;
   z-index: 100;
   position: relative;
