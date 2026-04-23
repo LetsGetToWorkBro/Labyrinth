@@ -530,10 +530,14 @@
   overflow-y: auto;
   overflow-x: hidden;
   -webkit-overflow-scrolling: touch;
-  padding-bottom: env(safe-area-inset-bottom, 0px);
+  /* No extra safe-area padding here: the .tab-bar sibling already absorbs the
+     bottom inset via its own padding-bottom. Adding it here would double up. */
 }
 
-/* Bottom tab bar */
+/* Bottom tab bar
+   Stays at the bottom of the .app-shell flex column. Its padding-bottom
+   absorbs the iOS home-indicator safe area so icons never sit under it.
+   viewport-fit=cover in <meta> is required for env() to report non-zero on iOS. */
 .tab-bar {
   display: flex;
   align-items: center;
@@ -541,10 +545,11 @@
   background: var(--color-surface, #0F0F12);
   border-top: 1px solid var(--color-divider, rgba(255,255,255,0.08));
   padding: 8px 0;
-  /* Fallback for browsers that don't support env() (non-iOS).
-     First declaration is the fallback; second overrides where max() + env() are supported. */
+  /* Fallback for browsers without env() support. */
   padding-bottom: 12px;
-  padding-bottom: max(12px, env(safe-area-inset-bottom, 12px));
+  /* Honour the home-indicator inset on iOS (~34px on modern iPhones).
+     Add +8px on top of the inset so icons have breathing room above the indicator. */
+  padding-bottom: max(12px, calc(env(safe-area-inset-bottom, 0px) + 8px));
   min-height: 56px;
   flex-shrink: 0;
   z-index: 100;
