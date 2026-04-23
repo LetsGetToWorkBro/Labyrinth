@@ -52,6 +52,7 @@ import { Redirect } from "wouter";
 import { gasCall, cachedGasCall, beltSavePromotion, updatePresence } from "@/lib/api";
 import { getBeltColor } from "@/lib/constants";
 import { ProfileRing } from "@/components/ProfileRing";
+import { ParagonRing } from "@/components/ParagonRing";
 import { TopHeader } from "@/components/TopHeader";
 import { ProfileTray } from "@/components/ProfileTray";
 import { getRingTier, getActualLevel, getLevelFromXP } from "@/lib/xp";
@@ -477,30 +478,28 @@ function AccountPage() {
   return (
     <div className="app-content">
       <div className="px-5 pt-4 pb-3" style={{ paddingTop: "max(16px, env(safe-area-inset-top, 16px))", display: "flex", alignItems: "center", gap: 12 }}>
-        <button onClick={() => navigate("/more")} style={{ background: "none", border: "none", padding: "4px 0", cursor: "pointer", color: "#C8A24C", fontWeight: 600, fontSize: 14 }}>
+        <button onClick={() => navigate("/")} style={{ background: "none", border: "none", padding: "4px 0", cursor: "pointer", color: "#C8A24C", fontWeight: 600, fontSize: 14 }}>
           &larr; Back
         </button>
         <h1 className="text-xl font-bold tracking-tight" style={{ color: "#F0F0F0", flex: 1 }}>My Account</h1>
       </div>
 
       <div className="px-5 pb-6 space-y-4">
-        {/* Avatar with photo support + ProfileRing */}
-        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", paddingTop: 8, paddingBottom: 4 }}>
+        {/* Identity block — ParagonRing + PFP + LV */}
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", paddingTop: 12, paddingBottom: 8 }}>
           {(() => {
-            const memberXP = member?.totalPoints || (member as any)?.totalPoints || 0;
-            const memberLevel = getActualLevel(memberXP);
-            const ringTier = getRingTier(memberLevel);
+            const liveXP = (() => { try { const s = JSON.parse(localStorage.getItem('lbjj_game_stats_v2') || '{}'); return Math.max(s.xp || 0, s.totalXP || 0, member?.totalPoints || (member as any)?.totalPoints || 0); } catch { return member?.totalPoints || 0; } })();
+            const memberLevel = getActualLevel(liveXP);
             return (
-              <ProfileRing tier={ringTier} size={88}>
+              <ParagonRing level={memberLevel} size={120}>
                 <div
                   onClick={() => fileInputRef.current?.click()}
                   style={{
-                    width: 88, height: 88, borderRadius: "50%", overflow: "hidden",
-                    background: profilePic ? "none" : beltColor,
+                    width: "100%", height: "100%", borderRadius: "50%", overflow: "hidden",
+                    background: profilePic ? "#000" : beltColor,
                     color: ["white","yellow","grey"].includes((member?.belt||"").toLowerCase()) ? "#0A0A0A" : "#fff",
-                    fontSize: 30, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center",
-                    boxShadow: `0 0 0 4px ${beltColor}30, 0 0 30px ${beltColor}20`,
-                    position: "relative", cursor: "pointer",
+                    fontSize: 38, fontWeight: 800, display: "flex", alignItems: "center", justifyContent: "center",
+                    cursor: "pointer",
                   }}
                 >
                   {profilePic ? (
@@ -509,7 +508,18 @@ function AccountPage() {
                     initials
                   )}
                 </div>
-              </ProfileRing>
+              </ParagonRing>
+            );
+          })()}
+          {/* Level display — LV 20 style, bold prominent */}
+          {(() => {
+            const liveXP = (() => { try { const s = JSON.parse(localStorage.getItem('lbjj_game_stats_v2') || '{}'); return Math.max(s.xp || 0, s.totalXP || 0, member?.totalPoints || (member as any)?.totalPoints || 0); } catch { return member?.totalPoints || 0; } })();
+            const memberLevel = getActualLevel(liveXP);
+            return (
+              <div style={{ marginTop: 18, display: 'flex', alignItems: 'baseline', gap: 6 }}>
+                <span style={{ fontSize: 12, fontWeight: 800, color: '#C8A24C', letterSpacing: '0.14em', textTransform: 'uppercase' }}>LV</span>
+                <span style={{ fontSize: 34, fontWeight: 900, color: '#F0F0F0', letterSpacing: '-0.02em', fontVariantNumeric: 'tabular-nums', lineHeight: 1 }}>{memberLevel}</span>
+              </div>
             );
           })()}
           {/* Change Photo button */}
@@ -519,7 +529,6 @@ function AccountPage() {
           >
             Change Photo
           </button>
-          {/* Future enhancement: upload to GAS/Drive */}
           <input
             ref={fileInputRef}
             type="file"
@@ -528,16 +537,6 @@ function AccountPage() {
             style={{ display: "none" }}
           />
         </div>
-
-        {/* XP Progress Bar — reads from live cache so it stays in sync */}
-        {(() => {
-          const liveXP = (() => { try { const s = JSON.parse(localStorage.getItem('lbjj_game_stats_v2') || '{}'); return Math.max(s.xp || 0, s.totalXP || 0, member?.totalPoints || (member as any)?.totalPoints || 0); } catch { return member?.totalPoints || 0; } })();
-          return liveXP > 0 ? (
-            <div style={{ marginTop: 12 }}>
-              <XPBar xp={liveXP} />
-            </div>
-          ) : null;
-        })()}
 
         {editing ? (
           <>
@@ -912,6 +911,36 @@ function AccountPage() {
             Sign Out
           </button>
         </div>
+
+        {/* Request Account Deletion — subtle muted red text button, intentionally unprominent */}
+        <div style={{ marginTop: 18, paddingTop: 12, display: 'flex', justifyContent: 'center' }}>
+          <button
+            type="button"
+            onClick={() => {
+              const email = member?.email || '';
+              window.open(
+                `mailto:info@labyrinth.vision?subject=Account%20Deletion%20Request&body=Please%20delete%20my%20account%20associated%20with%3A%20${encodeURIComponent(email)}`,
+                '_blank'
+              );
+            }}
+            style={{
+              background: 'none',
+              border: 'none',
+              color: 'rgba(224,85,85,0.55)',
+              fontSize: 11,
+              fontWeight: 500,
+              cursor: 'pointer',
+              padding: '6px 10px',
+              textDecoration: 'underline',
+              textDecorationColor: 'rgba(224,85,85,0.25)',
+              textUnderlineOffset: 3,
+              letterSpacing: '0.02em',
+            }}
+            aria-label="Request account deletion"
+          >
+            Request account deletion
+          </button>
+        </div>
       </div>
     </div>
   );
@@ -1133,33 +1162,6 @@ function MorePage() {
               <div><span style={{ color: '#888' }}>Hours:</span> Check the schedule tab for class times</div>
             </div>
           </div>
-        </div>
-        <div style={{ marginTop: 24, paddingTop: 16, borderTop: '1px solid #1A1A1A' }}>
-          <button
-            type="button"
-            onClick={() => {
-              const email = member?.email || '';
-              window.open(
-                `mailto:info@labyrinth.vision?subject=Account%20Deletion%20Request&body=Please%20delete%20my%20account%20associated%20with%3A%20${encodeURIComponent(email)}`,
-                '_blank'
-              );
-            }}
-            style={{
-              background: 'rgba(224,85,85,0.06)',
-              border: '1px solid rgba(224,85,85,0.2)',
-              borderRadius: 12,
-              color: '#E05555',
-              fontSize: 13,
-              fontWeight: 600,
-              cursor: 'pointer',
-              padding: '11px 16px',
-              textAlign: 'center' as const,
-              width: '100%',
-              display: 'block',
-            }}
-          >
-            Request Account Deletion
-          </button>
         </div>
         <button onClick={() => setShowLogoutConfirm(true)}
           className="w-full mt-4 py-3 rounded-xl text-sm font-medium transition-all active:scale-[0.98]"

@@ -1931,5 +1931,151 @@ html[data-nav="tab"] ::view-transition-new(root) {
 }
 /* ===== END HomePage ===== */
 
+/* ===== Widget Rearrange (iPhone-style edit mode) ===== */
+@keyframes widgetWiggle {
+  0%, 100% { transform: rotate(0deg); }
+  25%      { transform: rotate(-1.2deg); }
+  75%      { transform: rotate(1.2deg); }
+}
+@keyframes widgetWiggleAlt {
+  0%, 100% { transform: rotate(0deg); }
+  25%      { transform: rotate(1deg); }
+  75%      { transform: rotate(-1deg); }
+}
+.widget-editing {
+  transform-origin: 50% 50%;
+  animation: widgetWiggle 0.32s ease-in-out infinite;
+  will-change: transform;
+}
+.widget-editing:nth-child(even) {
+  animation: widgetWiggleAlt 0.32s ease-in-out infinite;
+}
+.widget-rearrange-wrap {
+  position: relative;
+  transition: opacity 200ms ease, transform 180ms ease;
+}
+.widget-rearrange-wrap.is-dragging {
+  animation: none !important;
+  opacity: 0.55;
+  transform: scale(0.98);
+}
+.widget-rearrange-wrap.drop-above::before,
+.widget-rearrange-wrap.drop-below::after {
+  content: '';
+  display: block;
+  position: absolute;
+  left: 20px; right: 20px;
+  height: 3px;
+  border-radius: 2px;
+  background: linear-gradient(90deg, transparent, #C8A24C 25%, #e8b84b 50%, #C8A24C 75%, transparent);
+  box-shadow: 0 0 12px rgba(200,162,76,0.6);
+  pointer-events: none;
+  z-index: 20;
+}
+.widget-rearrange-wrap.drop-above::before { top: -4px; }
+.widget-rearrange-wrap.drop-below::after { bottom: -4px; }
+.widget-hide-badge {
+  position: absolute;
+  top: -6px; left: 6px;
+  width: 24px; height: 24px;
+  border-radius: 50%;
+  background: #E05252;
+  color: #fff;
+  border: 2px solid #0A0A0A;
+  display: flex; align-items: center; justify-content: center;
+  font-weight: 800; font-size: 13px;
+  cursor: pointer;
+  z-index: 15;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.06);
+  animation: widgetBadgePop 220ms cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+@keyframes widgetBadgePop {
+  0%   { transform: scale(0); opacity: 0; }
+  60%  { transform: scale(1.15); opacity: 1; }
+  100% { transform: scale(1); opacity: 1; }
+}
+.widget-edit-backdrop {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,0.35);
+  backdrop-filter: blur(3px);
+  -webkit-backdrop-filter: blur(3px);
+  z-index: 5;
+  pointer-events: none;
+  animation: fadeInOverlay 220ms ease;
+}
+.widget-done-btn {
+  position: fixed;
+  top: max(14px, env(safe-area-inset-top, 14px));
+  right: 14px;
+  padding: 9px 18px;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #e8b84b 0%, #C8A24C 100%);
+  color: #0A0A0A;
+  font-weight: 800;
+  font-size: 13px;
+  letter-spacing: 0.02em;
+  border: none;
+  cursor: pointer;
+  z-index: 1100;
+  box-shadow: 0 6px 16px rgba(200,162,76,0.35), 0 0 0 1px rgba(255,255,255,0.15) inset;
+  animation: widgetBadgePop 260ms cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.widget-done-btn:active { transform: scale(0.97); }
+.widget-customize-btn {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 32px; height: 32px;
+  border-radius: 10px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.08);
+  color: #888;
+  cursor: pointer;
+  transition: background 150ms ease, color 150ms ease, border-color 150ms ease;
+}
+.widget-customize-btn:hover {
+  background: rgba(200,162,76,0.08);
+  color: #C8A24C;
+  border-color: rgba(200,162,76,0.25);
+}
+.widget-hidden-tray {
+  margin: 12px 20px 20px;
+  padding: 14px;
+  border-radius: 16px;
+  background: rgba(255,255,255,0.02);
+  border: 1px dashed rgba(255,255,255,0.12);
+  animation: fadeInOverlay 220ms ease;
+}
+.widget-hidden-tray-title {
+  font-size: 10px; font-weight: 800; color: #888;
+  letter-spacing: 0.14em; text-transform: uppercase;
+  margin-bottom: 10px;
+}
+.widget-hidden-chip {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 8px 12px 8px 10px;
+  margin: 4px;
+  border-radius: 999px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.08);
+  color: #EAEAEA;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 150ms ease, border-color 150ms ease;
+}
+.widget-hidden-chip:hover {
+  background: rgba(200,162,76,0.08);
+  border-color: rgba(200,162,76,0.25);
+}
+.widget-hidden-chip .plus-orb {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 18px; height: 18px;
+  border-radius: 50%;
+  background: #C8A24C;
+  color: #0A0A0A;
+  font-weight: 900;
+  font-size: 13px;
+  line-height: 1;
+}
+
 /* ===== v2.2 — force CSS rebuild ===== */
-:root { --lbj-build: 2; }
+:root { --lbj-build: 3; }

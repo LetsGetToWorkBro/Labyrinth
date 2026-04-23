@@ -21,6 +21,7 @@ import { LiveStreamBanner } from "@/components/LiveStreamBanner";
 import { AnnouncementCard } from "@/components/AnnouncementCard";
 import { OnlineAvatarCluster } from "@/components/OnlineBubble";
 import { TournamentWidget } from "@/components/TournamentWidget";
+import { useWidgetLayout, WidgetRearrangeContainer, WidgetSlot, WidgetCustomizeButton, type WidgetDef } from "@/components/WidgetRearrange";
 import { getLevelFromXP, getActualLevel, XP_LEVELS } from "@/lib/xp";
 import {
   CreditCard, FileText, ChevronRight, ChevronDown, LogOut,
@@ -31,7 +32,7 @@ import {
   memberGetCards, memberSetDefaultCard, memberRemoveCard,
   memberAddCard, memberCreateSetupLink,
 } from "@/lib/api";
-import React, { useState, useEffect, useCallback, useRef } from "react";
+import React, { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { createPortal } from "react-dom";
 import { soundSystem } from '@/lib/sounds';
 import { StatSkeleton, ListSkeleton } from "@/components/LoadingSkeleton";
@@ -1722,6 +1723,262 @@ export default function HomePage() {
   // Weekly multiplier state
   const weekMultiplier = getWeekMultiplier(trainedCount);
 
+  // ══════════════════════════════════════════════════════════
+  // Widget rearrange — iPhone-style edit mode
+  // ══════════════════════════════════════════════════════════
+  const widgetDefs = useMemo<WidgetDef[]>(() => {
+    const defs: WidgetDef[] = [];
+    if (tournamentData && daysUntilTournament !== null && daysUntilTournament <= 30 && !nextTournament) {
+      defs.push({
+        id: 'tournament_near',
+        label: 'Tournament (near)',
+        available: true,
+        render: () => (
+          <div className="mx-5 mb-3">
+            <TournamentWidget
+              name={tournamentData.name}
+              date={tournamentData.date}
+              location={tournamentData.location}
+              link={tournamentData.link}
+            />
+          </div>
+        ),
+      });
+    }
+    if (trainingSeasonData && nextMilestoneData) {
+      defs.push({
+        id: 'season',
+        label: 'Season',
+        available: true,
+        render: () => (
+          <SeasonMilestoneWidgets
+            season={{
+              thisMonthClasses: trainingSeasonData.thisMonthClasses,
+              goalClasses: trainingSeasonData.goalClasses,
+              progress: trainingSeasonData.progress,
+              monthName: trainingSeasonData.monthName,
+            }}
+            milestone={{
+              label: nextMilestoneData.label,
+              xpNeeded: Math.max(0, nextMilestoneData.need),
+              ready: nextMilestoneData.need <= 0,
+            }}
+            currentLevel={getActualLevel(memberXP)}
+            onOpenSeason={() => { window.location.hash = '#/season'; }}
+            onOpenMilestone={() => setShowMilestoneModal(true)}
+          />
+        ),
+      });
+    }
+    if (nextClass) {
+      defs.push({
+        id: 'checkin',
+        label: 'Check-in',
+        available: true,
+        render: () => (
+          <CheckInWidget
+            nextClass={nextClass}
+            classesToday={classesToday}
+            timeUntilClass={timeUntilClass}
+            checkinPhase={checkinPhase}
+            alreadyCheckedIn={checkedInClasses.includes(nextClass.name || '')}
+            isGameDay={isGameDay}
+            onCheckIn={() => handleHomeCheckIn(nextClass)}
+            onOpenSchedule={() => { window.location.hash = '#/schedule'; }}
+          />
+        ),
+      });
+    }
+    defs.push({
+      id: 'stats_row',
+      label: 'Streak & Classes',
+      available: true,
+      render: () => (
+        <StatsCards
+          streak={effectiveStreak}
+          totalClasses={totalClasses}
+          classesToday={classesToday}
+          comboMultiplier={comboMultiplier}
+          streakFreezeActive={streakFreezeActive}
+        />
+      ),
+    });
+    defs.push({
+      id: 'streak',
+      label: 'Streak Multiplier',
+      available: true,
+      render: () => (
+        <StreakWidget
+          dailyStreakCount={dailyStreakCount}
+          weekDots={weekDots}
+          trainedCount={trainedCount}
+          comboMultiplier={comboMultiplier}
+          onOpenInfo={() => setShowStreakInfo(true)}
+          onCheckIn={() => handleHomeCheckIn(nextClass)}
+        />
+      ),
+    });
+    if (member) {
+      defs.push({
+        id: 'xp',
+        label: 'XP Progress',
+        available: true,
+        render: () => (
+          <XPWidget
+            xp={memberXP}
+            memberName={member.name}
+            onOpenInfo={() => setShowRankInfo(true)}
+          />
+        ),
+      });
+    }
+    if (leaderboard.length > 0) {
+      defs.push({
+        id: 'leaderboard',
+        label: 'Leaderboard',
+        available: true,
+        render: () => renderLeaderboardWidget(),
+      });
+    }
+    if (nextTournament && tournamentDaysUntil <= 60) {
+      defs.push({
+        id: 'tournament_upcoming',
+        label: 'Tournament Countdown',
+        available: true,
+        render: () => (
+          <div className="mx-5 mb-4 reveal">
+            <TournamentWidget
+              name={nextTournament.name}
+              date={nextTournament.date}
+              location={nextTournament.location}
+              link={nextTournament.link}
+            />
+          </div>
+        ),
+      });
+    }
+    return defs;
+    // We deliberately include the dynamic values these renderers close over.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    tournamentData, daysUntilTournament, nextTournament, tournamentDaysUntil,
+    trainingSeasonData, nextMilestoneData, memberXP,
+    nextClass, classesToday, timeUntilClass, checkinPhase, checkedInClasses, isGameDay,
+    effectiveStreak, totalClasses, comboMultiplier, streakFreezeActive,
+    dailyStreakCount, weekDots, trainedCount,
+    member?.name, member?.email,
+    leaderboard, prevPositions,
+  ]);
+
+  const { editMode, setEditMode, visibleDefs, hiddenDefs, hide, show, moveBefore } = useWidgetLayout(widgetDefs);
+
+  // Leaderboard widget renderer — extracted so we can keep the big JSX in one place
+  // and reuse it inside the reorderable list.
+  function renderLeaderboardWidget() {
+    return (
+      <div className="mx-5 mb-4 stagger-child">
+        <div
+          style={{
+            background: 'linear-gradient(145deg,#0a0908 0%,#000 100%)',
+            border: '1px solid rgba(255,255,255,0.06)',
+            borderRadius: 24,
+            overflow: 'hidden',
+            cursor: 'pointer',
+            boxShadow: '0 24px 48px -12px rgba(0,0,0,1)',
+            position: 'relative',
+          }}
+          onClick={() => { if (!editMode) window.location.hash = '#/leaderboard'; }}
+        >
+          <div style={{ position:'absolute', top:0, left:'50%', transform:'translateX(-50%)', width:'100%', height:60, background:'radial-gradient(ellipse at top, rgba(232,175,52,0.1) 0%, transparent 70%)', opacity:0.6, pointerEvents:'none' }} />
+          <div style={{ padding:'16px 20px 12px', display:'flex', justifyContent:'space-between', alignItems:'center', borderBottom:'1px solid rgba(255,255,255,0.04)', position:'relative', zIndex:2 }}>
+            <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#e8af34" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+              <span style={{ fontFamily:'var(--font-display,system-ui)', fontSize:13, fontWeight:800, color:'#e8af34', letterSpacing:'0.1em', textTransform:'uppercase' }}>Leaderboard</span>
+            </div>
+            <div style={{ fontSize:12, fontWeight:700, color:'#a8a29e', display:'flex', alignItems:'center', gap:4 }}>
+              View All
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+            </div>
+          </div>
+          <div style={{ position:'relative', zIndex:2 }}>
+            {(() => {
+              const myIdx = leaderboard.findIndex(e => e.isMe || e.name === member?.name);
+              let startIdx = 0;
+              if (myIdx > 1) startIdx = Math.min(myIdx - 1, leaderboard.length - 3);
+              return leaderboard.slice(startIdx, startIdx + 3);
+            })().map((entry, i) => {
+              const rank = leaderboard.findIndex(e => (e.name && e.name === entry.name)) + 1 || (i + 1);
+              const entryXP = (entry.totalPoints || 0) || ((entry.classCount || 0) * 10);
+              const entryLevel = getActualLevel(entryXP);
+              const isMe = entry.name === member?.name;
+              const rankColors = [
+                { name:'#fde047', score:'#fde047', rank:'#fde047', scoreSz:26 },
+                { name:'#fca5a5', score:'#fca5a5', rank:'#fca5a5', scoreSz:24 },
+                { name:'#d8b4fe', score:'#d8b4fe', rank:'#d8b4fe', scoreSz:22 },
+                { name:'#bae6fd', score:'#bae6fd', rank:'#bae6fd', scoreSz:20 },
+                { name:'#e8af34', score:'#e8af34', rank:'#e8af34', scoreSz:20 },
+              ];
+              const rc = rank <= 5 ? rankColors[rank - 1] : { name:'#a8a29e', score:'#f5f5f4', rank:'#57534e', scoreSz:18 };
+              const beltKey = (entry.belt || 'white').toLowerCase();
+              const beltTints: Record<string, string> = { white:'#E0E0E0', blue:'#3B82F6', purple:'#8B5CF6', brown:'#92400E', black:'#2A2A2A', grey:'#9CA3AF', yellow:'#EAB308', orange:'#F97316', green:'#22C55E' };
+              const beltTint = beltTints[beltKey] || '#888';
+              const prevPos = entry.name ? prevPositions[entry.name] : undefined;
+              const currentPos = i + 1;
+              const rankDelta = prevPos !== undefined && prevPos !== currentPos ? prevPos - currentPos : null;
+              return (
+                <div key={i} style={{
+                  display:'flex', alignItems:'center', gap:0,
+                  padding:'16px 20px',
+                  borderBottom: i < 2 ? '1px solid rgba(255,255,255,0.03)' : 'none',
+                  background: isMe ? 'rgba(232,175,52,0.04)' : 'transparent',
+                  transition:'background 0.2s',
+                }}>
+                  <div style={{ width:24, textAlign:'center', flexShrink:0, marginRight:4 }}>
+                    <div style={{ fontFamily:'var(--font-display,system-ui)', fontSize:13, fontWeight:900, color: rc.rank, lineHeight:1 }}>{rank}</div>
+                    {rankDelta !== null && (
+                      <div style={{ fontSize:8, fontWeight:700, color: rankDelta > 0 ? '#4CAF80' : '#E05555', lineHeight:1, marginTop:2 }}>
+                        {rankDelta > 0 ? `▲${rankDelta}` : `▼${Math.abs(rankDelta)}`}
+                      </div>
+                    )}
+                  </div>
+                  <div style={{ margin:'0 10px', flexShrink:0 }}>
+                    <ParagonRing level={entryLevel} size={40} showOrbit={entryLevel >= 6}>
+                      {entry.profilePic
+                        ? <img src={entry.profilePic} style={{ width:'100%', height:'100%', objectFit:'cover', borderRadius:'50%', display:'block' }} alt="" />
+                        : <div style={{ width:'100%', height:'100%', borderRadius:'50%', background: beltTint+'22', display:'flex', alignItems:'center', justifyContent:'center', fontSize:14, fontWeight:800, color: beltTint }}>
+                            {(entry.name || '?')[0].toUpperCase()}
+                          </div>
+                      }
+                    </ParagonRing>
+                  </div>
+                  <div style={{ flex:1, minWidth:0 }}>
+                    <div style={{ fontSize:15, fontWeight:700, color: rc.name, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', lineHeight:1.1, letterSpacing:'-0.01em', textShadow: rank <= 3 ? `0 0 12px ${rc.name}60` : 'none' }}>
+                      {entry.name}{isMe ? ' (You)' : ''}
+                    </div>
+                    <div style={{ display:'flex', alignItems:'center', gap:5, marginTop:3 }}>
+                      <div style={{ width:20, height:6, borderRadius:2, background: beltTint, border:'1px solid rgba(255,255,255,0.1)', flexShrink:0, position:'relative', overflow:'hidden' }}>
+                        <div style={{ position:'absolute', right:0, top:0, bottom:0, width:4, background:'rgba(0,0,0,0.5)' }} />
+                      </div>
+                      <span style={{ fontFamily:'var(--font-display,system-ui)', fontSize:10, fontWeight:800, color:'#57534e', textTransform:'uppercase', letterSpacing:'0.08em' }}>
+                        {(entry.belt || 'white').charAt(0).toUpperCase() + (entry.belt || 'white').slice(1)} Belt
+                      </span>
+                    </div>
+                  </div>
+                  <div style={{ textAlign:'right', flexShrink:0 }}>
+                    <div style={{ fontSize:9, fontWeight:800, color:'#57534e', textTransform:'uppercase', letterSpacing:'0.1em', lineHeight:1, marginBottom:2 }}>LVL</div>
+                    <div style={{ fontFamily:'var(--font-display,system-ui)', fontSize:rc.scoreSz, fontWeight:900, color: rc.score, lineHeight:1, fontVariantNumeric:'tabular-nums', textShadow: rank <= 3 ? `0 0 12px ${rc.score}60` : 'none' }}>
+                      {entryLevel > 0 ? entryLevel : (entry.classCount || entry.score || 0)}
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div
       ref={scrollContainerRef}
@@ -1788,6 +2045,7 @@ export default function HomePage() {
         right={
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <OnlineAvatarCluster />
+            <WidgetCustomizeButton onClick={() => setEditMode(true)} />
             <button onClick={logout} className="p-2 rounded-lg transition-colors" style={{ color: "#666" }} data-testid="button-logout" aria-label="Sign out">
               <LogOut size={18} />
             </button>
@@ -1813,230 +2071,30 @@ export default function HomePage() {
         </div>
       )}
 
-      {/* M5: Tournament Countdown (near-term, cached) */}
-      {tournamentData && daysUntilTournament !== null && daysUntilTournament <= 30 && !nextTournament && (
-        <div className="mx-5 mb-3">
-          <TournamentWidget
-            name={tournamentData.name}
-            date={tournamentData.date}
-            location={tournamentData.location}
-            link={tournamentData.link}
-          />
-        </div>
-      )}
-
       {/* ════════════════════════════════════════════════════
-          SEASON + MILESTONE WIDGETS
+          REARRANGEABLE WIDGETS — long-press 3s or customize button
           ════════════════════════════════════════════════════ */}
-      {trainingSeasonData && nextMilestoneData && (
-        <SeasonMilestoneWidgets
-          season={{
-            thisMonthClasses: trainingSeasonData.thisMonthClasses,
-            goalClasses: trainingSeasonData.goalClasses,
-            progress: trainingSeasonData.progress,
-            monthName: trainingSeasonData.monthName,
-          }}
-          milestone={{
-            label: nextMilestoneData.label,
-            xpNeeded: Math.max(0, nextMilestoneData.need),
-            ready: nextMilestoneData.need <= 0,
-          }}
-          currentLevel={getActualLevel(memberXP)}
-          onOpenSeason={() => { window.location.hash = '#/season'; }}
-          onOpenMilestone={() => setShowMilestoneModal(true)}
-        />
-      )}
-
-      {/* ════════════════════════════════════════════════════
-          NEXT CLASS / GAME DAY CARD
-          ════════════════════════════════════════════════════ */}
-      {nextClass && (
-        <CheckInWidget
-          nextClass={nextClass}
-          classesToday={classesToday}
-          timeUntilClass={timeUntilClass}
-          checkinPhase={checkinPhase}
-          alreadyCheckedIn={checkedInClasses.includes(nextClass.name || '')}
-          isGameDay={isGameDay}
-          onCheckIn={() => handleHomeCheckIn(nextClass)}
-          onOpenSchedule={() => { window.location.hash = '#/schedule'; }}
-        />
-      )}
-
-      {/* ════════════════════════════════════════════════════
-          STATS ROW — Streak + Total classes
-          ════════════════════════════════════════════════════ */}
-      <StatsCards
-        streak={effectiveStreak}
-        totalClasses={totalClasses}
-        classesToday={classesToday}
-        comboMultiplier={comboMultiplier}
-        streakFreezeActive={streakFreezeActive}
-      />
-
-      {/* ════════════════════════════════════════════════════
-          WEEKLY XP MULTIPLIER WIDGET
-          ════════════════════════════════════════════════════ */}
-      <StreakWidget
-        dailyStreakCount={dailyStreakCount}
-        weekDots={weekDots}
-        trainedCount={trainedCount}
-        comboMultiplier={comboMultiplier}
-        onOpenInfo={() => setShowStreakInfo(true)}
-        onCheckIn={() => handleHomeCheckIn(nextClass)}
-      />
-
-      {/* ════════════════════════════════════════════════════
-          XP PROGRESS WIDGET
-          ════════════════════════════════════════════════════ */}
-      {member && (
-        <XPWidget
-          xp={memberXP}
-          memberName={member.name}
-          onOpenInfo={() => setShowRankInfo(true)}
-        />
-      )}
-
-      {/* ════════════════════════════════════════════════════
-          SOCIAL PRESSURE STRIP — Gym activity + Rival
-          ════════════════════════════════════════════════════ */}
-      {leaderboard.length > 0 && (
-        <div className="mx-5 mb-4 stagger-child">
-          <div
-            style={{
-              background: 'linear-gradient(145deg,#0a0908 0%,#000 100%)',
-              border: '1px solid rgba(255,255,255,0.06)',
-              borderRadius: 24,
-              overflow: 'hidden',
-              cursor: 'pointer',
-              boxShadow: '0 24px 48px -12px rgba(0,0,0,1)',
-              position: 'relative',
-            }}
-            onClick={() => { window.location.hash = '#/leaderboard'; }}
+      <WidgetRearrangeContainer
+        editMode={editMode}
+        onEnterEdit={() => setEditMode(true)}
+        onExitEdit={() => setEditMode(false)}
+        hiddenDefs={hiddenDefs}
+        onShow={show}
+      >
+        {visibleDefs.map(def => (
+          <WidgetSlot
+            key={def.id}
+            id={def.id}
+            label={def.label}
+            editMode={editMode}
+            onHide={hide}
+            onDropOn={moveBefore}
           >
-            {/* Top glow */}
-            <div style={{ position:'absolute', top:0, left:'50%', transform:'translateX(-50%)', width:'100%', height:60, background:'radial-gradient(ellipse at top, rgba(232,175,52,0.1) 0%, transparent 70%)', opacity:0.6, pointerEvents:'none' }} />
+            {def.render()}
+          </WidgetSlot>
+        ))}
+      </WidgetRearrangeContainer>
 
-            {/* Header */}
-            <div style={{ padding:'16px 20px 12px', display:'flex', justifyContent:'space-between', alignItems:'center', borderBottom:'1px solid rgba(255,255,255,0.04)', position:'relative', zIndex:2 }}>
-              <div style={{ display:'flex', alignItems:'center', gap:8 }}>
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#e8af34" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
-                <span style={{ fontFamily:'var(--font-display,system-ui)', fontSize:13, fontWeight:800, color:'#e8af34', letterSpacing:'0.1em', textTransform:'uppercase' }}>Leaderboard</span>
-              </div>
-              <div style={{ fontSize:12, fontWeight:700, color:'#a8a29e', display:'flex', alignItems:'center', gap:4 }}>
-                View All
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
-              </div>
-            </div>
-
-            {/* Rows */}
-            <div style={{ position:'relative', zIndex:2 }}>
-              {(() => {
-                // Show 3 entries centered on the current user — person above, user, person below.
-                // Falls back to top 3 if user isn't found or is already in top 3.
-                const myIdx = leaderboard.findIndex(e => e.isMe || e.name === member?.name);
-                let startIdx = 0;
-                if (myIdx > 1) {
-                  // User is below top 2 — center them
-                  startIdx = Math.min(myIdx - 1, leaderboard.length - 3);
-                }
-                return leaderboard.slice(startIdx, startIdx + 3);
-              })().map((entry, i, arr) => {
-                // Compute the true rank from the full leaderboard for display
-                const rank = leaderboard.findIndex(e => (e.name && e.name === entry.name)) + 1 || (i + 1);
-                const entryXP = (entry.totalPoints || 0) || ((entry.classCount || 0) * 10);
-                const entryLevel = getActualLevel(entryXP);
-                const isMe = entry.name === member?.name;
-
-                // Rank color system from HTML design
-                const rankColors = [
-                  { name:'#fde047', score:'#fde047', rank:'#fde047', scoreSz:26 },  // apex gold
-                  { name:'#fca5a5', score:'#fca5a5', rank:'#fca5a5', scoreSz:24 },  // blood pink
-                  { name:'#d8b4fe', score:'#d8b4fe', rank:'#d8b4fe', scoreSz:22 },  // void purple
-                  { name:'#bae6fd', score:'#bae6fd', rank:'#bae6fd', scoreSz:20 },  // frost blue
-                  { name:'#e8af34', score:'#e8af34', rank:'#e8af34', scoreSz:20 },  // ember gold
-                ];
-                const rc = rank <= 5 ? rankColors[rank - 1] : { name:'#a8a29e', score:'#f5f5f4', rank:'#57534e', scoreSz:18 };
-                const beltKey = (entry.belt || 'white').toLowerCase();
-                const beltTints: Record<string, string> = { white:'#E0E0E0', blue:'#3B82F6', purple:'#8B5CF6', brown:'#92400E', black:'#2A2A2A', grey:'#9CA3AF', yellow:'#EAB308', orange:'#F97316', green:'#22C55E' };
-                const beltTint = beltTints[beltKey] || '#888';
-                const prevPos = entry.name ? prevPositions[entry.name] : undefined;
-                const currentPos = i + 1;
-                const rankDelta = prevPos !== undefined && prevPos !== currentPos ? prevPos - currentPos : null;
-
-                return (
-                  <div key={i} style={{
-                    display:'flex', alignItems:'center', gap:0,
-                    padding:'16px 20px',
-                    borderBottom: i < 2 ? '1px solid rgba(255,255,255,0.03)' : 'none',
-                    background: isMe ? 'rgba(232,175,52,0.04)' : 'transparent',
-                    transition:'background 0.2s',
-                  }}>
-                    {/* Rank */}
-                    <div style={{ width:24, textAlign:'center', flexShrink:0, marginRight:4 }}>
-                      <div style={{ fontFamily:'var(--font-display,system-ui)', fontSize:13, fontWeight:900, color: rc.rank, lineHeight:1 }}>{rank}</div>
-                      {rankDelta !== null && (
-                        <div style={{ fontSize:8, fontWeight:700, color: rankDelta > 0 ? '#4CAF80' : '#E05555', lineHeight:1, marginTop:2 }}>
-                          {rankDelta > 0 ? `▲${rankDelta}` : `▼${Math.abs(rankDelta)}`}
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Paragon avatar */}
-                    <div style={{ margin:'0 10px', flexShrink:0 }}>
-                      <ParagonRing level={entryLevel} size={40} showOrbit={entryLevel >= 6}>
-                        {entry.profilePic
-                          ? <img src={entry.profilePic} style={{ width:'100%', height:'100%', objectFit:'cover', borderRadius:'50%', display:'block' }} alt="" />
-                          : <div style={{ width:'100%', height:'100%', borderRadius:'50%', background: beltTint+'22', display:'flex', alignItems:'center', justifyContent:'center', fontSize:14, fontWeight:800, color: beltTint }}>
-                              {(entry.name || '?')[0].toUpperCase()}
-                            </div>
-                        }
-                      </ParagonRing>
-                    </div>
-
-                    {/* Name + belt */}
-                    <div style={{ flex:1, minWidth:0 }}>
-                      <div style={{ fontSize:15, fontWeight:700, color: rc.name, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', lineHeight:1.1, letterSpacing:'-0.01em', textShadow: rank <= 3 ? `0 0 12px ${rc.name}60` : 'none' }}>
-                        {entry.name}{isMe ? ' (You)' : ''}
-                      </div>
-                      <div style={{ display:'flex', alignItems:'center', gap:5, marginTop:3 }}>
-                        <div style={{ width:20, height:6, borderRadius:2, background: beltTint, border:'1px solid rgba(255,255,255,0.1)', flexShrink:0, position:'relative', overflow:'hidden' }}>
-                          <div style={{ position:'absolute', right:0, top:0, bottom:0, width:4, background:'rgba(0,0,0,0.5)' }} />
-                        </div>
-                        <span style={{ fontFamily:'var(--font-display,system-ui)', fontSize:10, fontWeight:800, color:'#57534e', textTransform:'uppercase', letterSpacing:'0.08em' }}>
-                          {(entry.belt || 'white').charAt(0).toUpperCase() + (entry.belt || 'white').slice(1)} Belt
-                        </span>
-                      </div>
-                    </div>
-
-                    {/* Level score */}
-                    <div style={{ textAlign:'right', flexShrink:0 }}>
-                      <div style={{ fontSize:9, fontWeight:800, color:'#57534e', textTransform:'uppercase', letterSpacing:'0.1em', lineHeight:1, marginBottom:2 }}>LVL</div>
-                      <div style={{ fontFamily:'var(--font-display,system-ui)', fontSize:rc.scoreSz, fontWeight:900, color: rc.score, lineHeight:1, fontVariantNumeric:'tabular-nums', textShadow: rank <= 3 ? `0 0 12px ${rc.score}60` : 'none' }}>
-                        {entryLevel > 0 ? entryLevel : (entry.classCount || entry.score || 0)}
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ════════════════════════════════════════════════════
-          TOURNAMENT COUNTDOWN
-          ════════════════════════════════════════════════════ */}
-      {nextTournament && tournamentDaysUntil <= 60 && (
-        <div className="mx-5 mb-4 reveal">
-          <TournamentWidget
-            name={nextTournament.name}
-            date={nextTournament.date}
-            location={nextTournament.location}
-            link={nextTournament.link}
-          />
-        </div>
-      )}
 
 
       {/* ════════════════════════════════════════════════════

@@ -913,7 +913,7 @@ export default function AchievementsPage() {
           {/* Back button */}
           <div style={{ padding: '12px 20px 0', display: 'flex', alignItems: 'center' }}>
             <button
-              onClick={() => navigate('/more')}
+              onClick={() => navigate('/')}
               style={{ background: 'none', border: 'none', padding: '4px 0', cursor: 'pointer', color: tierColor, fontWeight: 700, fontSize: 13 }}
             >
               ← Back
