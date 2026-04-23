@@ -393,10 +393,15 @@ export function DMProvider({ children }: { children: React.ReactNode }) {
       const peer = (e as CustomEvent<DMPeer>).detail;
       if (!peer?.email && !peer?.name) return; // need at least a name
       setOpenPeers(prev => {
-        // Don't open DM with yourself
-        if (peer.email === (member as any)?.email) return prev;
-        // Already open? Bring to front (move to index 0)
-        if (prev.some(p => p.email === peer.email)) {
+        // Don't open DM with yourself (only block if both emails are non-empty and match)
+        const myEmail = ((member as any)?.email || '').toLowerCase().trim();
+        const peerEmail = (peer.email || '').toLowerCase().trim();
+        if (myEmail && peerEmail && myEmail === peerEmail) return prev;
+        // Also block by name if that's all we have
+        if (!peerEmail && peer.name === member?.name) return prev;
+        // Already open? Bring to front
+        const matchKey = peerEmail || peer.name;
+        if (prev.some(p => (p.email && p.email === peerEmail) || (!peerEmail && p.name === peer.name))) {
           return [peer, ...prev.filter(p => p.email !== peer.email)];
         }
         // Max 3 open at once

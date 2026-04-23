@@ -20,13 +20,20 @@ import { useAuth } from '@/lib/auth-context';
 // Navigate to chat and open the profile modal for a member
 function openMemberProfile(m: ChannelMember) {
   try {
-    // Store both email and name so ChatPage can find the member either way
     localStorage.setItem('lbjj_open_profile_email', m.email || '');
     localStorage.setItem('lbjj_open_profile_name', m.name || '');
   } catch {}
-  // Fire event first so ChatPage catches it if already mounted
-  window.dispatchEvent(new CustomEvent('open-member-profile', { detail: m }));
-  window.location.hash = '#/chat';
+  const alreadyOnChat = window.location.hash.replace(/^#/, '').startsWith('/chat');
+  if (alreadyOnChat) {
+    // Already on chat — fire event directly, ChatPage listener will catch it
+    window.dispatchEvent(new CustomEvent('open-member-profile', { detail: m }));
+  } else {
+    // Navigate to chat, then fire after a delay for ChatPage to mount
+    window.location.hash = '#/chat';
+    setTimeout(() => {
+      window.dispatchEvent(new CustomEvent('open-member-profile', { detail: m }));
+    }, 500);
+  }
 }
 
 const ONLINE_MS   = 5  * 60 * 1000;  // 5 min  → "Active Now"
@@ -536,7 +543,7 @@ export function OnlineAvatarCluster() {
           {offline.length > 0 && (
             <>
               {active.length > 0 && <div style={{ height: 1, background: 'rgba(255,255,255,.05)', margin: '6px 0' }} />}
-              <RecentSection members={offline} onOpen={(m) => setFocused(prev => prev?.email === m.email && prev?.name === m.name ? null : m)} label="Offline" />
+              <RecentSection members={offline} onOpen={(m) => openDM(m)} onProfile={(m) => openMemberProfile(m)} label="Offline" />
             </>
           )}
           {active.length === 0 && offline.length === 0 && (
