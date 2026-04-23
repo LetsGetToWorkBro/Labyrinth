@@ -171,11 +171,9 @@ function SeasonWidget({ season, onClick }: { season: SeasonData; onClick?: () =>
   );
 }
 
-// ─── Milestone Widget ──────────────────────────────────────────────
+// ─── Milestone Widget — ported from milestone_only_modal.html ──────
 
 function MilestoneWidget({ milestone, onClick }: { milestone: MilestoneData; onClick?: () => void }) {
-  const [mx, setMx] = useState(50);
-  const [my, setMy] = useState(50);
   const [shockwave, setShockwave] = useState(false);
   const prevReady = useRef(milestone.ready);
 
@@ -187,114 +185,104 @@ function MilestoneWidget({ milestone, onClick }: { milestone: MilestoneData; onC
     prevReady.current = milestone.ready;
   }, [milestone.ready]);
 
+  const borderColor = milestone.ready ? 'rgba(168,85,247,0.4)' : 'rgba(232,175,52,0.15)';
+  const hoverStyle  = milestone.ready
+    ? '0 12px 32px rgba(0,0,0,0.6), inset 0 1px 1px rgba(255,255,255,0.06), 0 0 24px rgba(168,85,247,0.2)'
+    : '0 12px 32px rgba(0,0,0,0.6), inset 0 1px 1px rgba(255,255,255,0.06), 0 0 20px rgba(232,175,52,0.1)';
+
   return (
     <div
-      onMouseMove={e => {
-        const r = (e.currentTarget as HTMLElement).getBoundingClientRect();
-        setMx(((e.clientX - r.left) / r.width) * 100);
-        setMy(((e.clientY - r.top) / r.height) * 100);
-      }}
       onClick={onClick}
       style={{
         position: 'relative', overflow: 'hidden',
-        borderRadius: 20, padding: 16, cursor: 'pointer',
+        borderRadius: 20, padding: 15, cursor: 'pointer',
         height: 110,
         display: 'flex', flexDirection: 'column', justifyContent: 'space-between',
-        background: milestone.ready
-          ? 'radial-gradient(circle at 100% 0%, rgba(168,85,247,0.08), rgba(255,255,255,0.03))'
-          : 'rgba(255,255,255,0.03)',
-        border: `1px solid ${milestone.ready ? 'rgba(168,85,247,0.4)' : 'rgba(255,255,255,0.06)'}`,
-        boxShadow: milestone.ready
-          ? `0 12px 32px rgba(0,0,0,0.5), inset 0 1px 4px rgba(255,255,255,0.08), 0 0 24px rgba(168,85,247,0.2)`
-          : `0 12px 24px rgba(0,0,0,0.5), inset 0 1px 1px rgba(255,255,255,0.06)`,
-        backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)',
-        transition: 'border-color 0.5s, box-shadow 0.5s, background 0.5s',
+        background: 'rgba(255,255,255,0.03)',
+        border: `1px solid ${borderColor}`,
+        boxShadow: '0 12px 24px rgba(0,0,0,0.5), inset 0 1px 1px rgba(255,255,255,0.06)',
         WebkitTapHighlightColor: 'transparent',
+        userSelect: 'none',
+        transition: 'border-color .3s, box-shadow .3s, transform .15s',
+      }}
+      onMouseEnter={e => {
+        (e.currentTarget as HTMLDivElement).style.borderColor = milestone.ready ? 'rgba(168,85,247,0.6)' : 'rgba(232,175,52,0.3)';
+        (e.currentTarget as HTMLDivElement).style.boxShadow = hoverStyle;
+      }}
+      onMouseLeave={e => {
+        (e.currentTarget as HTMLDivElement).style.borderColor = borderColor;
+        (e.currentTarget as HTMLDivElement).style.boxShadow = '0 12px 24px rgba(0,0,0,0.5), inset 0 1px 1px rgba(255,255,255,0.06)';
       }}
     >
-      {/* Mouse spotlight */}
-      <div style={{
-        position: 'absolute', inset: 0, borderRadius: 'inherit', pointerEvents: 'none', zIndex: 5,
-        background: `radial-gradient(circle at ${mx}% ${my}%, rgba(255,255,255,0.08) 0%, transparent 55%)`,
-      }} />
-
-      {/* Shockwave */}
+      {/* Shockwave on ready */}
       {shockwave && (
-        <div style={{
-          position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%,-50%)',
-          width: 150, height: 150, pointerEvents: 'none', zIndex: 0,
-          animation: 'smw-shockwave 0.8s cubic-bezier(0.16,1,0.3,1) forwards',
-        }}>
+        <div style={{ position:'absolute',top:'50%',left:'50%',transform:'translate(-50%,-50%)',
+          width:150,height:150,pointerEvents:'none',zIndex:0,
+          animation:'smw-shockwave 0.8s cubic-bezier(0.16,1,0.3,1) forwards' }}>
           <svg viewBox="0 0 100 100" width="150" height="150">
-            <circle cx="50" cy="50" r="40" fill="none" stroke="#a855f7" strokeWidth="2" />
+            <circle cx="50" cy="50" r="40" fill="none" stroke="#a855f7" strokeWidth="2"/>
           </svg>
         </div>
       )}
 
       {/* Top row */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', position: 'relative', zIndex: 10 }}>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 4, color: 'rgba(255,255,255,0.3)', transition: 'color 0.5s' }}>
+      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', position:'relative', zIndex:10 }}>
+        <div style={{ flex:1, minWidth:0 }}>
+          <div style={{ fontSize:9, fontWeight:800, letterSpacing:'.1em', textTransform:'uppercase', color:'rgba(255,255,255,0.3)', marginBottom:3 }}>
             Next Milestone
           </div>
+          {/* 2-line clamped title — no more truncation */}
           <div style={{
-            fontFamily: "var(--font-display,'Cabinet Grotesk',system-ui)", fontSize: 18, fontWeight: 900,
-            color: milestone.ready ? '#d8b4fe' : '#fff', lineHeight: 1.1,
-            overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-            transition: 'color 0.5s',
+            fontSize:15, fontWeight:900, color: milestone.ready ? '#d8b4fe' : '#fff',
+            lineHeight:1.15, letterSpacing:'-0.01em',
+            display:'-webkit-box', WebkitLineClamp:2,
+            WebkitBoxOrient:'vertical' as any, overflow:'hidden',
+            transition:'color 0.5s',
           }}>
             {milestone.label}
           </div>
         </div>
 
-        {/* Icon box */}
+        {/* Icon box — lightning bolt SVG */}
         <div style={{
-          width: 40, height: 40, borderRadius: 12, flexShrink: 0,
-          background: milestone.ready
-            ? '#a855f7'
-            : 'linear-gradient(135deg, rgba(232,175,52,0.1), rgba(232,175,52,0.02))',
+          width:38, height:38, borderRadius:11, flexShrink:0, marginLeft:10,
+          background: milestone.ready ? '#a855f7' : 'linear-gradient(135deg, rgba(232,175,52,0.12), rgba(232,175,52,0.03))',
           border: `1px solid ${milestone.ready ? '#a855f7' : 'rgba(232,175,52,0.3)'}`,
+          display:'flex', alignItems:'center', justifyContent:'center',
           color: milestone.ready ? '#000' : '#e8af34',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          boxShadow: milestone.ready ? '0 0 24px rgba(168,85,247,0.6)' : '0 4px 12px rgba(0,0,0,0.4)',
-          transition: 'all 0.5s cubic-bezier(0.175,0.885,0.32,1.275)',
-          transform: milestone.ready ? 'scale(1.1)' : 'scale(1)',
+          boxShadow: milestone.ready ? '0 0 24px rgba(168,85,247,0.5)' : 'none',
+          transition:'all 0.4s cubic-bezier(0.175,0.885,0.32,1.275)',
+          transform: milestone.ready ? 'scale(1.08)' : 'scale(1)',
         }}>
           {milestone.ready ? (
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" width="18" height="18">
-              <polyline points="20 6 9 17 4 12"/>
-            </svg>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" width="18" height="18"><polyline points="20 6 9 17 4 12"/></svg>
           ) : (
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" width="18" height="18">
-              <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
-            </svg>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" width="18" height="18"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
           )}
         </div>
       </div>
 
-      {/* Bottom: XP needed or claim button */}
-      <div style={{ position: 'relative', zIndex: 10 }}>
+      {/* Bottom */}
+      <div style={{ display:'flex', alignItems:'center', gap:5, position:'relative', zIndex:10 }}>
         {milestone.ready ? (
           <div style={{
-            width: '100%', padding: '6px 0', borderRadius: 8,
-            background: '#a855f7', color: '#000',
-            fontSize: 11, fontWeight: 900, letterSpacing: '0.1em', textTransform: 'uppercase',
-            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4,
-            boxShadow: '0 4px 16px rgba(168,85,247,0.5)',
-            animation: 'smw-pulse-btn 2s ease-in-out infinite alternate',
+            width:'100%', padding:'6px 0', borderRadius:8,
+            background:'#a855f7', color:'#000',
+            fontSize:11, fontWeight:900, letterSpacing:'0.1em', textTransform:'uppercase',
+            display:'flex', alignItems:'center', justifyContent:'center', gap:4,
+            boxShadow:'0 4px 16px rgba(168,85,247,0.5)',
+            animation:'smw-pulse-btn 2s ease-in-out infinite alternate',
           }}>
             Claim Reward
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" width="12" height="12">
-              <path d="M5 12h14M12 5l7 7-7 7"/>
-            </svg>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" width="12" height="12"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
           </div>
         ) : (
-          <div style={{ fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,0.5)' }}>
-            <span style={{ color: '#e8af34', fontWeight: 900, fontSize: 13, fontFamily: "var(--font-display,'Cabinet Grotesk',system-ui)", fontVariantNumeric: 'tabular-nums' }}>
+          <>
+            <span style={{ fontSize:13, fontWeight:900, color:'#e8af34', fontVariantNumeric:'tabular-nums' }}>
               {milestone.xpNeeded.toLocaleString()}
-            </span>{' '}
-            XP to unlock
-          </div>
+            </span>
+            <span style={{ fontSize:11, fontWeight:700, color:'rgba(255,255,255,0.45)' }}>XP to unlock</span>
+          </>
         )}
       </div>
     </div>

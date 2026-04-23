@@ -335,6 +335,7 @@ export default function HomePage() {
   const [rankSent, setRankSent] = useState(false);
   const [profileExpanded, setProfileExpanded] = useState(false);
   const [showRankInfo, setShowRankInfo] = useState(false);
+  const [showMilestoneModal, setShowMilestoneModal] = useState(false);
   const [showStreakInfo, setShowStreakInfo] = useState(false);
   const [showMilestoneInfo, setShowMilestoneInfo] = useState(false);
   const [showNarrativeInfo, setShowNarrativeInfo] = useState(false);
@@ -1784,7 +1785,7 @@ export default function HomePage() {
             ready: nextMilestoneData.need <= 0,
           }}
           onOpenSeason={() => { window.location.hash = '#/season'; }}
-          onOpenMilestone={() => setShowRankInfo(true)}
+          onOpenMilestone={() => setShowMilestoneModal(true)}
         />
       )}
 
@@ -2061,6 +2062,12 @@ export default function HomePage() {
           onClose={() => setShowRankInfo(false)}
           xp={memberXP}
         />
+      )}
+
+      {/* ── NEW Milestone Modal — from milestone_only_modal.html ─────────── */}
+      {showMilestoneModal && createPortal(
+        <MilestoneModal xp={memberXP} onClose={() => setShowMilestoneModal(false)} />,
+        document.body
       )}
 
 
@@ -2552,6 +2559,278 @@ export default function HomePage() {
 }
 
 
+
+// ─── MilestoneModal — ported from milestone_only_modal.html ──────────────
+
+const TIER_DATA = [
+  {
+    level: 5,  color: '#e8af34', bg: 'rgba(232,175,52,0.04)',  ringLabel: 'Ember',
+    title: 'Dedicated Grappler',
+    ringName: 'Bronze Ring', ringLetter: 'B', ringBorder: 'rgba(205,127,50,0.6)', ringGlow: 'rgba(205,127,50,0.3)', ringColor: '#cd7f32',
+    orbit: false,
+    icon: <svg width="10" height="10" viewBox="0 0 24 24" fill="#e8af34"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>,
+    rewardText: (c: string) => <>Unlocks the <strong style={{color:c}}>Bronze portrait ring</strong> — visible on leaderboard &amp; profile.</>,
+  },
+  {
+    level: 6,  color: '#0ea5e9', bg: 'rgba(14,165,233,0.04)',  ringLabel: 'Frost',
+    title: 'Seasoned Competitor',
+    ringName: 'Silver Ring', ringLetter: 'S', ringBorder: 'rgba(156,163,175,0.7)', ringGlow: 'rgba(14,165,233,0.3)', ringColor: '#9ca3af',
+    orbit: true,
+    icon: <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#0ea5e9" strokeWidth="2.5"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>,
+    rewardText: (c: string) => <>Theme shifts to <strong style={{color:'#38bdf8'}}>Frost</strong>. Earns the <strong style={{color:'#9ca3af'}}>Silver ring</strong> with orbital halo effect.</>,
+  },
+  {
+    level: 12, color: '#a855f7', bg: 'rgba(168,85,247,0.04)', ringLabel: 'Void',
+    title: 'Void Walker',
+    ringName: 'Gold Ring', ringLetter: 'G', ringBorder: 'rgba(232,175,52,0.7)', ringGlow: 'rgba(168,85,247,0.3)', ringColor: '#e8af34',
+    orbit: true,
+    icon: <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#a855f7" strokeWidth="2.5"><path d="M2 12c0 0 4-8 10-8s10 8 10 8-4 8-10 8-10-8-10-8Z"/><circle cx="12" cy="12" r="3" fill="#a855f7"/></svg>,
+    rewardText: (c: string) => <>Theme shifts to <strong style={{color:'#c084fc'}}>Void</strong>. Earns the <strong style={{color:'#e8af34'}}>Gold crown ring</strong>.</>,
+  },
+  {
+    level: 30, color: '#e2e8f0', bg: 'rgba(255,255,255,0.03)', ringLabel: 'Apex',
+    title: 'Apex Predator',
+    ringName: 'Paragon Ring', ringLetter: 'P', ringBorder: 'rgba(220,70,220,0.7)', ringGlow: 'rgba(220,70,220,0.35)', ringColor: '#dc46dc',
+    orbit: true, doubleOrbit: true,
+    icon: <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#e2e8f0" strokeWidth="2.5"><path d="m2 4 3 12h14l3-12-6 7-4-7-4 7-6-7zm3 16h14"/></svg>,
+    rewardText: (c: string) => <>Theme shifts to <strong style={{color:'#e2e8f0'}}>Apex</strong>. Earns the rarest ring — the <strong style={{color:c}}>animated Paragon frame</strong>. Less than 1% of members.</>,
+  },
+] as const;
+
+function MilestoneModal({ xp, onClose }: { xp: number; onClose: () => void }) {
+  // Compute XP away for each tier
+  function xpForLevel(lv: number) { return Math.floor(lv * 250 + lv * lv * 50); }
+
+  return createPortal(
+    <>
+      <style>{`
+        @keyframes ms-fadeIn  { from{opacity:0}to{opacity:1} }
+        @keyframes ms-slideUp { from{opacity:0;transform:translateY(28px) scale(0.97)}to{opacity:1;transform:translateY(0) scale(1)} }
+        @keyframes ms-breathe { 0%{opacity:.4;transform:scale(.94)}100%{opacity:.9;transform:scale(1.05)} }
+        @keyframes ms-spin    { to{transform:rotate(360deg)} }
+        @keyframes ms-shimmer { from{transform:translateX(-100%)}to{transform:translateX(100%)} }
+        @keyframes ms-glow-pulse { 0%,100%{opacity:.5}50%{opacity:1} }
+      `}</style>
+
+      {/* Backdrop */}
+      <div
+        onClick={onClose}
+        style={{
+          position:'fixed',inset:0,zIndex:3000,
+          background:'rgba(0,0,0,0.88)',
+          backdropFilter:'blur(18px)', WebkitBackdropFilter:'blur(18px)',
+          display:'flex', alignItems:'flex-start', justifyContent:'center',
+          padding:16, overflowY:'auto',
+          animation:'ms-fadeIn .2s ease-out',
+        }}
+      >
+        {/* Modal card */}
+        <div
+          onClick={e => e.stopPropagation()}
+          style={{
+            width:'100%', maxWidth:480,
+            marginTop:32, marginBottom:60,
+            background:'linear-gradient(180deg,#161513 0%,#0f0e0d 100%)',
+            border:'1px solid rgba(255,255,255,0.05)',
+            borderTop:'1px solid rgba(255,255,255,0.13)',
+            borderRadius:26,
+            overflow:'hidden',
+            boxShadow:'0 40px 80px -20px rgba(0,0,0,0.95), 0 0 0 1px rgba(255,255,255,0.03)',
+            animation:'ms-slideUp .32s cubic-bezier(0.34,1.28,0.64,1)',
+            position:'relative',
+          }}
+        >
+          {/* Close */}
+          <button onClick={onClose} style={{
+            position:'absolute',top:16,right:16,
+            width:34,height:34,borderRadius:'50%',
+            background:'#222',border:'1px solid rgba(255,255,255,0.08)',
+            color:'#888',display:'flex',alignItems:'center',justifyContent:'center',
+            cursor:'pointer',zIndex:10,transition:'background .2s,color .2s',
+          }}
+            onMouseEnter={e=>{(e.currentTarget as HTMLButtonElement).style.background='#333';(e.currentTarget as HTMLButtonElement).style.color='#ddd';}}
+            onMouseLeave={e=>{(e.currentTarget as HTMLButtonElement).style.background='#222';(e.currentTarget as HTMLButtonElement).style.color='#888';}}
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+          </button>
+
+          {/* Header */}
+          <div style={{
+            position:'relative', padding:'32px 24px 28px', textAlign:'center',
+            borderBottom:'1px solid rgba(255,255,255,0.04)', overflow:'hidden',
+          }}>
+            <div style={{
+              position:'absolute',top:-40,left:'50%',transform:'translateX(-50%)',
+              width:300,height:180,
+              background:'radial-gradient(ellipse, rgba(232,175,52,0.12) 0%, transparent 70%)',
+              pointerEvents:'none',
+            }}/>
+            <div style={{ fontSize:10, fontWeight:800, letterSpacing:'.16em', textTransform:'uppercase', color:'#e8af34', marginBottom:6, position:'relative', zIndex:1 }}>Rank &amp; Milestones</div>
+            <div style={{ fontSize:26, fontWeight:900, color:'#fff', letterSpacing:'-.02em', lineHeight:1, position:'relative', zIndex:1 }}>Milestone Rewards</div>
+          </div>
+
+          {/* Milestone cards */}
+          <div style={{ padding:'12px 20px 28px', display:'flex', flexDirection:'column', gap:10 }}>
+            {TIER_DATA.map(tier => {
+              const xpNeed = xpForLevel(tier.level);
+              const away   = Math.max(0, xpNeed - xp);
+              const isNext = away > 0;
+
+              return (
+                <div key={tier.level} style={{
+                  borderRadius:18, overflow:'hidden', position:'relative',
+                  border:`1px solid ${away === 0 ? tier.color + '44' : 'rgba(255,255,255,0.05)'}`,
+                  background:'#0d0c0b',
+                  boxShadow: away === 0 ? `0 0 20px ${tier.color}22` : 'none',
+                  transition:'border-color .25s, box-shadow .25s',
+                }}>
+                  {/* Left accent bar */}
+                  <div style={{ position:'absolute', left:0, top:0, bottom:0, width:3, background:tier.color, borderRadius:'4px 0 0 4px' }}/>
+
+                  {/* Card inner */}
+                  <div style={{
+                    display:'flex', alignItems:'center', gap:14,
+                    padding:'16px 16px 16px 20px',
+                    position:'relative', zIndex:2,
+                    background: tier.bg,
+                  }}>
+                    {/* Portrait medallion */}
+                    <div style={{ position:'relative', width:56, height:56, flexShrink:0 }}>
+                      <div style={{
+                        position:'absolute', inset:-8, borderRadius:'50%',
+                        background:`radial-gradient(circle, ${tier.color}40 0%, transparent 70%)`,
+                        animation:'ms-breathe 3.5s ease-in-out infinite alternate',
+                        zIndex:-1,
+                      }}/>
+                      {/* Double orbit for Apex */}
+                      {(tier as any).doubleOrbit && (
+                        <div style={{ position:'absolute', inset:-7, borderRadius:'50%', border:'1.5px solid rgba(255,255,255,0.12)', animation:'ms-spin 8s linear infinite reverse' }}/>
+                      )}
+                      {/* Orbital ring */}
+                      {tier.orbit && (
+                        <div style={{ position:'absolute', inset:-5, borderRadius:'50%', border:`1.5px dashed ${tier.color}55`, animation:'ms-spin 6s linear infinite', opacity:.5 }}/>
+                      )}
+                      {/* Ring border */}
+                      <div style={{
+                        position:'absolute', inset:0, borderRadius:'50%',
+                        border:`2.5px solid ${tier.color}88`,
+                        background: tier.level === 30 ? 'linear-gradient(135deg,#1e2030,#0a0a10)'
+                          : tier.level === 12 ? 'linear-gradient(135deg,#1a0d2e,#0a0614)'
+                          : tier.level === 6  ? 'linear-gradient(135deg,#0c1e2e,#060e18)'
+                          : 'linear-gradient(135deg,#2a2622,#141210)',
+                      }}/>
+                      {/* Face */}
+                      <div style={{
+                        position:'absolute', inset:4, borderRadius:'50%',
+                        display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:1,
+                        background: tier.level === 30 ? 'linear-gradient(135deg,#16182a,#080912)'
+                          : tier.level === 12 ? 'linear-gradient(135deg,#180b2a,#0a0514)'
+                          : tier.level === 6  ? 'linear-gradient(135deg,#0d1f2d,#060d14)'
+                          : 'linear-gradient(135deg,#1e1c18,#0d0c0a)',
+                      }}>
+                        <span style={{ fontSize:7, fontWeight:900, letterSpacing:'.1em', textTransform:'uppercase', color:tier.color, lineHeight:1 }}>LVL</span>
+                        <span style={{
+                          fontSize:20, fontWeight:900, lineHeight:1, color:'#fff', fontVariantNumeric:'tabular-nums',
+                          textShadow: `0 0 12px ${tier.color}99`,
+                        }}>{tier.level}</span>
+                      </div>
+                    </div>
+
+                    {/* Info */}
+                    <div style={{ flex:1, minWidth:0 }}>
+                      <div style={{ fontSize:9, fontWeight:900, textTransform:'uppercase', letterSpacing:'.1em', marginBottom:3, display:'flex', alignItems:'center', gap:5, color:tier.color }}>
+                        {tier.icon} Level {tier.level}
+                      </div>
+                      <div style={{
+                        fontSize:15, fontWeight:900, textTransform:'uppercase', letterSpacing:'.03em',
+                        lineHeight:1.15, marginBottom:4,
+                        color: tier.level === 30 ? 'transparent' : tier.color,
+                        whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis',
+                        ...(tier.level === 30 ? { background:'linear-gradient(90deg,#e2e8f0,#94a3b8)', WebkitBackgroundClip:'text', backgroundClip:'text' } : {}),
+                      }}>{tier.title}</div>
+                      <div style={{ fontSize:11, color:'#4a4844', fontVariantNumeric:'tabular-nums' }}>
+                        {away > 0 ? <><span style={{ color:'#7a7876', fontWeight:700 }}>{away.toLocaleString()}</span> XP away</> : <span style={{ color:'#10b981', fontWeight:700 }}>Unlocked ✓</span>}
+                      </div>
+                    </div>
+
+                    {/* Right: theme pill + ring name */}
+                    <div style={{ display:'flex', flexDirection:'column', alignItems:'flex-end', gap:4, flexShrink:0 }}>
+                      <div style={{
+                        padding:'3px 9px', borderRadius:999, fontSize:9, fontWeight:900,
+                        textTransform:'uppercase', letterSpacing:'.08em',
+                        color: tier.color, border:`1px solid ${tier.color}4d`,
+                        background:`${tier.color}14`,
+                      }}>{tier.ringLabel}</div>
+                      <div style={{
+                        display:'inline-flex', alignItems:'center', gap:4,
+                        fontSize:8, fontWeight:900, textTransform:'uppercase', letterSpacing:'.1em',
+                        padding:'2px 7px', borderRadius:999,
+                        color: tier.ringColor, border:`1px solid ${tier.ringColor}33`,
+                        background:`${tier.ringColor}0f`,
+                        marginTop:2,
+                      }}>
+                        <div style={{ width:5, height:5, borderRadius:'50%', background:tier.ringColor }}/>
+                        {tier.ringName}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* State shift preview strip */}
+                  <div style={{
+                    margin:'0 16px 14px',
+                    padding:'10px 12px', borderRadius:10,
+                    background:`${tier.color}0d`,
+                    border:`1px solid ${tier.color}1f`,
+                    display:'flex', alignItems:'center', gap:10,
+                  }}>
+                    {/* Clock / star icon */}
+                    {tier.level === 30 ? (
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={tier.ringColor} strokeWidth="2" strokeLinecap="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                    ) : tier.level === 12 ? (
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={tier.color} strokeWidth="2" strokeLinecap="round"><path d="M2 12c0 0 4-8 10-8s10 8 10 8-4 8-10 8-10-8-10-8Z"/><circle cx="12" cy="12" r="3" fill={tier.color}/></svg>
+                    ) : (
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={tier.color} strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/></svg>
+                    )}
+                    <span style={{ fontSize:11, flex:1, lineHeight:1.4,
+                      color: tier.level===30?'#6a3a6a':tier.level===12?'#5a3a7a':tier.level===6?'#3a5a6a':'#7a6a3a'
+                    }}>
+                      {tier.rewardText(tier.color)}
+                    </span>
+                    {/* Mini ring preview */}
+                    <div style={{ position:'relative', width:28, height:28, flexShrink:0 }}>
+                      {tier.orbit && (
+                        <div style={{ position:'absolute', inset:-4, borderRadius:'50%', border:`1px dashed ${tier.color}66`, animation:'ms-spin 4s linear infinite' }}/>
+                      )}
+                      {tier.level === 30 && (
+                        <div style={{ position:'absolute', inset:-2, borderRadius:'50%', border:`1px dashed rgba(136,68,255,0.4)`, animation:'ms-spin 5s linear infinite reverse' }}/>
+                      )}
+                      <div style={{
+                        width:28, height:28, borderRadius:'50%',
+                        border:`2px solid ${tier.ringBorder}`,
+                        background: tier.level===30?'linear-gradient(135deg,#1e0a2e,#0a0414)'
+                          :tier.level===12?'linear-gradient(135deg,#1a0d2e,#0a0614)'
+                          :tier.level===6?'linear-gradient(135deg,#0c1e2e,#060e18)'
+                          :'linear-gradient(135deg,#2a2622,#141210)',
+                        display:'flex', alignItems:'center', justifyContent:'center',
+                        boxShadow:`0 0 10px ${tier.ringGlow}`,
+                      }}>
+                        <span style={{
+                          fontSize:8, fontWeight:900,
+                          ...(tier.level===30 ? {background:'linear-gradient(135deg,#dc46dc,#8844ff)',WebkitBackgroundClip:'text',backgroundClip:'text',color:'transparent'} : {color:tier.ringColor}),
+                        }}>{tier.ringLetter}</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+    </>,
+    document.body
+  );
+}
 
 function WarningBanner({ text, action, href }: { text: string; action: string; href: string }) {
   return (
