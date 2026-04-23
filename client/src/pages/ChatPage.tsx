@@ -14,7 +14,8 @@ import { useAuth } from "@/lib/auth-context";
 import { dispatchOpenDM } from "@/components/FloatingDMTray";
 import {
   chatGetMessages, chatSendMessage, chatGetChannels, chatGetChannelMembers, updatePresence, gasCall,
-  type ChatMessage, type ChatChannel, type ChannelMember,
+  dmGetConversations,
+  type ChatMessage, type ChatChannel, type ChannelMember, type DmConversation,
 } from "@/lib/api";
 
 const GOLD = "#e8af34";
@@ -284,6 +285,9 @@ export default function ChatPage() {
   const [dirOpen, setDirOpen] = useState(true);
   const [showFeed, setShowFeed] = useState(false);
 
+  const [dmConversations, setDmConversations] = useState<DmConversation[]>([]);
+  const [dmLoading, setDmLoading] = useState(true);
+
   const feedRef = useRef<HTMLDivElement>(null);
   const feedEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -393,6 +397,26 @@ export default function ChatPage() {
   }, []);
 
   useEffect(() => { loadChannels(); }, [loadChannels]);
+
+  // Load & poll DM conversations for the Direct Messages section
+  const loadDmConversations = useCallback(async () => {
+    try {
+      const list = await dmGetConversations();
+      list.sort((a, b) => new Date(b.lastTs || 0).getTime() - new Date(a.lastTs || 0).getTime());
+      setDmConversations(list);
+    } finally {
+      setDmLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    loadDmConversations();
+    const t = setInterval(loadDmConversations, 30000);
+    const onRead = () => loadDmConversations();
+    window.addEventListener('dm-read', onRead);
+    return () => { clearInterval(t); window.removeEventListener('dm-read', onRead); };
+  }, [isAuthenticated, loadDmConversations]);
 
   // Load/poll online members — always keeps self at top with fresh lastSeen
   const loadOnlineMembers = useCallback(async (silent = false) => {
@@ -703,6 +727,131 @@ export default function ChatPage() {
                 <div style={{ fontSize: 12, color: '#57534e', padding: 12, textAlign: 'center' }}>No members loaded</div>
               )}
             </div>
+          </div>
+        </div>
+
+        {/* Direct Messages — top-of-page inbox */}
+        <div style={{ marginBottom: 18 }}>
+          <div style={{ display:'flex', alignItems:'center', gap:10, margin:'0 4px 10px' }}>
+            <div style={{
+              width:28, height:28, borderRadius:8,
+              background:'rgba(200,162,76,0.14)', border:'1px solid rgba(200,162,76,0.28)',
+              display:'flex', alignItems:'center', justifyContent:'center', color:'#C8A24C', flexShrink:0,
+            }}>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" width="15" height="15">
+                <path d="M22 12h-6l-2 3h-4l-2-3H2"/>
+                <path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/>
+              </svg>
+            </div>
+            <div style={{ flex:1, minWidth:0 }}>
+              <div style={{ fontSize:13, fontWeight:900, color:'#fff', letterSpacing:'.02em' }}>Direct Messages</div>
+              <div style={{ fontSize:10, fontWeight:700, color:'#57534e', textTransform:'uppercase', letterSpacing:'.12em', marginTop:1 }}>
+                {dmConversations.length === 0
+                  ? 'Your inbox'
+                  : `${dmConversations.length} conversation${dmConversations.length === 1 ? '' : 's'}`}
+              </div>
+            </div>
+            {(() => {
+              const totalUnread = dmConversations.reduce((n, c) => n + (c.unread ? 1 : 0), 0);
+              if (!totalUnread) return null;
+              return (
+                <div style={{
+                  minWidth:22, height:22, borderRadius:11, padding:'0 7px',
+                  background:'#C8A24C', color:'#0A0A0A',
+                  fontSize:11, fontWeight:900,
+                  display:'flex', alignItems:'center', justifyContent:'center',
+                  boxShadow:'0 0 0 2px rgba(200,162,76,0.15)',
+                }}>{totalUnread}</div>
+              );
+            })()}
+          </div>
+
+          <div style={{
+            background:'rgba(10,10,12,0.95)',
+            border:'1px solid rgba(255,255,255,0.08)',
+            borderRadius:16,
+            overflow:'hidden',
+          }}>
+            {dmLoading && dmConversations.length === 0 ? (
+              <div style={{ padding:'16px', color:'#57534e', fontSize:12, textAlign:'center' }}>Loading messages…</div>
+            ) : dmConversations.length === 0 ? (
+              <div style={{ padding:'20px 16px', textAlign:'center' }}>
+                <div style={{ fontSize:13, fontWeight:700, color:'#a8a29e', marginBottom:4 }}>No conversations yet</div>
+                <div style={{ fontSize:11, color:'#57534e', lineHeight:1.4 }}>
+                  Tap someone's profile to start a DM.
+                </div>
+              </div>
+            ) : (
+              dmConversations.map((c, idx) => {
+                const belt = (c.partnerBelt || 'white').toLowerCase();
+                const pillBelt = ['black','brown','purple','blue','white'].includes(belt) ? belt : 'white';
+                const preview = (c.lastText || '').length > 50
+                  ? (c.lastText || '').slice(0, 50) + '…'
+                  : (c.lastText || '');
+                // Partner level unknown from convo row — approximate by belt.
+                const approxXP = beltToMinXP(belt, '');
+                const level = getActualLevel(approxXP);
+                return (
+                  <div
+                    key={(c.partnerEmail || c.partnerName) + idx}
+                    onClick={() => dispatchOpenDM({
+                      email: c.partnerEmail || '',
+                      name: c.partnerName || '',
+                      belt,
+                      totalPoints: approxXP,
+                      profilePic: c.partnerProfilePic,
+                    })}
+                    style={{
+                      display:'flex', alignItems:'center', gap:12,
+                      padding:'12px 14px',
+                      borderBottom: idx < dmConversations.length - 1 ? '1px solid rgba(255,255,255,0.04)' : 'none',
+                      cursor:'pointer',
+                      transition:'background 0.2s',
+                    }}
+                    onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.025)')}
+                    onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+                  >
+                    <div style={{ flexShrink:0 }}>
+                      <ParagonRing level={level} size={32} showOrbit={false}>
+                        {c.partnerProfilePic
+                          ? <img src={c.partnerProfilePic} alt="" style={{ width:'100%', height:'100%', borderRadius:'50%', objectFit:'cover' }} />
+                          : <div style={{ width:'100%', height:'100%', borderRadius:'50%', background: avatarGradient(belt), display:'flex', alignItems:'center', justifyContent:'center', fontSize:12, fontWeight:800, color:'#fff' }}>
+                              {(c.partnerName || '?').charAt(0).toUpperCase()}
+                            </div>
+                        }
+                      </ParagonRing>
+                    </div>
+                    <div style={{ flex:1, minWidth:0 }}>
+                      <div style={{ display:'flex', alignItems:'center', gap:6, marginBottom:2 }}>
+                        <span style={{ fontSize:13, fontWeight:800, color:'#fff', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
+                          {c.partnerName || 'Unknown'}
+                        </span>
+                        <span style={beltPillStyle(pillBelt)}>{pillBelt.charAt(0).toUpperCase()+pillBelt.slice(1)}</span>
+                      </div>
+                      <div style={{
+                        fontSize:12,
+                        color: c.unread ? '#e7e5e4' : '#8a8a94',
+                        fontWeight: c.unread ? 600 : 500,
+                        overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap',
+                      }}>
+                        {preview || 'No messages yet'}
+                      </div>
+                    </div>
+                    <div style={{ display:'flex', flexDirection:'column', alignItems:'flex-end', gap:6, flexShrink:0 }}>
+                      <span style={{ fontSize:10, color:'#57534e', fontWeight:700 }}>{relTime(c.lastTs)}</span>
+                      {c.unread && (
+                        <div style={{
+                          minWidth:18, height:18, borderRadius:9, padding:'0 6px',
+                          background:'#C8A24C', color:'#0A0A0A',
+                          fontSize:10, fontWeight:900,
+                          display:'flex', alignItems:'center', justifyContent:'center',
+                        }}>•</div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })
+            )}
           </div>
         </div>
 

@@ -75,6 +75,7 @@ export interface DMPeer {
   belt: string;
   totalPoints: number;
   profilePic?: string;
+  minimized?: boolean;
 }
 
 interface DMContextValue {
@@ -167,7 +168,7 @@ function DMTray({
   const [messages, setMessages] = useState<DmMessage[]>([]);
   const [input, setInput]       = useState('');
   const [sending, setSending]   = useState(false);
-  const [minimized, setMinimized] = useState(false);
+  const [minimized, setMinimized] = useState(!!peer.minimized);
   const [unread, setUnread]     = useState(0);
   const feedRef  = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -455,10 +456,12 @@ function DMToastCard({ toast, onDismiss }: { toast: IncomingToast; onDismiss: ()
     return () => cancelAnimationFrame(r);
   }, []);
   const level = getActualLevel(toast.peer.totalPoints || 0);
-  const preview = toast.text.length > 40 ? toast.text.slice(0, 40) + '…' : toast.text;
+  const preview = toast.text.length > 80 ? toast.text.slice(0, 80) + '…' : toast.text;
+  const belt = (toast.peer.belt || 'white').toLowerCase();
+  const pillBelt = ['black','brown','purple','blue','white'].includes(belt) ? belt : 'white';
 
   const handleOpen = () => {
-    dispatchOpenDM(toast.peer);
+    dispatchOpenDM({ ...toast.peer, minimized: false });
     onDismiss();
   };
 
@@ -467,43 +470,50 @@ function DMToastCard({ toast, onDismiss }: { toast: IncomingToast; onDismiss: ()
       onClick={handleOpen}
       style={{
         pointerEvents: 'auto',
-        display: 'flex', alignItems: 'center', gap: 10,
-        background: 'rgba(0,0,0,0.85)',
+        display: 'flex', alignItems: 'stretch', gap: 0,
+        background: 'rgba(10,10,12,0.95)',
         backdropFilter: 'blur(16px)',
         WebkitBackdropFilter: 'blur(16px)',
-        border: '1px solid rgba(232,175,52,0.35)',
-        boxShadow: '0 10px 32px rgba(0,0,0,0.7), 0 0 0 1px rgba(232,175,52,0.15)',
-        borderRadius: 18,
-        padding: '10px 14px 10px 10px',
-        minWidth: 260, maxWidth: 360,
+        border: '1px solid rgba(255,255,255,0.08)',
+        borderLeft: '3px solid #C8A24C',
+        boxShadow: '0 14px 40px rgba(0,0,0,0.75), 0 0 0 1px rgba(200,162,76,0.12)',
+        borderRadius: 16,
+        padding: '12px 14px 12px 12px',
+        minWidth: 280, maxWidth: 380,
         cursor: 'pointer',
-        transform: mounted ? 'translateY(0)' : 'translateY(-18px)',
+        transform: mounted ? 'translateY(0) scale(1)' : 'translateY(-24px) scale(0.96)',
         opacity: mounted ? 1 : 0,
-        transition: 'transform .35s cubic-bezier(0.175,0.885,0.32,1.1), opacity .3s',
+        transition: 'transform .45s cubic-bezier(0.175,0.885,0.32,1.275), opacity .3s',
       }}
     >
-      <div style={{ flexShrink: 0 }}>
-        <ParagonRing level={level} size={32} showOrbit={false}>
+      <div style={{ flexShrink: 0, marginRight: 11, display:'flex', alignItems:'flex-start', paddingTop: 2 }}>
+        <ParagonRing level={level} size={40} showOrbit={false}>
           {toast.peer.profilePic
             ? <img src={toast.peer.profilePic} alt="" style={{ width:'100%', height:'100%', borderRadius:'50%', objectFit:'cover' }} />
-            : <div style={{ width:'100%', height:'100%', borderRadius:'50%', background: avatarGrad(toast.peer.belt), display:'flex', alignItems:'center', justifyContent:'center', fontSize:12, fontWeight:800, color:'#fff' }}>
+            : <div style={{ width:'100%', height:'100%', borderRadius:'50%', background: avatarGrad(toast.peer.belt), display:'flex', alignItems:'center', justifyContent:'center', fontSize:14, fontWeight:800, color:'#fff' }}>
                 {(toast.peer.name||'?').charAt(0).toUpperCase()}
               </div>
           }
         </ParagonRing>
       </div>
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontSize: 13, fontWeight: 800, color: '#fff', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
-          {toast.peer.name}
+      <div style={{ flex: 1, minWidth: 0, display:'flex', flexDirection:'column', gap:3 }}>
+        <div style={{ display:'flex', alignItems:'center', gap:6, minWidth:0 }}>
+          <div style={{ fontSize: 16, fontWeight: 800, color: '#fff', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', letterSpacing:'-0.01em' }}>
+            {toast.peer.name}
+          </div>
+          <span style={beltPill(pillBelt)}>{pillBelt.charAt(0).toUpperCase()+pillBelt.slice(1)}</span>
         </div>
-        <div style={{ fontSize: 12, color: '#d6d3d1', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', marginTop: 1 }}>
+        <div style={{ fontSize: 14, fontWeight: 500, color: '#d6d3d1', overflow:'hidden', textOverflow:'ellipsis', display:'-webkit-box', WebkitLineClamp:2, WebkitBoxOrient:'vertical', lineHeight:1.35 }}>
           {preview}
+        </div>
+        <div style={{ fontSize: 10, fontWeight: 700, color: '#57534e', textTransform:'uppercase', letterSpacing:'.08em', marginTop:2 }}>
+          Tap to reply
         </div>
       </div>
       <button
         onClick={(e) => { e.stopPropagation(); onDismiss(); }}
         aria-label="Dismiss"
-        style={{ flexShrink:0, width:22, height:22, borderRadius:6, background:'rgba(255,255,255,0.06)', border:'none', color:'#a8a29e', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center' }}
+        style={{ flexShrink:0, width:22, height:22, borderRadius:6, background:'rgba(255,255,255,0.06)', border:'none', color:'#a8a29e', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', alignSelf:'flex-start', marginLeft:8 }}
       >
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" width="12" height="12">
           <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
@@ -730,17 +740,20 @@ export function DMProvider({ children }: { children: React.ReactNode }) {
           seenThreadRef.current[t.fromEmail || t.fromName] = currKey;
           // Skip toast on very first poll so we don't bombard on page load
           if (!isFirst && t.count > 0) {
+            const peer: DMPeer = {
+              email: t.fromEmail || '',
+              name: t.fromName || 'Someone',
+              belt: (t as any).fromBelt || 'white',
+              totalPoints: (t as any).fromTotalPoints || 0,
+              profilePic: (t as any).fromProfilePic,
+            };
             newToasts.push({
               key: `${t.fromEmail || t.fromName}-${t.lastTs}-${Date.now()}`,
-              peer: {
-                email: t.fromEmail || '',
-                name: t.fromName || 'Someone',
-                belt: (t as any).fromBelt || 'white',
-                totalPoints: (t as any).fromTotalPoints || 0,
-                profilePic: (t as any).fromProfilePic,
-              },
+              peer,
               text: t.lastText || '',
             });
+            // Auto-open the DM tray in minimized state so user can expand & reply
+            dispatchOpenDM({ ...peer, minimized: true });
           }
         }
       }
