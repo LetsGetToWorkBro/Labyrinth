@@ -1330,14 +1330,17 @@ export default function HomePage() {
   })();
 
   // M6: Combo multiplier (consecutive days this week)
+  // comboMultiplier matches StreakWidget logic (weekly class count, not consecutive days)
   const comboMultiplier = (() => {
     try {
       const weekly = JSON.parse(localStorage.getItem('lbjj_weekly_training') || '[]');
-      const today = new Date().toISOString().split('T')[0];
-      const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0];
-      const twoDaysAgo = new Date(Date.now() - 2 * 86400000).toISOString().split('T')[0];
-      if (weekly.includes(today) && weekly.includes(yesterday) && weekly.includes(twoDaysAgo)) return 3;
-      if (weekly.includes(today) && weekly.includes(yesterday)) return 2;
+      const startOfWeek = new Date();
+      startOfWeek.setDate(startOfWeek.getDate() - startOfWeek.getDay());
+      const weekStart = startOfWeek.toISOString().split('T')[0];
+      const weekClasses = (weekly as string[]).filter((d: string) => d >= weekStart).length;
+      if (weekClasses >= 7) return 3;
+      if (weekClasses >= 5) return 2;
+      if (weekClasses >= 3) return 1.5;
       return 1;
     } catch { return 1; }
   })();

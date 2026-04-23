@@ -543,18 +543,21 @@ function ClassCard({
       const raw = localStorage.getItem('lbjj_game_stats_v2');
       const stats = raw ? JSON.parse(raw) : {};
       stats.classesAttended = (stats.classesAttended || 0) + 1;
+      // Use weekly class count multiplier (matches StreakWidget display)
       const comboMultiplier = (() => {
         try {
           const weekly2: string[] = JSON.parse(localStorage.getItem('lbjj_weekly_training') || '[]');
-          const t2 = new Date().toISOString().split('T')[0];
-          const y2 = new Date(Date.now() - 86400000).toISOString().split('T')[0];
-          const d2 = new Date(Date.now() - 2 * 86400000).toISOString().split('T')[0];
-          if (weekly2.includes(t2) && weekly2.includes(y2) && weekly2.includes(d2)) return 3;
-          if (weekly2.includes(t2) && weekly2.includes(y2)) return 2;
+          const startOfWeek = new Date();
+          startOfWeek.setDate(startOfWeek.getDate() - startOfWeek.getDay());
+          const weekStart = startOfWeek.toISOString().split('T')[0];
+          const weekClasses = weekly2.filter(d => d >= weekStart).length;
+          if (weekClasses >= 7) return 3;
+          if (weekClasses >= 5) return 2;
+          if (weekClasses >= 3) return 1.5;
           return 1;
         } catch { return 1; }
       })();
-      const xpGain = 10 * comboMultiplier;
+      const xpGain = Math.round(10 * comboMultiplier);
       stats.xp = (stats.xp || 0) + xpGain;
       stats.totalXP = (stats.totalXP || 0) + xpGain;
       localStorage.setItem('lbjj_game_stats_v2', JSON.stringify(stats));

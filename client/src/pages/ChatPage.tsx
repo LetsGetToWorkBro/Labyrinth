@@ -46,14 +46,17 @@ const BELT_PILL_CLASS: Record<string, { bg: string; color: string; border: strin
   black:  { bg: 'rgba(255,255,255,.08)', color: '#fff',   border: '1px solid rgba(255,255,255,.2)' },
 };
 
+// Dark pill with belt-color left bar — matches the design in screenshot
 function beltPillStyle(belt: string): React.CSSProperties {
   const key = (belt || 'white').toLowerCase();
-  const s = BELT_PILL_CLASS[key] || BELT_PILL_CLASS.white;
+  const color = getBeltColor(key);
   return {
-    fontSize: 9, fontWeight: 800, padding: '2px 6px', borderRadius: 4,
-    textTransform: 'uppercase', letterSpacing: '.08em',
-    background: s.bg, color: s.color, border: s.border,
-    ...(key === 'black' ? { borderLeft: '3px solid #ef4444' } : {}),
+    fontSize: 9, fontWeight: 800, padding: '2px 8px 2px 6px',
+    borderRadius: 6, textTransform: 'uppercase', letterSpacing: '.1em',
+    background: '#1a1a1a', color: '#fff',
+    border: '1px solid rgba(255,255,255,.08)',
+    borderLeft: `3px solid ${color}`,
+    flexShrink: 0,
   };
 }
 
@@ -1211,29 +1214,31 @@ const RANK_TITLES: Record<string, string> = {
 function RankCardItem({ beltKey, name, count, accessible, onClick }: {
   beltKey: string; name: string; count: number; accessible: boolean; onClick: () => void;
 }) {
+  const beltColor = getBeltColor(beltKey);
   return (
     <div
       className={`chatv4-rank-card${!accessible ? ' locked' : ''}`}
       onClick={accessible ? onClick : undefined}
-      style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, padding: '12px 10px', cursor: accessible ? 'pointer' : 'default' }}
     >
-      {/* Belt SVG — full iconic belt asset */}
-      <div style={{ position: 'relative', width: '100%', display: 'flex', justifyContent: 'center' }}>
-        <BeltIcon belt={beltKey} stripes={0} width={96} />
-        {!accessible && (
-          <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,.5)', borderRadius: 4 }}>
-            <LockIcon size={14} color="#57534e" />
-          </div>
-        )}
+      {/* Dark pill chip with colored left bar */}
+      <div style={{
+        display: 'inline-flex', alignItems: 'center', gap: 6,
+        padding: '4px 12px 4px 10px', borderRadius: 8,
+        background: '#111', border: '1px solid rgba(255,255,255,.08)',
+        borderLeft: `3px solid ${beltColor}`,
+        opacity: accessible ? 1 : 0.4,
+      }}>
+        <div style={{ width: 7, height: 7, borderRadius: '50%', background: beltColor, flexShrink: 0 }} />
+        <span style={{ fontSize: 11, fontWeight: 800, color: '#fff', textTransform: 'uppercase', letterSpacing: '.1em' }}>
+          {beltKey}
+        </span>
       </div>
-      {/* Rank name */}
-      <div style={{ fontSize: 13, fontWeight: 800, color: accessible ? '#e7e5e4' : '#57534e', textAlign: 'center', letterSpacing: '-.01em' }}>
-        {RANK_TITLES[beltKey] || name}
-      </div>
-      {/* Member count */}
-      <div style={{ fontSize: 10, fontWeight: 700, color: '#57534e' }}>
-        {accessible ? `${count} online` : 'Locked'}
-      </div>
+      <div style={{ fontSize: 13, fontWeight: 800, color: accessible ? '#e7e5e4' : '#57534e' }}>{name}</div>
+      {!accessible ? (
+        <span style={{ marginLeft: 'auto', color: '#57534e', display: 'flex' }}><LockIcon size={11} /></span>
+      ) : (
+        <div style={{ fontSize: 10, fontWeight: 700, color: '#57534e', marginLeft: 'auto' }}>{count}</div>
+      )}
     </div>
   );
 }
