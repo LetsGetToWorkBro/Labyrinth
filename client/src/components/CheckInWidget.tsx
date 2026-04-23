@@ -386,6 +386,42 @@ export function CheckInWidget({
             </button>
           )}
         </div>
+
+        {/* Streak incentive hint — contextual: changes based on classes today */}
+        {(() => {
+          if (classesToday === 0 && isCheckedIn) return null; // fresh success, no nudge yet
+          if (classesToday >= 2) return null; // already in savage mode, no need
+          if (!nextClass.isToday) return null;
+
+          const hint = classesToday === 0
+            ? { icon: '⚡', color: '#0ea5e9', text: 'Train twice today', sub: 'Check into a 2nd class to unlock 2x XP bonus mode.' }
+            : { icon: '🔥', color: '#ef4444', text: 'One more for Savage Mode', sub: 'A 3rd class today activates 3x XP. Push your limits.' };
+
+          return (
+            <div style={{
+              margin: '10px 0 0',
+              padding: '10px 14px',
+              borderRadius: 12,
+              background: `rgba(${hint.color === '#0ea5e9' ? '14,165,233' : '239,68,68'}, 0.06)`,
+              border: `1px solid rgba(${hint.color === '#0ea5e9' ? '14,165,233' : '239,68,68'}, 0.2)`,
+              display: 'flex',
+              alignItems: 'flex-start',
+              gap: 10,
+              position: 'relative',
+              zIndex: 2,
+            }}>
+              <span style={{ fontSize: 16, flexShrink: 0, lineHeight: 1.4 }}>{hint.icon}</span>
+              <div>
+                <div style={{ fontSize: 11, fontWeight: 900, color: hint.color, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 2 }}>
+                  {hint.text}
+                </div>
+                <div style={{ fontSize: 11, color: '#666', fontWeight: 500, lineHeight: 1.45 }}>
+                  {hint.sub}
+                </div>
+              </div>
+            </div>
+          );
+        })()}
       </div>
     </>
   );

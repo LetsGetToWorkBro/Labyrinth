@@ -93,6 +93,41 @@ function showBadgeUnlock(badge: { key: string; label: string; icon: string; desc
   setTimeout(dismiss, 4000);
 }
 
+// Already checked in modal — green success glass, same quality as error modal
+function showAlreadyCheckedInModal(className: string) {
+  if (document.getElementById('ciw-already-modal')) return;
+  const GREEN = '#10b981';
+  if (!document.getElementById('ciw-kf')) {
+    const s = document.createElement('style'); s.id = 'ciw-kf';
+    s.textContent = `@keyframes ciw-shake{0%,100%{transform:translate(-50%,-50%) translateX(0)}20%{transform:translate(-50%,-50%) translateX(-8px)}40%{transform:translate(-50%,-50%) translateX(8px)}60%{transform:translate(-50%,-50%) translateX(-5px)}80%{transform:translate(-50%,-50%) translateX(4px)}}`;
+    document.head.appendChild(s);
+  }
+  const backdrop = document.createElement('div');
+  backdrop.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.55);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);z-index:19000;pointer-events:all;';
+  document.body.appendChild(backdrop);
+  const modal = document.createElement('div');
+  modal.id = 'ciw-already-modal';
+  modal.style.cssText = `position:fixed;left:50%;top:50%;z-index:19001;transform:translate(-50%,-50%);width:min(340px,88vw);background:rgba(10,10,10,0.93);border-radius:22px;padding:28px 24px 22px;border:1px solid rgba(16,185,129,0.35);box-shadow:0 32px 80px rgba(0,0,0,0.9),0 0 40px rgba(16,185,129,0.12),inset 0 1px 1px rgba(255,255,255,0.06);backdrop-filter:blur(40px);-webkit-backdrop-filter:blur(40px);text-align:center;pointer-events:all;`;
+  modal.innerHTML = `
+    <div style="width:44px;height:44px;border-radius:50%;background:rgba(16,185,129,0.12);border:1px solid rgba(16,185,129,0.3);display:flex;align-items:center;justify-content:center;margin:0 auto 16px;">
+      <svg viewBox="0 0 24 24" fill="none" stroke="${GREEN}" stroke-width="2.5" width="22" height="22"><polyline points="20 6 9 17 4 12"/></svg>
+    </div>
+    <div style="font-family:system-ui,sans-serif;font-size:16px;font-weight:900;color:#fff;margin-bottom:8px;">Already Checked In</div>
+    <div style="font-family:system-ui,sans-serif;font-size:13px;font-weight:500;color:#666;line-height:1.55;margin-bottom:22px;">You're already checked into <strong style="color:#a8a29e">${className}</strong> today. See you on the mat!</div>
+    <div style="height:1px;background:rgba(255,255,255,0.06);margin-bottom:18px;"></div>
+    <button id="ciw-already-btn" style="width:100%;padding:13px;border-radius:12px;border:none;cursor:pointer;background:rgba(16,185,129,0.12);color:${GREEN};font-family:system-ui,sans-serif;font-size:14px;font-weight:800;letter-spacing:0.04em;text-transform:uppercase;">OSS!</button>
+  `;
+  document.body.appendChild(modal);
+  modal.animate([{opacity:0,transform:'translate(-50%,-50%) scale(0.88)'},{opacity:1,transform:'translate(-50%,-50%) scale(1)'}],{duration:350,easing:'cubic-bezier(0.16,1,0.3,1)',fill:'forwards'});
+  const dismiss = () => {
+    modal.animate([{opacity:1,transform:'translate(-50%,-50%) scale(1)'},{opacity:0,transform:'translate(-50%,-50%) scale(0.92)'}],{duration:200,easing:'ease-in',fill:'forwards'}).onfinish = () => { modal.remove(); backdrop.remove(); };
+    backdrop.animate([{opacity:1},{opacity:0}],{duration:200,easing:'ease-in',fill:'forwards'});
+  };
+  document.getElementById('ciw-already-btn')?.addEventListener('click', dismiss);
+  backdrop.addEventListener('click', dismiss);
+  setTimeout(dismiss, 4000);
+}
+
 // Polished check-in error toast — same dark glass style as the gateway login
 function showCheckInWindowError(title: string, detail: string) {
   // Don't stack duplicates
@@ -933,32 +968,41 @@ export default function HomePage() {
   const checkingInRef = useRef(false);
 
   const handleHomeCheckIn = useCallback(async (cls: any) => {
+    // ── Kids / Adults enforcement ───────────────────────────────────
+    const memberProfile = getMemberData();
+    const myBelt = ((memberProfile?.belt || (member as any)?.belt || 'white')).toLowerCase();
+    const kidsOnlyBelts = ['grey', 'gray', 'yellow', 'orange', 'green'];
+    const memberIsKids = kidsOnlyBelts.includes(myBelt);
+    const classIsKids  = (cls?.category || '').toLowerCase() === 'kids';
+    if (memberIsKids && !classIsKids) {
+      if (navigator.vibrate) navigator.vibrate([10, 30, 10]);
+      showCheckInWindowError('Kids class required.', 'Kids members can only check into kids classes.');
+      return;
+    }
+    if (!memberIsKids && classIsKids) {
+      if (navigator.vibrate) navigator.vibrate([10, 30, 10]);
+      showCheckInWindowError('Adults class required.', 'Adult members can only check into adult classes.');
+      return;
+    }
+
     // ── Check-in window enforcement ──────────────────────────────────
-    // Reads the admin-set window from localStorage. Default 60 minutes.
+    // Uses parseClassMinutes() which handles both ISO and HH:MM AM/PM formats.
     if (cls?.isToday !== false) {
       const windowMins = (() => { try { return parseInt(localStorage.getItem('lbjj_checkin_window_minutes') || '60', 10); } catch { return 60; } })();
       const now = new Date();
       const nowMins = now.getHours() * 60 + now.getMinutes();
-      const classTime: string = cls?.time || '';
-      if (classTime) {
-        const [hm, period] = classTime.split(' ');
-        const [hStr, mStr] = hm.split(':');
-        let h = parseInt(hStr, 10);
-        const m = parseInt(mStr || '0', 10);
-        if (period?.toUpperCase() === 'PM' && h !== 12) h += 12;
-        if (period?.toUpperCase() === 'AM' && h === 12) h = 0;
-        const startMins = h * 60 + m;
-        const openMins  = startMins - windowMins;
-        const endMins   = startMins + 90; // generous class end
-        const wLabel = windowMins >= 60 ? `${windowMins / 60} hour${windowMins > 60 ? 's' : ''}` : `${windowMins} minutes`;
+      const startMins = parseClassMinutes(cls?.time || '');
+      if (startMins > 0) {
+        const openMins = startMins - windowMins;
+        const endMins  = startMins + 90;
+        const wLabel = windowMins >= 60 ? `${windowMins / 60} hour${windowMins > 60 ? 's' : ''}` : `${windowMins} min`;
         if (nowMins < openMins) {
-          // Button press-down haptic then polished error toast
           if (navigator.vibrate) navigator.vibrate([10, 30, 10]);
           const minsUntilOpen = openMins - nowMins;
           const openLabel = minsUntilOpen >= 60
-            ? `${Math.floor(minsUntilOpen / 60)}h ${minsUntilOpen % 60}m`
+            ? `${Math.floor(minsUntilOpen / 60)}h ${minsUntilOpen % 60 > 0 ? minsUntilOpen % 60 + 'm' : ''}`
             : `${minsUntilOpen}m`;
-          showCheckInWindowError(`Check-in opens ${wLabel} before class.`, `Available in ${openLabel}`);
+          showCheckInWindowError(`Check-in opens ${wLabel} before class.`, `Available in ${openLabel}.`);
           return;
         }
         if (nowMins > endMins) {
@@ -982,8 +1026,7 @@ export default function HomePage() {
     // Ref lock: synchronous guard against rapid taps during GAS cold start
     if (checkingInRef.current) return;
     checkingInRef.current = true;
-    // GAS call first to check for dedup
-    const memberProfile = getMemberData();
+    // GAS call first to check for dedup (memberProfile already declared above for belt check)
     const profileEmail = memberProfile?.email || '';
     const profileName = memberProfile?.name || '';
     let res: any = null;
@@ -991,18 +1034,10 @@ export default function HomePage() {
       try {
         res = await gasCall('recordCheckIn', { email: profileEmail, name: profileName, className: cls.name || '' });
         if (res?.alreadyCheckedIn) {
-          // Show "already checked in" toast instead of confetti
-          const el = document.createElement('div');
-          el.textContent = 'Already checked in today';
-          el.style.cssText = `
-            position: fixed; bottom: 120px; left: 50%; transform: translateX(-50%);
-            background: rgba(100,100,100,0.95); color: #fff; font-weight: 600; font-size: 14px;
-            padding: 8px 20px; border-radius: 20px; z-index: 9999; pointer-events: none;
-            animation: pointsFloat 2s ease-out forwards;
-          `;
-          document.body.appendChild(el);
-          setTimeout(() => el.remove(), 2100);
+          // Premium already-checked-in modal — same glass style as check-in errors
+          showAlreadyCheckedInModal(cls.name || 'this class');
           setCheckedInClasses(prev => [...prev, cls.name || '']);
+          setCheckinPhase('success');
           checkingInRef.current = false;
           return;
         }
