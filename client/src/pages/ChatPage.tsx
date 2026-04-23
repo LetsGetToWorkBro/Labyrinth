@@ -8,6 +8,7 @@
 
 import React, { useState, useRef, useEffect, useCallback } from "react";
 import { getBeltColor } from "@/lib/constants";
+import { BeltIcon } from "@/components/BeltIcon";
 import { ParagonRing } from "@/components/ParagonRing";
 import { getActualLevel } from "@/lib/xp";
 import { useAuth } from "@/lib/auth-context";
@@ -1202,36 +1203,37 @@ function ChannelCard({ channel, variant, members, onClick, onMemberClick }: {
 
 // ─── RankCardItem ─────────────────────────────────────────────────
 
+const RANK_TITLES: Record<string, string> = {
+  blue: 'Blue Belt', purple: 'Purple Belt', brown: 'Brown Belt', black: 'Black Belt',
+  white: 'White Belt', grey: 'Grey Belt', yellow: 'Yellow Belt', orange: 'Orange Belt', green: 'Green Belt',
+};
+
 function RankCardItem({ beltKey, name, count, accessible, onClick }: {
   beltKey: string; name: string; count: number; accessible: boolean; onClick: () => void;
 }) {
-  const beltStyles: Record<string, React.CSSProperties> = {
-    white: { background: '#f5f5f4' },
-    blue: { background: '#3b82f6', boxShadow: '0 0 8px rgba(59,130,246,.4)' },
-    purple: { background: '#a855f7', boxShadow: '0 0 8px rgba(168,85,247,.4)' },
-    brown: { background: '#92400e', boxShadow: '0 0 8px rgba(146,64,14,.4)' },
-    black: { background: '#111', borderColor: 'rgba(255,255,255,.2)', position: 'relative' },
-  };
   return (
     <div
       className={`chatv4-rank-card${!accessible ? ' locked' : ''}`}
       onClick={accessible ? onClick : undefined}
+      style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, padding: '12px 10px', cursor: accessible ? 'pointer' : 'default' }}
     >
-      <div style={{
-        width: 11, height: 22, borderRadius: 3, flexShrink: 0,
-        border: '1px solid rgba(255,255,255,.1)', position: 'relative',
-        ...(beltStyles[beltKey] || beltStyles.white),
-      }}>
-        {beltKey === 'black' && (
-          <div style={{ position: 'absolute', bottom: 3, left: 0, width: '100%', height: 3, background: '#ef4444' }} />
+      {/* Belt SVG — full iconic belt asset */}
+      <div style={{ position: 'relative', width: '100%', display: 'flex', justifyContent: 'center' }}>
+        <BeltIcon belt={beltKey} stripes={0} width={96} />
+        {!accessible && (
+          <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,.5)', borderRadius: 4 }}>
+            <LockIcon size={14} color="#57534e" />
+          </div>
         )}
       </div>
-      <div style={{ fontSize: 14, fontWeight: 800, color: '#e7e5e4' }}>{name}</div>
-      {!accessible ? (
-        <span style={{ marginLeft: 'auto', color: '#57534e', display: 'flex' }}><LockIcon size={11} /></span>
-      ) : (
-        <div style={{ fontSize: 10, fontWeight: 700, color: '#57534e', marginLeft: 'auto' }}>{count}</div>
-      )}
+      {/* Rank name */}
+      <div style={{ fontSize: 13, fontWeight: 800, color: accessible ? '#e7e5e4' : '#57534e', textAlign: 'center', letterSpacing: '-.01em' }}>
+        {RANK_TITLES[beltKey] || name}
+      </div>
+      {/* Member count */}
+      <div style={{ fontSize: 10, fontWeight: 700, color: '#57534e' }}>
+        {accessible ? `${count} online` : 'Locked'}
+      </div>
     </div>
   );
 }
@@ -1285,13 +1287,9 @@ function ProfileBody({ member }: { member: ChannelMember }) {
         </ParagonRing>
         <div style={{ fontSize: 26, fontWeight: 900, color: '#fff', textAlign: 'center' }}>{member.name}</div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <div style={{
-            height: 10, width: 60, borderRadius: 4,
-            background: beltBarColor(beltKey),
-            boxShadow: `0 0 10px ${beltColor}40`,
-          }} />
+          <BeltIcon belt={beltKey} stripes={(member as any).stripes || 0} width={80} />
           <span style={{ fontSize: 14, fontWeight: 700, color: '#a8a29e', textTransform: 'capitalize' }}>
-            {beltKey} Belt{member.role && member.role.toLowerCase().includes('coach') ? ' · Coach' : ''}
+            {member.role && member.role.toLowerCase().includes('coach') ? 'Coach' : ''}
           </span>
         </div>
       </div>
