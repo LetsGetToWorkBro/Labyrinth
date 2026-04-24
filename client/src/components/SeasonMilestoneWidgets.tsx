@@ -82,11 +82,13 @@ function getSeasonTheme(pct: number, maxed: boolean): {
     outerGlow: '0 0 28px rgba(16,185,129,0.25)', label: 'Completed', pulsing: false,
   };
   if (pct >= 85) return {
-    // Charged — white-gold near completion
-    color: '#FFF8DC', glow: 'rgba(255,248,220,0.6)',
-    barGrad: 'linear-gradient(90deg,#C8A24C,#FFD700,#fff,#FFD700,#C8A24C)',
-    borderColor: 'rgba(255,248,220,0.5)', bgAccent: 'rgba(255,215,0,0.08)',
-    outerGlow: '0 0 32px rgba(255,215,0,0.35)', label: 'Almost there', pulsing: true,
+    // Almost-there — energetic gold pulse (NOT white/completion-adjacent).
+    // Distinct from maxed emerald so there's no visual confusion between
+    // "close to goal" and "goal reached".
+    color: '#FFD700', glow: 'rgba(255,215,0,0.55)',
+    barGrad: 'linear-gradient(90deg,#C8A24C,#FFD700,#FFA500,#FFD700,#C8A24C)',
+    borderColor: 'rgba(255,215,0,0.45)', bgAccent: 'rgba(255,215,0,0.08)',
+    outerGlow: '0 0 28px rgba(255,215,0,0.3)', label: 'Almost there', pulsing: true,
   };
   if (pct >= 60) return {
     // Charged gold — warming up
@@ -197,8 +199,8 @@ function SeasonWidget({ season, onClick }: { season: SeasonData; onClick?: () =>
         <svg viewBox="0 0 36 36" style={{ transform: 'rotate(-90deg)', width: '100%', height: '100%', overflow: 'visible' }}>
           <defs>
             <linearGradient id="smw-season-grad" x1="0%" y1="0%" x2="100%" y2="100%">
-              <stop offset="0%" stopColor={maxed ? '#6ee7b7' : pct >= 85 ? '#fff' : pct >= 60 ? '#FFD700' : '#fef08a'} style={{ transition: 'stop-color 0.9s ease' }} />
-              <stop offset="100%" stopColor={maxed ? '#10b981' : pct >= 85 ? '#FFD700' : pct >= 60 ? '#e8af34' : '#C8A24C'} style={{ transition: 'stop-color 0.9s ease' }} />
+              <stop offset="0%" stopColor={maxed ? '#6ee7b7' : pct >= 85 ? '#FFD700' : pct >= 60 ? '#FFD700' : '#fef08a'} style={{ transition: 'stop-color 0.9s ease' }} />
+              <stop offset="100%" stopColor={maxed ? '#10b981' : pct >= 85 ? '#FFA500' : pct >= 60 ? '#e8af34' : '#C8A24C'} style={{ transition: 'stop-color 0.9s ease' }} />
             </linearGradient>
           </defs>
           <circle cx="18" cy="18" r="16" fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth="3" />
@@ -486,8 +488,8 @@ export function SeasonMilestoneWidgets({
           100% { filter: brightness(1.7) saturate(1.4); }
         }
         @keyframes smw-ring-pulse {
-          0%   { filter: drop-shadow(0 0 6px rgba(255,215,0,0.4)); }
-          100% { filter: drop-shadow(0 0 14px rgba(255,248,220,0.9)); }
+          0%   { filter: drop-shadow(0 0 6px rgba(255,215,0,0.35)); transform: scale(1); }
+          100% { filter: drop-shadow(0 0 14px rgba(255,165,0,0.85)); transform: scale(1.03); }
         }
         @keyframes smw-pulse-btn {
           0%   { box-shadow: 0 4px 16px rgba(168,85,247,0.4); }

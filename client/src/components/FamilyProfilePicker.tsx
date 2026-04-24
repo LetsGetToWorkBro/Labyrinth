@@ -97,12 +97,14 @@ export function saveActiveProfileToNamespace(row: number) {
 /** Load a member's namespaced data into the active slots */
 export function loadNamespaceForProfile(row: number) {
   if (!row) return;
+  // Keys that should NEVER be cleared on profile switch (device-local, persistent)
+  const PRESERVE_ON_EMPTY = new Set(['lbjj_profile_picture', 'lbjj_streak_cache']);
   getAllNamespacedKeys().forEach(key => {
     const ns = localStorage.getItem(nsKey(key, row));
     if (ns !== null) {
       localStorage.setItem(key, ns);
-    } else {
-      // New member — clear the slot so we start fresh
+    } else if (!PRESERVE_ON_EMPTY.has(key)) {
+      // New member — clear the slot so we start fresh (but keep device-local keys)
       localStorage.removeItem(key);
     }
   });

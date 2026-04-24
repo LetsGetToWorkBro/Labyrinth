@@ -442,19 +442,19 @@ export default function HomePage() {
   });
   const avatarFileRef = useRef<HTMLInputElement>(null);
 
-  // Sync profilePic from GAS profile if localStorage is empty
+  // Always sync profilePic from GAS when member data is present — ensures the
+  // PFP is fresh from the server and survives any localStorage clear.
   useEffect(() => {
     const remote = (member as any)?.profilePicBase64;
-    if (remote && !profilePic) {
-      try {
-        localStorage.setItem('lbjj_profile_picture', remote);
-        const stats = JSON.parse(localStorage.getItem('lbjj_game_stats_v2') || '{}');
-        stats.profilePic = remote;
-        localStorage.setItem('lbjj_game_stats_v2', JSON.stringify(stats));
-      } catch {}
-      setProfilePic(remote);
-    }
-  }, [member, profilePic]);
+    if (!remote) return;
+    try {
+      localStorage.setItem('lbjj_profile_picture', remote);
+      const stats = JSON.parse(localStorage.getItem('lbjj_game_stats_v2') || '{}');
+      stats.profilePic = remote;
+      localStorage.setItem('lbjj_game_stats_v2', JSON.stringify(stats));
+    } catch {}
+    setProfilePic(remote);
+  }, [member]);
 
   // ─── Deduplicated getMemberCheckIns (fires once per mount) ────
   const checkInsCache = useRef<any[] | null>(null);
@@ -611,7 +611,8 @@ export default function HomePage() {
 
   const cachedStreak = (() => { try { return parseInt(localStorage.getItem('lbjj_streak_cache') || '0'); } catch { return 0; } })();
   const rawStreak = (member as any)?.currentStreak || 0;
-  const streakCount = rawStreak > 0 ? rawStreak : cachedStreak;
+  // Always take MAX — never let a 0/null from GAS overwrite a valid local cache
+  const streakCount = Math.max(rawStreak, cachedStreak);
 
   // Daily streak — consecutive calendar days trained (drives 7/14/21/30 day powers)
   // Increments whenever checkin-complete fires — forces streak/weekDots recompute
@@ -690,7 +691,7 @@ export default function HomePage() {
   const streakAnimated = useRef(false);
 
   useEffect(() => {
-    const streak = streakFreezeActive ? 1 : (member?.currentStreak || 0);
+    const streak = streakFreezeActive ? 1 : streakCount;
     if (streakAnimated.current || streak === 0) {
       setDisplayStreak(streak);
       return;
@@ -706,7 +707,7 @@ export default function HomePage() {
       if (progress < 1) requestAnimationFrame(tick);
     };
     requestAnimationFrame(tick);
-  }, [member?.currentStreak]);
+  }, [streakCount, streakFreezeActive]);
 
   // ─── Today's check-in count (immediate, localStorage-based) ────
   const [classesToday, setClassesToday] = useState(0);
@@ -807,16 +808,22 @@ export default function HomePage() {
       // Fire xp-updated so TopHeader, XPWidget etc. re-sync
       try { window.dispatchEvent(new CustomEvent('xp-updated')); } catch {}
       try {
-        const stats = { ...localStats };
+        // Read-modify-write pattern — preserve all existing fields, only update what we know
+        const stats = JSON.parse(localStorage.getItem('lbjj_game_stats_v2') || '{}');
         stats.classesAttended = realTotal;
         stats.totalXP = derivedXP;
         // Always keep stats.xp up to date with the highest known value
         stats.xp = derivedXP;
-        // Persist streak so it survives across sessions even if GAS is slow
-        if (gasStreak > 0) stats.currentStreak = gasStreak;
+        // Persist streak so it survives across sessions even if GAS is slow.
+        // Take MAX — never let a lower gasStreak overwrite a higher cached local value.
+        const prevStreak = stats.currentStreak || 0;
+        const prevCache = parseInt(localStorage.getItem('lbjj_streak_cache') || '0', 10) || 0;
+        const bestStreak = Math.max(gasStreak, prevStreak, prevCache);
+        if (bestStreak > 0) stats.currentStreak = bestStreak;
+        stats.maxStreak = Math.max(stats.maxStreak || 0, bestStreak);
         localStorage.setItem('lbjj_game_stats_v2', JSON.stringify(stats));
         // Also cache the streak separately for fast reads
-        if (gasStreak > 0) localStorage.setItem('lbjj_streak_cache', String(gasStreak));
+        if (bestStreak > 0) localStorage.setItem('lbjj_streak_cache', String(bestStreak));
       } catch {}
       // Today's count + dedup — use UNIQUE class names only
       const today = new Date().toISOString().split('T')[0];
@@ -1575,9 +1582,9 @@ export default function HomePage() {
       const yearMonth = now.toISOString().slice(0, 7);
       const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
       const dayOfMonth = now.getDate();
-      // Use reactive seasonClasses state (increments on every check-in)
-      const thisMonthClasses = seasonClasses;
       const goalClasses = 20;
+      // Safety cap: never display more than the goal, even if the counter drifted high
+      const thisMonthClasses = Math.min(seasonClasses, goalClasses);
       const progress = Math.min(1, thisMonthClasses / goalClasses);
       const monthName = now.toLocaleString('default', { month: 'long' });
       return { thisMonthClasses, goalClasses, progress, monthName, dayOfMonth, daysInMonth };

@@ -271,7 +271,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     localStorage.removeItem('lbjj_home_cache');
     localStorage.removeItem('lbjj_home_leaderboard');
     localStorage.removeItem('lbjj_stream_status');
-    localStorage.removeItem('lbjj_streak_cache');
+    // lbjj_streak_cache intentionally preserved — it's device-local and survives sign-out
+    // lbjj_profile_picture intentionally preserved — it's device-local and survives sign-out
     localStorage.removeItem('lbjj_belt_promotions_cache');
     localStorage.removeItem('lbjj_classes_cache');
     setIsAuthenticated(false);

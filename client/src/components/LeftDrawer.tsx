@@ -184,9 +184,9 @@ export function LeftDrawer() {
   };
 
   const handleSignOut = () => {
+    // Device-local keys that must survive sign-out: lbjj_profile_picture, lbjj_streak_cache
     const clearKeys = [
       'lbjj_game_stats_v2',
-      'lbjj_profile_picture',
       'lbjj_member_profile',
       'lbjj_achievements',
       'lbjj_achievement_xp_claimed',
@@ -194,7 +194,6 @@ export function LeftDrawer() {
       'lbjj_active_family_row',
       'lbjj_family_picked',
       'lbjj_widget_layout',
-      'lbjj_streak_cache',
       'lbjj_belt_promotions_cache',
       'lbjj_home_cache',
       'lbjj_classes_cache',
