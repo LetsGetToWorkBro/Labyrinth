@@ -431,16 +431,15 @@ export function OnlineAvatarCluster() {
 
   useEffect(() => {
     if (!isAuthenticated) return;
+    // Seed with self immediately so strip isn't empty while GAS fetches
     const self = buildSelf();
-    if (self) setMembers(prev => {
-      const without = prev.filter(m => (m.email || m.name) !== (self.email || self.name));
-      return [self, ...without];
-    });
+    if (self) setMembers([self]);
     updatePresence().catch(() => {});
     load();
     const t = setInterval(() => { updatePresence().catch(() => {}); load(); }, 60000);
     return () => clearInterval(t);
-  }, [isAuthenticated, load, buildSelf]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isAuthenticated]); // omit load/buildSelf — they're stable refs, including them causes re-mount loops
 
   // Poll DM unread count
   useEffect(() => {
