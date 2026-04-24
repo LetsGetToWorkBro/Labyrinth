@@ -1681,6 +1681,29 @@ async function renderMembers() {
     <div class="page-header">
       <h1 class="page-title">Members</h1>
       <div class="page-actions">
+        <div class="send-access-wrap" style="position:relative;display:inline-block;">
+          <button class="btn btn-secondary" onclick="toggleSendAccessMenu(event)" id="sendAccessBtn" aria-haspopup="menu" aria-expanded="false">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:4px;"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+            Send App Access
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-left:4px;"><polyline points="6 9 12 15 18 9"/></svg>
+          </button>
+          <div id="sendAccessMenu" class="send-access-menu" style="display:none;position:absolute;right:0;top:calc(100% + 6px);min-width:240px;background:rgba(10,10,14,0.95);border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:6px;z-index:50;box-shadow:0 12px 40px rgba(0,0,0,0.5);backdrop-filter:blur(12px);">
+            <button class="send-access-item" onclick="openBulkSetupConfirm('new')" onmouseover="this.style.background='rgba(200,162,76,0.08)'" onmouseout="this.style.background='transparent'" style="display:flex;align-items:flex-start;gap:10px;width:100%;text-align:left;background:transparent;border:none;color:var(--text);padding:10px 12px;border-radius:8px;cursor:pointer;">
+              <span style="color:var(--gold);font-size:16px;line-height:1.1;">&#9733;</span>
+              <span style="flex:1;">
+                <div style="font-size:13px;font-weight:600;">Send to Members Without Access</div>
+                <div style="font-size:11px;color:var(--text-muted);margin-top:2px;">Only members who have never set up</div>
+              </span>
+            </button>
+            <button class="send-access-item" onclick="openBulkSetupConfirm('all')" onmouseover="this.style.background='rgba(200,162,76,0.08)'" onmouseout="this.style.background='transparent'" style="display:flex;align-items:flex-start;gap:10px;width:100%;text-align:left;background:transparent;border:none;color:var(--text);padding:10px 12px;border-radius:8px;cursor:pointer;">
+              <span style="color:var(--gold);font-size:16px;line-height:1.1;">&#128231;</span>
+              <span style="flex:1;">
+                <div style="font-size:13px;font-weight:600;">Send to All Members</div>
+                <div style="font-size:11px;color:var(--text-muted);margin-top:2px;">Every active member with an email</div>
+              </span>
+            </button>
+          </div>
+        </div>
         <button class="btn btn-primary" onclick="showAddMemberModal()">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
           Add Member
@@ -1873,6 +1896,9 @@ function filterMembers() {
           <button class="btn btn-ghost btn-sm" onclick='setupMemberCard(${JSON.stringify(m).replace(/'/g, "&#39;")})' title="Set Up Card" style="color:var(--gold)">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
           </button>
+          ${m.Email ? `<button class="btn btn-ghost btn-sm" onclick="sendAccountSetup('${esc(m.Email)}', '${esc(m.Name)}', '${m._row || m.ID}')" title="Send Setup Link" style="color:var(--gold)">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 11-7.778 7.778 5.5 5.5 0 017.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/></svg>
+          </button>` : ''}
           <button class="btn btn-ghost btn-sm" onclick="deleteMember('${m.ID}')" title="Delete" style="color:var(--error)">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3,6 5,6 21,6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>
           </button>
@@ -5513,6 +5539,137 @@ async function sendAccountSetup(email, name, row) {
     showToast('Account setup link sent to ' + email, 'success');
   } else {
     showToast((result && result.error) || 'Failed to send setup link', 'error');
+  }
+}
+
+/* ── BULK SEND APP-ACCESS EMAILS ─────────────────────────── */
+function toggleSendAccessMenu(e) {
+  if (e && e.stopPropagation) e.stopPropagation();
+  const menu = document.getElementById('sendAccessMenu');
+  const btn = document.getElementById('sendAccessBtn');
+  if (!menu) return;
+  const isOpen = menu.style.display === 'block';
+  menu.style.display = isOpen ? 'none' : 'block';
+  if (btn) btn.setAttribute('aria-expanded', isOpen ? 'false' : 'true');
+  if (!isOpen) {
+    const close = (ev) => {
+      if (!menu.contains(ev.target) && ev.target !== btn) {
+        menu.style.display = 'none';
+        if (btn) btn.setAttribute('aria-expanded', 'false');
+        document.removeEventListener('click', close);
+      }
+    };
+    setTimeout(() => document.addEventListener('click', close), 0);
+  }
+}
+
+function _bulkSetupRecipients(filter) {
+  const isCancelled = (m) => {
+    const s = (m.Status || '').toString().toLowerCase();
+    return s === 'cancelled' || s === 'canceled' || s === 'removed';
+  };
+  return (membersCache || []).filter(m => {
+    if (!m.Email) return false;
+    if (isCancelled(m)) return false;
+    if (filter === 'new') {
+      if (m.AccountSetupToken || m.PasswordHash) return false;
+    }
+    return true;
+  });
+}
+
+async function openBulkSetupConfirm(filter) {
+  const menu = document.getElementById('sendAccessMenu');
+  if (menu) menu.style.display = 'none';
+
+  const recipients = _bulkSetupRecipients(filter);
+  const count = recipients.length;
+
+  if (count === 0) {
+    showToast(filter === 'new'
+      ? 'No members need setup emails — everyone has already set up their account.'
+      : 'No members with an email address on file.',
+      'info');
+    return;
+  }
+
+  const previewList = recipients.slice(0, 12).map(m =>
+    `<div style="display:flex;justify-content:space-between;gap:12px;padding:6px 10px;border-bottom:1px solid rgba(255,255,255,0.04);font-size:12px;">
+       <span style="color:var(--text);">${esc(m.Name || '(no name)')}</span>
+       <span style="color:var(--text-muted);">${esc(m.Email)}</span>
+     </div>`).join('');
+  const extra = count > 12 ? `<div style="padding:8px 10px;font-size:11px;color:var(--text-faint);">&hellip; and ${count - 12} more</div>` : '';
+
+  const filterLabel = filter === 'new' ? 'members without app access' : 'all active members';
+
+  openModal(`
+    <div class="modal-header">
+      <h2 class="modal-title">Send App Access</h2>
+      <button class="modal-close" onclick="closeModal()">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div class="modal-body" style="padding:20px;">
+      <p style="margin:0 0 12px 0;color:var(--text);font-size:14px;">
+        Send setup emails to <strong style="color:#C8A24C;">${count}</strong> ${esc(filterLabel)}?
+      </p>
+      <p style="margin:0 0 16px 0;color:var(--text-muted);font-size:12px;">
+        Each member will receive a personalized link to set their password and log in to the app. Emails are sent one at a time.
+      </p>
+      <div style="background:rgba(10,10,14,0.95);border:1px solid rgba(255,255,255,0.08);border-radius:12px;max-height:300px;overflow-y:auto;margin-bottom:16px;">
+        ${previewList || '<div style="padding:12px;color:var(--text-muted);font-size:12px;">No recipients</div>'}
+        ${extra}
+      </div>
+      <div id="bulkSetupProgress" style="display:none;margin-bottom:12px;">
+        <div style="display:flex;align-items:center;gap:10px;color:var(--text);font-size:13px;">
+          <span class="spinner"></span>
+          <span id="bulkSetupProgressText">Sending&hellip;</span>
+        </div>
+        <div style="height:6px;background:rgba(255,255,255,0.06);border-radius:3px;margin-top:8px;overflow:hidden;">
+          <div id="bulkSetupProgressBar" style="height:100%;width:0%;background:linear-gradient(90deg,#C8A24C,#e8b84b);transition:width 0.3s ease;"></div>
+        </div>
+      </div>
+      <div class="modal-actions" style="display:flex;gap:8px;justify-content:flex-end;">
+        <button class="btn btn-secondary" id="bulkSetupCancelBtn" onclick="closeModal()">Cancel</button>
+        <button class="btn btn-primary" id="bulkSetupSendBtn" onclick="runBulkSetup('${esc(filter)}')" style="background:#C8A24C;color:#09090B;border:none;">
+          Send to ${count}
+        </button>
+      </div>
+    </div>
+  `);
+}
+
+async function runBulkSetup(filter) {
+  const sendBtn = document.getElementById('bulkSetupSendBtn');
+  const cancelBtn = document.getElementById('bulkSetupCancelBtn');
+  const progress = document.getElementById('bulkSetupProgress');
+  const progressText = document.getElementById('bulkSetupProgressText');
+  const progressBar = document.getElementById('bulkSetupProgressBar');
+
+  if (sendBtn) { sendBtn.disabled = true; sendBtn.innerHTML = '<span class="spinner"></span> Sending&hellip;'; }
+  if (cancelBtn) cancelBtn.disabled = true;
+  if (progress) progress.style.display = 'block';
+  if (progressText) progressText.textContent = 'Contacting server — this may take a minute for larger batches…';
+  if (progressBar) progressBar.style.width = '35%';
+
+  const result = await api('bulkSendSetup', { filter });
+
+  if (progressBar) progressBar.style.width = '100%';
+
+  if (result && result.success) {
+    closeModal();
+    const sent = result.sent || 0;
+    const failed = result.failed || 0;
+    const skipped = result.skipped || 0;
+    let msg = `Setup emails sent to ${sent} member${sent === 1 ? '' : 's'}`;
+    if (failed) msg += ` (${failed} failed)`;
+    if (skipped) msg += ` — ${skipped} skipped`;
+    showToast(msg, failed ? 'warning' : 'success');
+  } else {
+    if (sendBtn) { sendBtn.disabled = false; sendBtn.innerHTML = 'Send'; }
+    if (cancelBtn) cancelBtn.disabled = false;
+    if (progress) progress.style.display = 'none';
+    showToast((result && result.error) || 'Failed to send bulk setup emails', 'error');
   }
 }
 
