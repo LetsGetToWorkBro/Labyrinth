@@ -12,6 +12,20 @@ function cacheMemberPfp(m: any) {
   if (Array.isArray(m.familyMembers)) bulkSetPfp(m.familyMembers);
 }
 
+// Fetch admin-configured app config from GAS and cache in sessionStorage.
+// sessionStorage is used deliberately — localStorage can be pre-set by a user
+// trying to bypass the check-in window. sessionStorage is wiped on tab close.
+function fetchAndCacheAppConfig() {
+  gasCall('getAppConfig', {})
+    .then((cfg: any) => {
+      const mins = parseInt(cfg?.checkinWindowMinutes, 10);
+      if (Number.isFinite(mins) && mins > 0) {
+        try { sessionStorage.setItem('lbjj_checkin_window', String(mins)); } catch {}
+      }
+    })
+    .catch(() => {});
+}
+
 function sanitizeProfileForStorage(profile: any) {
   if (!profile) return profile;
   const sanitized = { ...profile };
@@ -26,6 +40,7 @@ interface AuthContextType {
   isAuthenticated: boolean;
   isLoading: boolean;
   isAdmin: boolean;
+  isAdminVerified: boolean;
   member: MemberProfile | null;
   familyMembers: FamilyMember[];
   login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
@@ -43,6 +58,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
   const [member, setMemberState] = useState<MemberProfile | null>(null);
   const [familyMembers, setFamilyMembers] = useState<FamilyMember[]>([]);
+  // Only true once GAS has confirmed isAdmin — localStorage cache alone is not trusted.
+  // Use this for gating admin routes/UI; use isAdmin for quick UX hints only.
+  const [isAdminVerified, setIsAdminVerified] = useState(false);
 
   // Derived — true when role is owner / admin / coach / instructor
   const isAdmin = !!(member?.isAdmin);
@@ -79,6 +97,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (savedProfile.familyMembers) setFamilyMembers(savedProfile.familyMembers);
         cacheMemberPfp(savedProfile);
         setIsLoading(false);
+        fetchAndCacheAppConfig();
 
         // If cached profile claims isAdmin, re-verify with server in background
         if (savedProfile?.isAdmin) {
@@ -87,7 +106,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               // Cached profile was stale/tampered — update profile but don't log out
               setMemberData({ ...savedProfile, isAdmin: false });
               setMemberState({ ...savedProfile, isAdmin: false });
+              setIsAdminVerified(false);
               localStorage.setItem('lbjj_member_profile', JSON.stringify(sanitizeProfileForStorage({ ...savedProfile, isAdmin: false })));
+            } else {
+              setIsAdminVerified(true);
             }
           }).catch(() => {
             // Network error — keep cached profile, will retry on next load
@@ -110,6 +132,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             const normalized = normalizeAdminRole(raw);
             setMemberState(normalized);
             setMemberData(normalized);
+            setIsAdminVerified(!!normalized.isAdmin);
             localStorage.setItem('lbjj_member_profile', JSON.stringify(sanitizeProfileForStorage(normalized)));
             if (normalized.familyMembers) setFamilyMembers(normalized.familyMembers);
             cacheMemberPfp(normalized);
@@ -137,9 +160,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setIsAuthenticated(true);
         setMemberState(result.member);
         setMemberData(result.member);
+        // Fresh server response — isAdmin is trusted here.
+        setIsAdminVerified(!!result.member.isAdmin);
         localStorage.setItem('lbjj_member_profile', JSON.stringify(sanitizeProfileForStorage(result.member)));
         setFamilyMembers(result.member.familyMembers || []);
         cacheMemberPfp(result.member);
+        fetchAndCacheAppConfig();
         // Sync locally-earned achievements to GAS on login (fire-and-forget)
         try {
           const earned: string[] = JSON.parse(localStorage.getItem('lbjj_achievements') || '[]');
@@ -162,6 +188,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const loginWithPasskey = useCallback(async (email: string) => {
     try {
       setActiveLocation(getSavedLocationId());
+      fetchAndCacheAppConfig();
       const savedToken = localStorage.getItem('lbjj_session_token');
 
       // Fast path: if we have a saved token, optimistically restore from cached profile
@@ -200,6 +227,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                       const fresh = normalizeAdminRole(raw);
                       setMemberState(fresh);
                       setMemberData(fresh);
+                      setIsAdminVerified(!!fresh.isAdmin);
                       localStorage.setItem('lbjj_member_profile', JSON.stringify(sanitizeProfileForStorage(fresh)));
                       if (fresh.familyMembers) setFamilyMembers(fresh.familyMembers);
                       cacheMemberPfp(fresh);
@@ -213,6 +241,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                   const fresh = normalizeAdminRole(raw);
                   setMemberState(fresh);
                   setMemberData(fresh);
+                  setIsAdminVerified(!!fresh.isAdmin);
                   localStorage.setItem('lbjj_member_profile', JSON.stringify(sanitizeProfileForStorage(fresh)));
                   if (fresh.familyMembers) setFamilyMembers(fresh.familyMembers);
                   cacheMemberPfp(fresh);
@@ -236,6 +265,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             setIsAuthenticated(true);
             setMemberState(normalized);
             setMemberData(normalized);
+            setIsAdminVerified(!!normalized.isAdmin);
             localStorage.setItem('lbjj_member_profile', JSON.stringify(sanitizeProfileForStorage(normalized)));
             if (normalized.familyMembers) setFamilyMembers(normalized.familyMembers);
             cacheMemberPfp(normalized);
@@ -257,6 +287,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               setIsAuthenticated(true);
               setMemberState(normalized);
               setMemberData(normalized);
+              setIsAdminVerified(!!normalized.isAdmin);
               localStorage.setItem('lbjj_member_profile', JSON.stringify(sanitizeProfileForStorage(normalized)));
               if (normalized.familyMembers) setFamilyMembers(normalized.familyMembers);
               cacheMemberPfp(normalized);
@@ -294,6 +325,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setIsAuthenticated(false);
     setMemberState(null);
     setFamilyMembers([]);
+    setIsAdminVerified(false);
     // Clear family session so picker re-shows on next login
     try { sessionStorage.removeItem('lbjj_family_picked'); } catch {}
   }, []);
@@ -303,6 +335,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const profile = await memberGetProfile();
       setMemberState(profile);
       setMemberData(profile);
+      setIsAdminVerified(!!profile.isAdmin);
       localStorage.setItem('lbjj_member_profile', JSON.stringify(sanitizeProfileForStorage(profile)));
       if (profile.familyMembers) setFamilyMembers(profile.familyMembers);
       cacheMemberPfp(profile);
@@ -332,7 +365,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   return (
-    <AuthContext.Provider value={{ isAuthenticated, isLoading, isAdmin, member, familyMembers, login, loginWithPasskey, logout, refreshProfile, setMember, switchProfile }}>
+    <AuthContext.Provider value={{ isAuthenticated, isLoading, isAdmin, isAdminVerified, member, familyMembers, login, loginWithPasskey, logout, refreshProfile, setMember, switchProfile }}>
       {children}
     </AuthContext.Provider>
   );

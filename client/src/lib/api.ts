@@ -213,16 +213,19 @@ export async function gasCall(action: string, payload: Record<string, any> = {},
   const fullPayload = { action, ...payload };
   const jsonPayload = JSON.stringify(fullPayload);
 
-  // Use POST for large payloads (signatures, signed docs) — GET has ~8KB URL limit
-  // A canvas signature PNG in base64 is typically 20-100KB, way over the limit
+  // Always POST when a session token is present so it never leaks into URLs,
+  // server logs, browser history, or referrer headers. Unauthenticated public
+  // calls (schedule, stream status, trial booking) can still use GET.
+  const hasToken = !!payload?.token || !!getToken();
   const isLarge = jsonPayload.length > 4000;
+  const usePost = hasToken || isLarge;
 
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), GAS_TIMEOUT_MS);
 
   try {
     let response: Response;
-    if (isLarge) {
+    if (usePost) {
       // POST as text/plain — GAS reads via e.postData.contents
       response = await fetch(_gasEndpoint, {
         method: "POST",
@@ -758,7 +761,12 @@ export async function memberAddCard(): Promise<{ success: boolean; url?: string;
       successUrl: window.location.origin + window.location.pathname + "?cardAdded=1",
       cancelUrl:  window.location.origin + window.location.pathname,
     });
-    return { success: !!result?.checkoutUrl, url: result?.checkoutUrl };
+    const url = result?.checkoutUrl || result?.url || '';
+    if (!url.startsWith('https://checkout.stripe.com/') && !url.startsWith('https://billing.stripe.com/')) {
+      console.error('Invalid redirect URL:', url);
+      return { success: false, error: 'Invalid payment URL' };
+    }
+    return { success: true, url };
   } catch (err) {
     console.error("memberAddCard failed:", err);
     return { success: false };
@@ -1026,7 +1034,8 @@ export interface DmConversation {
 export async function dmSend(toEmail: string, text: string): Promise<{ success: boolean; messageId?: string }> {
   const token = getToken() || '';
   if (!token) return { success: false };
-  try { return await gasCall('dmSend', { token, toEmail, text }); } catch { return { success: false }; }
+  const capped = (text || '').slice(0, 2000);
+  try { return await gasCall('dmSend', { token, toEmail, text: capped }); } catch { return { success: false }; }
 }
 
 export async function dmGetThread(otherEmail: string, limit = 60): Promise<DmMessage[]> {

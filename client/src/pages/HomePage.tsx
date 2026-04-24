@@ -109,6 +109,11 @@ function showBadgeUnlock(badge: { key: string; label: string; icon: string; desc
   setTimeout(dismiss, 4000);
 }
 
+// Escape HTML for safe interpolation into innerHTML templates below.
+function escapeHTML(s: string): string {
+  return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c] || c));
+}
+
 // Already checked in modal — green success glass, same quality as error modal
 function showAlreadyCheckedInModal(className: string) {
   if (document.getElementById('ciw-already-modal')) return;
@@ -124,12 +129,13 @@ function showAlreadyCheckedInModal(className: string) {
   const modal = document.createElement('div');
   modal.id = 'ciw-already-modal';
   modal.style.cssText = `position:fixed;left:50%;top:50%;z-index:19001;transform:translate(-50%,-50%);width:min(340px,88vw);background:rgba(10,10,10,0.93);border-radius:22px;padding:28px 24px 22px;border:1px solid rgba(16,185,129,0.35);box-shadow:0 32px 80px rgba(0,0,0,0.9),0 0 40px rgba(16,185,129,0.12),inset 0 1px 1px rgba(255,255,255,0.06);backdrop-filter:blur(40px);-webkit-backdrop-filter:blur(40px);text-align:center;pointer-events:all;`;
+  // XSS-safe: className is escapeHTML'd; GREEN is a hardcoded color literal.
   modal.innerHTML = `
     <div style="width:44px;height:44px;border-radius:50%;background:rgba(16,185,129,0.12);border:1px solid rgba(16,185,129,0.3);display:flex;align-items:center;justify-content:center;margin:0 auto 16px;">
       <svg viewBox="0 0 24 24" fill="none" stroke="${GREEN}" stroke-width="2.5" width="22" height="22"><polyline points="20 6 9 17 4 12"/></svg>
     </div>
     <div style="font-family:system-ui,sans-serif;font-size:16px;font-weight:900;color:#fff;margin-bottom:8px;">Already Checked In</div>
-    <div style="font-family:system-ui,sans-serif;font-size:13px;font-weight:500;color:#666;line-height:1.55;margin-bottom:22px;">You're already checked into <strong style="color:#a8a29e">${className}</strong> today. See you on the mat!</div>
+    <div style="font-family:system-ui,sans-serif;font-size:13px;font-weight:500;color:#666;line-height:1.55;margin-bottom:22px;">You're already checked into <strong style="color:#a8a29e">${escapeHTML(className)}</strong> today. See you on the mat!</div>
     <div style="height:1px;background:rgba(255,255,255,0.06);margin-bottom:18px;"></div>
     <button id="ciw-already-btn" style="width:100%;padding:13px;border-radius:12px;border:none;cursor:pointer;background:rgba(16,185,129,0.12);color:${GREEN};font-family:system-ui,sans-serif;font-size:14px;font-weight:800;letter-spacing:0.04em;text-transform:uppercase;">OSS!</button>
   `;
@@ -188,6 +194,7 @@ function showCheckInWindowError(title: string, detail: string) {
     pointer-events:all;
   `;
 
+  // XSS-safe: title/detail are escapeHTML'd; RED/GOLD are hardcoded color literals.
   toast.innerHTML = `
     <div style="width:44px;height:44px;border-radius:50%;background:rgba(239,68,68,0.12);border:1px solid rgba(239,68,68,0.3);display:flex;align-items:center;justify-content:center;margin:0 auto 16px;">
       <svg viewBox="0 0 24 24" fill="none" stroke="${RED}" stroke-width="2.5" width="22" height="22">
@@ -196,8 +203,8 @@ function showCheckInWindowError(title: string, detail: string) {
         <line x1="12" y1="16" x2="12.01" y2="16"/>
       </svg>
     </div>
-    <div style="font-family:system-ui,sans-serif;font-size:16px;font-weight:900;color:#fff;margin-bottom:8px;letter-spacing:0.01em;">${title}</div>
-    <div style="font-family:system-ui,sans-serif;font-size:13px;font-weight:500;color:#666;line-height:1.55;margin-bottom:22px;">${detail}</div>
+    <div style="font-family:system-ui,sans-serif;font-size:16px;font-weight:900;color:#fff;margin-bottom:8px;letter-spacing:0.01em;">${escapeHTML(title)}</div>
+    <div style="font-family:system-ui,sans-serif;font-size:13px;font-weight:500;color:#666;line-height:1.55;margin-bottom:22px;">${escapeHTML(detail)}</div>
     <div style="height:1px;background:rgba(255,255,255,0.06);margin-bottom:18px;"></div>
     <button id="ciw-dismiss-btn" style="
       width:100%;padding:13px;border-radius:12px;border:none;cursor:pointer;
@@ -267,10 +274,11 @@ function triggerCheckInVFX(cx?: number, cy?: number) {
       const p = document.createElement('div');
       const isGold = i % 3 === 0;
       const size = Math.random() * 6 + 3;
-      p.style.cssText = `position:absolute;width:${size}px;height:${size}px;border-radius:50%;
+      p.style.cssText = `position:fixed;width:${size}px;height:${size}px;border-radius:50%;
         background:${isGold ? gold : color};
         box-shadow:0 0 12px ${isGold ? gold : color};
-        left:${x}px;top:${y}px;`;
+        left:${x}px;top:${y}px;
+        will-change:transform,opacity;`;
       vfx.appendChild(p);
       const ang = Math.random() * Math.PI * 2;
       const v = 100 + Math.random() * 250;
@@ -291,7 +299,8 @@ function triggerCheckInVFX(cx?: number, cy?: number) {
 
 function showPointsToast(points: number) {
   const el = document.createElement('div');
-  el.innerHTML = `<svg viewBox="0 0 16 16" width="14" height="14" fill="rgba(0,0,0,0.5)" style="flex-shrink:0"><path d="M8 1l1.5 3.5 3.5.5-2.5 2.5.6 3.5L8 9.5 4.9 11l.6-3.5L3 5l3.5-.5z"/></svg><span>+${points} pts</span>`;
+  // SAFE: static template; `points` is a number, no user input.
+  el.innerHTML = `<svg viewBox="0 0 16 16" width="14" height="14" fill="rgba(0,0,0,0.5)" style="flex-shrink:0"><path d="M8 1l1.5 3.5 3.5.5-2.5 2.5.6 3.5L8 9.5 4.9 11l.6-3.5L3 5l3.5-.5z"/></svg><span>+${Number(points) || 0} pts</span>`;
   const style = document.createElement('style');
   style.textContent = `@keyframes pointsFloat{0%{transform:translateX(-50%) translateY(0);opacity:1}100%{transform:translateX(-50%) translateY(-60px);opacity:0}}`;
   el.style.cssText = `position:fixed;bottom:120px;left:50%;transform:translateX(-50%);display:flex;align-items:center;gap:6px;background:rgba(200,162,76,0.96);color:#000;font-weight:800;font-size:16px;padding:8px 18px;border-radius:24px;z-index:9999;pointer-events:none;box-shadow:0 4px 16px rgba(200,162,76,0.4),0 2px 4px rgba(0,0,0,0.3);animation:pointsFloat 1.5s ease-out forwards;`;
@@ -333,33 +342,19 @@ function formatClassTime(timeStr: string): string {
   return timeStr;
 }
 
-function BeltVisual({ belt, size = 'sm' }: { belt: string; size?: 'sm' | 'md' }) {
-  const beltColors: Record<string, string> = {
-    white: '#EEEEEE', blue: '#1A5DAB', purple: '#6A1B9A',
-    brown: '#6D4C2A', black: '#111111',
-    grey: '#6B6B6B', gray: '#6B6B6B', yellow: '#C49B1A',
-    orange: '#C4641A', green: '#2D8040'
-  };
-  const patchColors: Record<string, string> = {
-    black: '#CC0000',
-    white: 'transparent',
-  };
-  const beltLower = belt.toLowerCase();
-  const color = beltColors[beltLower] || '#C8A24C';
-  const patchColor = patchColors[beltLower] || '#000';
-  const showPatch = beltLower !== 'white';
-  const h = size === 'sm' ? 9 : 13;
-  const patchW = size === 'sm' ? 7 : 10;
-
-  return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 0, height: h, borderRadius: 2, overflow: 'hidden' }}>
-      <div style={{ flex: 1, height: h, background: color }} />
-      {showPatch && <div style={{ width: patchW, height: h, background: patchColor, flexShrink: 0 }} />}
-      <div style={{ flex: 1, height: h, background: color }} />
-    </div>
-  );
-}
-
+// Pre-group CLASS_SCHEDULE by day and pre-sort by start time at module scope.
+// The data is static — sorting per-render (called from setInterval every 30s)
+// was pure waste.
+const SORTED_SCHEDULE_BY_DAY: Record<string, typeof CLASS_SCHEDULE> = (() => {
+  const byDay: Record<string, typeof CLASS_SCHEDULE> = {};
+  for (const cls of CLASS_SCHEDULE) {
+    (byDay[cls.day] ||= [] as any).push(cls);
+  }
+  for (const day of Object.keys(byDay)) {
+    byDay[day] = [...byDay[day]].sort((a, b) => parseClassMinutes(a.time) - parseClassMinutes(b.time));
+  }
+  return byDay;
+})();
 
 // J1: Week number helper
 function getWeekNumber(d: Date): number {
@@ -988,9 +983,7 @@ export default function HomePage() {
 
     for (let dayOffset = 0; dayOffset <= 1; dayOffset++) {
       const checkDay = days[(now.getDay() + dayOffset) % 7];
-      const dayClasses = CLASS_SCHEDULE
-        .filter(c => c.day === checkDay)
-        .sort((a, b) => parseClassMinutes(a.time) - parseClassMinutes(b.time));
+      const dayClasses = SORTED_SCHEDULE_BY_DAY[checkDay] || [];
       for (const cls of dayClasses) {
         const clsMins = parseClassMinutes(cls.time);
         if (dayOffset > 0 || clsMins > currentMins + 15) {
@@ -1037,7 +1030,10 @@ export default function HomePage() {
     };
 
     compute();
-    const interval = setInterval(compute, 30_000);
+    const interval = setInterval(() => {
+      if (document.hidden) return;
+      compute();
+    }, 30_000);
     return () => clearInterval(interval);
   }, [nextClass]);
 
@@ -1076,7 +1072,10 @@ export default function HomePage() {
     // ── Check-in window enforcement ──────────────────────────────────
     // Uses parseClassMinutes() which handles both ISO and HH:MM AM/PM formats.
     if (cls?.isToday !== false) {
-      const windowMins = (() => { try { return parseInt(localStorage.getItem('lbjj_checkin_window_minutes') || '60', 10); } catch { return 60; } })();
+      // Admin-configured check-in window (default 60 min). Fetched from GAS on login
+      // and cached in sessionStorage (not localStorage — a user could pre-set a
+      // writable localStorage key to bypass the window entirely).
+      const windowMins = (() => { try { const v = parseInt(sessionStorage.getItem('lbjj_checkin_window') || '', 10); return Number.isFinite(v) && v > 0 ? v : 60; } catch { return 60; } })();
       const now = new Date();
       const nowMins = now.getHours() * 60 + now.getMinutes();
       const startMins = parseClassMinutes(cls?.time || '');
@@ -1330,6 +1329,8 @@ export default function HomePage() {
     // Bust leaderboard cache so next full fetch gets fresh GAS data
     try { localStorage.removeItem(LEADERBOARD_CACHE_KEY); } catch {}
     try { localStorage.removeItem('lbjj_home_cache'); } catch {}
+    // Bust check-in cache so class count / streak recalc pick up this new entry
+    checkInsCache.current = null;
 
     // Trigger a background fresh leaderboard fetch after 3s so GAS has time to write
     setTimeout(() => {
@@ -1553,6 +1554,7 @@ export default function HomePage() {
       try { localStorage.setItem(STREAM_CACHE_KEY, JSON.stringify({ data: s, ts: Date.now() })); } catch {}
     });
     const interval = setInterval(() => {
+      if (document.hidden) return;
       getStreamStatus().then(s => {
         setStream(s);
         try { localStorage.setItem(STREAM_CACHE_KEY, JSON.stringify({ data: s, ts: Date.now() })); } catch {}
@@ -1588,8 +1590,8 @@ export default function HomePage() {
     setWeekReportDismissed(true);
   };
 
-  // J1: Compute last week stats
-  const lastWeekStats = (() => {
+  // J1: Compute last week stats — recompute only when relevant inputs change
+  const lastWeekStats = useMemo(() => {
     try {
       const history = JSON.parse(localStorage.getItem('lbjj_checkin_history') || '[]');
       const now = new Date();
@@ -1609,7 +1611,7 @@ export default function HomePage() {
         gymRank: leaderboard ? leaderboard.findIndex((e: any) => e.name === member?.name) + 1 : 0,
       };
     } catch { return { classes: 0, xpEarned: 0, gymRank: 0 }; }
-  })();
+  }, [checkinTick, leaderboard, member?.name]);
 
   // M2: Technique of the day (admin-overridable via techniqueOverride state)
   const techniqueOfDay = (() => {
@@ -1668,10 +1670,9 @@ export default function HomePage() {
   })();
 
   // ── Narrative Arc: Training Season (monthly progress ring) ────────
-  const trainingSeasonData = (() => {
+  const trainingSeasonData = useMemo(() => {
     try {
       const now = new Date();
-      const yearMonth = now.toISOString().slice(0, 7);
       const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
       const dayOfMonth = now.getDate();
       const goalClasses = 20;
@@ -1681,10 +1682,10 @@ export default function HomePage() {
       const monthName = now.toLocaleString('default', { month: 'long' });
       return { thisMonthClasses, goalClasses, progress, monthName, dayOfMonth, daysInMonth };
     } catch { return null; }
-  })();
+  }, [seasonClasses]);
 
   // ── Narrative Arc: Next Milestone (XP level OR achievement) ────────
-  const nextMilestoneData = (() => {
+  const nextMilestoneData = useMemo(() => {
     try {
       const xp = memberXP;
       const { xpForNext, title: nextTitle } = getLevelFromXP(xp);
@@ -1713,10 +1714,10 @@ export default function HomePage() {
       const milestoneLabel = nextForge ? nextForge.name : nextTitle;
       return { type: 'xp' as const, label: milestoneLabel, need: xpNeeded, unit: 'XP', icon: <BoltIcon size={16} color="#C8A24C" />, xpToNext: xpNeeded, nextLevel: actualLvl + 1, nextTitle };
     } catch { return null; }
-  })();
+  }, [memberXP, checkinTick]);
 
   // ── Narrative Arc: Game Day mode (class starting in ≤2 hours) ──────
-  const isGameDay = !!nextClass && nextClass.isToday && (() => {
+  const isGameDay = useMemo(() => !!nextClass && nextClass.isToday && (() => {
     try {
       if (!nextClass.time) return false;
       const [time, meridiem] = nextClass.time.split(' ');
@@ -1728,7 +1729,7 @@ export default function HomePage() {
       const diffMs = classTime.getTime() - Date.now();
       return diffMs > 0 && diffMs <= 2 * 60 * 60 * 1000;
     } catch { return false; }
-  })();
+  })(), [nextClass]);
 
   // M3: Rival computation
   const myLeaderboardRank = leaderboard ? leaderboard.findIndex((e: any) => e.name === member?.name) + 1 : 0;
@@ -1834,7 +1835,10 @@ export default function HomePage() {
     };
   };
 
-  const narrative = getNarrativeHeadline();
+  const narrative = useMemo(() => getNarrativeHeadline(), [
+    isGameDay, nextClass, isEliteWeek, isPerfectWeek, comboMultiplier,
+    effectiveStreak, trainedCount, trainingSeasonData, member?.name, member?.belt
+  ]);
   const beltColor = getBeltColor(member?.belt || 'white');
 
   // Weekly multiplier state
@@ -2466,10 +2470,10 @@ export default function HomePage() {
               <div style={{ fontSize: 20, fontWeight: 800, color: '#F0F0F0', marginBottom: 4, display: 'flex', alignItems: 'center', gap: 8 }}><BarChart2 size={20} color="#C8A24C" /> Your Week</div>
               <div style={{ fontSize: 13, color: '#666', marginBottom: 24 }}>A snapshot of where you stand right now.</div>
               {[
-                { label: 'Classes This Week', value: weeklyTraining().filter(Boolean).length, unit: 'classes', icon: <GrapplingIcon size={24} /> },
+                { label: 'Classes This Week', value: weekDots.filter(Boolean).length, unit: 'classes', icon: <GrapplingIcon size={24} /> },
                 { label: 'Current Streak', value: dailyStreakCount, unit: 'days', icon: dailyStreakTier === 'paragon' ? <BoltIcon size={24} color="#DC46DC" /> : dailyStreakTier === 'legend' ? <Star size={24} color="#5A78FF" /> : dailyStreakTier === 'diamond' ? <Star size={24} color="#22D3EE" /> : <FireIcon size={24} color="#F97316" /> },
                 { label: 'Streak Tier', value: dailyStreakTier === 'paragon' ? 'Paragon' : dailyStreakTier === 'legend' ? 'Legend' : dailyStreakTier === 'diamond' ? 'Diamond' : dailyStreakTier === 'fire' ? 'Fire' : 'None', unit: '', icon: <Trophy size={24} color="#C8A24C" /> },
-                { label: 'XP This Week', value: weeklyTraining().filter(Boolean).length * 50, unit: 'XP', icon: <BoltIcon size={24} color="#C8A24C" /> },
+                { label: 'XP This Week', value: weekDots.filter(Boolean).length * 50, unit: 'XP', icon: <BoltIcon size={24} color="#C8A24C" /> },
               ].map((stat, i) => (
                 <div key={i} style={{
                   display: 'flex', alignItems: 'center', gap: 14,

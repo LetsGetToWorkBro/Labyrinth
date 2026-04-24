@@ -518,8 +518,9 @@ function ClassCard({
   // Check-in is valid from (classStart - windowMins) through (classEnd).
   const { isPast, isTooEarly, windowLabel } = (() => {
     if (!isToday) return { isPast: false, isTooEarly: false, windowLabel: '' };
+    // Admin-configured window (sessionStorage, not localStorage — user-writable keys are exploitable)
     const windowMins = (() => {
-      try { return parseInt(localStorage.getItem('lbjj_checkin_window_minutes') || '60', 10); } catch { return 60; }
+      try { const v = parseInt(sessionStorage.getItem('lbjj_checkin_window') || '', 10); return Number.isFinite(v) && v > 0 ? v : 60; } catch { return 60; }
     })();
     const now = new Date();
     const nowMins = now.getHours() * 60 + now.getMinutes();
@@ -550,7 +551,7 @@ function ClassCard({
       if (navigator.vibrate) navigator.vibrate([10, 30, 10]);
       const minsUntilOpen = (() => {
         try {
-          const wm = parseInt(localStorage.getItem('lbjj_checkin_window_minutes') || '60', 10);
+          const wm = (() => { const v = parseInt(sessionStorage.getItem('lbjj_checkin_window') || '', 10); return Number.isFinite(v) && v > 0 ? v : 60; })();
           const now = new Date(); const nowMins = now.getHours() * 60 + now.getMinutes();
           const [hm, period] = displayTime.split(' ');
           const [hStr, mStr] = hm.split(':'); let h = parseInt(hStr, 10);

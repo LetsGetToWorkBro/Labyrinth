@@ -217,7 +217,7 @@ function TabBar() {
       } catch {}
     };
     refresh();
-    const t = setInterval(refresh, 30000);
+    const t = setInterval(() => { if (!document.hidden) refresh(); }, 30000);
     const readHandler = () => refresh();
     window.addEventListener('dm-read', readHandler);
     return () => { cancelled = true; clearInterval(t); window.removeEventListener('dm-read', readHandler); };
@@ -1429,13 +1429,12 @@ function ResetPasswordPage() {
 // ─── Admin wrappers ───────────────────────────────────────────────
 
 function AdminGuard() {
-  const { isAuthenticated, member } = useAuth();
+  const { isAuthenticated, isAdminVerified } = useAuth();
   const navigate = (path: string) => { window.location.hash = path.startsWith('#') ? path : '#' + path; };
 
-  const isAdmin = isAuthenticated && !!(member?.isAdmin ||
-    ['owner', 'admin', 'coach', 'instructor'].includes((member?.role || '').toLowerCase()));
-
-  if (!isAuthenticated || !isAdmin) {
+  // Only render AdminPage once GAS has confirmed admin role.
+  // Cached localStorage isAdmin is not trusted for route gating.
+  if (!isAuthenticated || !isAdminVerified) {
     navigate('/');
     return null;
   }
@@ -1654,7 +1653,10 @@ function AppShell() {
   useEffect(() => {
     if (!isAuthenticated) return;
     updatePresence();
-    const interval = setInterval(updatePresence, 60_000);
+    const interval = setInterval(() => {
+      if (document.hidden) return;
+      updatePresence();
+    }, 60_000);
     return () => clearInterval(interval);
   }, [isAuthenticated]);
 
