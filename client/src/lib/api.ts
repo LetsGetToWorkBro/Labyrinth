@@ -1077,3 +1077,21 @@ export async function getRecentUsers(windowMs = 3600000): Promise<ChannelMember[
     return ((res?.members || []) as any[]).map(normalizeMemberPfp);
   } catch { return []; }
 }
+
+// ─── 2× XP event ────────────────────────────────────────────────────
+export type XpEventResponse = { active: boolean; label: string; endsAt: string; multiplier: number };
+
+export async function getXpEvent(): Promise<XpEventResponse> {
+  try {
+    const res = await gasCall('getXpEvent', {});
+    if (!res || typeof res !== 'object') return { active: false, label: '', endsAt: '', multiplier: 1 };
+    return {
+      active: !!res.active,
+      label: String(res.label || ''),
+      endsAt: String(res.endsAt || ''),
+      multiplier: Number(res.multiplier) > 1 ? Number(res.multiplier) : (res.active ? 2 : 1),
+    };
+  } catch {
+    return { active: false, label: '', endsAt: '', multiplier: 1 };
+  }
+}

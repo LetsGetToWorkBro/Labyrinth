@@ -21,6 +21,9 @@ import { LiveStreamBanner } from "@/components/LiveStreamBanner";
 import { AnnouncementCard } from "@/components/AnnouncementCard";
 import { OnlineAvatarCluster } from "@/components/OnlineBubble";
 import { TournamentWidget } from "@/components/TournamentWidget";
+import { WeeklyChallengesWidget, recordCheckInTime } from "@/components/WeeklyChallenges";
+import { XpEventBanner, type XpEvent } from "@/components/XpEventBanner";
+import { getXpEvent } from "@/lib/api";
 import { useWidgetLayout, WidgetRearrangeContainer, WidgetSlot, WidgetCustomizeButton, type WidgetDef } from "@/components/WidgetRearrange";
 import { getLevelFromXP, getActualLevel, XP_LEVELS } from "@/lib/xp";
 import {
@@ -389,6 +392,8 @@ export default function HomePage() {
   const [showSeasonModal, setShowSeasonModal] = useState(false);
   const [widgetDotTick, setWidgetDotTick] = useState(0);
   const [showGameDayInfo, setShowGameDayInfo] = useState(false);
+  // ─── 2× XP event ──────────────────────────────────────────
+  const [xpEvent, setXpEvent] = useState<XpEvent | null>(null);
   const [isPulling, setIsPulling] = useState(false);
   const [pullDone, setPullDone] = useState(false);
   const [pullY, setPullY] = useState(0);
@@ -1037,6 +1042,27 @@ export default function HomePage() {
     return () => clearInterval(interval);
   }, [nextClass]);
 
+  // ─── Fetch 2× XP event on mount + every 5 min ──────────────────
+  useEffect(() => {
+    let cancelled = false;
+    const fetchEvent = async () => {
+      try {
+        const ev = await getXpEvent();
+        if (cancelled) return;
+        if (ev?.active && ev?.endsAt && new Date(ev.endsAt).getTime() < Date.now()) {
+          setXpEvent({ active: false, label: '', endsAt: '', multiplier: 1 });
+          return;
+        }
+        setXpEvent(ev);
+      } catch {
+        if (!cancelled) setXpEvent(null);
+      }
+    };
+    fetchEvent();
+    const iv = window.setInterval(fetchEvent, 5 * 60_000);
+    return () => { cancelled = true; window.clearInterval(iv); };
+  }, []);
+
   const getTodayKey = (email?: string) => `lbjj_checkins_${new Date().toISOString().split('T')[0]}${email ? '_' + email : ''}`;
   const homeDedupEmail = getMemberData()?.email || '';
   const [checkedInClasses, setCheckedInClasses] = useState<string[]>(() => {
@@ -1138,12 +1164,13 @@ export default function HomePage() {
     try { if (!alreadyCounted) localStorage.setItem(countedKey, '1'); } catch {}
 
     // Same logic as SchedulePage handleCheckIn
+    const eventMult = (xpEvent?.active && xpEvent.multiplier > 1) ? xpEvent.multiplier : 1;
     if (!alreadyCounted) {
       try {
         const raw = localStorage.getItem('lbjj_game_stats_v2');
         const stats = raw ? JSON.parse(raw) : {};
         stats.classesAttended = (stats.classesAttended || 0) + 1;
-        const xpGain = 10 * (comboMultiplier || 1);
+        const xpGain = 10 * (comboMultiplier || 1) * eventMult;
         stats.xp = (stats.xp || 0) + xpGain;
         stats.totalXP = (stats.totalXP || 0) + xpGain;
         localStorage.setItem('lbjj_game_stats_v2', JSON.stringify(stats));
@@ -1188,6 +1215,11 @@ export default function HomePage() {
       }
     } catch {}
 
+    // Record check-in time so weekly challenges can classify as morning/evening
+    if (!alreadyCounted) {
+      try { recordCheckInTime(today, cls?.time || '', cls?.name || ''); } catch {}
+    }
+
     // Premium check-in VFX — shockwave + particle burst
     triggerCheckInVFX();
 
@@ -1212,12 +1244,14 @@ export default function HomePage() {
     setTimeout(() => soundSystem.play('xpEarn'), 300);
 
     // Show success toast
-    const xpGainForToast = 10 * (comboMultiplier || 1);
+    const xpGainForToast = 10 * (comboMultiplier || 1) * eventMult;
     showPointsToast(xpGainForToast);
 
-    // Show XP gain floating toast
+    // Show XP gain floating toast — surface event multiplier when active
     const xpEl = document.createElement('div');
-    xpEl.textContent = `+${xpGainForToast} XP`;
+    xpEl.textContent = eventMult > 1
+      ? `+${xpGainForToast} XP (${eventMult}× Event!)`
+      : `+${xpGainForToast} XP`;
     xpEl.style.cssText = `
       position: fixed; bottom: 140px; left: 50%; transform: translateX(-50%);
       background: rgba(200,162,76,0.95); color: #000; font-weight: 800; font-size: 16px;
@@ -1978,6 +2012,46 @@ export default function HomePage() {
         ),
       });
     }
+    defs.push({
+      id: 'challenges',
+      label: 'Weekly Challenges',
+      available: true,
+      render: () => (
+        <WeeklyChallengesWidget
+          xpMultiplier={(xpEvent?.active && xpEvent.multiplier > 1) ? xpEvent.multiplier : 1}
+          onClaim={(gained) => {
+            try {
+              const raw = localStorage.getItem('lbjj_game_stats_v2');
+              const stats = raw ? JSON.parse(raw) : {};
+              stats.xp = (stats.xp || 0) + gained;
+              stats.totalXP = (stats.totalXP || 0) + gained;
+              localStorage.setItem('lbjj_game_stats_v2', JSON.stringify(stats));
+              setMemberXP(prev => prev + gained);
+              window.dispatchEvent(new CustomEvent('xp-updated'));
+              // Fire-and-forget sync to GAS
+              const currentStreakVal = parseInt(localStorage.getItem('lbjj_streak_cache') || '0') || 0;
+              saveMemberStats({
+                xp: stats.xp || 0,
+                streak: currentStreakVal,
+                maxStreak: Math.max(stats.maxStreak || 0, currentStreakVal),
+              }).catch(() => {});
+              soundSystem.play('xpEarn');
+              // Floating toast
+              const el = document.createElement('div');
+              el.textContent = `+${gained} XP`;
+              el.style.cssText = `
+                position: fixed; bottom: 140px; left: 50%; transform: translateX(-50%);
+                background: rgba(200,162,76,0.95); color: #000; font-weight: 800; font-size: 16px;
+                padding: 8px 20px; border-radius: 20px; z-index: 10002; pointer-events: none;
+                animation: pointsFloat 1.5s ease-out forwards;
+              `;
+              document.body.appendChild(el);
+              setTimeout(() => el.remove(), 1600);
+            } catch {}
+          }}
+        />
+      ),
+    });
     if (leaderboard.length > 0) {
       defs.push({
         id: 'leaderboard',
@@ -2015,6 +2089,7 @@ export default function HomePage() {
     member?.name, member?.email,
     leaderboard, prevPositions,
     widgetDotTick,
+    xpEvent,
   ]);
 
   const { editMode, setEditMode, visibleDefs, hiddenDefs, hide, show, moveBefore } = useWidgetLayout(widgetDefs);
@@ -2238,6 +2313,9 @@ export default function HomePage() {
           <AnnouncementCard announcement={pinnedAnnouncement} />
         </div>
       )}
+
+      {/* 2× XP event banner — shows above all widgets when an event is active */}
+      <XpEventBanner event={xpEvent} />
 
       {/* ════════════════════════════════════════════════════
           REARRANGEABLE WIDGETS — long-press 3s or customize button
