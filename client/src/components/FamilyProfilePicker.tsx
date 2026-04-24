@@ -267,12 +267,12 @@ export default function FamilyProfilePicker({ onDone }: { onDone: () => void }) 
     setLoadingRow(fm.row);
     setTransitionColor(badgeColor);
 
-    // Save current primary member's state to their namespace first
-    const primaryRow = (member as any)?.row;
-    if (primaryRow) saveActiveProfileToNamespace(primaryRow);
+    // Save current active profile's state to their namespace first
+    const currentRow = (member as any)?.row;
+    if (currentRow) saveActiveProfileToNamespace(currentRow);
 
-    // If selecting primary member themselves — just load their namespace and proceed
-    if (fm.isPrimary) {
+    // If selecting the currently logged-in row — just load their namespace and proceed
+    if (fm.row === currentRow) {
       loadNamespaceForProfile(fm.row);
       try {
         window.dispatchEvent(new CustomEvent('family-profile-switched', {
@@ -309,52 +309,61 @@ export default function FamilyProfilePicker({ onDone }: { onDone: () => void }) 
     }
   };
 
-  // Build combined list: primary member first, then sub-members
-  // Primary = the logged-in account holder
-  const primaryAsFm: FamilyMember = {
-    name: member?.name || '',
-    belt: (member as any)?.belt || 'white',
-    type: (member as any)?.type || 'Adult',
-    membership: (member as any)?.plan || (member as any)?.membership || '',
-    row: (member as any)?.row || 0,
-    isPrimary: true,
-  };
+  // Find the true primary holder from familyMembers (the row with isPrimary: true)
+  // The logged-in member.row may belong to ANY family member (e.g. a child logging in
+  // with the shared family email), not necessarily the primary holder.
+  const truePrimary = familyMembers.find(f => f.isPrimary) || familyMembers[0];
+  const currentRow = (member as any)?.row || 0;
 
-  // Read XP from both GAS profile and local game stats — use highest so level is correct
+  // Read XP from local game stats — use highest so level is correct for the current session
   const localStats = (() => { try { return JSON.parse(localStorage.getItem('lbjj_game_stats_v2') || '{}'); } catch { return {}; } })();
-  const primaryXP = Math.max(
-    (member as any)?.totalPoints || 0,
-    localStats.xp || 0,
-    localStats.totalXP || 0,
-  );
+  const localPfp = (() => { try { return localStorage.getItem('lbjj_profile_picture') || undefined; } catch { return undefined; } })();
 
-  const enrichedPrimary = {
-    ...primaryAsFm,
-    totalPoints: primaryXP,
-    stripes: (member as any)?.stripes || (member as any)?.Stripes || 0,
-    profilePic: (() => { try { return localStorage.getItem('lbjj_profile_picture') || undefined; } catch { return undefined; } })(),
-  };
-
-  // Build profile list from familyMembers directly (GAS includes all rows with same email).
-  // The primary member is already in familyMembers as isPrimary:true — use that as the first card
-  // enriched with local XP/PFP. Avoid showing duplicates by de-duping on row number.
-  const primaryRow = (member as any)?.row || 0;
+  type EnrichedFm = FamilyMember & { totalPoints?: number; stripes?: number; profilePic?: string };
+  const allProfiles: EnrichedFm[] = [];
   const seenRows = new Set<number>();
 
-  // First card = the logged-in member (enriched)
-  const allProfiles: typeof enrichedPrimary[] = [];
-  if (primaryRow) seenRows.add(primaryRow);
-  allProfiles.push(enrichedPrimary);
+  // Add true primary first — if they're the current session, enrich with local XP/PFP
+  if (truePrimary) {
+    seenRows.add(truePrimary.row);
+    const isCurrent = truePrimary.row === currentRow;
+    allProfiles.push({
+      ...truePrimary,
+      totalPoints: isCurrent
+        ? Math.max((truePrimary as any).totalPoints || 0, (member as any)?.totalPoints || 0, localStats.xp || 0, localStats.totalXP || 0)
+        : (truePrimary as any).totalPoints || 0,
+      stripes: (truePrimary as any).stripes || 0,
+      profilePic: isCurrent ? localPfp : undefined,
+    });
+  }
 
-  // Remaining cards = other family members (different rows)
+  // Add remaining family members — enrich the current session with local PFP/XP
   for (const f of familyMembers) {
-    if (seenRows.has(f.row)) continue; // skip duplicates
+    if (seenRows.has(f.row)) continue;
     seenRows.add(f.row);
+    const isCurrent = f.row === currentRow;
     allProfiles.push({
       ...f,
-      totalPoints: (f as any).totalPoints || 0,
+      totalPoints: isCurrent
+        ? Math.max((f as any).totalPoints || 0, (member as any)?.totalPoints || 0, localStats.xp || 0, localStats.totalXP || 0)
+        : (f as any).totalPoints || 0,
       stripes: (f as any).stripes || 0,
-      profilePic: undefined,
+      profilePic: isCurrent ? localPfp : undefined,
+    });
+  }
+
+  // Fallback if familyMembers is empty — show the logged-in member alone
+  if (allProfiles.length === 0) {
+    allProfiles.push({
+      name: member?.name || '',
+      belt: (member as any)?.belt || 'white',
+      type: (member as any)?.type || 'Adult',
+      membership: (member as any)?.plan || (member as any)?.membership || '',
+      row: currentRow,
+      isPrimary: true,
+      totalPoints: Math.max((member as any)?.totalPoints || 0, localStats.xp || 0, localStats.totalXP || 0),
+      stripes: (member as any)?.stripes || (member as any)?.Stripes || 0,
+      profilePic: localPfp,
     });
   }
 
