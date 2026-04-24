@@ -807,44 +807,45 @@ export default function HomePage() {
     getCheckInsOnce(member.email).then((allCheckIns: any[]) => {
       // Total count
       const realTotal = allCheckIns.length;
-      // Always write to game stats, even if 0, so next boot has a valid cache
-      const gasXP = (member as any)?.totalPoints || 0;
-      const gasStreak = (member as any)?.currentStreak || 0;
-      // Read current local XP — never clobber it if it's higher than GAS data
+      // GAS-provided progress snapshots
+      const gasXP = Number((member as any)?.totalPoints) || 0;
+      const gasStreak = Number((member as any)?.currentStreak) || 0;
+      const gasMaxStreak = Number((member as any)?.maxStreak) || 0;
+      const gasClasses = Number((member as any)?.classesAttended) || 0;
+      // Read current local stats — NEVER let GAS values reduce them
       const localStats = (() => { try { return JSON.parse(localStorage.getItem('lbjj_game_stats_v2') || '{}'); } catch { return {}; } })();
-      const localXP = Math.max(localStats.xp || 0, localStats.totalXP || 0);
-      const derivedXP = Math.max(gasXP, realTotal * 10, localXP);
-      if (realTotal > 0 || gasXP > 0 || localXP > 0) {
-        const prevLocalClasses = (() => { try { return JSON.parse(localStorage.getItem('lbjj_game_stats_v2') || '{}').classesAttended || 0; } catch { return 0; } })();
-        setTotalClasses(Math.max(prevLocalClasses, realTotal));
-        setMemberXP(derivedXP);
+      const localXP = Math.max(Number(localStats.xp) || 0, Number(localStats.totalXP) || 0);
+      const localClasses = Number(localStats.classesAttended) || 0;
+      const localStreak = Number(localStats.currentStreak) || 0;
+      const localMaxStreak = Number(localStats.maxStreak) || 0;
+      const streakCacheVal = parseInt(localStorage.getItem('lbjj_streak_cache') || '0', 10) || 0;
+
+      // First-load detection: no local XP AND no local classes recorded yet
+      const isFirstLoad = localXP === 0 && localClasses === 0;
+
+      // Compute final values — isFirstLoad seeds from GAS; otherwise Math.max only
+      const finalXP = isFirstLoad ? Math.max(gasXP, realTotal * 10) : Math.max(localXP, gasXP);
+      const finalClasses = isFirstLoad ? Math.max(gasClasses, realTotal) : Math.max(localClasses, gasClasses, realTotal);
+      const finalStreak = isFirstLoad ? gasStreak : Math.max(localStreak, streakCacheVal, gasStreak);
+      const finalMaxStreak = Math.max(localMaxStreak, gasMaxStreak, finalStreak);
+
+      if (finalXP > 0 || finalClasses > 0) {
+        setTotalClasses(finalClasses);
+        setMemberXP(finalXP);
       }
       // Fire xp-updated so TopHeader, XPWidget etc. re-sync
       try { window.dispatchEvent(new CustomEvent('xp-updated')); } catch {}
       try {
         // Read-modify-write pattern — preserve all existing fields, only update what we know
         const stats = JSON.parse(localStorage.getItem('lbjj_game_stats_v2') || '{}');
-        // Never let a GAS→localStorage sync decrease classesAttended.
-        // Local is the source of truth for the incrementing counter; only backfill when local is missing or lower.
-        const prevClasses = stats.classesAttended || 0;
-        if (!prevClasses) {
-          stats.classesAttended = realTotal;
-        } else {
-          stats.classesAttended = Math.max(prevClasses, realTotal);
-        }
-        stats.totalXP = derivedXP;
-        // Always keep stats.xp up to date with the highest known value
-        stats.xp = derivedXP;
-        // Persist streak so it survives across sessions even if GAS is slow.
-        // Take MAX — never let a lower gasStreak overwrite a higher cached local value.
-        const prevStreak = stats.currentStreak || 0;
-        const prevCache = parseInt(localStorage.getItem('lbjj_streak_cache') || '0', 10) || 0;
-        const bestStreak = Math.max(gasStreak, prevStreak, prevCache);
-        if (bestStreak > 0) stats.currentStreak = bestStreak;
-        stats.maxStreak = Math.max(stats.maxStreak || 0, bestStreak);
+        stats.xp = finalXP;
+        stats.totalXP = finalXP;
+        stats.classesAttended = finalClasses;
+        if (finalStreak > 0) stats.currentStreak = finalStreak;
+        if (finalMaxStreak > 0) stats.maxStreak = finalMaxStreak;
         localStorage.setItem('lbjj_game_stats_v2', JSON.stringify(stats));
         // Also cache the streak separately for fast reads
-        if (bestStreak > 0) localStorage.setItem('lbjj_streak_cache', String(bestStreak));
+        if (finalStreak > 0) localStorage.setItem('lbjj_streak_cache', String(finalStreak));
       } catch {}
       // Today's count + dedup — use UNIQUE class names only
       const today = new Date().toISOString().split('T')[0];
@@ -885,6 +886,20 @@ export default function HomePage() {
       if (recentDays.length > 0) {
         localStorage.setItem('lbjj_weekly_training', JSON.stringify(recentDays));
       }
+      // Seed / merge lbjj_checkin_history from GAS — union with existing local entries,
+      // never drop local dates (they may be newer than the GAS cache)
+      try {
+        const gasDays = allCheckIns
+          .map((c: any) => (c.date || c.timestamp || '').split('T')[0])
+          .filter((d: string) => /^\d{4}-\d{2}-\d{2}$/.test(d));
+        const localHistory: string[] = JSON.parse(localStorage.getItem('lbjj_checkin_history') || '[]');
+        const merged = Array.from(new Set([...localHistory, ...gasDays])).sort();
+        const histCutoff = new Date(Date.now() - 400 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+        const trimmed = merged.filter((d: string) => d >= histCutoff);
+        if (trimmed.length > 0) {
+          localStorage.setItem('lbjj_checkin_history', JSON.stringify(trimmed));
+        }
+      } catch {}
       // Update home SWR cache
       try {
         const cacheData = { totalClasses: realTotal, classesToday: todayClassesUnique.length, weeklyTraining: recentDays, checkedInClasses: todayClassesUnique, leaderboard: leaderboard.length > 0 ? leaderboard : undefined };
@@ -1419,8 +1434,13 @@ export default function HomePage() {
           } catch {}
           return entries.map((e: any) => {
             if (e.isMe || e.name === member.name) return { ...e, profilePic: myPfp };
+            // Try every possible GAS PFP field name first
+            const entryPfp = e.profilePic || e.profilePicBase64 || e.pfp || e.ProfilePic;
+            if (entryPfp) return { ...e, profilePic: entryPfp };
+            // Fall back to presence cache (populated by OnlineBubble / ChatPage)
             const online = presence.find((m: any) => m.name === e.name || (m.email && m.email === e.email));
-            if (online?.profilePic) return { ...e, profilePic: online.profilePic };
+            const onlinePfp = online?.profilePic || online?.profilePicBase64;
+            if (onlinePfp) return { ...e, profilePic: onlinePfp };
             return e;
           });
         };

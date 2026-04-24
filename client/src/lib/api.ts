@@ -861,6 +861,7 @@ export async function getLeaderboard(): Promise<LeaderboardEntry[]> {
       totalPoints: toInt(e.totalPoints ?? e.TotalPoints),
       wins:        toInt(e.wins        ?? e.Wins),
       score:       toInt(e.score       ?? e.Score),
+      profilePic:  e.profilePic ?? e.profilePicBase64 ?? e.pfp ?? e.ProfilePic ?? e.ProfilePicBase64 ?? undefined,
     }));
     return entries;
   } catch (err) {
@@ -931,6 +932,12 @@ export async function pinAnnouncement(data: {
   } catch { return { success: false }; }
 }
 
+// Normalize GAS member records so profilePic is always populated if any PFP field is returned.
+function normalizeMemberPfp(m: any): ChannelMember {
+  const pfp = m?.profilePic || m?.profilePicBase64 || m?.pfp || m?.ProfilePic || m?.ProfilePicBase64 || undefined;
+  return { ...m, profilePic: pfp };
+}
+
 export async function chatGetChannelMembers(channelId: string): Promise<ChannelMember[]> {
   const token = getToken() || localStorage.getItem('lbjj_session_token') || '';
   try {
@@ -941,7 +948,7 @@ export async function chatGetChannelMembers(channelId: string): Promise<ChannelM
       if (Date.now() - ts < 120_000) return data; // 2 min cache
     }
     const result = await gasCall('chatGetChannelMembers', { token, channelId });
-    const members = result?.members || [];
+    const members = (result?.members || []).map(normalizeMemberPfp);
     try { sessionStorage.setItem(cacheKey, JSON.stringify({ data: members, ts: Date.now() })); } catch {}
     return members;
   } catch { return []; }
@@ -1001,7 +1008,16 @@ export async function getLeaderboardFresh(): Promise<LeaderboardEntry[]> {
       sessionStorage.removeItem(key);
     } catch {}
     const result = await gasCall('getLeaderboard', { type: 'weekly', forceRefresh: true });
-    return result?.leaderboard || result?.scores || result?.entries || [];
+    const raw = result?.leaderboard || result?.scores || result?.entries || [];
+    const toInt = (v: any) => typeof v === 'string' ? (parseInt(v, 10) || 0) : (Number(v) || 0);
+    return raw.map((e: any) => ({
+      ...e,
+      classCount:  toInt(e.classCount  ?? e.ClassCount),
+      totalPoints: toInt(e.totalPoints ?? e.TotalPoints),
+      wins:        toInt(e.wins        ?? e.Wins),
+      score:       toInt(e.score       ?? e.Score),
+      profilePic:  e.profilePic ?? e.profilePicBase64 ?? e.pfp ?? e.ProfilePic ?? e.ProfilePicBase64 ?? undefined,
+    }));
   } catch (err) {
     console.error('getLeaderboardFresh failed:', err);
     return [];
@@ -1075,6 +1091,6 @@ export async function dmGetConversations(): Promise<DmConversation[]> {
 export async function getRecentUsers(windowMs = 3600000): Promise<ChannelMember[]> {
   try {
     const res = await gasCall('getRecentUsers', { windowMs });
-    return (res?.members || []) as ChannelMember[];
+    return ((res?.members || []) as any[]).map(normalizeMemberPfp);
   } catch { return []; }
 }
