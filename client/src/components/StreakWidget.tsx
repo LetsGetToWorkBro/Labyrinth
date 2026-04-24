@@ -263,7 +263,9 @@ export function StreakWidget({ dailyStreakCount, weekDots, trainedCount, comboMu
   const [levelUpText, setLevelUpText] = useState('');
   // Multiplier-explainer tooltip anchored to the tapped day dot.
   // Coords are viewport (clientX/Y) so the portal can position absolutely.
-  const [multTooltip, setMultTooltip] = useState<{ x: number; y: number; day: number } | null>(null);
+  const [multTooltip, setMultTooltip] = useState<{
+    top: number; left: number; day: number; arrow: 'top' | 'bottom'; arrowLeft: number;
+  } | null>(null);
   const [relicsUnlocked, setRelicsUnlocked] = useState<Set<number>>(() => {
     // Pre-populate from streak count
     const s = new Set<number>();
@@ -529,11 +531,33 @@ export function StreakWidget({ dailyStreakCount, weekDots, trainedCount, comboMu
                           onClick={e => {
                             e.stopPropagation();
                             const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
-                            setMultTooltip({
-                              x: rect.left + rect.width / 2,
-                              y: rect.top,
-                              day: d,
-                            });
+                            const TOOLTIP_W = 280;
+                            const TOOLTIP_H = 160;
+                            const MARGIN = 12;
+                            const dotCenterX = rect.left + rect.width / 2;
+
+                            // Try above; flip below if clips top
+                            let top = rect.top - TOOLTIP_H - MARGIN;
+                            let arrow: 'top' | 'bottom' = 'bottom';
+                            if (top < MARGIN) {
+                              top = rect.bottom + MARGIN;
+                              arrow = 'top';
+                            }
+
+                            // Center horizontally, clamp inside viewport
+                            let left = dotCenterX - TOOLTIP_W / 2;
+                            if (left < MARGIN) left = MARGIN;
+                            if (left + TOOLTIP_W > window.innerWidth - MARGIN) {
+                              left = window.innerWidth - TOOLTIP_W - MARGIN;
+                            }
+
+                            // Arrow position relative to the clamped tooltip
+                            const arrowLeft = Math.max(
+                              16,
+                              Math.min(TOOLTIP_W - 16, dotCenterX - left)
+                            );
+
+                            setMultTooltip({ top, left, day: d, arrow, arrowLeft });
                           }}
                           style={{
                             width: '100%', maxWidth: 40, maxHeight: 40, aspectRatio: '1',
@@ -683,12 +707,10 @@ export function StreakWidget({ dailyStreakCount, weekDots, trainedCount, comboMu
           onClick={e => e.stopPropagation()}
           style={{
             position: 'fixed',
-            left: Math.max(12, Math.min(window.innerWidth - 12, multTooltip.x)),
-            top: Math.max(12, multTooltip.y - 14),
-            transform: 'translate(-50%, -100%)',
+            left: multTooltip.left,
+            top: multTooltip.top,
             zIndex: 10000,
-            width: 260,
-            maxWidth: 'calc(100vw - 24px)',
+            width: 280,
             background: 'rgba(10,10,12,0.95)',
             backdropFilter: 'blur(12px)',
             WebkitBackdropFilter: 'blur(12px)',
@@ -749,14 +771,16 @@ export function StreakWidget({ dailyStreakCount, weekDots, trainedCount, comboMu
             <b style={{ color: '#fff', fontWeight: 900 }}>{dailyStreakCount} day{dailyStreakCount === 1 ? '' : 's'}</b>
           </div>
 
-          {/* Pointer arrow at bottom center */}
+          {/* Pointer arrow — points toward the dot */}
           <div style={{
-            position: 'absolute', bottom: -6, left: '50%',
+            position: 'absolute',
+            ...(multTooltip.arrow === 'bottom'
+              ? { bottom: -6, borderRight: '1px solid rgba(200,162,76,0.4)', borderBottom: '1px solid rgba(200,162,76,0.4)' }
+              : { top: -6, borderLeft: '1px solid rgba(200,162,76,0.4)', borderTop: '1px solid rgba(200,162,76,0.4)' }),
+            left: multTooltip.arrowLeft,
             transform: 'translateX(-50%) rotate(45deg)',
             width: 12, height: 12,
             background: 'rgba(10,10,12,0.95)',
-            borderRight: '1px solid rgba(200,162,76,0.4)',
-            borderBottom: '1px solid rgba(200,162,76,0.4)',
           }} />
         </div>,
         document.body

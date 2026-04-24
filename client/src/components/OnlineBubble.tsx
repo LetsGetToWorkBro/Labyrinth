@@ -497,17 +497,24 @@ export function OnlineAvatarCluster() {
       <style>{`@keyframes oac-pulse{0%{transform:scale(1);opacity:.7}50%{transform:scale(1.8);opacity:0}100%{transform:scale(1);opacity:0}}`}</style>
 
       {/* Horizontally-scrollable strip of 24h recent members + status pill */}
+      <style>{`.oac-strip::-webkit-scrollbar{display:none}`}</style>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, maxWidth: 220 }}>
         <div
+          className="oac-strip"
           style={{
-            display: 'flex', alignItems: 'center',
-            overflowX: 'auto', overflowY: 'hidden',
-            scrollbarWidth: 'none', msOverflowStyle: 'none',
+            display: 'flex',
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: 12,
+            overflowX: 'auto',
+            overflowY: 'hidden',
+            scrollbarWidth: 'none',
+            msOverflowStyle: 'none',
             WebkitOverflowScrolling: 'touch',
             flex: '0 1 auto',
             minWidth: 0,
-            paddingLeft: 7,
-          }}
+            paddingBottom: 8,
+          } as React.CSSProperties}
           onWheel={(e) => {
             if (e.deltaY !== 0 && Math.abs(e.deltaY) > Math.abs(e.deltaX)) {
               e.currentTarget.scrollLeft += e.deltaY;
@@ -517,12 +524,12 @@ export function OnlineAvatarCluster() {
           {display.length === 0 ? (
             <button
               onClick={handleToggle}
-              style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontSize: 11, fontWeight: 700, color: '#57534e' }}
+              style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontSize: 11, fontWeight: 700, color: '#57534e', flexShrink: 0 }}
             >
               –
             </button>
           ) : (
-            display.map((m, i) => {
+            display.map((m) => {
               const isActive = m.lastSeen && (Date.now() - new Date(m.lastSeen).getTime()) < 5 * 60 * 1000;
               const displayName = resolveDisplayName(m);
               return (
@@ -533,12 +540,11 @@ export function OnlineAvatarCluster() {
                   style={{
                     width: 28, height: 28, borderRadius: 8,
                     border: '2px solid #0f0e0d',
-                    marginLeft: i === 0 ? -7 : -7,
                     background: avatarGrad((m.belt || 'white')),
                     overflow: 'hidden',
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                     fontSize: 10, fontWeight: 800, color: '#fff',
-                    position: 'relative', zIndex: display.length - i,
+                    position: 'relative',
                     flexShrink: 0,
                     padding: 0, cursor: 'pointer',
                     boxShadow: isActive ? '0 0 0 1.5px rgba(16,185,129,.7)' : 'none',
