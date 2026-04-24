@@ -37,6 +37,53 @@ const LivePage           = lazy(() => import("@/pages/LivePage"));
 const CheckInHistoryPage = lazy(() => import("@/pages/CheckInHistoryPage"));
 const SeasonPage         = lazy(() => import("@/pages/SeasonPage"));
 const NotFound           = lazy(() => import("@/pages/not-found"));
+
+// ─── ChunkErrorBoundary — auto-retries lazy-chunk load failures ────────
+class ChunkErrorBoundary extends React.Component<{ children: React.ReactNode }, { hasError: boolean }> {
+  constructor(props: { children: React.ReactNode }) {
+    super(props);
+    this.state = { hasError: false };
+  }
+  static getDerivedStateFromError() { return { hasError: true }; }
+  componentDidCatch(error: Error) {
+    const msg = error?.message || '';
+    const isChunkError = msg.includes('MIME')
+      || msg.includes('dynamically imported')
+      || msg.includes('Failed to fetch dynamically imported module')
+      || msg.includes('ChunkLoadError')
+      || msg.includes("'text/html' is not a valid JavaScript");
+    if (isChunkError) {
+      try {
+        if (!sessionStorage.getItem('chunk_retry')) {
+          sessionStorage.setItem('chunk_retry', '1');
+          setTimeout(() => window.location.reload(), 1000);
+        }
+      } catch {}
+    }
+  }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div style={{
+          display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center',
+          height:'100vh', background:'#050505', color:'#fff', gap:16, padding:24, textAlign:'center',
+        }}>
+          <div style={{ fontSize:32 }}>⚠️</div>
+          <div style={{ fontSize:16, color:'#888' }}>Something went wrong</div>
+          <button
+            onClick={() => { try { sessionStorage.removeItem('chunk_retry'); } catch {} window.location.reload(); }}
+            style={{
+              marginTop:8, padding:'12px 24px',
+              background:'#C8A24C', color:'#000',
+              borderRadius:12, fontWeight:800, border:'none', cursor:'pointer',
+            }}
+          >Tap to reload</button>
+        </div>
+      );
+    }
+    return this.props.children as any;
+  }
+}
 import logoMaze from './assets/logo-maze.webp';
 import {
   Home, MessageCircle, CalendarDays, MoreHorizontal,
@@ -1533,6 +1580,11 @@ function AppShell() {
   const [levelUpState, setLevelUpState] = useState<{ newLevel: number; prevLevel: number } | null>(null);
   const [xpModalOpen, setXpModalOpen] = useState(false);
 
+  // Clear chunk-retry flag once the app has successfully mounted — prevents retry-loop.
+  useEffect(() => {
+    try { sessionStorage.removeItem('chunk_retry'); } catch {}
+  }, []);
+
   // ── Family profile picker ──────────────────────────────────────
   // Show picker after login when the account has sub-members.
   // "picked" persists in sessionStorage so navigation within the session doesn't re-show it.
@@ -2182,9 +2234,11 @@ function App() {
             <DMProvider>
               <GuestProfileProvider>
                 <GameRecordProvider>
-                  <Router hook={useHashLocation}>
-                    <AppShell />
-                  </Router>
+                  <ChunkErrorBoundary>
+                    <Router hook={useHashLocation}>
+                      <AppShell />
+                    </Router>
+                  </ChunkErrorBoundary>
                 </GameRecordProvider>
               </GuestProfileProvider>
             </DMProvider>

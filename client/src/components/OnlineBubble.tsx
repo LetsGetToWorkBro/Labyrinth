@@ -395,7 +395,6 @@ export function OnlineAvatarCluster() {
   const [members, setMembers] = useState<ChannelMember[]>([]);
   const [dropPos, setDropPos] = useState<{ top: number; right: number } | null>(null);
   const [dmUnread, setDmUnread]       = useState(0);
-  const [focusedMember, setFocused]    = useState<ChannelMember | null>(null);
   const wrapRef = useRef<HTMLDivElement>(null);
   const dropRef = useRef<HTMLDivElement>(null);
 
@@ -492,86 +491,73 @@ export function OnlineAvatarCluster() {
 
   const goToChat = () => { setOpen(false); window.location.hash = '#/chat'; };
 
+  // Overlapping stacked cards — show up to 5 avatars, overlapping by -12px
+  const MAX_STACK = 5;
+  const stack = display.slice(0, MAX_STACK);
+  const extra = Math.max(0, display.length - MAX_STACK);
+
   return (
     <div ref={wrapRef} style={{ position: 'relative' }}>
       <style>{`@keyframes oac-pulse{0%{transform:scale(1);opacity:.7}50%{transform:scale(1.8);opacity:0}100%{transform:scale(1);opacity:0}}`}</style>
 
-      {/* Horizontally-scrollable strip of 24h recent members + status pill */}
-      <style>{`.oac-strip::-webkit-scrollbar{display:none}`}</style>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, maxWidth: 220 }}>
-        <div
-          className="oac-strip"
-          style={{
-            display: 'flex',
-            flexDirection: 'row',
-            alignItems: 'center',
-            gap: 12,
-            overflowX: 'auto',
-            overflowY: 'hidden',
-            scrollbarWidth: 'none',
-            msOverflowStyle: 'none',
-            WebkitOverflowScrolling: 'touch',
-            flex: '0 1 auto',
-            minWidth: 0,
-            paddingBottom: 8,
-          } as React.CSSProperties}
-          onWheel={(e) => {
-            if (e.deltaY !== 0 && Math.abs(e.deltaY) > Math.abs(e.deltaX)) {
-              e.currentTarget.scrollLeft += e.deltaY;
-            }
-          }}
-        >
-          {display.length === 0 ? (
-            <button
-              onClick={handleToggle}
-              style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontSize: 11, fontWeight: 700, color: '#57534e', flexShrink: 0 }}
-            >
-              –
-            </button>
+      {/* Stacked overlapping avatar cluster — whole thing taps to open popup */}
+      <button
+        onClick={handleToggle}
+        aria-label="Online members"
+        style={{
+          display: 'flex', alignItems: 'center', gap: 8,
+          background: 'none', border: 'none', padding: '2px 0',
+          cursor: 'pointer', position: 'relative',
+          WebkitTapHighlightColor: 'transparent',
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', flexShrink: 0 }}>
+          {stack.length === 0 ? (
+            <span style={{ fontSize: 11, fontWeight: 700, color: '#57534e' }}>–</span>
           ) : (
-            display.map((m) => {
+            stack.map((m, i) => {
               const isActive = m.lastSeen && (Date.now() - new Date(m.lastSeen).getTime()) < 5 * 60 * 1000;
               const displayName = resolveDisplayName(m);
               return (
-                <button
+                <div
                   key={m.email || m.name}
-                  onClick={(e) => { e.stopPropagation(); openDM(m); }}
-                  aria-label={`Message ${displayName}`}
                   style={{
-                    width: 28, height: 28, borderRadius: 8,
+                    width: 28, height: 28, borderRadius: '50%',
                     border: '2px solid #0f0e0d',
                     background: avatarGrad((m.belt || 'white')),
                     overflow: 'hidden',
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                     fontSize: 10, fontWeight: 800, color: '#fff',
                     position: 'relative',
-                    flexShrink: 0,
-                    padding: 0, cursor: 'pointer',
+                    marginLeft: i === 0 ? 0 : -12,
+                    zIndex: MAX_STACK - i,
                     boxShadow: isActive ? '0 0 0 1.5px rgba(16,185,129,.7)' : 'none',
-                    WebkitTapHighlightColor: 'transparent',
                   }}
                 >
                   {m.profilePic
                     ? <img src={m.profilePic} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                     : (displayName || '?').charAt(0).toUpperCase()
                   }
-                </button>
+                </div>
               );
             })
           )}
+          {extra > 0 && (
+            <div
+              style={{
+                width: 28, height: 28, borderRadius: '50%',
+                border: '2px solid #0f0e0d',
+                background: 'rgba(255,255,255,.08)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontSize: 10, fontWeight: 800, color: '#e8af34',
+                marginLeft: -12, zIndex: 0,
+              }}
+            >+{extra}</div>
+          )}
         </div>
 
-        {/* Green dot + count + DM unread badge — tap to open dropdown */}
-        <button
-          onClick={handleToggle}
-          style={{
-            display: 'flex', alignItems: 'center', gap: 4,
-            background: 'none', border: 'none', padding: '2px 0',
-            cursor: 'pointer', position: 'relative',
-            WebkitTapHighlightColor: 'transparent',
-            flexShrink: 0,
-          }}
-        >
+        {/* Green dot + count + DM unread badge */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 4, position: 'relative' }}>
           <div style={{ position: 'relative', width: 7, height: 7 }}>
             <div style={{ width: 7, height: 7, borderRadius: '50%', background: '#10b981', boxShadow: '0 0 6px #10b981' }} />
             <div style={{ position: 'absolute', inset: -2, borderRadius: '50%', background: 'rgba(16,185,129,.3)', animation: 'oac-pulse 2s infinite' }} />
@@ -586,66 +572,171 @@ export function OnlineAvatarCluster() {
               fontSize: 8, fontWeight: 900, color: '#fff', padding: '0 3px',
             }}>{dmUnread}</div>
           )}
-        </button>
-      </div>
+        </div>
+      </button>
 
-      {/* Dropdown — portaled to body */}
-      {createPortal(
-        <div ref={dropRef} style={{
-          position: 'fixed',
-          top: dropPos?.top ?? 70,
-          right: dropPos?.right ?? 12,
-          width: 272, zIndex: 99999,
-          background: '#161412', border: '1px solid rgba(255,255,255,.12)',
-          borderRadius: 20, padding: 10,
-          boxShadow: '0 20px 60px rgba(0,0,0,.9)',
-          opacity: open ? 1 : 0,
-          transform: open ? 'translateY(0) scale(1)' : 'translateY(-8px) scale(.97)',
-          pointerEvents: open ? 'auto' : 'none',
-          transition: 'all .3s cubic-bezier(0.175,0.885,0.32,1.275)',
-          maxHeight: '70vh', display: 'flex', flexDirection: 'column',
-        }}>
-          {active.length > 0 && (
-            <>
-              <div style={{ fontSize: 10, fontWeight: 800, color: '#10b981', letterSpacing: '.15em', textTransform: 'uppercase', padding: '4px 8px 6px' }}>● Active Now</div>
-              {active.map(m => <MemberRow key={m.email||m.name} m={m}
-                isSelf={!!(m.email && m.email === (member as any)?.email) || m.name === member?.name}
-                onClick={() => openDM(m)}
-                onProfile={() => openMemberProfile(m)} />)}
-            </>
-          )}
-          {offline.length > 0 && (
-            <>
-              {active.length > 0 && <div style={{ height: 1, background: 'rgba(255,255,255,.05)', margin: '6px 0' }} />}
-              <RecentSection
-                members={offline}
-                onOpen={(m) => openDM(m)}
-                onProfile={(m) => openMemberProfile(m)}
-                label="Recently Online"
-                isSelf={(m) => !!(m.email && m.email === (member as any)?.email) || m.name === member?.name}
-              />
-            </>
-          )}
-          {active.length === 0 && offline.length === 0 && (
-            <div style={{ fontSize: 12, color: '#57534e', padding: '8px 10px', textAlign: 'center' }}>Just you for now</div>
-          )}
-          <div style={{ height: 1, background: 'rgba(255,255,255,.05)', margin: '8px 0 4px' }} />
-          <button onClick={goToChat} style={{
-            padding: '8px 10px', borderRadius: 10, width: '100%',
-            background: 'rgba(255,255,255,.03)', border: '1px solid rgba(255,255,255,.08)',
-            fontSize: 12, fontWeight: 700, color: '#a8a29e', cursor: 'pointer',
-            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+      {/* Popup sheet — centered modal showing all online members */}
+      {open && createPortal(
+        <div
+          onClick={() => setOpen(false)}
+          style={{
+            position: 'fixed', inset: 0, zIndex: 99998,
+            background: 'rgba(0,0,0,.55)',
+            backdropFilter: 'blur(6px)',
+            WebkitBackdropFilter: 'blur(6px)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            padding: 16,
+            animation: 'oac-fade-in .2s ease',
           }}
-            onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,.07)')}
-            onMouseLeave={e => (e.currentTarget.style.background = 'rgba(255,255,255,.03)')}
+        >
+          <style>{`@keyframes oac-fade-in{from{opacity:0}to{opacity:1}}@keyframes oac-sheet-up{from{transform:translateY(20px) scale(.96);opacity:0}to{transform:translateY(0) scale(1);opacity:1}}`}</style>
+          <div
+            ref={dropRef}
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              width: '100%', maxWidth: 380, maxHeight: '80vh',
+              background: '#161412',
+              border: '1px solid rgba(255,255,255,.12)',
+              borderRadius: 20, padding: 14,
+              boxShadow: '0 24px 60px rgba(0,0,0,.9)',
+              display: 'flex', flexDirection: 'column',
+              zIndex: 99999,
+              animation: 'oac-sheet-up .25s cubic-bezier(0.175,0.885,0.32,1.275)',
+            }}
           >
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="13" height="13">
-              <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
-            </svg>
-            Open Chat
-          </button>
+            {/* Header */}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10, padding: '2px 4px' }}>
+              <div style={{ fontSize: 14, fontWeight: 800, color: '#fff' }}>
+                Online Members <span style={{ color: '#10b981' }}>· {onlineCount}</span>
+              </div>
+              <button
+                onClick={() => setOpen(false)}
+                aria-label="Close"
+                style={{ background: 'none', border: 'none', color: '#a8a29e', fontSize: 20, cursor: 'pointer', padding: '2px 6px', lineHeight: 1 }}
+              >×</button>
+            </div>
+
+            <div style={{ overflowY: 'auto', flex: 1 }}>
+              {active.length > 0 && (
+                <>
+                  <div style={{ fontSize: 10, fontWeight: 800, color: '#10b981', letterSpacing: '.15em', textTransform: 'uppercase', padding: '4px 8px 6px' }}>● Active Now</div>
+                  {active.map(m => {
+                    const isSelfUser = !!(m.email && m.email === (member as any)?.email) || m.name === member?.name;
+                    return (
+                      <PopupMemberRow
+                        key={m.email || m.name}
+                        m={m}
+                        isSelf={isSelfUser}
+                        onProfile={() => { setOpen(false); openMemberProfile(m); }}
+                        onDM={() => openDM(m)}
+                      />
+                    );
+                  })}
+                </>
+              )}
+              {offline.length > 0 && (
+                <>
+                  {active.length > 0 && <div style={{ height: 1, background: 'rgba(255,255,255,.05)', margin: '8px 0' }} />}
+                  <div style={{ fontSize: 10, fontWeight: 800, color: '#57534e', letterSpacing: '.15em', textTransform: 'uppercase', padding: '4px 8px 6px' }}>◑ Recently Online — {offline.length}</div>
+                  {offline.map(m => {
+                    const isSelfUser = !!(m.email && m.email === (member as any)?.email) || m.name === member?.name;
+                    return (
+                      <PopupMemberRow
+                        key={m.email || m.name}
+                        m={m}
+                        dimmed
+                        isSelf={isSelfUser}
+                        onProfile={() => { setOpen(false); openMemberProfile(m); }}
+                        onDM={() => openDM(m)}
+                      />
+                    );
+                  })}
+                </>
+              )}
+              {active.length === 0 && offline.length === 0 && (
+                <div style={{ fontSize: 12, color: '#57534e', padding: '20px 10px', textAlign: 'center' }}>Just you for now</div>
+              )}
+            </div>
+
+            {/* Footer: go to chat */}
+            <div style={{ height: 1, background: 'rgba(255,255,255,.05)', margin: '10px 0 8px' }} />
+            <button onClick={goToChat} style={{
+              padding: '10px', borderRadius: 12, width: '100%',
+              background: 'rgba(232,175,52,.1)',
+              border: '1px solid rgba(232,175,52,.3)',
+              fontSize: 13, fontWeight: 800, color: '#e8af34', cursor: 'pointer',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+            }}>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="14" height="14">
+                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+              </svg>
+              Open Chat
+            </button>
+          </div>
         </div>
       , document.body)}
+    </div>
+  );
+}
+
+// Popup row — avatar + name/belt + View Profile + DM buttons
+function PopupMemberRow({ m, dimmed, isSelf, onProfile, onDM }: { m: ChannelMember; dimmed?: boolean; isSelf?: boolean; onProfile: () => void; onDM: () => void }) {
+  const level = getActualLevel(m.totalPoints || 0);
+  const belt = (m.belt || 'white').toLowerCase();
+  const displayName = resolveDisplayName(m);
+  return (
+    <div style={{
+      display: 'flex', alignItems: 'center', gap: 10,
+      padding: '8px 8px', borderRadius: 12,
+      opacity: dimmed ? 0.65 : 1,
+    }}>
+      {/* Avatar with ParagonRing */}
+      <div style={{ position: 'relative', flexShrink: 0 }}>
+        <ParagonRing level={level} size={32} showOrbit={false}>
+          {m.profilePic
+            ? <img src={m.profilePic} alt="" style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover', display: 'block' }} />
+            : <div style={{ width: '100%', height: '100%', borderRadius: '50%', background: avatarGrad(belt), display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 800, color: '#fff' }}>{(displayName || '?').charAt(0).toUpperCase()}</div>
+          }
+        </ParagonRing>
+        {!dimmed && (
+          <div style={{ position: 'absolute', bottom: -1, right: -1, width: 9, height: 9, borderRadius: '50%', background: '#10b981', border: '1.5px solid #161412', zIndex: 10 }} />
+        )}
+      </div>
+
+      {/* Name + belt pill */}
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ fontSize: 13, fontWeight: 700, color: '#fff', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{displayName}</div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 2 }}>
+          <div style={{ width: 8, height: 8, borderRadius: 2, background: getBeltColor(belt) }} />
+          <span style={{ fontSize: 10, fontWeight: 700, color: '#a8a29e', textTransform: 'capitalize' }}>{belt}</span>
+          <span style={{ fontSize: 9, fontWeight: 800, color: '#e8af34', background: 'rgba(232,175,52,.12)', padding: '0px 5px', borderRadius: 4 }}>LV {level}</span>
+        </div>
+      </div>
+
+      {/* Actions — View Profile + DM */}
+      {!isSelf && (
+        <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+          <button
+            onClick={onProfile}
+            aria-label={`View ${displayName}'s profile`}
+            style={{
+              padding: '6px 9px', borderRadius: 8,
+              background: 'rgba(255,255,255,.05)', border: '1px solid rgba(255,255,255,.1)',
+              fontSize: 10, fontWeight: 700, color: '#e8af34', cursor: 'pointer',
+              whiteSpace: 'nowrap',
+            }}
+          >View Profile</button>
+          <button
+            onClick={onDM}
+            aria-label={`Message ${displayName}`}
+            style={{
+              padding: '6px 9px', borderRadius: 8,
+              background: 'rgba(232,175,52,.15)', border: '1px solid rgba(232,175,52,.3)',
+              fontSize: 10, fontWeight: 800, color: '#e8af34', cursor: 'pointer',
+            }}
+          >DM</button>
+        </div>
+      )}
     </div>
   );
 }

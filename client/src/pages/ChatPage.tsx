@@ -287,6 +287,27 @@ export default function ChatPage() {
 
   const [dmConversations, setDmConversations] = useState<DmConversation[]>([]);
   const [dmLoading, setDmLoading] = useState(true);
+  const [dmInboxCollapsed, setDmInboxCollapsed] = useState<boolean>(() => {
+    try { return sessionStorage.getItem('lbjj_dm_inbox_collapsed') === '1'; } catch { return false; }
+  });
+  const [dmArchived, setDmArchived] = useState<string[]>(() => {
+    try { return JSON.parse(localStorage.getItem('lbjj_dm_archived') || '[]'); } catch { return []; }
+  });
+  const toggleDmInbox = () => {
+    setDmInboxCollapsed(v => {
+      const next = !v;
+      try { sessionStorage.setItem('lbjj_dm_inbox_collapsed', next ? '1' : '0'); } catch {}
+      return next;
+    });
+  };
+  const archiveConversation = (partnerEmail: string) => {
+    setDmArchived(prev => {
+      if (prev.includes(partnerEmail)) return prev;
+      const next = [...prev, partnerEmail];
+      try { localStorage.setItem('lbjj_dm_archived', JSON.stringify(next)); } catch {}
+      return next;
+    });
+  };
 
   const feedRef = useRef<HTMLDivElement>(null);
   const feedEndRef = useRef<HTMLDivElement>(null);
@@ -730,9 +751,15 @@ export default function ChatPage() {
           </div>
         </div>
 
-        {/* Direct Messages — top-of-page inbox */}
+        {/* Direct Messages — top-of-page inbox (collapsible + swipe-to-archive) */}
+        {(() => {
+          const visibleConversations = dmConversations.filter(c => !dmArchived.includes(c.partnerEmail || ''));
+          return (
         <div style={{ marginBottom: 18 }}>
-          <div style={{ display:'flex', alignItems:'center', gap:10, margin:'0 4px 10px' }}>
+          <div
+            onClick={toggleDmInbox}
+            style={{ display:'flex', alignItems:'center', gap:10, margin:'0 4px 10px', cursor:'pointer', userSelect:'none' }}
+          >
             <div style={{
               width:28, height:28, borderRadius:8,
               background:'rgba(200,162,76,0.14)', border:'1px solid rgba(200,162,76,0.28)',
@@ -746,13 +773,13 @@ export default function ChatPage() {
             <div style={{ flex:1, minWidth:0 }}>
               <div style={{ fontSize:13, fontWeight:900, color:'#fff', letterSpacing:'.02em' }}>Direct Messages</div>
               <div style={{ fontSize:10, fontWeight:700, color:'#57534e', textTransform:'uppercase', letterSpacing:'.12em', marginTop:1 }}>
-                {dmConversations.length === 0
+                {visibleConversations.length === 0
                   ? 'Your inbox'
-                  : `${dmConversations.length} conversation${dmConversations.length === 1 ? '' : 's'}`}
+                  : `${visibleConversations.length} conversation${visibleConversations.length === 1 ? '' : 's'}`}
               </div>
             </div>
             {(() => {
-              const totalUnread = dmConversations.reduce((n, c) => n + (c.unread ? 1 : 0), 0);
+              const totalUnread = visibleConversations.reduce((n, c) => n + (c.unread ? 1 : 0), 0);
               if (!totalUnread) return null;
               return (
                 <div style={{
@@ -764,17 +791,34 @@ export default function ChatPage() {
                 }}>{totalUnread}</div>
               );
             })()}
+            {/* Collapse chevron */}
+            <button
+              onClick={(e) => { e.stopPropagation(); toggleDmInbox(); }}
+              aria-label={dmInboxCollapsed ? 'Expand Direct Messages' : 'Collapse Direct Messages'}
+              style={{
+                width:28, height:28, borderRadius:8,
+                background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.06)',
+                display:'flex', alignItems:'center', justifyContent:'center', color:'#a8a29e',
+                cursor:'pointer', flexShrink:0,
+              }}
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" width="13" height="13"
+                style={{ transform: dmInboxCollapsed ? 'rotate(-90deg)' : 'rotate(0deg)', transition:'transform .2s' }}>
+                <polyline points="6 9 12 15 18 9" />
+              </svg>
+            </button>
           </div>
 
+          {!dmInboxCollapsed && (
           <div style={{
             background:'rgba(10,10,12,0.95)',
             border:'1px solid rgba(255,255,255,0.08)',
             borderRadius:16,
             overflow:'hidden',
           }}>
-            {dmLoading && dmConversations.length === 0 ? (
+            {dmLoading && visibleConversations.length === 0 ? (
               <div style={{ padding:'16px', color:'#57534e', fontSize:12, textAlign:'center' }}>Loading messages…</div>
-            ) : dmConversations.length === 0 ? (
+            ) : visibleConversations.length === 0 ? (
               <div style={{ padding:'20px 16px', textAlign:'center' }}>
                 <div style={{ fontSize:13, fontWeight:700, color:'#a8a29e', marginBottom:4 }}>No conversations yet</div>
                 <div style={{ fontSize:11, color:'#57534e', lineHeight:1.4 }}>
@@ -782,34 +826,27 @@ export default function ChatPage() {
                 </div>
               </div>
             ) : (
-              dmConversations.map((c, idx) => {
+              visibleConversations.map((c, idx) => {
                 const belt = (c.partnerBelt || 'white').toLowerCase();
                 const pillBelt = ['black','brown','purple','blue','white'].includes(belt) ? belt : 'white';
                 const preview = (c.lastText || '').length > 50
                   ? (c.lastText || '').slice(0, 50) + '…'
                   : (c.lastText || '');
-                // Partner level unknown from convo row — approximate by belt.
                 const approxXP = beltToMinXP(belt, '');
                 const level = getActualLevel(approxXP);
+                const partnerEmail = c.partnerEmail || '';
                 return (
-                  <div
-                    key={(c.partnerEmail || c.partnerName) + idx}
-                    onClick={() => dispatchOpenDM({
-                      email: c.partnerEmail || '',
+                  <SwipeableDMRow
+                    key={(partnerEmail || c.partnerName) + idx}
+                    hasBorder={idx < visibleConversations.length - 1}
+                    onArchive={() => archiveConversation(partnerEmail)}
+                    onOpen={() => dispatchOpenDM({
+                      email: partnerEmail,
                       name: c.partnerName || '',
                       belt,
                       totalPoints: approxXP,
                       profilePic: c.partnerProfilePic,
                     })}
-                    style={{
-                      display:'flex', alignItems:'center', gap:12,
-                      padding:'12px 14px',
-                      borderBottom: idx < dmConversations.length - 1 ? '1px solid rgba(255,255,255,0.04)' : 'none',
-                      cursor:'pointer',
-                      transition:'background 0.2s',
-                    }}
-                    onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.025)')}
-                    onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
                   >
                     <div style={{ flexShrink:0 }}>
                       <ParagonRing level={level} size={32} showOrbit={false}>
@@ -848,12 +885,15 @@ export default function ChatPage() {
                         }}>•</div>
                       )}
                     </div>
-                  </div>
+                  </SwipeableDMRow>
                 );
               })
             )}
           </div>
+          )}
         </div>
+          );
+        })()}
 
         {/* Announcements (urgent) */}
         {announcementChannel && (
@@ -1340,6 +1380,108 @@ export default function ChatPage() {
             />
           )}
         </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── SwipeableDMRow — DM conversation row with swipe-left to archive ──────
+function SwipeableDMRow({ children, hasBorder, onOpen, onArchive }: {
+  children: React.ReactNode;
+  hasBorder: boolean;
+  onOpen: () => void;
+  onArchive: () => void;
+}) {
+  const [offset, setOffset] = React.useState(0);
+  const [revealed, setRevealed] = React.useState(false);
+  const startX = React.useRef(0);
+  const startY = React.useRef(0);
+  const dragging = React.useRef(false);
+  const movedEnough = React.useRef(false);
+  const ARCHIVE_W = 80;
+  const THRESHOLD = 60;
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    const t = e.touches[0];
+    startX.current = t.clientX;
+    startY.current = t.clientY;
+    dragging.current = true;
+    movedEnough.current = false;
+  };
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (!dragging.current) return;
+    const t = e.touches[0];
+    const dx = t.clientX - startX.current;
+    const dy = t.clientY - startY.current;
+    // Only horizontal swipes (ignore vertical scroll)
+    if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 6) {
+      movedEnough.current = true;
+      // Clamp: only allow leftward drag; cap at ARCHIVE_W * 1.3
+      const next = Math.max(Math.min(dx, 0), -ARCHIVE_W * 1.3);
+      setOffset(next);
+    }
+  };
+  const handleTouchEnd = () => {
+    dragging.current = false;
+    if (offset <= -THRESHOLD) {
+      setOffset(-ARCHIVE_W);
+      setRevealed(true);
+    } else {
+      setOffset(0);
+      setRevealed(false);
+    }
+  };
+  const handleRowClick = () => {
+    if (revealed) {
+      setOffset(0); setRevealed(false); return;
+    }
+    if (movedEnough.current) { movedEnough.current = false; return; }
+    onOpen();
+  };
+
+  return (
+    <div style={{
+      position:'relative',
+      borderBottom: hasBorder ? '1px solid rgba(255,255,255,0.04)' : 'none',
+      overflow:'hidden',
+      background:'transparent',
+    }}>
+      {/* Archive button under the row */}
+      <button
+        onClick={(e) => { e.stopPropagation(); onArchive(); }}
+        aria-label="Archive conversation"
+        style={{
+          position:'absolute', top:0, right:0, bottom:0,
+          width: 80,
+          background:'#ef4444', color:'#fff',
+          border:'none', cursor:'pointer',
+          display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center',
+          gap:4,
+          fontSize:11, fontWeight:800, letterSpacing:'.05em',
+        }}
+      >
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" width="16" height="16">
+          <polyline points="21 8 21 21 3 21 3 8" />
+          <rect x="1" y="3" width="22" height="5" />
+          <line x1="10" y1="12" x2="14" y2="12" />
+        </svg>
+        Archive
+      </button>
+      <div
+        onClick={handleRowClick}
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+        style={{
+          display:'flex', alignItems:'center', gap:12,
+          padding:'12px 14px',
+          background:'#0a0a0c',
+          cursor:'pointer',
+          transform:`translateX(${offset}px)`,
+          transition: dragging.current ? 'none' : 'transform .22s cubic-bezier(0.16,1,0.3,1)',
+        }}
+      >
+        {children}
       </div>
     </div>
   );

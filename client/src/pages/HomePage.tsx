@@ -1071,35 +1071,45 @@ export default function HomePage() {
       } catch { checkingInRef.current = false; setCheckinPhase('idle'); }
     }
 
-    // Same logic as SchedulePage handleCheckIn
-    try {
-      const raw = localStorage.getItem('lbjj_game_stats_v2');
-      const stats = raw ? JSON.parse(raw) : {};
-      stats.classesAttended = (stats.classesAttended || 0) + 1;
-      const xpGain = 10 * (comboMultiplier || 1);
-      stats.xp = (stats.xp || 0) + xpGain;
-      stats.totalXP = (stats.totalXP || 0) + xpGain;
-      localStorage.setItem('lbjj_game_stats_v2', JSON.stringify(stats));
-      setMemberXP(prev => prev + xpGain);
-      // Notify TopHeader and any other listeners of XP change
-      try { window.dispatchEvent(new CustomEvent('xp-updated')); } catch {}
-    } catch {}
-    setTotalClasses(prev => prev + 1);
-    // Increment season counter
-    setSeasonClasses(prev => {
-      const ym = new Date().toISOString().slice(0, 7);
-      const key = `lbjj_season_count_${ym}`;
-      const next = prev + 1;
-      try { localStorage.setItem(key, String(next)); } catch {}
-      return next;
-    });
+    // Dedupe guard: only count this class once per day, even if the flow runs twice
+    const todayKey = new Date().toISOString().split('T')[0];
+    const countedKey = `lbjj_last_counted_checkin_${todayKey}_${(cls.name || 'class').toLowerCase().replace(/\s+/g, '_')}`;
+    const alreadyCounted = (() => { try { return localStorage.getItem(countedKey) === '1'; } catch { return false; } })();
+    try { if (!alreadyCounted) localStorage.setItem(countedKey, '1'); } catch {}
 
-    // Update today's check-in count
-    const today = new Date().toISOString().split('T')[0];
-    const todayData = (() => { try { return JSON.parse(localStorage.getItem('lbjj_checkins_today') || '{}'); } catch { return {}; } })();
-    const newCount = (todayData.date === today ? (todayData.count || 0) : 0) + 1;
-    localStorage.setItem('lbjj_checkins_today', JSON.stringify({ date: today, count: newCount }));
-    setClassesToday(newCount);
+    // Same logic as SchedulePage handleCheckIn
+    if (!alreadyCounted) {
+      try {
+        const raw = localStorage.getItem('lbjj_game_stats_v2');
+        const stats = raw ? JSON.parse(raw) : {};
+        stats.classesAttended = (stats.classesAttended || 0) + 1;
+        const xpGain = 10 * (comboMultiplier || 1);
+        stats.xp = (stats.xp || 0) + xpGain;
+        stats.totalXP = (stats.totalXP || 0) + xpGain;
+        localStorage.setItem('lbjj_game_stats_v2', JSON.stringify(stats));
+        setMemberXP(prev => prev + xpGain);
+        // Notify TopHeader and any other listeners of XP change
+        try { window.dispatchEvent(new CustomEvent('xp-updated')); } catch {}
+      } catch {}
+      setTotalClasses(prev => prev + 1);
+      // Increment season counter — only write when we actually counted a new class
+      setSeasonClasses(prev => {
+        const ym = new Date().toISOString().slice(0, 7);
+        const key = `lbjj_season_count_${ym}`;
+        const next = prev + 1;
+        try { localStorage.setItem(key, String(next)); } catch {}
+        return next;
+      });
+    }
+
+    // Update today's check-in count — only when a new class was actually counted
+    const today = todayKey;
+    if (!alreadyCounted) {
+      const todayData = (() => { try { return JSON.parse(localStorage.getItem('lbjj_checkins_today') || '{}'); } catch { return {}; } })();
+      const newCount = (todayData.date === today ? (todayData.count || 0) : 0) + 1;
+      localStorage.setItem('lbjj_checkins_today', JSON.stringify({ date: today, count: newCount }));
+      setClassesToday(newCount);
+    }
 
     // Update weekly training
     const weekly = (() => { try { return JSON.parse(localStorage.getItem('lbjj_weekly_training') || '[]'); } catch { return []; } })();

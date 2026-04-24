@@ -258,21 +258,26 @@ function DMTray({
       <div
         onClick={() => { setMinimized(v => !v); if (minimized) { setUnread(0); dmMarkRead(peer.email).catch(()=>{}).finally(() => window.dispatchEvent(new CustomEvent('dm-read'))); } }}
         style={{
-          display: 'flex', alignItems: 'center', gap: 10,
-          padding: '12px 14px', flexShrink: 0, cursor: 'pointer',
+          display: 'flex', alignItems: 'center', justifyContent: 'flex-start', gap: 10,
+          padding: minimized ? '8px 12px' : '12px 14px',
+          height: minimized ? 52 : 'auto',
+          boxSizing: 'border-box',
+          flexShrink: 0, cursor: 'pointer',
           borderBottom: minimized ? 'none' : '1px solid rgba(255,255,255,0.06)',
           background: 'rgba(255,255,255,0.02)',
           userSelect: 'none',
         }}
       >
-        <ParagonRing level={peerLevel} size={32} showOrbit={false}>
-          {peer.profilePic
-            ? <img src={peer.profilePic} alt="" style={{ width:'100%', height:'100%', borderRadius:'50%', objectFit:'cover' }} />
-            : <div style={{ width:'100%', height:'100%', borderRadius:'50%', background: avatarGrad(peer.belt), display:'flex', alignItems:'center', justifyContent:'center', fontSize:11, fontWeight:800, color:'#fff' }}>
-                {(peer.name||'?').charAt(0).toUpperCase()}
-              </div>
-          }
-        </ParagonRing>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+          <ParagonRing level={peerLevel} size={32} showOrbit={false}>
+            {peer.profilePic
+              ? <img src={peer.profilePic} alt="" style={{ width:'100%', height:'100%', borderRadius:'50%', objectFit:'cover', display: 'block' }} />
+              : <div style={{ width:'100%', height:'100%', borderRadius:'50%', background: avatarGrad(peer.belt), display:'flex', alignItems:'center', justifyContent:'center', fontSize:11, fontWeight:800, color:'#fff' }}>
+                  {(peer.name||'?').charAt(0).toUpperCase()}
+                </div>
+            }
+          </ParagonRing>
+        </div>
 
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontSize: 13, fontWeight: 700, color: '#fff', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
@@ -493,7 +498,7 @@ function DMToastCard({ toast, onDismiss }: { toast: IncomingToast; onDismiss: ()
         transition: 'transform .45s cubic-bezier(0.175,0.885,0.32,1.275), opacity .3s',
       }}
     >
-      <div style={{ flexShrink: 0, marginRight: 11, display:'flex', alignItems:'flex-start', paddingTop: 2 }}>
+      <div style={{ flexShrink: 0, marginRight: 11, display:'flex', alignItems:'center', justifyContent: 'center' }}>
         <ParagonRing level={level} size={40} showOrbit={false}>
           {toast.peer.profilePic
             ? <img src={toast.peer.profilePic} alt="" style={{ width:'100%', height:'100%', borderRadius:'50%', objectFit:'cover' }} />
