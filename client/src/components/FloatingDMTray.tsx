@@ -151,6 +151,7 @@ function DMTray({
   stackIndex,
   totalOpen,
   onClose,
+  onToggleMinimize,
   myName,
   myBelt,
   myXP,
@@ -160,6 +161,7 @@ function DMTray({
   stackIndex: number;
   totalOpen: number;
   onClose: () => void;
+  onToggleMinimize: (next: boolean) => void;
   myName: string;
   myBelt: string;
   myXP: number;
@@ -168,7 +170,12 @@ function DMTray({
   const [messages, setMessages] = useState<DmMessage[]>([]);
   const [input, setInput]       = useState('');
   const [sending, setSending]   = useState(false);
-  const [minimized, setMinimized] = useState(!!peer.minimized);
+  // Minimized state is owned by the provider (so it survives remounts) — mirror peer.minimized
+  const minimized = !!peer.minimized;
+  const setMinimized = (next: boolean | ((v: boolean) => boolean)) => {
+    const val = typeof next === 'function' ? (next as any)(minimized) : next;
+    onToggleMinimize(!!val);
+  };
   const [unread, setUnread]     = useState(0);
   const feedRef  = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -684,14 +691,79 @@ function DMInboxTray({ onClose }: { onClose: () => void }) {
 
 // ─── Provider + Manager ───────────────────────────────────────────────────────
 
+const DM_ACTIVE_KEY = 'lbjj_dm_active';
+const DM_STATE_KEY  = 'lbjj_dm_state';
+
+function loadActivePeers(): DMPeer[] {
+  try {
+    const raw = sessionStorage.getItem(DM_ACTIVE_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) {
+      // Legacy single-peer shape: { name, email, belt, profilePic }
+      if (parsed && (parsed.email || parsed.name)) {
+        return [{
+          email: parsed.email || '',
+          name: parsed.name || '',
+          belt: parsed.belt || 'white',
+          totalPoints: parsed.totalPoints || 0,
+          profilePic: parsed.profilePic,
+          minimized: true,
+        }];
+      }
+      return [];
+    }
+    return parsed.filter(p => p && (p.email || p.name));
+  } catch { return []; }
+}
+
+function saveActivePeers(peers: DMPeer[]) {
+  try {
+    if (!peers.length) sessionStorage.removeItem(DM_ACTIVE_KEY);
+    else sessionStorage.setItem(DM_ACTIVE_KEY, JSON.stringify(peers));
+  } catch {}
+}
+
+function loadTrayState(): 'open' | 'minimized' | 'closed' {
+  try {
+    const v = sessionStorage.getItem(DM_STATE_KEY);
+    if (v === 'open' || v === 'minimized' || v === 'closed') return v;
+  } catch {}
+  return 'closed';
+}
+
+function saveTrayState(state: 'open' | 'minimized' | 'closed') {
+  try { sessionStorage.setItem(DM_STATE_KEY, state); } catch {}
+}
+
 export function DMProvider({ children }: { children: React.ReactNode }) {
   const { member, isAuthenticated } = useAuth();
-  const [openPeers, setOpenPeers] = useState<DMPeer[]>([]);
+  // Restore active peers from sessionStorage so conversations survive navigation/remount.
+  // Only rehydrate on initial mount; the `isAuthenticated` gate below prevents rendering if logged out.
+  const [openPeers, setOpenPeers] = useState<DMPeer[]>(() => loadActivePeers());
+
+  // Clear persisted state on logout
+  useEffect(() => {
+    if (!isAuthenticated) {
+      setOpenPeers([]);
+      try { sessionStorage.removeItem(DM_ACTIVE_KEY); sessionStorage.removeItem(DM_STATE_KEY); } catch {}
+    }
+  }, [isAuthenticated]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [toasts, setToasts] = useState<IncomingToast[]>([]);
   const [inboxOpen, setInboxOpen] = useState(false);
   const firstPollRef = useRef(true);
   const seenThreadRef = useRef<Record<string, string>>({}); // fromEmail -> last seen lastTs
+
+  // Persist openPeers to sessionStorage whenever they change
+  useEffect(() => { saveActivePeers(openPeers); }, [openPeers]);
+
+  // Keep the coarse tray state in sync for consumers that want a quick check
+  useEffect(() => {
+    if (openPeers.length === 0) saveTrayState('closed');
+    else if (openPeers.every(p => p.minimized)) saveTrayState('minimized');
+    else saveTrayState('open');
+  }, [openPeers]);
 
   // Listen for open-dm events from anywhere
   useEffect(() => {
@@ -701,11 +773,19 @@ export function DMProvider({ children }: { children: React.ReactNode }) {
       setInboxOpen(false);
       setOpenPeers(prev => {
         const peerEmail = (peer.email || '').toLowerCase().trim();
-        if (prev.some(p => (p.email && p.email === peerEmail) || (!peerEmail && p.name === peer.name))) {
-          return [peer, ...prev.filter(p => p.email !== peer.email)];
+        const existing = prev.find(p => (p.email && p.email.toLowerCase().trim() === peerEmail) || (!peerEmail && p.name === peer.name));
+        if (existing) {
+          // If already open, preserve current minimized state unless caller explicitly passed one
+          const merged: DMPeer = {
+            ...existing,
+            ...peer,
+            minimized: peer.minimized !== undefined ? peer.minimized : existing.minimized,
+          };
+          return [merged, ...prev.filter(p => p !== existing)];
         }
-        const next = [peer, ...prev].slice(0, 3);
-        return next;
+        // New peer — default to minimized unless caller explicitly opens expanded
+        const next: DMPeer = { ...peer, minimized: peer.minimized !== undefined ? peer.minimized : true };
+        return [next, ...prev].slice(0, 3);
       });
     };
     window.addEventListener('open-dm', handler);
@@ -782,6 +862,10 @@ export function DMProvider({ children }: { children: React.ReactNode }) {
 
   const closePeer = (email: string) => setOpenPeers(prev => prev.filter(p => p.email !== email));
 
+  const toggleMinimize = (email: string, minimized: boolean) => {
+    setOpenPeers(prev => prev.map(p => (p.email === email ? { ...p, minimized } : p)));
+  };
+
   return (
     <DMContext.Provider value={{ openDM: (peer) => dispatchOpenDM(peer), unreadCount, setUnreadCount }}>
       {children}
@@ -796,11 +880,12 @@ export function DMProvider({ children }: { children: React.ReactNode }) {
         <>
           {openPeers.map((peer, i) => (
             <DMTray
-              key={peer.email}
+              key={peer.email || peer.name}
               peer={peer}
               stackIndex={i}
               totalOpen={openPeers.length}
               onClose={() => closePeer(peer.email)}
+              onToggleMinimize={(next) => toggleMinimize(peer.email, next)}
               myName={myName}
               myBelt={myBelt}
               myXP={myXP}
