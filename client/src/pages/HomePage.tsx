@@ -815,7 +815,8 @@ export default function HomePage() {
       const localXP = Math.max(localStats.xp || 0, localStats.totalXP || 0);
       const derivedXP = Math.max(gasXP, realTotal * 10, localXP);
       if (realTotal > 0 || gasXP > 0 || localXP > 0) {
-        setTotalClasses(realTotal);
+        const prevLocalClasses = (() => { try { return JSON.parse(localStorage.getItem('lbjj_game_stats_v2') || '{}').classesAttended || 0; } catch { return 0; } })();
+        setTotalClasses(Math.max(prevLocalClasses, realTotal));
         setMemberXP(derivedXP);
       }
       // Fire xp-updated so TopHeader, XPWidget etc. re-sync
@@ -823,7 +824,14 @@ export default function HomePage() {
       try {
         // Read-modify-write pattern — preserve all existing fields, only update what we know
         const stats = JSON.parse(localStorage.getItem('lbjj_game_stats_v2') || '{}');
-        stats.classesAttended = realTotal;
+        // Never let a GAS→localStorage sync decrease classesAttended.
+        // Local is the source of truth for the incrementing counter; only backfill when local is missing or lower.
+        const prevClasses = stats.classesAttended || 0;
+        if (!prevClasses) {
+          stats.classesAttended = realTotal;
+        } else {
+          stats.classesAttended = Math.max(prevClasses, realTotal);
+        }
         stats.totalXP = derivedXP;
         // Always keep stats.xp up to date with the highest known value
         stats.xp = derivedXP;

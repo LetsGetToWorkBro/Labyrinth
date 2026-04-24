@@ -578,7 +578,13 @@ function ClassCard({
       spawnParticles(rect.left + rect.width / 2, rect.top + rect.height / 2, stateColor, cardStateLevel >= 3 ? 50 : 20);
     }
 
-    try {
+    // Dedupe guard: only count this class once per day, even if the flow runs twice
+    const todayKeyForDedupe = new Date().toISOString().split('T')[0];
+    const countedKey = `lbjj_last_counted_checkin_${todayKeyForDedupe}_${(cls.name || 'class').toLowerCase().replace(/\s+/g, '_')}`;
+    const alreadyCountedSchedule = (() => { try { return localStorage.getItem(countedKey) === '1'; } catch { return false; } })();
+    try { if (!alreadyCountedSchedule) localStorage.setItem(countedKey, '1'); } catch {}
+
+    if (!alreadyCountedSchedule) try {
       const raw = localStorage.getItem('lbjj_game_stats_v2');
       const stats = raw ? JSON.parse(raw) : {};
       stats.classesAttended = (stats.classesAttended || 0) + 1;
@@ -604,9 +610,11 @@ function ClassCard({
     } catch {}
 
     const today = new Date().toISOString().split('T')[0];
-    const todayData = (() => { try { return JSON.parse(localStorage.getItem('lbjj_checkins_today') || '{}'); } catch { return {}; } })();
-    const newCount = (todayData.date === today ? (todayData.count || 0) : 0) + 1;
-    localStorage.setItem('lbjj_checkins_today', JSON.stringify({ date: today, count: newCount }));
+    if (!alreadyCountedSchedule) {
+      const todayData = (() => { try { return JSON.parse(localStorage.getItem('lbjj_checkins_today') || '{}'); } catch { return {}; } })();
+      const newCount = (todayData.date === today ? (todayData.count || 0) : 0) + 1;
+      localStorage.setItem('lbjj_checkins_today', JSON.stringify({ date: today, count: newCount }));
+    }
 
     const weekly: string[] = (() => { try { return JSON.parse(localStorage.getItem('lbjj_weekly_training') || '[]'); } catch { return []; } })();
     if (!weekly.includes(today)) {

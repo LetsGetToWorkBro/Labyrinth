@@ -567,8 +567,29 @@ function InspectOverlay({
 
   const handleClaim = () => {
     if (claiming) return;
+    // Hard idempotency: read the claimed set fresh from localStorage so double-taps or
+    // stale state cannot re-award XP. If already claimed, bail out without awarding.
+    const alreadyClaimed = (() => {
+      try {
+        const arr = JSON.parse(localStorage.getItem('lbjj_achievement_xp_claimed') || '[]');
+        return Array.isArray(arr) && arr.includes(achievement.key);
+      } catch { return false; }
+    })();
+    if (alreadyClaimed) {
+      onClose();
+      return;
+    }
     setClaiming(true);
-    // Award XP immediately
+    // Mark claimed FIRST so any re-entry/double-tap immediately short-circuits above.
+    try {
+      const arr = JSON.parse(localStorage.getItem('lbjj_achievement_xp_claimed') || '[]');
+      const set = Array.isArray(arr) ? arr : [];
+      if (!set.includes(achievement.key)) {
+        set.push(achievement.key);
+        localStorage.setItem('lbjj_achievement_xp_claimed', JSON.stringify(set));
+      }
+    } catch {}
+    // Award XP once
     try {
       const s = JSON.parse(localStorage.getItem('lbjj_game_stats_v2') || '{}');
       s.xp = (s.xp || 0) + 150;
@@ -786,6 +807,23 @@ export default function AchievementsPage() {
     }
   }, [newBadgeKeys]);
 
+  // Keep claimedXpKeys in sync with localStorage so the UI always reflects the truth.
+  // Fires on achievements-updated events (same tab) and on storage events (other tabs).
+  useEffect(() => {
+    const refresh = () => {
+      try {
+        const arr = JSON.parse(localStorage.getItem('lbjj_achievement_xp_claimed') || '[]');
+        if (Array.isArray(arr)) setClaimedXpKeys(arr);
+      } catch {}
+    };
+    window.addEventListener('achievements-updated', refresh);
+    window.addEventListener('storage', refresh);
+    return () => {
+      window.removeEventListener('achievements-updated', refresh);
+      window.removeEventListener('storage', refresh);
+    };
+  }, []);
+
   // Scramble dial text
   const scramble = useCallback((el: HTMLElement, text: string) => {
     const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
@@ -826,9 +864,18 @@ export default function AchievementsPage() {
   };
 
   const handleClaimed = (key: string) => {
-    const nc = [...claimedXpKeys, key];
-    setClaimedXpKeys(nc);
-    localStorage.setItem('lbjj_achievement_xp_claimed', JSON.stringify(nc));
+    // Read fresh from localStorage so we don't drop entries written in handleClaim's
+    // idempotency step, and so a duplicate key never gets pushed twice.
+    const existing = (() => {
+      try { const a = JSON.parse(localStorage.getItem('lbjj_achievement_xp_claimed') || '[]'); return Array.isArray(a) ? a : []; } catch { return []; }
+    })();
+    if (existing.includes(key)) {
+      setClaimedXpKeys(existing);
+    } else {
+      const nc = [...existing, key];
+      setClaimedXpKeys(nc);
+      localStorage.setItem('lbjj_achievement_xp_claimed', JSON.stringify(nc));
+    }
     window.dispatchEvent(new CustomEvent('achievements-updated'));
   };
 
