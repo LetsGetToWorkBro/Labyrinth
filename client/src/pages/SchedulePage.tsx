@@ -149,6 +149,27 @@ export default function SchedulePage() {
 
   useEffect(() => { getStreamStatus().then(setStream); }, []);
 
+  // Sanity caps — undo any prior inflation in local storage. classesAttended can't
+  // exceed checkin_history entries * 3; monthly season count can't exceed that
+  // month's history day count * 3.
+  useEffect(() => {
+    try {
+      const history: string[] = JSON.parse(localStorage.getItem('lbjj_checkin_history') || '[]');
+      const stats = JSON.parse(localStorage.getItem('lbjj_game_stats_v2') || '{}');
+      if (history.length > 0 && (stats.classesAttended || 0) > history.length * 3) {
+        stats.classesAttended = Math.max(history.length, 1);
+        localStorage.setItem('lbjj_game_stats_v2', JSON.stringify(stats));
+      }
+      const ym = new Date().toISOString().slice(0, 7);
+      const thisMonthDays = history.filter((d: string) => (d || '').startsWith(ym)).length;
+      const seasonKey = `lbjj_season_count_${ym}`;
+      const stored = parseInt(localStorage.getItem(seasonKey) || '0', 10);
+      if (thisMonthDays > 0 && stored > thisMonthDays * 3) {
+        localStorage.setItem(seasonKey, String(thisMonthDays));
+      }
+    } catch {}
+  }, []);
+
   useEffect(() => {
     getScheduleClasses().then((gasClasses) => {
       if (!gasClasses.length) return;
@@ -578,43 +599,15 @@ function ClassCard({
       spawnParticles(rect.left + rect.width / 2, rect.top + rect.height / 2, stateColor, cardStateLevel >= 3 ? 50 : 20);
     }
 
-    // Dedupe guard: only count this class once per day, even if the flow runs twice
+    // Dedupe guard: only count this class once per day, even if the flow runs twice.
+    // NOTE: The counted key is only written AFTER a successful GAS check-in. Writing it
+    // before the GAS round-trip caused stuck counts when the call failed (user never
+    // got credit, but the dedup key prevented a retry).
     const todayKeyForDedupe = new Date().toISOString().split('T')[0];
     const countedKey = `lbjj_last_counted_checkin_${todayKeyForDedupe}_${(cls.name || 'class').toLowerCase().replace(/\s+/g, '_')}`;
     const alreadyCountedSchedule = (() => { try { return localStorage.getItem(countedKey) === '1'; } catch { return false; } })();
-    try { if (!alreadyCountedSchedule) localStorage.setItem(countedKey, '1'); } catch {}
-
-    if (!alreadyCountedSchedule) try {
-      const raw = localStorage.getItem('lbjj_game_stats_v2');
-      const stats = raw ? JSON.parse(raw) : {};
-      stats.classesAttended = (stats.classesAttended || 0) + 1;
-      // Use weekly class count multiplier (matches StreakWidget display)
-      const comboMultiplier = (() => {
-        try {
-          const weekly2: string[] = JSON.parse(localStorage.getItem('lbjj_weekly_training') || '[]');
-          const startOfWeek = new Date();
-          startOfWeek.setDate(startOfWeek.getDate() - startOfWeek.getDay());
-          const weekStart = startOfWeek.toISOString().split('T')[0];
-          const weekClasses = weekly2.filter(d => d >= weekStart).length;
-          if (weekClasses >= 7) return 3;
-          if (weekClasses >= 5) return 2;
-          if (weekClasses >= 3) return 1.5;
-          return 1;
-        } catch { return 1; }
-      })();
-      const xpGain = Math.round(10 * comboMultiplier);
-      stats.xp = (stats.xp || 0) + xpGain;
-      stats.totalXP = (stats.totalXP || 0) + xpGain;
-      localStorage.setItem('lbjj_game_stats_v2', JSON.stringify(stats));
-      try { window.dispatchEvent(new CustomEvent('xp-updated')); } catch {}
-    } catch {}
 
     const today = new Date().toISOString().split('T')[0];
-    if (!alreadyCountedSchedule) {
-      const todayData = (() => { try { return JSON.parse(localStorage.getItem('lbjj_checkins_today') || '{}'); } catch { return {}; } })();
-      const newCount = (todayData.date === today ? (todayData.count || 0) : 0) + 1;
-      localStorage.setItem('lbjj_checkins_today', JSON.stringify({ date: today, count: newCount }));
-    }
 
     const weekly: string[] = (() => { try { return JSON.parse(localStorage.getItem('lbjj_weekly_training') || '[]'); } catch { return []; } })();
     if (!weekly.includes(today)) {
@@ -649,15 +642,57 @@ function ClassCard({
         className: cls.name || '', day: cls.day || '', time: cls.time || '',
       }).then(async (result: any) => {
         if (result?.alreadyCheckedIn) {
+          // Already credited by GAS — set the dedup key so we don't inflate on retries, but do NOT increment.
+          try { localStorage.setItem(countedKey, '1'); } catch {}
           markClassCheckedIn(cls.name || '');
           return;
         }
         if (result?.pointsAwarded || result?.success) {
+          // ── CHECK-IN SUCCESS — the one legitimate place to increment classesAttended ──
+          // Bump dedup key first so concurrent taps bail out, then increment XP/classes/season counters.
+          if (!alreadyCountedSchedule) {
+            try { localStorage.setItem(countedKey, '1'); } catch {}
+            try {
+              const raw = localStorage.getItem('lbjj_game_stats_v2');
+              const stats = raw ? JSON.parse(raw) : {};
+              stats.classesAttended = (stats.classesAttended || 0) + 1;
+              const comboMultiplier = (() => {
+                try {
+                  const weekly2: string[] = JSON.parse(localStorage.getItem('lbjj_weekly_training') || '[]');
+                  const startOfWeek = new Date();
+                  startOfWeek.setDate(startOfWeek.getDate() - startOfWeek.getDay());
+                  const weekStart = startOfWeek.toISOString().split('T')[0];
+                  const weekClasses = weekly2.filter(d => d >= weekStart).length;
+                  if (weekClasses >= 7) return 3;
+                  if (weekClasses >= 5) return 2;
+                  if (weekClasses >= 3) return 1.5;
+                  return 1;
+                } catch { return 1; }
+              })();
+              const xpGain = Math.round(10 * comboMultiplier);
+              stats.xp = (stats.xp || 0) + xpGain;
+              stats.totalXP = (stats.totalXP || 0) + xpGain;
+              localStorage.setItem('lbjj_game_stats_v2', JSON.stringify(stats));
+              try { window.dispatchEvent(new CustomEvent('xp-updated')); } catch {}
+            } catch {}
+            try {
+              const todayData = JSON.parse(localStorage.getItem('lbjj_checkins_today') || '{}');
+              const newCount = (todayData.date === today ? (todayData.count || 0) : 0) + 1;
+              localStorage.setItem('lbjj_checkins_today', JSON.stringify({ date: today, count: newCount }));
+            } catch {}
+            try {
+              const ym = new Date().toISOString().slice(0, 7);
+              const seasonKey = `lbjj_season_count_${ym}`;
+              const prev = parseInt(localStorage.getItem(seasonKey) || '0', 10);
+              localStorage.setItem(seasonKey, String(prev + 1));
+            } catch {}
+          }
           try {
+            const freshStats = JSON.parse(localStorage.getItem('lbjj_game_stats_v2') || '{}');
             const statsData = await saveMemberStats({
-              xp: gameStats.totalXP || gameStats.xp || 0,
-              streak: gameStats.currentStreak || 0,
-              maxStreak: gameStats.maxStreak || 0,
+              xp: freshStats.totalXP || freshStats.xp || 0,
+              streak: freshStats.currentStreak || 0,
+              maxStreak: freshStats.maxStreak || 0,
             });
             if (statsData) {
               const raw2 = localStorage.getItem('lbjj_game_stats_v2');
@@ -668,7 +703,7 @@ function ClassCard({
               try { localStorage.setItem('lbjj_streak_cache', String(s2.currentStreak || 0)); } catch {}
             }
           } catch {}
-          try { await syncAchievements(member || {}, gameStats); } catch {}
+          try { await syncAchievements(member || {}, JSON.parse(localStorage.getItem('lbjj_game_stats_v2') || '{}')); } catch {}
           try { await getLeaderboardFresh(); } catch {}
         }
       }).catch(() => {});

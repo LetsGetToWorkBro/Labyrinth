@@ -12,6 +12,7 @@ import { ParagonRing } from "@/components/ParagonRing";
 import { getActualLevel } from "@/lib/xp";
 import { useAuth } from "@/lib/auth-context";
 import { dispatchOpenDM } from "@/components/FloatingDMTray";
+import { bulkSetPfp, getPfp } from "@/lib/pfpCache";
 import {
   chatGetMessages, chatSendMessage, chatGetChannels, chatGetChannelMembers, updatePresence, gasCall,
   dmGetConversations,
@@ -424,6 +425,7 @@ export default function ChatPage() {
     try {
       const list = await dmGetConversations();
       list.sort((a, b) => new Date(b.lastTs || 0).getTime() - new Date(a.lastTs || 0).getTime());
+      try { bulkSetPfp(list.map((c: any) => c.partner).filter(Boolean)); } catch {}
       setDmConversations(list);
     } finally {
       setDmLoading(false);
@@ -478,6 +480,7 @@ export default function ChatPage() {
     } catch {}
     try {
       const members = await chatGetChannelMembers('general');
+      bulkSetPfp(members);
       const merged = mergeSelf(members);
       setOnlineMembers(merged);
       try { sessionStorage.setItem('lbjj_online_members', JSON.stringify({ data: members, ts: Date.now() })); } catch {}
@@ -534,10 +537,12 @@ export default function ChatPage() {
     setShowFeed(false);
     loadMessages(activeChannelId);
     chatGetChannelMembers(activeChannelId).then(raw => {
-      // Enrich with PFPs from onlineMembers (who have presence data)
+      bulkSetPfp(raw);
+      // Enrich with PFPs from onlineMembers (who have presence data) or global cache
       const enriched = raw.map(m => {
         const online = onlineMembers.find(o => o.email === m.email || o.name === m.name);
-        return online?.profilePic ? { ...m, profilePic: online.profilePic } : m;
+        const pic = online?.profilePic || m.profilePic || getPfp(m.email || '');
+        return pic ? { ...m, profilePic: pic } : m;
       });
       setChannelMembers(enriched);
     }).catch(() => setChannelMembers([]));
@@ -1045,9 +1050,11 @@ export default function ChatPage() {
                   // presence (lastSeen) is fresh and PFPs sync with the latest /general presence.
                   if (next && activeChannelId) {
                     chatGetChannelMembers(activeChannelId).then(raw => {
+                      bulkSetPfp(raw);
                       const enriched = raw.map(m => {
                         const online = onlineMembers.find(o => o.email === m.email || o.name === m.name);
-                        return online?.profilePic ? { ...m, profilePic: online.profilePic } : m;
+                        const pic = online?.profilePic || m.profilePic || getPfp(m.email || '');
+                        return pic ? { ...m, profilePic: pic } : m;
                       });
                       setChannelMembers(enriched);
                     }).catch(() => {});

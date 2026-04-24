@@ -38,6 +38,7 @@ import { soundSystem } from '@/lib/sounds';
 import { pushLocalNotification } from "@/components/NotificationProvider";
 import { StatSkeleton, ListSkeleton } from "@/components/LoadingSkeleton";
 import { getStreamStatus, clearStreamCache } from "@/lib/streaming";
+import { bulkSetPfp, setPfp } from "@/lib/pfpCache";
 import type { StreamStatus } from "@/lib/streaming";
 // BootOverlay removed — boot sequence plays in LoginPage only
 
@@ -443,6 +444,29 @@ export default function HomePage() {
     return () => clearTimeout(t);
   }, [homeLoading]);
 
+  // Sanity caps — run once on mount to undo any prior inflation in local storage.
+  // classesAttended can't exceed checkin_history entries * 3; monthly season count
+  // can't exceed that month's history day count * 3.
+  useEffect(() => {
+    try {
+      const history: string[] = JSON.parse(localStorage.getItem('lbjj_checkin_history') || '[]');
+      const stats = JSON.parse(localStorage.getItem('lbjj_game_stats_v2') || '{}');
+      if (history.length > 0 && (stats.classesAttended || 0) > history.length * 3) {
+        stats.classesAttended = Math.max(history.length, 1);
+        localStorage.setItem('lbjj_game_stats_v2', JSON.stringify(stats));
+        setTotalClasses(stats.classesAttended);
+      }
+      const ym = new Date().toISOString().slice(0, 7);
+      const thisMonthDays = history.filter((d: string) => (d || '').startsWith(ym)).length;
+      const seasonKey = `lbjj_season_count_${ym}`;
+      const stored = parseInt(localStorage.getItem(seasonKey) || '0', 10);
+      if (thisMonthDays > 0 && stored > thisMonthDays * 3) {
+        localStorage.setItem(seasonKey, String(thisMonthDays));
+        setSeasonClasses(thisMonthDays);
+      }
+    } catch {}
+  }, []);
+
   // Profile photo state — persisted in two keys for redundancy
   const [profilePic, setProfilePic] = useState<string | null>(() => {
     try {
@@ -468,6 +492,14 @@ export default function HomePage() {
     } catch {}
     setProfilePic(remote);
   }, [member]);
+
+  // Seed global PFP cache from member data (own pic + family members)
+  useEffect(() => {
+    if (!member?.email) return;
+    const pic = (member as any).profilePicBase64 || localStorage.getItem('lbjj_profile_picture') || '';
+    if (pic) setPfp(member.email, pic);
+    if (Array.isArray(familyMembers) && familyMembers.length) bulkSetPfp(familyMembers);
+  }, [member, familyMembers]);
 
   // ─── Deduplicated getMemberCheckIns (fires once per mount) ────
   const checkInsCache = useRef<any[] | null>(null);
@@ -617,6 +649,7 @@ export default function HomePage() {
         const { data, ts } = JSON.parse(cached);
         if (Date.now() - ts < LEADERBOARD_TTL && data.length > 0) {
           setLeaderboard(data);
+          bulkSetPfp(data);
         }
       }
     } catch {}
@@ -820,12 +853,17 @@ export default function HomePage() {
       const localMaxStreak = Number(localStats.maxStreak) || 0;
       const streakCacheVal = parseInt(localStorage.getItem('lbjj_streak_cache') || '0', 10) || 0;
 
-      // First-load detection: no local XP AND no local classes recorded yet
-      const isFirstLoad = localXP === 0 && localClasses === 0;
+      // First-load detection: no local XP AND no local classes AND no checkin history
+      const localHistory: string[] = (() => { try { return JSON.parse(localStorage.getItem('lbjj_checkin_history') || '[]'); } catch { return []; } })();
+      const isFirstLoad = localXP === 0 && localClasses === 0 && localHistory.length === 0;
 
-      // Compute final values — isFirstLoad seeds from GAS; otherwise Math.max only
+      // Compute final values.
+      // XP: if first-load seed from GAS; otherwise keep the max of local vs GAS (never regress).
+      // Classes: local is authoritative. Only seed from GAS on provably-first-load. Do NOT
+      // Math.max with GAS otherwise — that creates a feedback loop where GAS inflation
+      // gets re-written back to local every mount.
       const finalXP = isFirstLoad ? Math.max(gasXP, realTotal * 10) : Math.max(localXP, gasXP);
-      const finalClasses = isFirstLoad ? Math.max(gasClasses, realTotal) : Math.max(localClasses, gasClasses, realTotal);
+      const finalClasses = isFirstLoad ? Math.max(gasClasses, realTotal) : localClasses;
       const finalStreak = isFirstLoad ? gasStreak : Math.max(localStreak, streakCacheVal, gasStreak);
       const finalMaxStreak = Math.max(localMaxStreak, gasMaxStreak, finalStreak);
 
@@ -1297,6 +1335,7 @@ export default function HomePage() {
     setTimeout(() => {
       getLeaderboardFresh().then(data => {
         if (!data || data.length === 0) return;
+        bulkSetPfp(data);
         const top5 = data.slice(0, 5).map((e: any) => ({
           ...e,
           isMe: e.name === memberProfile?.name || e.isMe,
@@ -1447,6 +1486,7 @@ export default function HomePage() {
 
         getLeaderboardFresh().then(data => {
           if (!data || data.length === 0) return;
+          bulkSetPfp(data);
           const top5 = enrichWithPfp(data.slice(0, 5).map((e: any) => ({
             ...e,
             isMe: e.name === member.name || e.isMe,
@@ -1455,6 +1495,7 @@ export default function HomePage() {
           try { localStorage.setItem(LEADERBOARD_CACHE_KEY, JSON.stringify({ data: top5, ts: Date.now() })); } catch {}
         }).catch(() => {
           getLeaderboard().then(data => {
+            if (data) bulkSetPfp(data);
             const top5 = enrichWithPfp((data || []).slice(0, 5).map((e: any) => ({
               ...e,
               isMe: e.name === member.name || e.isMe,

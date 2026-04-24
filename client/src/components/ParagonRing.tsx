@@ -18,6 +18,7 @@
  */
 
 import React from 'react';
+import { getPfp } from '@/lib/pfpCache';
 
 export type ParagonTheme = 'ember' | 'frost' | 'void' | 'blood' | 'apex';
 
@@ -33,11 +34,18 @@ export function getParagonTheme(level: number): ParagonTheme {
 interface ParagonRingProps {
   level: number;
   size?: number;         // portrait diameter in px (default 48)
-  children: React.ReactNode;
+  children?: React.ReactNode;
   showOrbit?: boolean;   // show the orbit spark (default true)
+  profilePic?: string;   // optional — if provided (or resolvable via email), renders an <img> instead of children
+  email?: string;        // optional — fallback lookup in global PFP cache when profilePic is missing
 }
 
-export function ParagonRing({ level, size = 48, children, showOrbit = true }: ParagonRingProps) {
+export function ParagonRing({ level, size = 48, children, showOrbit = true, profilePic, email }: ParagonRingProps) {
+  // Resolve a pic source: explicit prop first, then global PFP cache by email.
+  const resolvedPic = profilePic || (email ? getPfp(email) : undefined);
+  const renderedChildren = (!children && resolvedPic)
+    ? <img src={resolvedPic} alt="" style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover', display: 'block' }} />
+    : children;
   const theme = getParagonTheme(level);
 
   // Scale all offsets relative to size
@@ -244,7 +252,7 @@ export function ParagonRing({ level, size = 48, children, showOrbit = true }: Pa
           zIndex: 1,
           background: '#000',
         }}>
-          {children}
+          {renderedChildren}
         </div>
 
         {/* Ring base — conic gradient spinning ring */}

@@ -18,6 +18,7 @@ import { ParagonRing } from '@/components/ParagonRing';
 import { getActualLevel } from '@/lib/xp';
 import { getBeltColor } from '@/lib/constants';
 import { dmSend, dmGetThread, dmMarkRead, dmGetUnread, dmGetConversations, type DmMessage, type DmConversation } from '@/lib/api';
+import { getPfp, setPfp, bulkSetPfp } from '@/lib/pfpCache';
 
 // ─── Unread tracking ──────────────────────────────────────────────────────────
 
@@ -269,13 +270,13 @@ function DMTray({
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-          <ParagonRing level={peerLevel} size={32} showOrbit={false}>
-            {peer.profilePic
-              ? <img src={peer.profilePic} alt="" style={{ width:'100%', height:'100%', borderRadius:'50%', objectFit:'cover', display: 'block' }} />
+          <ParagonRing level={peerLevel} size={32} showOrbit={false} email={peer.email}>
+            {(() => { const pic = peer.profilePic || getPfp(peer.email || ''); return pic
+              ? <img src={pic} alt="" style={{ width:'100%', height:'100%', borderRadius:'50%', objectFit:'cover', display: 'block' }} />
               : <div style={{ width:'100%', height:'100%', borderRadius:'50%', background: avatarGrad(peer.belt), display:'flex', alignItems:'center', justifyContent:'center', fontSize:11, fontWeight:800, color:'#fff' }}>
                   {(peer.name||'?').charAt(0).toUpperCase()}
                 </div>
-            }
+            ; })()}
           </ParagonRing>
         </div>
 
@@ -342,7 +343,7 @@ function DMTray({
                 const isMe = msg.isMe;
                 const senderLevel = getActualLevel(isMe ? myXP : (msg.senderTotalPoints || peer.totalPoints));
                 const senderBelt  = isMe ? myBelt : (msg.senderBelt || peer.belt);
-                const senderPfp   = isMe ? myPfp  : peer.profilePic;
+                const senderPfp   = isMe ? myPfp  : (peer.profilePic || getPfp(peer.email || ''));
                 const senderName  = isMe ? myName : msg.sender;
                 const pillBelt    = ['black','brown','purple','blue','white'].includes(senderBelt.toLowerCase()) ? senderBelt.toLowerCase() : 'white';
 
@@ -501,13 +502,13 @@ function DMToastCard({ toast, onDismiss }: { toast: IncomingToast; onDismiss: ()
       }}
     >
       <div style={{ flexShrink: 0, marginRight: 11, display:'flex', alignItems:'center', justifyContent: 'center' }}>
-        <ParagonRing level={level} size={40} showOrbit={false}>
-          {toast.peer.profilePic
-            ? <img src={toast.peer.profilePic} alt="" style={{ width:'100%', height:'100%', borderRadius:'50%', objectFit:'cover' }} />
+        <ParagonRing level={level} size={40} showOrbit={false} email={toast.peer.email}>
+          {(() => { const pic = toast.peer.profilePic || getPfp(toast.peer.email || ''); return pic
+            ? <img src={pic} alt="" style={{ width:'100%', height:'100%', borderRadius:'50%', objectFit:'cover' }} />
             : <div style={{ width:'100%', height:'100%', borderRadius:'50%', background: avatarGrad(toast.peer.belt), display:'flex', alignItems:'center', justifyContent:'center', fontSize:14, fontWeight:800, color:'#fff' }}>
                 {(toast.peer.name||'?').charAt(0).toUpperCase()}
               </div>
-          }
+          ; })()}
         </ParagonRing>
       </div>
       <div style={{ flex: 1, minWidth: 0, display:'flex', flexDirection:'column', gap:3 }}>
@@ -566,6 +567,11 @@ function DMInboxTray({ onClose }: { onClose: () => void }) {
     try {
       const list = await dmGetConversations();
       list.sort((a, b) => new Date(b.lastTs || 0).getTime() - new Date(a.lastTs || 0).getTime());
+      try {
+        list.forEach(c => {
+          if (c.partnerEmail && c.partnerProfilePic) setPfp(c.partnerEmail, c.partnerProfilePic);
+        });
+      } catch {}
       setConversations(list);
     } finally {
       setLoading(false);
@@ -659,13 +665,13 @@ function DMInboxTray({ onClose }: { onClose: () => void }) {
                 onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
               >
                 <div style={{ flexShrink:0 }}>
-                  <ParagonRing level={level} size={32} showOrbit={false}>
-                    {c.partnerProfilePic
-                      ? <img src={c.partnerProfilePic} alt="" style={{ width:'100%', height:'100%', borderRadius:'50%', objectFit:'cover' }} />
+                  <ParagonRing level={level} size={32} showOrbit={false} email={c.partnerEmail}>
+                    {(() => { const pic = c.partnerProfilePic || getPfp(c.partnerEmail || ''); return pic
+                      ? <img src={pic} alt="" style={{ width:'100%', height:'100%', borderRadius:'50%', objectFit:'cover' }} />
                       : <div style={{ width:'100%', height:'100%', borderRadius:'50%', background: avatarGrad(belt), display:'flex', alignItems:'center', justifyContent:'center', fontSize:11, fontWeight:800, color:'#fff' }}>
                           {(c.partnerName||'?').charAt(0).toUpperCase()}
                         </div>
-                    }
+                    ; })()}
                   </ParagonRing>
                 </div>
                 <div style={{ flex:1, minWidth:0 }}>

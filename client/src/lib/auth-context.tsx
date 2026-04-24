@@ -3,6 +3,14 @@ import type { MemberProfile, FamilyMember } from "./api";
 import { setToken, setMemberData, clearAuth, memberLogin as apiLogin, memberGetProfile, memberSwitchProfile as apiSwitchProfile, setActiveLocation, gasCall, normalizeAdminRole, syncAchievements } from "./api";
 import { ALL_ACHIEVEMENTS } from "./achievements";
 import { getSavedLocationId } from "./locations";
+import { setPfp, bulkSetPfp } from "./pfpCache";
+
+function cacheMemberPfp(m: any) {
+  if (!m?.email) return;
+  const pic = m.profilePic || m.profilePicBase64 || localStorage.getItem('lbjj_profile_picture') || '';
+  if (pic) setPfp(m.email, pic);
+  if (Array.isArray(m.familyMembers)) bulkSetPfp(m.familyMembers);
+}
 
 function sanitizeProfileForStorage(profile: any) {
   if (!profile) return profile;
@@ -69,6 +77,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setMemberState(savedProfile);
         setIsAuthenticated(true);
         if (savedProfile.familyMembers) setFamilyMembers(savedProfile.familyMembers);
+        cacheMemberPfp(savedProfile);
         setIsLoading(false);
 
         // If cached profile claims isAdmin, re-verify with server in background
@@ -103,6 +112,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             setMemberData(normalized);
             localStorage.setItem('lbjj_member_profile', JSON.stringify(sanitizeProfileForStorage(normalized)));
             if (normalized.familyMembers) setFamilyMembers(normalized.familyMembers);
+            cacheMemberPfp(normalized);
           }
         }).catch(() => {
           // Network error during validation — keep optimistic state (user may be offline)
@@ -129,6 +139,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setMemberData(result.member);
         localStorage.setItem('lbjj_member_profile', JSON.stringify(sanitizeProfileForStorage(result.member)));
         setFamilyMembers(result.member.familyMembers || []);
+        cacheMemberPfp(result.member);
         // Sync locally-earned achievements to GAS on login (fire-and-forget)
         try {
           const earned: string[] = JSON.parse(localStorage.getItem('lbjj_achievements') || '[]');
@@ -167,6 +178,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             setMemberState(normalized);
             setMemberData(normalized);
             if (normalized.familyMembers) setFamilyMembers(normalized.familyMembers);
+            cacheMemberPfp(normalized);
 
             // Refresh token timestamp so biometric logins always extend the session
             localStorage.setItem('lbjj_token_created', Date.now().toString());
@@ -190,6 +202,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                       setMemberData(fresh);
                       localStorage.setItem('lbjj_member_profile', JSON.stringify(sanitizeProfileForStorage(fresh)));
                       if (fresh.familyMembers) setFamilyMembers(fresh.familyMembers);
+                      cacheMemberPfp(fresh);
                     }
                   }
                   // If renewal also fails — keep cached state, don't boot the user
@@ -202,6 +215,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                   setMemberData(fresh);
                   localStorage.setItem('lbjj_member_profile', JSON.stringify(sanitizeProfileForStorage(fresh)));
                   if (fresh.familyMembers) setFamilyMembers(fresh.familyMembers);
+                  cacheMemberPfp(fresh);
                 }
               }
             }).catch(() => { /* network error — keep cached state */ });
@@ -224,6 +238,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             setMemberData(normalized);
             localStorage.setItem('lbjj_member_profile', JSON.stringify(sanitizeProfileForStorage(normalized)));
             if (normalized.familyMembers) setFamilyMembers(normalized.familyMembers);
+            cacheMemberPfp(normalized);
             return { success: true };
           }
         }
@@ -244,6 +259,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               setMemberData(normalized);
               localStorage.setItem('lbjj_member_profile', JSON.stringify(sanitizeProfileForStorage(normalized)));
               if (normalized.familyMembers) setFamilyMembers(normalized.familyMembers);
+              cacheMemberPfp(normalized);
               return { success: true };
             }
           }
@@ -289,6 +305,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setMemberData(profile);
       localStorage.setItem('lbjj_member_profile', JSON.stringify(sanitizeProfileForStorage(profile)));
       if (profile.familyMembers) setFamilyMembers(profile.familyMembers);
+      cacheMemberPfp(profile);
     } catch (err) {
       console.error("Failed to refresh profile:", err);
     }
@@ -298,6 +315,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setMemberState(m);
     setMemberData(m);
     if (m.familyMembers) setFamilyMembers(m.familyMembers);
+    cacheMemberPfp(m);
   }, []);
 
   const switchProfile = useCallback(async (targetRow: number) => {
@@ -306,6 +324,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setMemberState(profile);
       setMemberData(profile);
       if (profile.familyMembers) setFamilyMembers(profile.familyMembers);
+      cacheMemberPfp(profile);
       return { success: true };
     } catch (err: any) {
       return { success: false, error: err.message || "Failed to switch profile" };

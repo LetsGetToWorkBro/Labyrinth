@@ -15,8 +15,13 @@ import { dmGetUnread, chatGetChannelMembers, getRecentUsers, updatePresence, typ
 import { getBeltColor } from '@/lib/constants';
 import { getActualLevel } from '@/lib/xp';
 import { ParagonRing } from '@/components/ParagonRing';
+import { bulkSetPfp, getPfp } from '@/lib/pfpCache';
 
 import { useAuth } from '@/lib/auth-context';
+
+function resolvePic(m: any): string | undefined {
+  return m?.profilePic || m?.profilePicBase64 || getPfp(m?.email || '');
+}
 
 // Navigate to chat and open the profile modal for a member
 function openMemberProfile(m: ChannelMember) {
@@ -96,11 +101,11 @@ function MemberRow({ m, dimmed, onClick, onProfile, isSelf }: { m: ChannelMember
     >
       {/* Avatar with ParagonRing */}
       <div style={{ position: 'relative', flexShrink: 0 }}>
-        <ParagonRing level={level} size={30} showOrbit={false}>
-          {m.profilePic
-            ? <img src={m.profilePic} alt="" style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover', display: 'block' }} />
+        <ParagonRing level={level} size={30} showOrbit={false} email={m.email}>
+          {(() => { const pic = resolvePic(m); return pic
+            ? <img src={pic} alt="" style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover', display: 'block' }} />
             : <div style={{ width: '100%', height: '100%', borderRadius: '50%', background: avatarGrad(belt), display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 800, color: '#fff' }}>{(displayName || '?').charAt(0).toUpperCase()}</div>
-          }
+          ; })()}
         </ParagonRing>
         {!dimmed && (
           <div style={{ position: 'absolute', bottom: -1, right: -1, width: 8, height: 8, borderRadius: '50%', background: '#10b981', border: '1.5px solid #0f0e0d', zIndex: 10 }} />
@@ -159,6 +164,7 @@ export function OnlineBubble({ compact = false }: { compact?: boolean }) {
   const load = useCallback(async () => {
     try {
       const list = await chatGetChannelMembers('general');
+      bulkSetPfp(list);
       const self = buildSelf();
       if (self) {
         const without = list.filter(m => (m.email || m.name) !== (self.email || self.name));
@@ -419,6 +425,7 @@ export function OnlineAvatarCluster() {
       // getRecentUsers scans all pr_* presence keys — shows who opened the app recently (not just chat users)
       // 24h window so "Recently Online" shows everyone who logged in today
       const list = await getRecentUsers(24 * 60 * 60 * 1000);
+      bulkSetPfp(list);
       const self = buildSelf();
       if (self) {
         const without = list.filter(m => (m.email || m.name) !== (self.email || self.name));
@@ -533,10 +540,10 @@ export function OnlineAvatarCluster() {
                     boxShadow: isActive ? '0 0 0 1.5px rgba(16,185,129,.7)' : 'none',
                   }}
                 >
-                  {m.profilePic
-                    ? <img src={m.profilePic} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  {(() => { const pic = resolvePic(m); return pic
+                    ? <img src={pic} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                     : (displayName || '?').charAt(0).toUpperCase()
-                  }
+                  ; })()}
                 </div>
               );
             })
@@ -691,11 +698,11 @@ function PopupMemberRow({ m, dimmed, isSelf, onProfile, onDM }: { m: ChannelMemb
     }}>
       {/* Avatar with ParagonRing */}
       <div style={{ position: 'relative', flexShrink: 0 }}>
-        <ParagonRing level={level} size={32} showOrbit={false}>
-          {m.profilePic
-            ? <img src={m.profilePic} alt="" style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover', display: 'block' }} />
+        <ParagonRing level={level} size={32} showOrbit={false} email={m.email}>
+          {(() => { const pic = resolvePic(m); return pic
+            ? <img src={pic} alt="" style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover', display: 'block' }} />
             : <div style={{ width: '100%', height: '100%', borderRadius: '50%', background: avatarGrad(belt), display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 800, color: '#fff' }}>{(displayName || '?').charAt(0).toUpperCase()}</div>
-          }
+          ; })()}
         </ParagonRing>
         {!dimmed && (
           <div style={{ position: 'absolute', bottom: -1, right: -1, width: 9, height: 9, borderRadius: '50%', background: '#10b981', border: '1.5px solid #161412', zIndex: 10 }} />
