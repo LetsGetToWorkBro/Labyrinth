@@ -1,9 +1,11 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { useHashLocation } from 'wouter/use-hash-location';
-import { ALL_ACHIEVEMENTS, ACHIEVEMENT_CATEGORIES, checkAndUnlockAchievements } from '@/lib/achievements';
+import { ALL_ACHIEVEMENTS, ACHIEVEMENT_CATEGORIES, checkAndUnlockAchievements, getRarityXP } from '@/lib/achievements';
 import type { Achievement, AchievementRarity } from '@/lib/achievements';
-import { gasCall, syncAchievements } from '@/lib/api';
+import { gasCall, syncAchievements, saveMemberStats } from '@/lib/api';
+import { LockedParagonRing } from '@/components/ParagonRing';
+import { getActualLevel } from '@/lib/xp';
 import { useAuth } from '@/lib/auth-context';
 import { pushLocalNotification } from '@/components/NotificationProvider';
 
@@ -281,7 +283,7 @@ function SecretRevealOverlay({ achievement, onComplete }: { achievement: Achieve
 }
 
 // ─── VFX: nuclear claim ───────────────────────────────────────────
-function triggerNuclearClaim(color: string, onDone?: () => void) {
+function triggerNuclearClaim(color: string, onDone?: () => void, xpAmount: number = 150) {
   const vfx = document.getElementById('ach-vfx-layer');
   if (!vfx) { onDone?.(); return; }
   const cx = window.innerWidth / 2;
@@ -340,7 +342,7 @@ function triggerNuclearClaim(color: string, onDone?: () => void) {
     const xpc = document.createElement('div');
     xpc.style.cssText = `position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);display:flex;flex-direction:column;align-items:center;pointer-events:none;`;
     xpc.innerHTML = `
-      <div style="font-family:system-ui,sans-serif;font-size:72px;font-weight:900;color:#fff;text-shadow:0 0 40px ${color},0 0 80px ${color};line-height:1;letter-spacing:-0.02em;white-space:nowrap;">+150</div>
+      <div style="font-family:system-ui,sans-serif;font-size:72px;font-weight:900;color:#fff;text-shadow:0 0 40px ${color},0 0 80px ${color};line-height:1;letter-spacing:-0.02em;white-space:nowrap;">+${xpAmount}</div>
       <div style="font-family:system-ui,sans-serif;font-size:20px;font-weight:900;color:${color};text-transform:uppercase;letter-spacing:0.3em;margin-top:-4px;text-shadow:0 0 20px ${color};">EXPERIENCE</div>
     `;
     vfx.appendChild(xpc);
@@ -589,13 +591,20 @@ function InspectOverlay({
         localStorage.setItem('lbjj_achievement_xp_claimed', JSON.stringify(set));
       }
     } catch {}
-    // Award XP once
+    // Award XP once — scaled by rarity
+    const xpReward = achievement.xp ?? getRarityXP(achievement.rarity);
     try {
       const s = JSON.parse(localStorage.getItem('lbjj_game_stats_v2') || '{}');
-      s.xp = (s.xp || 0) + 150;
-      s.totalXP = (s.totalXP || 0) + 150;
+      s.xp = (s.xp || 0) + xpReward;
+      s.totalXP = (s.totalXP || 0) + xpReward;
       localStorage.setItem('lbjj_game_stats_v2', JSON.stringify(s));
       window.dispatchEvent(new CustomEvent('xp-updated'));
+      // Push the new total to the server so the leaderboard level matches.
+      saveMemberStats({
+        xp: s.xp || 0,
+        streak: s.currentStreak || 0,
+        maxStreak: s.maxStreak || 0,
+      }).catch(() => {});
     } catch {}
     try {
       pushLocalNotification({
@@ -609,7 +618,7 @@ function InspectOverlay({
     triggerNuclearClaim(rarityColor, () => {
       setClaiming(false);
       onClose();
-    });
+    }, xpReward);
   };
 
   return createPortal(
@@ -1059,6 +1068,34 @@ export default function AchievementsPage() {
               >{cat.label}</button>
             ))}
           </div>
+
+          {/* Locked paragon tiers — long-term goals */}
+          {(() => {
+            const xp = memberStats?.xp ?? memberStats?.totalPoints ?? memberStats?.TotalPoints ?? 0;
+            const lvl = getActualLevel(xp);
+            if (lvl >= 50) return null;
+            return (
+              <div style={{
+                display: 'flex', gap: 20, justifyContent: 'center', alignItems: 'flex-start',
+                padding: '14px 20px 4px', flexWrap: 'wrap',
+              }}>
+                {lvl < 40 && (
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
+                    <LockedParagonRing unlockLevel={40} size={44} />
+                    <div style={{ fontSize: 10, color: '#6A6A74', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase' }}>???</div>
+                    <div style={{ fontSize: 10, color: '#8A8A94' }}>Reach Level 40 to unlock</div>
+                  </div>
+                )}
+                {lvl < 50 && (
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
+                    <LockedParagonRing unlockLevel={50} size={44} />
+                    <div style={{ fontSize: 10, color: '#6A6A74', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase' }}>???</div>
+                    <div style={{ fontSize: 10, color: '#8A8A94' }}>Reach Level 50 to unlock</div>
+                  </div>
+                )}
+              </div>
+            );
+          })()}
 
           {/* Grid */}
           <div

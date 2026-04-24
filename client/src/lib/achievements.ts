@@ -2,6 +2,19 @@ import { getActualLevel } from '@/lib/xp';
 
 export type AchievementRarity = 'Common' | 'Rare' | 'Epic' | 'Legendary' | 'Mythic';
 
+export const RARITY_XP: Record<AchievementRarity, number> = {
+  Common:    100,
+  Rare:      250,
+  Epic:      500,
+  Legendary: 1000,
+  Mythic:    2500,
+};
+
+export function getRarityXP(rarity?: AchievementRarity): number {
+  if (!rarity) return RARITY_XP.Common;
+  return RARITY_XP[rarity] ?? RARITY_XP.Common;
+}
+
 export interface Achievement {
   key: string;
   label: string;
@@ -13,6 +26,7 @@ export interface Achievement {
   rarity?: AchievementRarity; // tier rarity
   badgeType?: string; // SVG badge type for holo card
   badgeColor2?: string; // secondary color for badge SVG
+  xp?: number;        // XP reward on claim (computed from rarity if omitted)
 }
 
 export const ALL_ACHIEVEMENTS: Achievement[] = [
@@ -80,7 +94,27 @@ export const ALL_ACHIEVEMENTS: Achievement[] = [
   { key: 'level_10',  label: 'Seasoned Warrior',    icon: '🕐', color: '#cd7f32', category: 'level', rarity: 'Rare',      badgeType: 'num_10', badgeColor2: '#1e3a8a', desc: 'Reach Level 10.' },
   { key: 'level_20',  label: 'Labyrinth Veteran',   icon: '🌟', color: '#8a2be2', category: 'level', rarity: 'Epic',      badgeType: 'num_20', badgeColor2: '#4c1d95', desc: 'Reach Level 20.' },
   { key: 'level_30',  label: 'Legend of the Mat',   icon: '💎', color: '#ff4500', category: 'level', rarity: 'Legendary', badgeType: 'num_30', badgeColor2: '#7f1d1d', desc: 'Reach Level 30 — a legend.' },
+
+  // ── BELT STRIPE MILESTONES ───────────────────────────────────────
+  { key: 'stripe_2', label: 'Second Stripe', icon: '🥋', color: '#cd7f32', category: 'belt', rarity: 'Rare', badgeType: 'belt_rank', badgeColor2: '#1e3a8a', desc: 'Earn your 2nd stripe.' },
+  { key: 'stripe_3', label: 'Third Stripe',  icon: '🥋', color: '#cd7f32', category: 'belt', rarity: 'Rare', badgeType: 'belt_rank', badgeColor2: '#1e3a8a', desc: 'Earn your 3rd stripe.' },
+  { key: 'stripe_4', label: 'Fourth Stripe', icon: '🥋', color: '#8a2be2', category: 'belt', rarity: 'Epic', badgeType: 'belt_rank', badgeColor2: '#4c1d95', desc: 'Earn your 4th stripe — nearly ready to promote.' },
+
+  // ── CLASS ATTENDANCE GAPS ────────────────────────────────────────
+  { key: 'quarter_mat',  label: 'Quarter Mat',  icon: '📅', color: '#b0c4de', category: 'attendance', rarity: 'Common', badgeType: 'calendar', badgeColor2: '#064e3b', desc: 'Attend 25 classes.' },
+  { key: 'half_century', label: 'Half Century', icon: '🎯', color: '#cd7f32', category: 'attendance', rarity: 'Rare',   badgeType: 'num_50',   badgeColor2: '#1e3a8a', desc: 'Attend 50 classes.' },
+
+  // ── COMPETITION (FIRST MATCH) ────────────────────────────────────
+  { key: 'baptism_of_fire', label: 'Baptism of Fire', icon: '🏟️', color: '#b0c4de', category: 'competition', rarity: 'Common', badgeType: 'takedown', badgeColor2: '#064e3b', desc: 'Compete in your first match.' },
+
+  // ── APP ENGAGEMENT (WALLET PASS) ─────────────────────────────────
+  { key: 'carry_the_crest', label: 'Carry the Crest', icon: '🎫', color: '#b0c4de', category: 'app', rarity: 'Common', badgeType: 'smartphone', badgeColor2: '#064e3b', desc: 'Add the Labyrinth member pass to your wallet.' },
 ];
+
+// Stamp rarity-based XP on every achievement so `achievement.xp` always reflects tier.
+for (const a of ALL_ACHIEVEMENTS) {
+  a.xp = getRarityXP(a.rarity);
+}
 
 export const ACHIEVEMENT_CATEGORIES = [
   { key: 'attendance',  label: '🥋 Attendance',   color: '#C8A24C' },
@@ -209,7 +243,20 @@ export function checkAndUnlockAchievements(
 
   // Belt stripe
   const stripes = profile.stripes || profile.Stripes || 0;
-  if (stripes > 0) unlock('first_stripe');
+  if (stripes >= 1) unlock('first_stripe');
+  if (stripes >= 2) unlock('stripe_2');
+  if (stripes >= 3) unlock('stripe_3');
+  if (stripes >= 4) unlock('stripe_4');
+
+  // Class attendance gaps
+  if (classCount >= 25) unlock('quarter_mat');
+  if (classCount >= 50) unlock('half_century');
+
+  // Competition — baptism_of_fire unlocks when any match recorded (win or loss)
+  if (((stats.wins || 0) + (stats.losses || 0)) >= 1) unlock('baptism_of_fire');
+
+  // Wallet pass — check localStorage flag
+  if (localStorage.getItem('lbjj_wallet_pass_added')) unlock('carry_the_crest');
 
   // First message sent
   if (localStorage.getItem('lbjj_first_message_sent')) unlock('first_message');

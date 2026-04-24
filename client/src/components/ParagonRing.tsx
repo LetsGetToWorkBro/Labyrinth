@@ -20,9 +20,13 @@
 import React from 'react';
 import { getPfp } from '@/lib/pfpCache';
 
-export type ParagonTheme = 'ember' | 'frost' | 'void' | 'blood' | 'apex';
+export type ParagonTheme = 'ember' | 'frost' | 'void' | 'blood' | 'apex' | 'crown' | 'grandmaster';
+
+export const PARAGON_THEMES: ParagonTheme[] = ['ember', 'frost', 'void', 'blood', 'apex', 'crown', 'grandmaster'];
 
 export function getParagonTheme(level: number): ParagonTheme {
+  if (level >= 50) return 'grandmaster';
+  if (level >= 40) return 'crown';
   if (level >= 30) return 'apex';
   if (level >= 20) return 'blood';
   if (level >= 12) return 'void';
@@ -217,6 +221,98 @@ export function ParagonRing({ level, size = 48, children, showOrbit = true, prof
         borderRadius: '50%',
       },
     },
+    crown: {
+      // Crown: apex base + alternating gold/white diamond crown pattern
+      ringBg: `conic-gradient(from 0deg, #FFD700, #F0F0FF, #FFD700, #F0F0FF, #FFD700, #F0F0FF, #FFD700, #F0F0FF, #FFD700)`,
+      ringAnim: 'pr-spin-slow 4s linear infinite',
+      glowBorder: '2px solid #FFD700',
+      glowBoxShadow: `0 0 36px rgba(255,215,0,0.9), inset 0 0 22px #F0F0FF`,
+      glowAnim: 'pr-spin-reverse 14s linear infinite',
+      ornamentTop: {
+        // Large faceted diamond (clear/white with gold edges)
+        width: JEM + 12, height: JEM + 12,
+        background: 'radial-gradient(circle at 30% 30%, #ffffff 0%, #F0F0FF 50%, #FFD700 100%)',
+        border: '2px solid #FFD700',
+        boxShadow: '0 0 44px #FFD700, 0 0 20px #F0F0FF, inset 0 0 14px rgba(255,255,255,1)',
+        borderRadius: 2, transform: 'rotate(45deg)',
+        animation: 'pr-float-jewel 2.2s ease-in-out infinite alternate',
+      },
+      ornamentBottom: {
+        width: JEM + 4, height: JEM + 4,
+        background: 'linear-gradient(135deg, #F0F0FF, #FFD700)',
+        border: '2px solid #FFD700',
+        boxShadow: '0 0 20px #FFD700',
+        borderRadius: 2, transform: 'rotate(45deg)',
+      },
+      ornamentLeft: {
+        width: JEM, height: JEM,
+        background: 'linear-gradient(135deg, #FFD700, #F0F0FF)',
+        border: '2px solid #F0F0FF',
+        boxShadow: '0 0 16px #FFD700',
+        borderRadius: 2, transform: 'rotate(45deg)',
+      },
+      ornamentRight: {
+        width: JEM, height: JEM,
+        background: 'linear-gradient(135deg, #F0F0FF, #FFD700)',
+        border: '2px solid #F0F0FF',
+        boxShadow: '0 0 16px #FFD700',
+        borderRadius: 2, transform: 'rotate(45deg)',
+      },
+      orbitAnim: 'pr-spin-slow 5s linear infinite',
+      orbitStyle: {
+        width: ORBIT + 5, height: ORBIT + 5,
+        background: '#FFD700',
+        boxShadow: '0 0 24px #FFD700, 0 0 44px #F0F0FF',
+        borderRadius: '50%',
+      },
+    },
+    grandmaster: {
+      // Grandmaster: platinum/white fire with gold outline — most elaborate tier
+      ringBg: `conic-gradient(from 0deg, #ffffff, #FFD700, #E5E4E2, #ffffff, #FFD700, #E5E4E2, #ffffff, #FFD700, #E5E4E2, #ffffff)`,
+      ringAnim: 'pr-spin-slow 2.5s linear infinite',
+      glowBorder: '3px solid #FFD700',
+      glowBoxShadow: `0 0 48px rgba(255,255,255,1), 0 0 24px #FFD700, inset 0 0 28px #ffffff`,
+      glowAnim: 'pr-spin-reverse 10s linear infinite',
+      ornamentTop: {
+        // Blood flame gem recolored to pure white fire with gold outline
+        width: JEM + 14, height: JEM + 14,
+        background: 'radial-gradient(circle at 30% 30%, #ffffff, #F0F0FF, #E5E4E2)',
+        border: '3px solid #FFD700',
+        boxShadow: '0 0 52px #ffffff, 0 0 28px #FFD700, inset 0 0 16px rgba(255,255,255,1)',
+        borderRadius: 2, transform: 'rotate(45deg)',
+        animation: 'pr-float-jewel 1.8s ease-in-out infinite alternate',
+      },
+      ornamentBottom: {
+        width: JEM + 6, height: JEM + 6,
+        background: 'radial-gradient(circle at 30% 30%, #ffffff, #FFD700, #E5E4E2)',
+        border: '2px solid #FFD700',
+        boxShadow: '0 0 28px #ffffff, 0 0 16px #FFD700',
+        borderRadius: 2, transform: 'rotate(45deg)',
+        animation: 'pr-pulse-energy 1.4s infinite alternate',
+      },
+      ornamentLeft: {
+        width: JEM + 2, height: JEM + 2,
+        background: 'linear-gradient(135deg, #ffffff, #FFD700)',
+        border: '2px solid #FFD700',
+        boxShadow: '0 0 22px #ffffff, 0 0 36px #FFD700',
+        borderRadius: 2, transform: 'rotate(45deg)',
+      },
+      ornamentRight: {
+        width: JEM + 2, height: JEM + 2,
+        background: 'linear-gradient(135deg, #FFD700, #ffffff)',
+        border: '2px solid #FFD700',
+        boxShadow: '0 0 22px #ffffff, 0 0 36px #FFD700',
+        borderRadius: 2, transform: 'rotate(45deg)',
+      },
+      orbitAnim: 'pr-spin-reverse 3.5s linear infinite',
+      orbitStyle: {
+        width: ORBIT + 6, height: ORBIT + 6,
+        background: '#ffffff',
+        boxShadow: '0 0 28px #ffffff, 0 0 52px #FFD700',
+        borderRadius: '50%',
+        animation: 'pr-pulse-energy 1s infinite alternate',
+      },
+    },
   };
 
   const s = styles[theme];
@@ -367,5 +463,67 @@ export function ParagonRing({ level, size = 48, children, showOrbit = true, prof
         )}
       </div>
     </>
+  );
+}
+
+interface LockedParagonRingProps {
+  unlockLevel: 40 | 50;
+  size?: number;
+}
+
+export function LockedParagonRing({ unlockLevel, size = 48 }: LockedParagonRingProps) {
+  const PAD = Math.round(size * 0.14);
+  const CANVAS = size + PAD * 2 + Math.round(size * 0.25);
+  const OFFSET = Math.round((CANVAS - size) / 2);
+
+  return (
+    <div style={{ display: 'inline-flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
+      <div style={{
+        position: 'relative',
+        width: CANVAS, height: CANVAS,
+        display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+        flexShrink: 0,
+      }}>
+        {/* Silhouette portrait */}
+        <div style={{
+          position: 'absolute',
+          left: OFFSET, top: OFFSET,
+          width: size, height: size,
+          borderRadius: '50%',
+          overflow: 'hidden',
+          border: '2px solid #000',
+          zIndex: 1,
+          background: '#141418',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          color: '#3a3a42',
+          fontSize: Math.round(size * 0.5),
+          fontWeight: 900,
+          fontFamily: 'system-ui, sans-serif',
+        }}>
+          ?
+        </div>
+        {/* Dark grey ring silhouette */}
+        <div style={{
+          position: 'absolute',
+          left: OFFSET - PAD, top: OFFSET - PAD,
+          width: size + PAD * 2, height: size + PAD * 2,
+          borderRadius: '50%',
+          border: '2px dashed #3a3a42',
+          boxShadow: 'inset 0 0 8px rgba(0,0,0,0.8)',
+          zIndex: 3,
+          pointerEvents: 'none',
+        }} />
+      </div>
+      <div style={{
+        fontSize: 11,
+        fontWeight: 800,
+        color: '#6A6A74',
+        letterSpacing: '0.1em',
+        textTransform: 'uppercase',
+        fontFamily: 'system-ui, sans-serif',
+      }}>
+        LV {unlockLevel}+
+      </div>
+    </div>
   );
 }

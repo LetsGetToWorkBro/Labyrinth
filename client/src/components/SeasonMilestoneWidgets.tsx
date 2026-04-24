@@ -66,6 +66,22 @@ const PARAGON_TOKENS: Record<ParagonTheme, {
     chipBg: 'linear-gradient(135deg,#94a3b8,#fff)', chipC: '#000',
     name: 'APEX',
   },
+  crown: {
+    primary: '#FFD700', secondary: '#F0F0FF',
+    barA: '#6B4A00', barB: '#FFD700', barC: '#F0F0FF',
+    glow: 'rgba(255,215,0,.22)', glowS: 'rgba(255,215,0,.75)',
+    border: 'rgba(255,215,0,.4)', borderHover: 'rgba(255,215,0,.65)',
+    chipBg: 'linear-gradient(135deg,#FFD700,#F0F0FF)', chipC: '#000',
+    name: 'CROWN',
+  },
+  grandmaster: {
+    primary: '#ffffff', secondary: '#FFD700',
+    barA: '#6B4A00', barB: '#FFD700', barC: '#ffffff',
+    glow: 'rgba(255,255,255,.25)', glowS: 'rgba(255,255,255,.85)',
+    border: 'rgba(255,215,0,.5)', borderHover: 'rgba(255,215,0,.8)',
+    chipBg: 'linear-gradient(135deg,#E5E4E2,#FFD700,#ffffff)', chipC: '#000',
+    name: 'GRANDMASTER',
+  },
 };
 
 // ─── Season fill thresholds → progressive color states ─────────────
