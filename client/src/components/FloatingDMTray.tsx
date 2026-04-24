@@ -283,14 +283,16 @@ function DMTray({
           <div style={{ fontSize: 13, fontWeight: 700, color: '#fff', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
             {peer.name}
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginTop: 1 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginTop: 1, whiteSpace: 'nowrap', overflow: 'hidden' }}>
             <div style={{ width: 8, height: 8, borderRadius: 2, background: getBeltColor(peer.belt), flexShrink: 0 }} />
-            <span style={{ fontSize: 9, fontWeight: 700, color: '#a8a29e', textTransform: 'capitalize' }}>
+            <span style={{ fontSize: minimized ? 10 : 9, fontWeight: 700, color: '#a8a29e', textTransform: 'capitalize', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
               {peer.belt} belt
             </span>
-            <span style={{ fontSize: 9, fontWeight: 800, color: '#e8af34', background:'rgba(232,175,52,.12)', padding:'1px 4px', borderRadius:4, border:'1px solid rgba(232,175,52,.22)' }}>
-              LV {peerLevel}
-            </span>
+            {!minimized && (
+              <span style={{ fontSize: 9, fontWeight: 800, color: '#e8af34', background:'rgba(232,175,52,.12)', padding:'1px 4px', borderRadius:4, border:'1px solid rgba(232,175,52,.22)', whiteSpace: 'nowrap', flexShrink: 0 }}>
+                LV {peerLevel}
+              </span>
+            )}
           </div>
         </div>
 

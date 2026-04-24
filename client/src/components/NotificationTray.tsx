@@ -440,7 +440,6 @@ export function NotificationTray() {
 export function NotificationBell() {
   const { unreadCount, toggleTray, trayOpen } = useNotifications();
   const showBadge = unreadCount > 0;
-  const badgeLabel = unreadCount > 99 ? '99+' : String(unreadCount);
 
   return (
     <>
@@ -464,20 +463,14 @@ export function NotificationBell() {
         aria-expanded={trayOpen}
         style={{
           position: 'relative',
-          border: '1px solid rgba(255,255,255,0.1)',
+          border: 'none',
+          background: 'transparent',
           padding: 0,
           cursor: 'pointer',
           flexShrink: 0,
-          width: 36,
-          height: 36,
-          borderRadius: '50%',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          transition: 'background 0.2s ease, border-color 0.2s ease',
-          background: trayOpen ? 'rgba(200,162,76,0.14)' : 'rgba(10,10,12,0.8)',
-          backdropFilter: 'blur(10px)',
-          WebkitBackdropFilter: 'blur(10px)',
           WebkitTapHighlightColor: 'transparent',
         }}
       >
@@ -499,22 +492,13 @@ export function NotificationBell() {
               position: 'absolute',
               top: -2,
               right: -2,
-              minWidth: 16,
-              height: 16,
-              padding: '0 4px',
+              width: 8,
+              height: 8,
               borderRadius: 999,
               background: '#EF4444',
-              color: '#fff',
-              fontSize: 9,
-              fontWeight: 800,
-              lineHeight: '16px',
-              textAlign: 'center',
-              boxShadow: '0 0 0 2px #09090B, 0 2px 6px rgba(239,68,68,0.6)',
-              letterSpacing: 0.2,
+              boxShadow: '0 0 0 1.5px #09090B, 0 0 6px rgba(239,68,68,0.6)',
             }}
-          >
-            {badgeLabel}
-          </span>
+          />
         )}
       </button>
     </>

@@ -624,7 +624,12 @@ export default function ChatPage() {
 
   const now = Date.now();
   const onlineNow = onlineMembers.filter(m => m.lastSeen && (now - new Date(m.lastSeen).getTime()) < 5 * 60 * 1000);
-  const offlineMems = onlineMembers.filter(m => !onlineNow.includes(m));
+  const recentlyOnline = onlineMembers.filter(m => {
+    if (!m.lastSeen) return false;
+    const d = now - new Date(m.lastSeen).getTime();
+    return d >= 5 * 60 * 1000 && d < 24 * 60 * 60 * 1000;
+  });
+  const offlineMems = onlineMembers.filter(m => !onlineNow.includes(m) && !recentlyOnline.includes(m));
 
   // Current user as ChannelMember (for self-profile tap)
   const myEmail = (member?.email || '').toLowerCase();
@@ -735,9 +740,21 @@ export default function ChatPage() {
                   ))}
                 </>
               )}
+              {recentlyOnline.length > 0 && (
+                <ChCollapsibleSection
+                  label="Recently Online"
+                  dotColor="#e8af34"
+                  members={recentlyOnline}
+                  divider={onlineNow.length > 0}
+                  onOpen={(m) => openProfile(m)}
+                  onDM={(m) => dispatchOpenDM(m)}
+                  isSelf={(m) => !!((m.email && member?.email && m.email === member.email) || (m.name && m.name === member?.name))}
+                  online={false}
+                />
+              )}
               {offlineMems.length > 0 && (
                 <>
-                  {onlineNow.length > 0 && <div style={{ height: 1, background: 'rgba(255,255,255,0.06)', margin: '6px 0' }} />}
+                  {(onlineNow.length > 0 || recentlyOnline.length > 0) && <div style={{ height: 1, background: 'rgba(255,255,255,0.06)', margin: '6px 0' }} />}
                   <div style={{ fontSize: 10, fontWeight: 800, color: '#57534e', letterSpacing: '.15em', textTransform: 'uppercase', padding: '6px 8px 4px' }}>○ Offline</div>
                   {offlineMems.slice(0, 20).map(m => (
                     <MemberDropdownRow key={m.email || m.name} m={m} online={false} onClick={() => openProfile(m)} onDM={() => dispatchOpenDM(m)} />
@@ -1398,8 +1415,10 @@ function SwipeableDMRow({ children, hasBorder, onOpen, onArchive }: {
   const startY = React.useRef(0);
   const dragging = React.useRef(false);
   const movedEnough = React.useRef(false);
+  const axisLocked = React.useRef<null | 'x' | 'y'>(null);
   const ARCHIVE_W = 80;
   const THRESHOLD = 60;
+  const H_THRESHOLD = 8;
 
   const handleTouchStart = (e: React.TouchEvent) => {
     const t = e.touches[0];
@@ -1407,29 +1426,46 @@ function SwipeableDMRow({ children, hasBorder, onOpen, onArchive }: {
     startY.current = t.clientY;
     dragging.current = true;
     movedEnough.current = false;
+    axisLocked.current = null;
   };
   const handleTouchMove = (e: React.TouchEvent) => {
     if (!dragging.current) return;
     const t = e.touches[0];
     const dx = t.clientX - startX.current;
     const dy = t.clientY - startY.current;
-    // Only horizontal swipes (ignore vertical scroll)
-    if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 6) {
-      movedEnough.current = true;
-      // Clamp: only allow leftward drag; cap at ARCHIVE_W * 1.3
-      const next = Math.max(Math.min(dx, 0), -ARCHIVE_W * 1.3);
-      setOffset(next);
+
+    // Lock to an axis on first meaningful movement
+    if (!axisLocked.current) {
+      if (Math.abs(dy) > Math.abs(dx)) {
+        // Vertical scroll dominates — abandon swipe and snap back
+        axisLocked.current = 'y';
+        if (offset !== 0) setOffset(0);
+        return;
+      }
+      if (Math.abs(dx) > H_THRESHOLD) {
+        axisLocked.current = 'x';
+      } else {
+        return;
+      }
     }
+
+    if (axisLocked.current !== 'x') return;
+
+    movedEnough.current = true;
+    // Clamp: only allow leftward drag; cap at ARCHIVE_W * 1.3
+    const next = Math.max(Math.min(dx, 0), -ARCHIVE_W * 1.3);
+    setOffset(next);
   };
   const handleTouchEnd = () => {
     dragging.current = false;
-    if (offset <= -THRESHOLD) {
+    if (axisLocked.current === 'x' && offset <= -THRESHOLD) {
       setOffset(-ARCHIVE_W);
       setRevealed(true);
     } else {
       setOffset(0);
       setRevealed(false);
     }
+    axisLocked.current = null;
   };
   const handleRowClick = () => {
     if (revealed) {
@@ -1472,13 +1508,15 @@ function SwipeableDMRow({ children, hasBorder, onOpen, onArchive }: {
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
+        onTouchCancel={handleTouchEnd}
         style={{
           display:'flex', alignItems:'center', gap:12,
           padding:'12px 14px',
           background:'#0a0a0c',
           cursor:'pointer',
           transform:`translateX(${offset}px)`,
-          transition: dragging.current ? 'none' : 'transform .22s cubic-bezier(0.16,1,0.3,1)',
+          willChange: 'transform',
+          transition: dragging.current ? 'none' : 'transform 0.15s ease',
         }}
       >
         {children}

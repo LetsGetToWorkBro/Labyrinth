@@ -532,6 +532,8 @@ export function TopHeader({ onMenuOpen, onXpOpen }: { onMenuOpen: () => void; on
               <div style={{ fontSize:9,fontWeight:800,padding:'2px 6px',borderRadius:4,textTransform:'uppercase',letterSpacing:'.08em',background:bs.bg,color:bs.color,border:bs.border,flexShrink:0,...(belt==='black'?{borderLeft:'3px solid #ef4444'}:{}) }}>
                 {belt}
               </div>
+              {/* Notification bell — inline with belt pill */}
+              <NotificationBell />
             </div>
 
             {/* Row 2: bar + nums + online */}
@@ -583,9 +585,6 @@ export function TopHeader({ onMenuOpen, onXpOpen }: { onMenuOpen: () => void; on
             <div ref={parShRef}  className="par-sh"  style={{ position:'absolute',inset:0,borderRadius:'50%',border:`2px solid ${tok.primary}`,opacity:0,pointerEvents:'none',zIndex:6,transition:'border-color 1s ease' }} />
             <div ref={parSh2Ref} className="par-sh2" style={{ position:'absolute',inset:-5,borderRadius:'50%',border:`1px solid ${tok.primary}`,opacity:0,pointerEvents:'none',zIndex:6 }} />
           </button>
-
-          {/* Notification bell — rightmost of header row */}
-          <NotificationBell />
         </div>
       </div>
     </>
