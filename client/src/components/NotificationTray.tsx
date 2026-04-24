@@ -9,7 +9,20 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { Bell } from 'lucide-react';
+import {
+  Award,
+  Bell,
+  CheckCircle,
+  Flame,
+  type LucideIcon,
+  MessageCircle,
+  Megaphone,
+  Star,
+  TrendingUp,
+  Trophy,
+  Unlock,
+  Zap,
+} from 'lucide-react';
 import {
   Notification,
   NotificationType,
@@ -19,22 +32,22 @@ import {
 const GOLD = '#C8A24C';
 
 /** Static per-type presentation config. */
-const TYPE_META: Record<NotificationType, { emoji: string; color: string; tint: string }> = {
-  belt_promotion: { emoji: '🥋', color: '#C8A24C', tint: 'rgba(200,162,76,0.16)' },
-  checkin:        { emoji: '✅', color: '#34D399', tint: 'rgba(52,211,153,0.16)' },
-  achievement:    { emoji: '🏅', color: '#FBBF24', tint: 'rgba(251,191,36,0.16)' },
-  announcement:   { emoji: '📢', color: '#60A5FA', tint: 'rgba(96,165,250,0.16)' },
-  tournament:     { emoji: '🏆', color: '#FB923C', tint: 'rgba(251,146,60,0.16)' },
-  streak:         { emoji: '🔥', color: '#F87171', tint: 'rgba(248,113,113,0.16)' },
-  level_up:       { emoji: '⚡', color: '#C084FC', tint: 'rgba(192,132,252,0.18)' },
-  dm:             { emoji: '💬', color: '#2DD4BF', tint: 'rgba(45,212,191,0.16)' },
-  access_granted: { emoji: '🔓', color: '#34D399', tint: 'rgba(52,211,153,0.16)' },
-  rank_change:    { emoji: '📊', color: '#818CF8', tint: 'rgba(129,140,248,0.18)' },
+const TYPE_META: Record<NotificationType, { Icon: LucideIcon; color: string; tint: string }> = {
+  belt_promotion: { Icon: Award,        color: '#C8A24C', tint: 'rgba(200,162,76,0.15)' },
+  checkin:        { Icon: CheckCircle,  color: '#22C55E', tint: 'rgba(34,197,94,0.15)' },
+  achievement:    { Icon: Star,         color: '#F59E0B', tint: 'rgba(245,158,11,0.15)' },
+  announcement:   { Icon: Megaphone,    color: '#3B82F6', tint: 'rgba(59,130,246,0.15)' },
+  tournament:     { Icon: Trophy,       color: '#F97316', tint: 'rgba(249,115,22,0.15)' },
+  streak:         { Icon: Flame,        color: '#EF4444', tint: 'rgba(239,68,68,0.15)' },
+  level_up:       { Icon: Zap,          color: '#A855F7', tint: 'rgba(168,85,247,0.15)' },
+  dm:             { Icon: MessageCircle,color: '#14B8A6', tint: 'rgba(20,184,166,0.15)' },
+  access_granted: { Icon: Unlock,       color: '#C8A24C', tint: 'rgba(200,162,76,0.15)' },
+  rank_change:    { Icon: TrendingUp,   color: '#6366F1', tint: 'rgba(99,102,241,0.15)' },
 };
 
 function fallbackMeta(type: string) {
   return TYPE_META[type as NotificationType] || {
-    emoji: '🔔',
+    Icon: Bell,
     color: '#C8A24C',
     tint: 'rgba(200,162,76,0.12)',
   };
@@ -149,11 +162,9 @@ function NotificationRow({
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          fontSize: 18,
-          lineHeight: 1,
         }}
       >
-        {meta.emoji}
+        <meta.Icon size={18} color={meta.color} strokeWidth={2.2} />
       </div>
 
       <div style={{ flex: 1, minWidth: 0 }}>
@@ -453,25 +464,27 @@ export function NotificationBell() {
         aria-expanded={trayOpen}
         style={{
           position: 'relative',
-          background: 'none',
-          border: 'none',
+          border: '1px solid rgba(255,255,255,0.1)',
           padding: 0,
           cursor: 'pointer',
           flexShrink: 0,
-          width: 34,
-          height: 34,
-          borderRadius: 10,
+          width: 36,
+          height: 36,
+          borderRadius: '50%',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          transition: 'background 0.2s ease',
-          background: trayOpen ? 'rgba(200,162,76,0.12)' : 'transparent',
+          transition: 'background 0.2s ease, border-color 0.2s ease',
+          background: trayOpen ? 'rgba(200,162,76,0.14)' : 'rgba(10,10,12,0.8)',
+          backdropFilter: 'blur(10px)',
+          WebkitBackdropFilter: 'blur(10px)',
+          WebkitTapHighlightColor: 'transparent',
         }}
       >
         <Bell
-          size={19}
-          color={showBadge ? GOLD : '#9CA3AF'}
-          strokeWidth={2.1}
+          size={18}
+          color={GOLD}
+          strokeWidth={2.2}
           style={{
             animation: showBadge
               ? 'bellPulse 2.2s ease-in-out infinite, bellShake 2.2s ease-in-out infinite'
@@ -484,17 +497,17 @@ export function NotificationBell() {
             aria-hidden
             style={{
               position: 'absolute',
-              top: 2,
-              right: 0,
-              minWidth: 15,
-              height: 15,
+              top: -2,
+              right: -2,
+              minWidth: 16,
+              height: 16,
               padding: '0 4px',
               borderRadius: 999,
               background: '#EF4444',
               color: '#fff',
               fontSize: 9,
               fontWeight: 800,
-              lineHeight: '15px',
+              lineHeight: '16px',
               textAlign: 'center',
               boxShadow: '0 0 0 2px #09090B, 0 2px 6px rgba(239,68,68,0.6)',
               letterSpacing: 0.2,

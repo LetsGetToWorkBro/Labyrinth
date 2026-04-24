@@ -567,7 +567,6 @@ export function TopHeader({ onMenuOpen, onXpOpen }: { onMenuOpen: () => void; on
               <span style={{ fontSize:8,color:'#3A3A3A',whiteSpace:'nowrap',flexShrink:0 }}>
                 {xpInLevel.toLocaleString()}/{xpNeeded.toLocaleString()}
               </span>
-              <NotificationBell />
               <OnlineBubble compact />
             </div>
           </div>
@@ -584,6 +583,9 @@ export function TopHeader({ onMenuOpen, onXpOpen }: { onMenuOpen: () => void; on
             <div ref={parShRef}  className="par-sh"  style={{ position:'absolute',inset:0,borderRadius:'50%',border:`2px solid ${tok.primary}`,opacity:0,pointerEvents:'none',zIndex:6,transition:'border-color 1s ease' }} />
             <div ref={parSh2Ref} className="par-sh2" style={{ position:'absolute',inset:-5,borderRadius:'50%',border:`1px solid ${tok.primary}`,opacity:0,pointerEvents:'none',zIndex:6 }} />
           </button>
+
+          {/* Notification bell — rightmost of header row */}
+          <NotificationBell />
         </div>
       </div>
     </>
