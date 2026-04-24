@@ -44,6 +44,18 @@ function openMemberProfile(m: ChannelMember) {
 const ONLINE_MS   = 5  * 60 * 1000;   // 5 min  → "Active Now"
 const RECENT_MS   = 24 * 60 * 60 * 1000; // 24 hr → "Recently Online"
 
+function resolveDisplayName(member: any): string {
+  const name = member?.Name || member?.name || member?.FromName || member?.fromName || '';
+  if (name && !name.includes('@')) return name.trim();
+  const email = member?.Email || member?.email || name || '';
+  if (!email.includes('@')) return email || 'Member';
+  const local = email.split('@')[0];
+  return local
+    .replace(/[._-]+/g, ' ')
+    .replace(/\b\w/g, (c: string) => c.toUpperCase())
+    .trim() || 'Member';
+}
+
 function avatarGrad(belt: string) {
   const map: Record<string, string> = {
     black:  'linear-gradient(135deg,#171717,#ef4444)',
@@ -63,6 +75,7 @@ function avatarGrad(belt: string) {
 function MemberRow({ m, dimmed, onClick, onProfile, isSelf }: { m: ChannelMember; dimmed?: boolean; onClick: () => void; onProfile?: () => void; isSelf?: boolean }) {
   const level = getActualLevel(m.totalPoints || 0);
   const belt  = (m.belt || 'white').toLowerCase();
+  const displayName = resolveDisplayName(m);
 
   const handleRowClick = () => {
     // Row tap → open profile (if handler exists), else open DM
@@ -86,7 +99,7 @@ function MemberRow({ m, dimmed, onClick, onProfile, isSelf }: { m: ChannelMember
         <ParagonRing level={level} size={30} showOrbit={false}>
           {m.profilePic
             ? <img src={m.profilePic} alt="" style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover', display: 'block' }} />
-            : <div style={{ width: '100%', height: '100%', borderRadius: '50%', background: avatarGrad(belt), display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 800, color: '#fff' }}>{(m.name || '?').charAt(0).toUpperCase()}</div>
+            : <div style={{ width: '100%', height: '100%', borderRadius: '50%', background: avatarGrad(belt), display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 800, color: '#fff' }}>{(displayName || '?').charAt(0).toUpperCase()}</div>
           }
         </ParagonRing>
         {!dimmed && (
@@ -96,7 +109,7 @@ function MemberRow({ m, dimmed, onClick, onProfile, isSelf }: { m: ChannelMember
 
       {/* Name + belt + LV */}
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontSize: 12, fontWeight: 700, color: '#fff', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{m.name}</div>
+        <div style={{ fontSize: 12, fontWeight: 700, color: '#fff', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{displayName}</div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 1 }}>
           <div style={{ width: 7, height: 7, borderRadius: 2, background: getBeltColor(belt) }} />
           <span style={{ fontSize: 9, fontWeight: 700, color: '#a8a29e', textTransform: 'capitalize' }}>{belt}</span>
@@ -511,11 +524,12 @@ export function OnlineAvatarCluster() {
           ) : (
             display.map((m, i) => {
               const isActive = m.lastSeen && (Date.now() - new Date(m.lastSeen).getTime()) < 5 * 60 * 1000;
+              const displayName = resolveDisplayName(m);
               return (
                 <button
                   key={m.email || m.name}
                   onClick={(e) => { e.stopPropagation(); openDM(m); }}
-                  aria-label={`Message ${m.name}`}
+                  aria-label={`Message ${displayName}`}
                   style={{
                     width: 28, height: 28, borderRadius: 8,
                     border: '2px solid #0f0e0d',
@@ -533,7 +547,7 @@ export function OnlineAvatarCluster() {
                 >
                   {m.profilePic
                     ? <img src={m.profilePic} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                    : (m.name || '?').charAt(0).toUpperCase()
+                    : (displayName || '?').charAt(0).toUpperCase()
                   }
                 </button>
               );

@@ -41,6 +41,18 @@ import { getStreamStatus, clearStreamCache } from "@/lib/streaming";
 import type { StreamStatus } from "@/lib/streaming";
 // BootOverlay removed — boot sequence plays in LoginPage only
 
+function resolveDisplayName(member: any): string {
+  const name = member?.Name || member?.name || member?.FromName || member?.fromName || '';
+  if (name && !name.includes('@')) return name.trim();
+  const email = member?.Email || member?.email || name || '';
+  if (!email.includes('@')) return email || 'Member';
+  const local = email.split('@')[0];
+  return local
+    .replace(/[._-]+/g, ' ')
+    .replace(/\b\w/g, (c: string) => c.toUpperCase())
+    .trim() || 'Member';
+}
+
 // ── Badge unlock overlay (shared with SchedulePage pattern) ────
 function showBadgeUnlock(badge: { key: string; label: string; icon: string; desc: string; color?: string }) {
   const color = badge.color || '#C8A24C';
@@ -1934,6 +1946,7 @@ export default function HomePage() {
             })().map((entry, i) => {
               const rank = leaderboard.findIndex(e => (e.name && e.name === entry.name)) + 1 || (i + 1);
               const isMe = entry.name === member?.name;
+              const displayName = resolveDisplayName(entry);
               // Accept both camelCase (api.ts normalized) and PascalCase (raw GAS) field names.
               const rawXP = Number(entry.totalPoints ?? (entry as any).TotalPoints ?? 0) || 0;
               // For the current user, the authoritative XP value is the local cache
@@ -1984,14 +1997,14 @@ export default function HomePage() {
                       {entry.profilePic
                         ? <img src={entry.profilePic} style={{ width:'100%', height:'100%', objectFit:'cover', borderRadius:'50%', display:'block' }} alt="" />
                         : <div style={{ width:'100%', height:'100%', borderRadius:'50%', background: beltTint+'22', display:'flex', alignItems:'center', justifyContent:'center', fontSize:14, fontWeight:800, color: beltTint }}>
-                            {(entry.name || '?')[0].toUpperCase()}
+                            {(displayName || '?')[0].toUpperCase()}
                           </div>
                       }
                     </ParagonRing>
                   </div>
                   <div style={{ flex:1, minWidth:0 }}>
                     <div style={{ fontSize:15, fontWeight:700, color: rc.name, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', lineHeight:1.1, letterSpacing:'-0.01em', textShadow: rank <= 3 ? `0 0 12px ${rc.name}60` : 'none' }}>
-                      {entry.name}{isMe ? ' (You)' : ''}
+                      {displayName}{isMe ? ' (You)' : ''}
                     </div>
                     <div style={{ display:'flex', alignItems:'center', gap:5, marginTop:3 }}>
                       <div style={{ width:20, height:6, borderRadius:2, background: beltTint, border:'1px solid rgba(255,255,255,0.1)', flexShrink:0, position:'relative', overflow:'hidden' }}>
