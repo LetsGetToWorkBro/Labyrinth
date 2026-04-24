@@ -472,6 +472,8 @@ export function NotificationBell() {
           alignItems: 'center',
           justifyContent: 'center',
           WebkitTapHighlightColor: 'transparent',
+          height: 16,  // match row height — prevents bell from inflating header
+          lineHeight: 1,
         }}
       >
         <Bell
