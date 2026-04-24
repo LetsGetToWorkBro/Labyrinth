@@ -5,7 +5,7 @@
 
 /* ── CONFIG ─────────────────────────────────────────────── */
 // ⚠️ REPLACE with your deployed Apps Script Web App URL after deployment
-const API_URL = 'https://script.google.com/macros/s/AKfycbwkxkV6XlqKy3DDot_MTfb40WeAfd6KMgBwgcrCNStEFM5vcAQNYG9eR2OOFpCwJ3AJ/exec';
+const API_URL = 'https://script.google.com/macros/s/AKfycbwybO9_NBFjSYmpDWVjM0TloiyQl5-oI7UZxgAHDILYHjhez8RUp7ncOgwKLoEHa6kj/exec';
 
 // Local demo mode when API isn't configured
 const DEMO_MODE = API_URL.includes('YOUR_APPS_SCRIPT');
@@ -34,7 +34,7 @@ const FRANCHISE_LOCATIONS = [
     name: 'Labyrinth BJJ Fulshear', 
     short: 'Fulshear',
     status: 'active',
-    apiUrl: 'https://script.google.com/macros/s/AKfycbwkxkV6XlqKy3DDot_MTfb40WeAfd6KMgBwgcrCNStEFM5vcAQNYG9eR2OOFpCwJ3AJ/exec',
+    apiUrl: 'https://script.google.com/macros/s/AKfycbwybO9_NBFjSYmpDWVjM0TloiyQl5-oI7UZxgAHDILYHjhez8RUp7ncOgwKLoEHa6kj/exec',
     color: '#C8A24C'
   },
   { 
