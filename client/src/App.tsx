@@ -123,16 +123,36 @@ function loadDmReadIdsLocal(): Set<string> {
   } catch { return new Set(); }
 }
 
+function computeClaimableAchievements(): number {
+  try {
+    const earned: string[] = JSON.parse(localStorage.getItem('lbjj_achievements') || '[]');
+    const claimed: string[] = JSON.parse(localStorage.getItem('lbjj_achievement_xp_claimed') || '[]');
+    return earned.filter(key => !claimed.includes(key)).length;
+  } catch { return 0; }
+}
+
 function TabBar() {
   const [location] = useLocation();
   const [navPaths, setNavPaths] = useState<string[]>(getNavConfig);
   const { member, isAuthenticated } = useAuth();
   const [dmUnread, setDmUnread] = useState(0);
+  const [claimableCount, setClaimableCount] = useState(() => computeClaimableAchievements());
 
   useEffect(() => {
     const handler = () => setNavPaths(getNavConfig());
     window.addEventListener('navConfigChanged', handler);
     return () => window.removeEventListener('navConfigChanged', handler);
+  }, []);
+
+  // Recompute claimable achievements on event or storage change
+  useEffect(() => {
+    const handler = () => setClaimableCount(computeClaimableAchievements());
+    window.addEventListener('achievements-updated', handler);
+    window.addEventListener('storage', handler);
+    return () => {
+      window.removeEventListener('achievements-updated', handler);
+      window.removeEventListener('storage', handler);
+    };
   }, []);
 
   // Poll DM unread every 30s; subtract locally-read IDs
@@ -243,6 +263,24 @@ function TabBar() {
                     }}
                   >
                     {dmUnread > 99 ? '99+' : dmUnread}
+                  </div>
+                )}
+                {tab.path === '/achievements' && claimableCount > 0 && (
+                  <div
+                    aria-label={`${claimableCount} unclaimed achievement${claimableCount === 1 ? '' : 's'}`}
+                    style={{
+                      position: 'absolute',
+                      top: -4, right: -8,
+                      minWidth: 16, height: 16, borderRadius: 8,
+                      background: '#ef4444',
+                      border: '2px solid #0A0A0A',
+                      color: '#fff', fontSize: 9, fontWeight: 900,
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      padding: '0 4px', lineHeight: 1,
+                      boxShadow: '0 2px 6px rgba(239,68,68,0.5)',
+                    }}
+                  >
+                    {claimableCount > 99 ? '99+' : claimableCount}
                   </div>
                 )}
               </div>

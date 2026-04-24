@@ -391,6 +391,7 @@ export default function HomePage() {
   const [showNarrativeInfo, setShowNarrativeInfo] = useState(false);
   const [showWeekStats, setShowWeekStats] = useState(false);
   const [showSeasonModal, setShowSeasonModal] = useState(false);
+  const [widgetDotTick, setWidgetDotTick] = useState(0);
   const [showGameDayInfo, setShowGameDayInfo] = useState(false);
   const [isPulling, setIsPulling] = useState(false);
   const [pullDone, setPullDone] = useState(false);
@@ -1783,6 +1784,15 @@ export default function HomePage() {
       });
     }
     if (trainingSeasonData && nextMilestoneData) {
+      const ym = new Date().toISOString().slice(0, 7);
+      const seasonMaxed = trainingSeasonData.thisMonthClasses >= trainingSeasonData.goalClasses;
+      const seasonHasDot = seasonMaxed && localStorage.getItem(`lbjj_season_claimed_${ym}`) !== '1';
+      const PARAGON_TIER_LEVELS = [3, 6, 12, 20, 30];
+      const currLvl = getActualLevel(memberXP);
+      const milestoneHasDot = PARAGON_TIER_LEVELS.some(
+        lvl => currLvl >= lvl && localStorage.getItem(`lbjj_tier_acknowledged_${lvl}`) !== '1'
+      );
+      void widgetDotTick; // re-render when acknowledged
       defs.push({
         id: 'season',
         label: 'Season',
@@ -1800,9 +1810,25 @@ export default function HomePage() {
               xpNeeded: Math.max(0, nextMilestoneData.need),
               ready: nextMilestoneData.need <= 0,
             }}
-            currentLevel={getActualLevel(memberXP)}
-            onOpenSeason={() => { window.location.hash = '#/season'; }}
-            onOpenMilestone={() => setShowMilestoneModal(true)}
+            currentLevel={currLvl}
+            seasonHasDot={seasonHasDot}
+            milestoneHasDot={milestoneHasDot}
+            onOpenSeason={() => {
+              if (seasonMaxed) {
+                try { localStorage.setItem(`lbjj_season_claimed_${ym}`, '1'); } catch {}
+              }
+              setWidgetDotTick(t => t + 1);
+              window.location.hash = '#/season';
+            }}
+            onOpenMilestone={() => {
+              try {
+                PARAGON_TIER_LEVELS.forEach(lvl => {
+                  if (currLvl >= lvl) localStorage.setItem(`lbjj_tier_acknowledged_${lvl}`, '1');
+                });
+              } catch {}
+              setWidgetDotTick(t => t + 1);
+              setShowMilestoneModal(true);
+            }}
           />
         ),
       });
@@ -1905,6 +1931,7 @@ export default function HomePage() {
     dailyStreakCount, weekDots, trainedCount,
     member?.name, member?.email,
     leaderboard, prevPositions,
+    widgetDotTick,
   ]);
 
   const { editMode, setEditMode, visibleDefs, hiddenDefs, hide, show, moveBefore } = useWidgetLayout(widgetDefs);

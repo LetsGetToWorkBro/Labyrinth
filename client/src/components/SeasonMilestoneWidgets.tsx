@@ -134,11 +134,13 @@ interface SeasonMilestoneWidgetsProps {
   currentLevel?: number;   // drives paragon theme on milestone widget
   onOpenSeason?: () => void;
   onOpenMilestone?: () => void;
+  seasonHasDot?: boolean;
+  milestoneHasDot?: boolean;
 }
 
 // ─── Season Widget ──────────────────────────────────────────────────
 
-function SeasonWidget({ season, onClick }: { season: SeasonData; onClick?: () => void }) {
+function SeasonWidget({ season, onClick, hasDot }: { season: SeasonData; onClick?: () => void; hasDot?: boolean }) {
   const maxed = season.thisMonthClasses >= season.goalClasses;
   const [wasMaxed, setWasMaxed] = useState(maxed);
   const [shockwave, setShockwave] = useState(false);
@@ -192,6 +194,22 @@ function SeasonWidget({ season, onClick }: { season: SeasonData; onClick?: () =>
             <circle cx="50" cy="50" r="40" fill="none" stroke={st.color} strokeWidth="1.5" />
           </svg>
         </div>
+      )}
+
+      {hasDot && (
+        <div
+          aria-label="Season reward ready"
+          style={{
+            position: 'absolute',
+            top: 8, right: 8,
+            width: 10, height: 10, borderRadius: 9999,
+            background: '#C8A24C',
+            boxShadow: '0 0 10px rgba(200,162,76,0.85)',
+            animation: 'smw-notif-pulse 1.5s ease-in-out infinite',
+            zIndex: 20,
+            pointerEvents: 'none',
+          }}
+        />
       )}
 
       {/* Circular ring — centerpiece with stats inside */}
@@ -291,11 +309,12 @@ function SeasonWidget({ season, onClick }: { season: SeasonData; onClick?: () =>
 // ─── Milestone Widget — paragon phase-shift ─────────────────────────
 
 function MilestoneWidget({
-  milestone, currentLevel, onClick,
+  milestone, currentLevel, onClick, hasDot,
 }: {
   milestone: MilestoneData;
   currentLevel: number;
   onClick?: () => void;
+  hasDot?: boolean;
 }) {
   const [shockwave, setShockwave] = useState(false);
   const prevReady = useRef(milestone.ready);
@@ -357,6 +376,22 @@ function MilestoneWidget({
         (e.currentTarget as HTMLDivElement).style.boxShadow = `0 12px 24px rgba(0,0,0,0.5), inset 0 1px 1px rgba(255,255,255,0.06), 0 0 20px ${glow}`;
       }}
     >
+      {hasDot && (
+        <div
+          aria-label="Milestone reward ready"
+          style={{
+            position: 'absolute',
+            top: 8, right: 8,
+            width: 10, height: 10, borderRadius: 9999,
+            background: '#C8A24C',
+            boxShadow: '0 0 10px rgba(200,162,76,0.85)',
+            animation: 'smw-notif-pulse 1.5s ease-in-out infinite',
+            zIndex: 20,
+            pointerEvents: 'none',
+          }}
+        />
+      )}
+
       {/* Phase shimmer — always on, matches XP bar */}
       <div style={{
         position: 'absolute', inset: 0, borderRadius: 'inherit', pointerEvents: 'none',
@@ -471,6 +506,7 @@ function MilestoneWidget({
 
 export function SeasonMilestoneWidgets({
   season, milestone, currentLevel = 1, onOpenSeason, onOpenMilestone,
+  seasonHasDot, milestoneHasDot,
 }: SeasonMilestoneWidgetsProps) {
   return (
     <>
@@ -495,11 +531,15 @@ export function SeasonMilestoneWidgets({
           0%   { box-shadow: 0 4px 16px rgba(168,85,247,0.4); }
           100% { box-shadow: 0 4px 24px rgba(168,85,247,0.8); }
         }
+        @keyframes smw-notif-pulse {
+          0%, 100% { transform: scale(1); opacity: 1; }
+          50%      { transform: scale(1.35); opacity: 0.85; }
+        }
       `}</style>
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, margin: '0 20px 16px' }}>
-        <SeasonWidget  season={season}     onClick={onOpenSeason} />
-        <MilestoneWidget milestone={milestone} currentLevel={currentLevel} onClick={onOpenMilestone} />
+        <SeasonWidget  season={season}     onClick={onOpenSeason} hasDot={seasonHasDot} />
+        <MilestoneWidget milestone={milestone} currentLevel={currentLevel} onClick={onOpenMilestone} hasDot={milestoneHasDot} />
       </div>
     </>
   );

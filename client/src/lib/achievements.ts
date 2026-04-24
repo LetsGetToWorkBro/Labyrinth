@@ -194,5 +194,8 @@ export function checkAndUnlockAchievements(profile: any, stats: any): string[] {
   if (weekly.includes(today) && localStorage.getItem('lbjj_game_played_' + today)) unlock('game_and_class');
 
   localStorage.setItem('lbjj_achievements', JSON.stringify(earned));
+  if (newlyEarned.length > 0) {
+    try { window.dispatchEvent(new CustomEvent('achievements-updated')); } catch {}
+  }
   return newlyEarned;
 }

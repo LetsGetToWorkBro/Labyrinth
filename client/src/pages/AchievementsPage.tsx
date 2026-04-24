@@ -756,6 +756,7 @@ export default function AchievementsPage() {
           if (merged.length > local.length) {
             setEarnedKeys(merged as string[]);
             localStorage.setItem('lbjj_achievements', JSON.stringify(merged));
+            window.dispatchEvent(new CustomEvent('achievements-updated'));
           }
         }
       }).catch(() => {});
@@ -828,6 +829,7 @@ export default function AchievementsPage() {
     const nc = [...claimedXpKeys, key];
     setClaimedXpKeys(nc);
     localStorage.setItem('lbjj_achievement_xp_claimed', JSON.stringify(nc));
+    window.dispatchEvent(new CustomEvent('achievements-updated'));
   };
 
   const tierFilter = TIERS[tierIdx].id;
