@@ -21,25 +21,37 @@ export const XP_LEVELS = [
 ];
 
 export function getLevelFromXP(xp: number): { level: number; title: string; xpForLevel: number; xpForNext: number; progress: number } {
-  let currentLevel = XP_LEVELS[0];
-  let nextLevel = XP_LEVELS[1];
+  // Use interpolated level so UI level matches achievement level gates
+  const level = getActualLevel(xp);
 
+  // Find the defining breakpoint (anchor) for title + XP bounds
+  let anchor = XP_LEVELS[0];
+  let anchorIdx = 0;
   for (let i = XP_LEVELS.length - 1; i >= 0; i--) {
     if (xp >= XP_LEVELS[i].xpRequired) {
-      currentLevel = XP_LEVELS[i];
-      nextLevel = XP_LEVELS[i + 1] || XP_LEVELS[i]; // max level
+      anchor = XP_LEVELS[i];
+      anchorIdx = i;
       break;
     }
   }
+  const nextAnchor = XP_LEVELS[anchorIdx + 1] || anchor;
 
-  // Fill in missing levels (between defined breakpoints)
-  const xpForLevel = currentLevel.xpRequired;
-  const xpForNext = nextLevel.xpRequired;
+  // Interpolate per-level XP within the current anchor segment so the progress
+  // bar reflects the interpolated level (not the breakpoint level).
+  const segLevels = Math.max(1, nextAnchor.level - anchor.level);
+  const segXP = Math.max(0, nextAnchor.xpRequired - anchor.xpRequired);
+  const xpPerLevelInSeg = segXP / segLevels;
+  const xpForLevel = anchor === nextAnchor
+    ? anchor.xpRequired
+    : anchor.xpRequired + (level - anchor.level) * xpPerLevelInSeg;
+  const xpForNext = anchor === nextAnchor
+    ? anchor.xpRequired
+    : anchor.xpRequired + (level - anchor.level + 1) * xpPerLevelInSeg;
   const progress = xpForNext === xpForLevel ? 1 : (xp - xpForLevel) / (xpForNext - xpForLevel);
 
   return {
-    level: currentLevel.level,
-    title: currentLevel.title,
+    level,
+    title: anchor.title,
     xpForLevel,
     xpForNext,
     progress: Math.min(1, Math.max(0, progress)),

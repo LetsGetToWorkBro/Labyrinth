@@ -93,7 +93,11 @@ export const ACHIEVEMENT_CATEGORIES = [
   { key: 'level',       label: '⚔️ Level',          color: '#C8A24C' },
 ];
 
-export function checkAndUnlockAchievements(profile: any, stats: any): string[] {
+export function checkAndUnlockAchievements(
+  profile: any,
+  stats: any,
+  triggerEvent: 'checkin' | 'boot' | 'belt_update' = 'boot'
+): string[] {
   const earned: string[] = JSON.parse(localStorage.getItem('lbjj_achievements') || '[]');
   const newlyEarned: string[] = [];
 
@@ -150,9 +154,6 @@ export function checkAndUnlockAchievements(profile: any, stats: any): string[] {
   if (gamesPlayed >= 50) unlock('game_50');
   if (gameWins >= 5)     unlock('game_win_5');
 
-  // Face ID = app engagement
-  if (localStorage.getItem('lbjj_passkey_registered')) unlock('app_day1');
-
   // Level / XP
   const totalPoints = profile.totalPoints || profile.TotalPoints || 0;
   if (totalPoints > 0) {
@@ -171,11 +172,40 @@ export function checkAndUnlockAchievements(profile: any, stats: any): string[] {
   if (thisWeekCount >= 3) unlock('three_in_week');
   if (thisWeekCount >= 5) unlock('perfect_week');
 
-  // Time-based
-  const hour = new Date().getHours();
-  if (hour < 7) unlock('early_bird');
-  if (hour >= 19) unlock('night_owl');
-  if (hour >= 0 && hour < 3) unlock('game_midnight');
+  // Time-based — only during actual check-in, not on every app boot
+  if (triggerEvent === 'checkin') {
+    const hour = new Date().getHours();
+    if (hour < 7) unlock('early_bird');
+    if (hour >= 19) unlock('night_owl');
+    if (hour >= 0 && hour < 3) unlock('game_midnight');
+  }
+
+  // Holiday warrior — unlock on major US holidays (check-in only)
+  const todayDate = new Date();
+  const mm = todayDate.getMonth() + 1;
+  const dd = todayDate.getDate();
+  const isHoliday = (mm === 12 && dd === 25) || // Christmas
+                    (mm === 1 && dd === 1)  ||  // New Year
+                    (mm === 7 && dd === 4)  ||  // Independence Day
+                    (mm === 11 && dd === 28);   // Thanksgiving approx
+  if (triggerEvent === 'checkin' && isHoliday) unlock('holiday_warrior');
+
+  // Birthday warrior — check member's birthday from profile (check-in only)
+  const bday = profile?.birthday || profile?.Birthday || '';
+  if (triggerEvent === 'checkin' && bday) {
+    const parts = String(bday).split('-').slice(1).map((s: string) => Number(s));
+    const [bMonth, bDay] = parts;
+    if (bMonth === mm && bDay === dd) unlock('birthday_warrior');
+  }
+
+  // Medal achievements — when gold or silver fires, any_medal fires too
+  const medalCount = stats.medals || 0;
+  const bestMedal = stats.bestMedal || '';
+  if (medalCount >= 1) {
+    unlock('any_medal');
+    if (bestMedal === 'silver') unlock('silver_medal');
+    if (bestMedal === 'gold') { unlock('gold_medal'); unlock('any_medal'); }
+  }
 
   // Belt stripe
   const stripes = profile.stripes || profile.Stripes || 0;

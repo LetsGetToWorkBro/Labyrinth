@@ -52,9 +52,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const savedToken = localStorage.getItem('lbjj_session_token');
     const savedProfileRaw = localStorage.getItem('lbjj_member_profile');
 
-    // Token max-age check — force re-auth after 30 days
+    // Token max-age — GAS validates server-side; client re-auths after 365 days
     const tokenCreated = parseInt(localStorage.getItem('lbjj_token_created') || '0');
-    const TOKEN_MAX_AGE_MS = 365 * 24 * 60 * 60 * 1000; // 365 days — GAS validates server-side
+    const TOKEN_MAX_AGE_MS = 365 * 24 * 60 * 60 * 1000;
     if (tokenCreated && Date.now() - tokenCreated > TOKEN_MAX_AGE_MS) {
       localStorage.removeItem('lbjj_session_token');
       localStorage.removeItem('lbjj_token_created');

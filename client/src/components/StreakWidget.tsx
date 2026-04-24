@@ -39,7 +39,7 @@ const PHASES = [
     nodes: [{ day: 25, label: '2.0×', icon: '🔥' }, { day: 28, label: '3.0×', icon: '🏆' }, { day: 30, label: 'Void', icon: '🌌' }] },
 ];
 
-const TIER_COLORS: Record<string, { primary: string; secondary: string; glow: string }> = {
+const STREAK_PHASE_COLORS: Record<string, { primary: string; secondary: string; glow: string }> = {
   'tier-1': { primary: '#e8af34', secondary: '#fd7b2f', glow: 'rgba(232,175,52,0.2)' },
   'tier-2': { primary: '#0ea5e9', secondary: '#3b82f6', glow: 'rgba(14,165,233,0.2)' },
   'tier-3': { primary: '#ef4444', secondary: '#dc2626', glow: 'rgba(239,68,68,0.2)' },
@@ -279,7 +279,7 @@ export function StreakWidget({ dailyStreakCount, weekDots, trainedCount, comboMu
 
   const phaseIdx = getPhaseIndex(Math.max(1, dailyStreakCount));
   const phase = PHASES[phaseIdx];
-  const tc = TIER_COLORS[phase.tierClass];
+  const tc = STREAK_PHASE_COLORS[phase.tierClass];
 
   const phaseLength = phase.end - phase.start + 1;
   const dayInPhase = Math.max(0, dailyStreakCount - phase.start + 1);
@@ -356,28 +356,6 @@ export function StreakWidget({ dailyStreakCount, weekDots, trainedCount, comboMu
 
   return (
     <>
-      {/* ─── Keyframe styles injected once ─────────────────────── */}
-      <style>{`
-        @keyframes sw-float { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-4px)} }
-        @keyframes sw-pulse-glow { 0%{filter:brightness(1)} 100%{filter:brightness(1.3)} }
-        @keyframes sw-sonar {
-          0%   { transform:scale(0.8); opacity:1; border-width:2px; }
-          100% { transform:scale(1.6); opacity:0; border-width:0px; }
-        }
-        @keyframes sw-spark-0 { to { transform: translate(calc(-50% + var(--dx)), calc(-50% + var(--dy))) scale(0); opacity:0; } }
-        @keyframes sw-spark-1 { to { transform: translate(calc(-50% + var(--dx)), calc(-50% + var(--dy))) scale(0); opacity:0; } }
-        @keyframes sw-spark-2 { to { transform: translate(calc(-50% + var(--dx)), calc(-50% + var(--dy))) scale(0); opacity:0; } }
-        @keyframes sw-spark-3 { to { transform: translate(calc(-50% + var(--dx)), calc(-50% + var(--dy))) scale(0); opacity:0; } }
-        @keyframes sw-impact { 0%{opacity:0.6} 100%{opacity:0} }
-        @keyframes sw-level-up { 0%{opacity:1;transform:translate(-50%,-50%) scale(0.5) translateY(40px)} 100%{opacity:0;transform:translate(-50%,-50%) scale(1.2) translateY(-60px)} }
-        @keyframes sw-track-head-pulse { 0%,100%{box-shadow:0 0 12px #fff, 0 0 32px ${tc.primary}} 50%{box-shadow:0 0 20px #fff, 0 0 48px ${tc.primary}} }
-        .sw-widget { cursor: default; }
-        .sw-day-col.is-active .sw-day-circle::after {
-          content:''; position:absolute; inset:-8px; border-radius:999px; border:1px solid ${tc.primary};
-          animation: sw-sonar 2s cubic-bezier(0.16,1,0.3,1) infinite;
-        }
-      `}</style>
-
       <div
         ref={widgetRef}
         className="sw-widget"
@@ -395,6 +373,7 @@ export function StreakWidget({ dailyStreakCount, weekDots, trainedCount, comboMu
           userSelect: 'none',
           WebkitTapHighlightColor: 'transparent',
           margin: '0 20px 16px',
+          ['--sw-tier-primary' as any]: tc.primary,
         }}
       >
         {/* Impact flash */}
@@ -754,12 +733,16 @@ export function StreakWidget({ dailyStreakCount, weekDots, trainedCount, comboMu
             <span style={{ fontSize: 14 }}>🔥</span>
             <span>XP Multipliers</span>
           </div>
-          <div style={{ marginBottom: 8 }}>
-            Attend <b style={{ color: '#fff' }}>3 classes on 3 consecutive days</b> →{' '}
+          <div style={{ marginBottom: 6 }}>
+            Train <b style={{ color: '#fff' }}>3 classes this week</b> →{' '}
+            <b style={{ color: '#fd7b2f' }}>1.5× XP</b>
+          </div>
+          <div style={{ marginBottom: 6 }}>
+            Train <b style={{ color: '#fff' }}>5 classes this week</b> →{' '}
             <b style={{ color: '#C8A24C' }}>2× XP</b>
           </div>
           <div style={{ marginBottom: 10 }}>
-            Maintain a <b style={{ color: '#fff' }}>6-day streak</b> →{' '}
+            Train <b style={{ color: '#fff' }}>7 classes this week</b> →{' '}
             <b style={{ color: '#a855f7' }}>3× XP</b>
           </div>
           <div style={{

@@ -1,7 +1,7 @@
 import { FireIcon, CheckCircleFilledIcon, CalendarSparkIcon, BoltIcon, GoldMedalIcon, SilverMedalIcon, ShieldIcon, GrapplingIcon, ClockCountdownIcon, ShieldFreezeIcon, GiIcon } from "@/components/icons/LbjjIcons";
 import { useAuth } from "@/lib/auth-context";
 import type { FamilyMember, PaymentCard } from "@/lib/api";
-import { beltSavePromotion, gasCall, getLeaderboard, getLeaderboardFresh, getMemberData, cachedGasCall, saveMemberStats, syncAchievements } from "@/lib/api";
+import { beltSavePromotion, gasCall, getLeaderboard, getMemberData, cachedGasCall, saveMemberStats, syncAchievements } from "@/lib/api";
 import { BeltIcon } from "@/components/BeltIcon";
 import { ADULT_BELT_OPTIONS } from "@/components/BeltIcon";
 import { getBeltColor, CLASS_SCHEDULE } from "@/lib/constants";
@@ -1255,7 +1255,7 @@ export default function HomePage() {
 
     // Check achievements
     const gameStats = (() => { try { return JSON.parse(localStorage.getItem('lbjj_game_stats_v2') || '{}'); } catch { return {}; } })();
-    checkAndUnlockAchievements(memberProfile || {}, gameStats);
+    checkAndUnlockAchievements(memberProfile || {}, gameStats, 'checkin');
 
     // Belt milestone overlay trigger
     const beltMilestoneKeys = ['mat_warrior', 'mat_legend', 'loyal_1yr', 'loyal_2yr', 'streak_30', 'podium', 'century_club'];
@@ -1333,7 +1333,7 @@ export default function HomePage() {
 
     // Trigger a background fresh leaderboard fetch after 3s so GAS has time to write
     setTimeout(() => {
-      getLeaderboardFresh().then(data => {
+      getLeaderboard().then(data => {
         if (!data || data.length === 0) return;
         bulkSetPfp(data);
         const top5 = data.slice(0, 5).map((e: any) => ({
@@ -1458,7 +1458,7 @@ export default function HomePage() {
   useEffect(() => {
     const load = () => {
       // Leaderboard: always fetch fresh from GAS on mount/login
-      // getLeaderboardFresh clears sessionStorage cache so we never show stale data.
+      // getLeaderboard clears sessionStorage cache so we never show stale data.
       if (member) {
         const enrichWithPfp = (entries: any[]) => {
           const myPfp = localStorage.getItem('lbjj_profile_picture') || undefined;
@@ -1484,7 +1484,7 @@ export default function HomePage() {
           });
         };
 
-        getLeaderboardFresh().then(data => {
+        getLeaderboard().then(data => {
           if (!data || data.length === 0) return;
           bulkSetPfp(data);
           const top5 = enrichWithPfp(data.slice(0, 5).map((e: any) => ({

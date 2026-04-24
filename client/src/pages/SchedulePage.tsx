@@ -2,7 +2,7 @@ import { CheckCircleFilledIcon } from "@/components/icons/LbjjIcons";
 import { useState, useEffect, useRef, useCallback } from "react";
 import { CLASS_SCHEDULE, CLASS_TYPE_COLORS, DAYS_ORDER } from "@/lib/constants";
 import type { ClassScheduleItem } from "@/lib/constants";
-import { getScheduleClasses, gasCall, getMemberData, saveMemberStats, syncAchievements, getLeaderboardFresh } from "@/lib/api";
+import { getScheduleClasses, gasCall, getMemberData, saveMemberStats, syncAchievements, getLeaderboard } from "@/lib/api";
 import { Clock, X, User, CheckCircle, Trophy, ChevronRight } from "lucide-react";
 import { checkAndUnlockAchievements, ALL_ACHIEVEMENTS } from "@/lib/achievements";
 import { validateGeoIfRequired } from "@/lib/geo";
@@ -626,7 +626,7 @@ function ClassCard({
 
     const member = getMemberData();
     const gameStats = (() => { try { return JSON.parse(localStorage.getItem('lbjj_game_stats_v2') || '{}'); } catch { return {}; } })();
-    const newlyEarned = checkAndUnlockAchievements(member || {}, gameStats);
+    const newlyEarned = checkAndUnlockAchievements(member || {}, gameStats, 'checkin');
     if (newlyEarned.length > 0) {
       const first = ALL_ACHIEVEMENTS.find(a => a.key === newlyEarned[0]);
       if (first && (window as any).__showBadgeUnlock) {
@@ -704,7 +704,7 @@ function ClassCard({
             }
           } catch {}
           try { await syncAchievements(member || {}, JSON.parse(localStorage.getItem('lbjj_game_stats_v2') || '{}')); } catch {}
-          try { await getLeaderboardFresh(); } catch {}
+          try { await getLeaderboard(); } catch {}
         }
       }).catch(() => {});
     }

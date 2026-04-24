@@ -191,22 +191,6 @@ export function CheckInWidget({
 
   return (
     <>
-      <style>{`
-        @keyframes ciw-btn-breathe {
-          0%   { box-shadow: 0 4px 16px rgba(232,175,52,0.3), inset 0 2px 2px rgba(255,255,255,0.6); }
-          100% { box-shadow: 0 8px 24px rgba(232,175,52,0.6), inset 0 2px 2px rgba(255,255,255,0.8); }
-        }
-        @keyframes ciw-sweep {
-          0%   { left: -100%; }
-          20%  { left: 200%; }
-          100% { left: 200%; }
-        }
-        @keyframes ciw-savage-pulse {
-          0%   { box-shadow: 0 32px 64px -16px rgba(0,0,0,1), 0 0 60px rgba(239,68,68,0.2); }
-          100% { box-shadow: 0 32px 64px -16px rgba(0,0,0,1), 0 0 100px rgba(239,68,68,0.4); }
-        }
-      `}</style>
-
       <div
         ref={cardRef}
         style={{ ...cardStyles, margin: '0 20px 16px' }}
@@ -319,10 +303,12 @@ export function CheckInWidget({
             </div>
           )}
 
-          {/* Check-in button — show for today's class OR always show so user can check in to any class */}
-          {(nextClass.isToday || true) && (
+          {/* Always show check-in button — class availability gated by window check */}
+          {(
             <button
               ref={btnRef}
+              aria-disabled={isCheckedIn}
+              tabIndex={isCheckedIn ? -1 : 0}
               onClick={(e) => {
                 if (isCheckedIn) return;
                 // Visual press-down: scale down briefly, then call onCheckIn

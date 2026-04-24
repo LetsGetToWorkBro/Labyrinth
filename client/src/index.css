@@ -2092,5 +2092,54 @@ html[data-nav="tab"] ::view-transition-new(root) {
   line-height: 1;
 }
 
+/* ===== CheckInWidget animations (extracted from inline <style>) ===== */
+@keyframes ciw-btn-breathe {
+  0%   { box-shadow: 0 4px 16px rgba(232,175,52,0.3), inset 0 2px 2px rgba(255,255,255,0.6); }
+  100% { box-shadow: 0 8px 24px rgba(232,175,52,0.6), inset 0 2px 2px rgba(255,255,255,0.8); }
+}
+@keyframes ciw-sweep {
+  0%   { left: -100%; }
+  20%  { left: 200%; }
+  100% { left: 200%; }
+}
+@keyframes ciw-savage-pulse {
+  0%   { box-shadow: 0 32px 64px -16px rgba(0,0,0,1), 0 0 60px rgba(239,68,68,0.2); }
+  100% { box-shadow: 0 32px 64px -16px rgba(0,0,0,1), 0 0 100px rgba(239,68,68,0.4); }
+}
+
+/* ===== StreakWidget animations (extracted from inline <style>) ===== */
+@keyframes sw-float { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-4px)} }
+@keyframes sw-pulse-glow { 0%{filter:brightness(1)} 100%{filter:brightness(1.3)} }
+@keyframes sw-sonar {
+  0%   { transform:scale(0.8); opacity:1; border-width:2px; }
+  100% { transform:scale(1.6); opacity:0; border-width:0px; }
+}
+@keyframes sw-spark-0 { to { transform: translate(calc(-50% + var(--dx)), calc(-50% + var(--dy))) scale(0); opacity:0; } }
+@keyframes sw-spark-1 { to { transform: translate(calc(-50% + var(--dx)), calc(-50% + var(--dy))) scale(0); opacity:0; } }
+@keyframes sw-spark-2 { to { transform: translate(calc(-50% + var(--dx)), calc(-50% + var(--dy))) scale(0); opacity:0; } }
+@keyframes sw-spark-3 { to { transform: translate(calc(-50% + var(--dx)), calc(-50% + var(--dy))) scale(0); opacity:0; } }
+@keyframes sw-impact { 0%{opacity:0.6} 100%{opacity:0} }
+@keyframes sw-level-up { 0%{opacity:1;transform:translate(-50%,-50%) scale(0.5) translateY(40px)} 100%{opacity:0;transform:translate(-50%,-50%) scale(1.2) translateY(-60px)} }
+@keyframes sw-track-head-pulse {
+  0%,100% { box-shadow: 0 0 12px #fff, 0 0 32px var(--sw-tier-primary, #e8af34); }
+  50%     { box-shadow: 0 0 20px #fff, 0 0 48px var(--sw-tier-primary, #e8af34); }
+}
+.sw-widget { cursor: default; }
+.sw-day-col.is-active .sw-day-circle::after {
+  content: '';
+  position: absolute;
+  inset: -8px;
+  border-radius: 999px;
+  border: 1px solid var(--sw-tier-primary, #e8af34);
+  animation: sw-sonar 2s cubic-bezier(0.16, 1, 0.3, 1) infinite;
+}
+
+/* ===== Reduced motion — disable looping widget animations ===== */
+@media (prefers-reduced-motion: reduce) {
+  .ciw-btn-breathe, .ciw-sweep, .ciw-savage-pulse, .sw-float, .sw-sonar {
+    animation: none !important;
+  }
+}
+
 /* ===== v2.2 — force CSS rebuild ===== */
 :root { --lbj-build: 3; }
