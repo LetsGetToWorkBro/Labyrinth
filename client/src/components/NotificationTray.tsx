@@ -442,59 +442,54 @@ export function NotificationBell() {
   const showBadge = unreadCount > 0;
 
   return (
-    <>
+    <div style={{ position: 'relative', width: 24, height: 24, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
       <button
         onClick={toggleTray}
         aria-label={`Notifications${showBadge ? ` — ${unreadCount} unread` : ''}`}
         aria-expanded={trayOpen}
         style={{
-          position: 'relative',
           border: 'none',
           background: 'transparent',
           padding: 0,
           cursor: 'pointer',
-          flexShrink: 0,
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
           WebkitTapHighlightColor: 'transparent',
           width: 24,
           height: 24,
-          overflow: 'visible',
         }}
       >
-        <div style={{ width: 18, height: 18, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'visible' }}>
-          <Bell
-            size={18}
-            color={GOLD}
-            strokeWidth={2.2}
-            style={{
-              animation: showBadge
-                ? 'bellPulse 2.2s ease-in-out infinite, bellShake 2.2s ease-in-out infinite'
-                : 'none',
-              transformOrigin: '50% 20%',
-              display: 'block',
-              flexShrink: 0,
-            }}
-          />
-        </div>
-        {showBadge && (
-          <span
-            aria-hidden
-            style={{
-              position: 'absolute',
-              top: 0,
-              right: 1,
-              width: 7,
-              height: 7,
-              borderRadius: 999,
-              background: '#EF4444',
-              boxShadow: '0 0 0 1.5px #09090B, 0 0 6px rgba(239,68,68,0.6)',
-              pointerEvents: 'none',
-            }}
-          />
-        )}
+        <Bell
+          size={18}
+          color={GOLD}
+          strokeWidth={2.2}
+          style={{
+            animation: showBadge
+              ? 'bellPulse 2.2s ease-in-out infinite, bellShake 2.2s ease-in-out infinite'
+              : 'none',
+            transformOrigin: '50% 20%',
+            display: 'block',
+          }}
+        />
       </button>
-    </>
+      {showBadge && (
+        <span
+          aria-hidden
+          style={{
+            position: 'absolute',
+            top: 1,
+            right: 1,
+            width: 7,
+            height: 7,
+            borderRadius: '50%',
+            background: '#EF4444',
+            boxShadow: '0 0 0 1.5px #09090B, 0 0 6px rgba(239,68,68,0.6)',
+            pointerEvents: 'none',
+            zIndex: 2,
+          }}
+        />
+      )}
+    </div>
   );
 }

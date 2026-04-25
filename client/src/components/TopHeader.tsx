@@ -12,6 +12,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useAuth } from '@/lib/auth-context';
 import { getLevelFromXP, getActualLevel } from '@/lib/xp';
 import { NotificationBell } from '@/components/NotificationTray';
+import { OnlineBubble } from '@/components/OnlineBubble';
 import { pushLocalNotification } from '@/components/NotificationProvider';
 import logoMaze from '../assets/logo-maze.webp';
 
@@ -94,7 +95,7 @@ const CSS = `
 .v10-title-group { display: flex; align-items: center; gap: 6px; min-width: 0; }
 .v10-lv-pill { background: var(--theme-grad); color: #000; font-size: 11px; font-weight: 900; padding: 2px 6px; border-radius: 6px; box-shadow: 0 2px 8px var(--theme-glow); transition: all 0.5s; flex-shrink: 0; }
 .v10-title-text { color: #fff; font-size: 14px; font-weight: 800; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; letter-spacing: -0.01em; transition: font-size 0.3s; }
-.v10-action-group { display: flex; align-items: center; gap: 10px; flex-shrink: 0; height: 20px; overflow: visible; }
+.v10-action-group { display: flex; align-items: center; gap: 8px; flex-shrink: 0; height: 20px; overflow: visible; }
 .v10-bell-btn { color: var(--theme-color); display: grid; place-items: center; position: relative; background: none; border: none; padding: 0; cursor: pointer; transition: color 0.5s; }
 .v10-bell-badge { position: absolute; top: 0; right: 0; width: 6px; height: 6px; border-radius: 50%; background: #ef4444; border: 1px solid #030305; }
 
@@ -412,6 +413,7 @@ export function TopHeader({ onMenuOpen, onXpOpen }: { onMenuOpen: () => void; on
             <span className="v10-title-text">{tierName}</span>
           </div>
           <div className="v10-action-group">
+            <OnlineBubble compact />
             <NotificationBell />
           </div>
         </div>
