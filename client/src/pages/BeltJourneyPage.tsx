@@ -206,7 +206,7 @@ const CSS_TEXT = `
 .bjv6-ceremony-oss:active { transform: scale(0.9) !important; }
 
 /* BOTTOM ADD BAR */
-.bjv6-bottom-bar { position: fixed; bottom: 0; left: 50%; transform: translateX(-50%); width: 100%; max-width: 480px; padding: 16px 20px calc(16px + env(safe-area-inset-bottom, 0px)); background: linear-gradient(to top, rgba(3,3,5,1) 50%, transparent); z-index: 100; }
+.bjv6-bottom-bar { position: fixed; bottom: 0; left: 0; right: 0; margin: 0 auto; width: 100%; max-width: 480px; padding: 16px 20px calc(16px + env(safe-area-inset-bottom, 0px)); background: linear-gradient(to top, rgba(3,3,5,1) 50%, transparent); z-index: 100; }
 .bjv6-bottom-add-btn { width: 100%; height: 64px; border-radius: 20px; background: linear-gradient(135deg, #FFF0B3, #D4AF37); color: #000; font-size: 16px; font-weight: 900; letter-spacing: 0.05em; border: none; cursor: pointer; box-shadow: 0 15px 30px rgba(212,175,55,0.4), inset 0 -2px 5px rgba(0,0,0,0.2), inset 0 2px 5px rgba(255,255,255,0.8); display: flex; align-items: center; justify-content: center; gap: 12px; transition: all 0.2s; font-family: inherit; }
 .bjv6-bottom-add-btn:active { transform: scale(0.96); box-shadow: 0 5px 15px rgba(212,175,55,0.4); }
 
