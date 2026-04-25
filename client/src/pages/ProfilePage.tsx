@@ -13,6 +13,7 @@ import { gasCall } from '@/lib/api';
 import { ALL_ACHIEVEMENTS } from '@/lib/achievements';
 
 const _PROFILE_V = 'v2.1';
+(globalThis as any).__PROFILE_V = _PROFILE_V;
 
 // ─── Belt SVG (mirrors BeltJourneyPage.tsx) ──────────────────────
 const BELT_DEFS: Record<string, { base: string; light: string; dark: string; darkest: string; glow: string; name: string }> = {
