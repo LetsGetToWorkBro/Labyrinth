@@ -391,7 +391,7 @@ export function TopHeader({ onMenuOpen, onXpOpen }: { onMenuOpen: () => void; on
     ? member.name.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase()
     : '?';
 
-  const goAccount = () => { window.location.hash = '/profile'; };
+  const goAccount = () => { onXpOpen(); };
 
   // Orbs vary by theme
   const orbs = (() => {

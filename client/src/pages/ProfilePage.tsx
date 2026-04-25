@@ -176,7 +176,7 @@ const CSS = `
 .pv2-nav-btn { background: none; border: none; color: #fff; display: flex; align-items: center; gap: 6px; font-weight: 600; font-size: 16px; cursor: pointer; padding: 0; transition: color 0.2s; font-family: inherit; }
 .pv2-nav-btn:active { color: #aaa; }
 
-.pv2-profile-hero { position: relative; padding: 32px 20px 0; display: flex; flex-direction: column; align-items: center; text-align: center; margin-bottom: -40px; }
+.pv2-profile-hero { position: relative; padding: 24px 20px 0; display: flex; flex-direction: column; align-items: center; text-align: center; margin-bottom: 0; }
 .pv2-hero-glow { position: absolute; top: 20%; left: 50%; transform: translate(-50%, -50%); width: 200px; height: 200px; background: rgba(212, 175, 55, 0.15); filter: blur(60px); border-radius: 50%; z-index: 0; pointer-events: none; }
 
 .pv2-paragon-frame { position: relative; width: 100px; height: 100px; z-index: 1; margin-bottom: 16px; }
@@ -188,13 +188,13 @@ const CSS = `
 .pv2-frame-orb.right { right: -5px; top: 50%; transform: translateY(-50%); }
 .pv2-avatar-img { position: absolute; inset: 6px; border-radius: 50%; background: #222; overflow: hidden; display: flex; justify-content: center; align-items: center; font-size: 32px; font-weight: 800; color: #fff; }
 
-.pv2-user-name { font-size: 26px; font-weight: 900; color: #fff; margin: 0 0 4px 0; letter-spacing: -0.02em; z-index: 1; position: relative; }
-.pv2-user-handle { font-size: 14px; font-weight: 600; color: #888; margin: 0 0 24px 0; z-index: 1; position: relative; }
+.pv2-user-name { font-size: 22px; font-weight: 900; color: #fff; margin: 0 0 2px 0; letter-spacing: -0.02em; z-index: 1; position: relative; }
+.pv2-user-handle { font-size: 13px; font-weight: 600; color: #888; margin: 0 0 16px 0; z-index: 1; position: relative; }
 
-.pv2-hero-belt-wrap { width: 320px; max-width: 100%; position: relative; z-index: 2; filter: drop-shadow(0 20px 20px rgba(0,0,0,0.8)); transform: translateZ(40px); margin-bottom: 24px; }
+.pv2-hero-belt-wrap { width: 240px; max-width: 90%; position: relative; z-index: 2; filter: drop-shadow(0 12px 12px rgba(0,0,0,0.7)); margin-bottom: 16px; }
 .pv2-hero-belt-wrap svg { width: 100%; height: auto; display: block; overflow: visible; }
 
-.pv2-dashboard { padding: 40px 20px 0; display: flex; flex-direction: column; gap: 16px; position: relative; z-index: 1; background: linear-gradient(180deg, transparent, #030305 40px); }
+.pv2-dashboard { padding: 16px 20px 0; display: flex; flex-direction: column; gap: 16px; position: relative; z-index: 1; }
 
 .pv2-card { background: var(--bg-card); border: 1px solid var(--border-card); border-radius: 20px; padding: 20px; backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
 .pv2-card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
@@ -378,7 +378,7 @@ export default function ProfilePage() {
 
   const handle = '@' + (profileData.name || '').toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '');
   const initials = (profileData.name || 'M').split(' ').map((w: string) => w[0]).join('').slice(0, 2).toUpperCase();
-  const beltSvgHtml = beltSVG(profileData.belt || 'white', profileData.stripes || 0, 320, profileData.bar || 'none');
+  const beltSvgHtml = beltSVG(profileData.belt || 'white', profileData.stripes || 0, 240, profileData.bar || 'none');
 
   return (
     <div className={`pv2-root pv2-theme-${theme}`}>

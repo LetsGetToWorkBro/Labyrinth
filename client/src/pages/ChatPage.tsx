@@ -262,6 +262,7 @@ const SendIcon = () => (
 
 export default function ChatPage() {
   const { member, isAuthenticated } = useAuth();
+  const [, navigate] = useLocation();
 
   const [view, setView] = useState<ViewName>('hub');
   const [prevView, setPrevView] = useState<ViewName>('hub');
@@ -580,12 +581,16 @@ export default function ChatPage() {
 
   const openProfile = useCallback((m: ChannelMember) => {
     setMembersOpen(false);
+    if (m.email) {
+      navigate(`/profile/${encodeURIComponent(m.email)}`);
+      return;
+    }
     setPrevView(view);
     setProfileMember(m);
     setProfileActive(false);
     setView('profile');
     setTimeout(() => setProfileActive(true), 100);
-  }, [view]);
+  }, [view, navigate]);
 
   const backFromProfile = useCallback(() => {
     setProfileActive(false);
