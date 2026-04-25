@@ -1,6 +1,7 @@
 import { CalendarSparkIcon, GamepadIcon, BoltIcon } from "@/components/icons/LbjjIcons";
 import { EmptyState } from '@/components/StateComponents';
 import React, { useState, useEffect, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { useLocation } from 'wouter';
 import { getLeaderboard, type LeaderboardEntry } from '@/lib/api';
 import { useAuth } from '@/lib/auth-context';
@@ -77,6 +78,7 @@ export default function LeaderboardPage() {
   const [prevPositions, setPrevPositions] = useState<Record<string, number>>(() => {
     try { return JSON.parse(localStorage.getItem('lbjj_lb_positions_v1') || '{}'); } catch { return {}; }
   });
+  const [selectedEntry, setSelectedEntry] = useState<LeaderboardEntry | null>(null);
   // Live local XP for the current user (re-reads on xp-updated)
   const [localXP, setLocalXP] = useState<number>(() => {
     try { const s = JSON.parse(localStorage.getItem('lbjj_game_stats_v2') || '{}'); return Math.max(s.xp || 0, s.totalXP || 0); } catch { return 0; }
@@ -297,7 +299,7 @@ export default function LeaderboardPage() {
 
             const entryEmail = (entry as any).email as string | undefined;
             const onRowTap = () => {
-              if (entryEmail) navigate(`/profile/${encodeURIComponent(entryEmail)}`);
+              if (entryEmail) setSelectedEntry(entry);
             };
             return (
               <div
@@ -416,6 +418,78 @@ export default function LeaderboardPage() {
           );
         })()}
       </div>
+
+      {/* Member action sheet */}
+      {selectedEntry && typeof document !== 'undefined' && createPortal(
+        <div onClick={() => setSelectedEntry(null)} style={{
+          position: 'fixed', inset: 0, zIndex: 500,
+          background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)', WebkitBackdropFilter: 'blur(4px)',
+          display: 'flex', alignItems: 'flex-end',
+        }}>
+          <div onClick={e => e.stopPropagation()} style={{
+            width: '100%', maxWidth: 480, margin: '0 auto',
+            background: 'rgba(14,14,18,0.98)',
+            borderRadius: '24px 24px 0 0',
+            border: '1px solid rgba(255,255,255,0.08)',
+            padding: '8px 0 calc(24px + env(safe-area-inset-bottom, 0px))',
+            boxShadow: '0 -20px 60px rgba(0,0,0,0.8)',
+          }}>
+            <div style={{ width: 36, height: 4, borderRadius: 2, background: 'rgba(255,255,255,0.15)', margin: '8px auto 20px' }} />
+
+            <div style={{ padding: '0 20px 16px', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+              <div style={{ fontSize: 16, fontWeight: 800, color: '#fff' }}>{cleanDisplayName(selectedEntry.name)}</div>
+              <div style={{ fontSize: 12, color: '#666', marginTop: 2 }}>
+                {((selectedEntry.belt || 'white').charAt(0).toUpperCase() + (selectedEntry.belt || 'white').slice(1))} Belt
+              </div>
+            </div>
+
+            <div style={{ padding: '8px 0' }}>
+              <button
+                onClick={() => {
+                  const email = (selectedEntry as any).email;
+                  setSelectedEntry(null);
+                  if (email) navigate(`/profile/${encodeURIComponent(email)}`);
+                }}
+                style={{
+                  width: '100%', padding: '16px 20px', border: 'none', background: 'transparent',
+                  display: 'flex', alignItems: 'center', gap: 14, cursor: 'pointer',
+                  WebkitTapHighlightColor: 'transparent',
+                }}
+              >
+                <div style={{ width: 40, height: 40, borderRadius: 12, background: 'rgba(212,175,55,0.1)', border: '1px solid rgba(212,175,55,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#D4AF37', flexShrink: 0 }}>
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                </div>
+                <div style={{ textAlign: 'left' }}>
+                  <div style={{ fontSize: 14, fontWeight: 700, color: '#fff' }}>View Profile</div>
+                  <div style={{ fontSize: 11, color: '#666', marginTop: 2 }}>Activity, achievements, stats</div>
+                </div>
+              </button>
+
+              <button
+                onClick={() => {
+                  const email = (selectedEntry as any).email;
+                  setSelectedEntry(null);
+                  if (email) navigate(`/belt/${encodeURIComponent(email)}`);
+                }}
+                style={{
+                  width: '100%', padding: '16px 20px', border: 'none', background: 'transparent',
+                  display: 'flex', alignItems: 'center', gap: 14, cursor: 'pointer',
+                  WebkitTapHighlightColor: 'transparent',
+                }}
+              >
+                <div style={{ width: 40, height: 40, borderRadius: 12, background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#888', flexShrink: 0 }}>
+                  <span style={{ fontSize: 20 }} aria-hidden>🥋</span>
+                </div>
+                <div style={{ textAlign: 'left' }}>
+                  <div style={{ fontSize: 14, fontWeight: 700, color: '#fff' }}>Belt Journey</div>
+                  <div style={{ fontSize: 11, color: '#666', marginTop: 2 }}>View promotion history</div>
+                </div>
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
     </div>
   );
 }
