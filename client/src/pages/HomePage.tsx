@@ -1139,6 +1139,8 @@ export default function HomePage() {
     // Ref lock: synchronous guard against rapid taps during GAS cold start
     if (checkingInRef.current) return;
     checkingInRef.current = true;
+    // Show pressing state immediately so user gets instant feedback during GAS call
+    setCheckinPhase('pressing');
     // GAS call first to check for dedup (memberProfile already declared above for belt check)
     const profileEmail = memberProfile?.email || '';
     const profileName = memberProfile?.name || '';
@@ -1154,7 +1156,7 @@ export default function HomePage() {
           checkingInRef.current = false;
           return;
         }
-      } catch { checkingInRef.current = false; setCheckinPhase('idle'); }
+      } catch { checkingInRef.current = false; setCheckinPhase('idle'); return; }
     }
 
     // Dedupe guard: only count this class once per day, even if the flow runs twice
