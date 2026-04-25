@@ -206,7 +206,7 @@ const CSS_TEXT = `
 .bjv6-ceremony-oss:active { transform: scale(0.9) !important; }
 
 /* BOTTOM ADD BAR */
-.bjv6-bottom-bar { position: fixed; bottom: 0; left: 0; right: 0; margin: 0 auto; width: 100%; max-width: 480px; padding: 16px 20px calc(16px + env(safe-area-inset-bottom, 0px)); background: linear-gradient(to top, rgba(3,3,5,1) 50%, transparent); z-index: 100; }
+.bjv6-bottom-bar { position: fixed; bottom: 0; left: 50%; transform: translateX(-50%); width: 430px; max-width: 100%; padding: 16px 20px calc(16px + env(safe-area-inset-bottom, 0px)); background: linear-gradient(to top, rgba(3,3,5,1) 50%, transparent); z-index: 100; }
 .bjv6-bottom-add-btn { width: 100%; height: 64px; border-radius: 20px; background: linear-gradient(135deg, #FFF0B3, #D4AF37); color: #000; font-size: 16px; font-weight: 900; letter-spacing: 0.05em; border: none; cursor: pointer; box-shadow: 0 15px 30px rgba(212,175,55,0.4), inset 0 -2px 5px rgba(0,0,0,0.2), inset 0 2px 5px rgba(255,255,255,0.8); display: flex; align-items: center; justify-content: center; gap: 12px; transition: all 0.2s; font-family: inherit; }
 .bjv6-bottom-add-btn:active { transform: scale(0.96); box-shadow: 0 5px 15px rgba(212,175,55,0.4); }
 
@@ -460,8 +460,9 @@ function HeroCard({ current, promotions }: { current: Promotion; promotions: Pro
   );
 }
 
-function TimelineNode({ p, i, isCurrent, onEdit }: { p: Promotion; i: number; isCurrent: boolean; onEdit: (id: string) => void }) {
+function TimelineNode({ p, i, isCurrent, onEdit, onDeleteCard }: { p: Promotion; i: number; isCurrent: boolean; onEdit: (id: string) => void; onDeleteCard: (id: string) => void }) {
   const pColor = (BELT_DEFS[p.belt] || BELT_DEFS.white).base;
+  const [confirming, setConfirming] = useState(false);
   const cardStyle = {
     ['--node-color-30' as any]: hexToRgba(pColor, 0.3),
     ['--node-color-15' as any]: hexToRgba(pColor, 0.15),
@@ -483,17 +484,51 @@ function TimelineNode({ p, i, isCurrent, onEdit }: { p: Promotion; i: number; is
       <div
         className={`bjv6-node-card ${isCurrent ? 'bjv6-current' : ''}`}
         style={cardStyle}
-        onClick={() => onEdit(p.id)}
       >
         <div className="bjv6-node-card-row1">
-          <div>
+          <div onClick={() => onEdit(p.id)} style={{ flex: 1, cursor: 'pointer' }}>
             <span className="bjv6-node-belt-name">{BELT_NAMES[p.belt] || 'Belt'}</span>
             {p.stripes > 0 && <span className="bjv6-node-stripes">{p.stripes}s</span>}
           </div>
-          <svg className="bjv6-node-edit-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
-            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
-          </svg>
+          {confirming ? (
+            <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+              <button
+                onClick={(e) => { e.stopPropagation(); onDeleteCard(p.id); setConfirming(false); }}
+                style={{ background: '#DC2626', color: '#fff', border: 'none', borderRadius: 8, padding: '4px 10px', fontSize: 11, fontWeight: 800, cursor: 'pointer', letterSpacing: '0.05em' }}
+                aria-label="Confirm delete"
+              >YES</button>
+              <button
+                onClick={(e) => { e.stopPropagation(); setConfirming(false); }}
+                style={{ background: 'rgba(255,255,255,0.08)', color: '#aaa', border: 'none', borderRadius: 8, padding: '4px 10px', fontSize: 11, fontWeight: 800, cursor: 'pointer', letterSpacing: '0.05em' }}
+                aria-label="Cancel delete"
+              >NO</button>
+            </div>
+          ) : (
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+              <button
+                onClick={(e) => { e.stopPropagation(); onEdit(p.id); }}
+                style={{ background: 'transparent', border: 'none', color: '#444', padding: 4, cursor: 'pointer', display: 'grid', placeItems: 'center' }}
+                aria-label="Edit promotion"
+              >
+                <svg className="bjv6-node-edit-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                  <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                </svg>
+              </button>
+              <button
+                onClick={(e) => { e.stopPropagation(); setConfirming(true); }}
+                style={{ background: 'transparent', border: 'none', color: '#DC2626', padding: 4, cursor: 'pointer', display: 'grid', placeItems: 'center' }}
+                aria-label="Delete promotion"
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="3 6 5 6 21 6"/>
+                  <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
+                  <path d="M10 11v6M14 11v6"/>
+                  <path d="M9 6V4a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2"/>
+                </svg>
+              </button>
+            </div>
+          )}
         </div>
         <div className="bjv6-node-date">
           {new Date(p.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
@@ -686,7 +721,10 @@ export default function BeltJourneyPage({ onBack }: { onBack?: () => void } = {}
         }))
         .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
       setPromotions(mapped);
-      try { localStorage.setItem('lbjj_belt_promotions_cache', JSON.stringify(mapped)); } catch {}
+      try {
+        localStorage.setItem('lbjj_belt_promotions_cache', JSON.stringify(mapped));
+        localStorage.setItem('lbjj_belt_promotions', JSON.stringify(mapped));
+      } catch {}
     } catch (err) {
       console.error('beltGetPromotions failed', err);
     } finally {
@@ -696,7 +734,7 @@ export default function BeltJourneyPage({ onBack }: { onBack?: () => void } = {}
 
   useEffect(() => {
     try {
-      const cached = localStorage.getItem('lbjj_belt_promotions_cache');
+      const cached = localStorage.getItem('lbjj_belt_promotions_cache') || localStorage.getItem('lbjj_belt_promotions');
       if (cached) {
         const list = JSON.parse(cached);
         if (Array.isArray(list) && list.length) {
@@ -778,24 +816,34 @@ export default function BeltJourneyPage({ onBack }: { onBack?: () => void } = {}
     }
   };
 
-  const handleDelete = async () => {
-    if (!editingId) return;
-    const id = editingId;
+  const deleteById = async (id: string) => {
     try {
-      // Track deleted id locally so it stays gone on refresh even if GAS lags
       let deletedIds: string[] = [];
       try { deletedIds = JSON.parse(localStorage.getItem('lbjj_belt_deleted_ids') || '[]'); } catch {}
       if (!deletedIds.includes(id)) {
         deletedIds.push(id);
         localStorage.setItem('lbjj_belt_deleted_ids', JSON.stringify(deletedIds));
       }
-      setPromotions((prev) => prev.filter((p) => p.id !== id));
-      setOpen(false);
+      setPromotions((prev) => {
+        const next = prev.filter((p) => p.id !== id);
+        try {
+          localStorage.setItem('lbjj_belt_promotions_cache', JSON.stringify(next));
+          localStorage.setItem('lbjj_belt_promotions', JSON.stringify(next));
+        } catch {}
+        return next;
+      });
       await beltDeletePromotion(id);
       await loadPromotions();
     } catch (err) {
       console.error('delete promotion failed', err);
     }
+  };
+
+  const handleDelete = async () => {
+    if (!editingId) return;
+    const id = editingId;
+    setOpen(false);
+    await deleteById(id);
   };
 
   const handleCloseCeremony = () => {
@@ -811,7 +859,14 @@ export default function BeltJourneyPage({ onBack }: { onBack?: () => void } = {}
   };
 
   const hasPromotions = promotions.length > 0;
-  const current = hasPromotions ? promotions[promotions.length - 1] : null;
+  const current = hasPromotions
+    ? [...promotions].sort((a, b) => {
+        const ai = BELT_ORDER.indexOf(a.belt);
+        const bi = BELT_ORDER.indexOf(b.belt);
+        if (ai !== bi) return bi - ai;
+        return b.stripes - a.stripes;
+      })[0]
+    : null;
 
   const portalTarget = typeof document !== 'undefined' ? document.body : null;
 
@@ -868,6 +923,7 @@ export default function BeltJourneyPage({ onBack }: { onBack?: () => void } = {}
                     i={i}
                     isCurrent={isCurrent}
                     onEdit={openEdit}
+                    onDeleteCard={deleteById}
                   />
                 );
                 if (i < promotions.length - 1) {

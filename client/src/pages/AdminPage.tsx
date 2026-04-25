@@ -834,8 +834,8 @@ function StyleBlock() {
       .lbj-btn-secondary.btn-announcement:hover:not(:disabled) { background: rgba(244, 63, 94, 0.2); }
 
       .lbj-save-bar {
-        position: fixed; bottom: 20px; left: 0; right: 0; margin: 0 auto; z-index: 10;
-        width: calc(100% - 40px); max-width: 600px;
+        position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); z-index: 10;
+        width: calc(430px - 40px); max-width: calc(100% - 40px);
         background: rgba(10,10,12,0.9); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
         border: 1px solid rgba(200,162,76,0.5); padding: 16px; border-radius: 16px;
         display: flex; gap: 12px; box-shadow: 0 20px 40px rgba(0,0,0,0.8), 0 0 20px rgba(200,162,76,0.1);
