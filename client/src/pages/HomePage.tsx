@@ -1,7 +1,7 @@
 import { FireIcon, CheckCircleFilledIcon, CalendarSparkIcon, BoltIcon, GoldMedalIcon, SilverMedalIcon, ShieldIcon, GrapplingIcon, ClockCountdownIcon, ShieldFreezeIcon, GiIcon } from "@/components/icons/LbjjIcons";
 import { useAuth } from "@/lib/auth-context";
-import type { FamilyMember, PaymentCard, BeltPromotion } from "@/lib/api";
-import { beltSavePromotion, beltGetPromotions, beltApprovePromotion, gasCall, getLeaderboard, getMemberData, cachedGasCall, saveMemberStats, syncAchievements } from "@/lib/api";
+import type { FamilyMember, PaymentCard } from "@/lib/api";
+import { gasCall, getLeaderboard, getMemberData, cachedGasCall, saveMemberStats, syncAchievements } from "@/lib/api";
 import { BeltIcon } from "@/components/BeltIcon";
 import { ADULT_BELT_OPTIONS } from "@/components/BeltIcon";
 import { getBeltColor, CLASS_SCHEDULE } from "@/lib/constants";
@@ -446,30 +446,6 @@ export default function HomePage() {
   const [checkinPhase, setCheckinPhase] = useState<'idle' | 'pressing' | 'success' | 'done'>('idle');
   const [earlyCheckInMsg, setEarlyCheckInMsg] = useState('');
   const [homeLoadSlow, setHomeLoadSlow] = useState(false);
-
-  // ─── Admin: pending belt promotions ────────────────────────────
-  const [pendingPromotions, setPendingPromotions] = useState<BeltPromotion[]>([]);
-  const [promoActing, setPromoActing] = useState<string | null>(null);
-
-  useEffect(() => {
-    const role = (member?.role || '').toLowerCase();
-    const isStaff = role.includes('owner') || role.includes('admin') || role.includes('coach') || role.includes('instructor');
-    if (!isStaff || !member) return;
-
-    beltGetPromotions().then(all => {
-      const pending = all.filter(p => p.status === 'pending' && p.memberEmail !== member.email);
-      setPendingPromotions(pending);
-    }).catch(() => {});
-  }, [member]);
-
-  const handlePromoVerdict = async (promotionId: string, approved: boolean) => {
-    setPromoActing(promotionId);
-    try {
-      await beltApprovePromotion(promotionId, approved);
-      setPendingPromotions(prev => prev.filter(p => p.id !== promotionId));
-    } catch {}
-    setPromoActing(null);
-  };
 
   // ─── Stale-while-revalidate home cache ─────────────────────────
   const HOME_CACHE_KEY = 'lbjj_home_cache';
@@ -2035,125 +2011,6 @@ export default function HomePage() {
         ),
       });
     }
-    if (pendingPromotions.length > 0) {
-      defs.push({
-        id: 'pending_promotions',
-        label: 'Pending Promotions',
-        available: true,
-        render: () => (
-          <div className="mx-5" style={{
-            background: 'rgba(18,18,22,0.65)',
-            border: '1px solid rgba(212,175,55,0.2)',
-            borderRadius: 16,
-            padding: '16px',
-            marginBottom: 12,
-            backdropFilter: 'blur(12px)',
-            WebkitBackdropFilter: 'blur(12px)',
-          }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14 }}>
-              <div style={{
-                width: 28, height: 28, borderRadius: 8,
-                background: 'rgba(212,175,55,0.15)',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                fontSize: 15,
-              }}>🥋</div>
-              <div style={{ flex: 1 }}>
-                <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#D4AF37' }}>
-                  Pending Promotions
-                </div>
-                <div style={{ fontSize: 10, color: '#666', marginTop: 1 }}>
-                  {pendingPromotions.length} awaiting review
-                </div>
-              </div>
-            </div>
-
-            {pendingPromotions.map(p => {
-              const BELT_COLORS: Record<string, string> = {
-                white: '#E5E5E5', blue: '#1A56DB', purple: '#7E3AF2',
-                brown: '#92400E', black: '#333333',
-              };
-              const beltColor = BELT_COLORS[p.belt?.toLowerCase()] || '#888';
-              const isActing = promoActing === p.id;
-              return (
-                <div key={p.id} style={{
-                  background: 'rgba(255,255,255,0.03)',
-                  border: '1px solid rgba(255,255,255,0.06)',
-                  borderRadius: 12, padding: '12px 14px',
-                  marginBottom: 8,
-                  opacity: isActing ? 0.5 : 1,
-                  transition: 'opacity 0.2s',
-                }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
-                    <div style={{
-                      width: 8, height: 32, borderRadius: 4,
-                      background: beltColor,
-                      flexShrink: 0,
-                      boxShadow: `0 0 8px ${beltColor}66`,
-                    }} />
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: 13, fontWeight: 700, color: '#F0F0F0', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                        {p.memberName || p.memberEmail}
-                      </div>
-                      <div style={{ fontSize: 11, color: '#888', marginTop: 1 }}>
-                        → {p.belt.charAt(0).toUpperCase() + p.belt.slice(1)} Belt
-                        {p.stripes > 0 ? ` · ${p.stripes} stripe${p.stripes > 1 ? 's' : ''}` : ''}
-                        {p.date ? ` · ${p.date}` : ''}
-                      </div>
-                    </div>
-                  </div>
-
-                  {p.note && (
-                    <div style={{
-                      fontSize: 11, color: '#666', fontStyle: 'italic',
-                      padding: '6px 10px', borderRadius: 8,
-                      background: 'rgba(255,255,255,0.03)',
-                      marginBottom: 10, lineHeight: 1.4,
-                    }}>
-                      "{p.note}"
-                    </div>
-                  )}
-
-                  <div style={{ display: 'flex', gap: 8 }}>
-                    <button
-                      onClick={() => handlePromoVerdict(p.id, true)}
-                      disabled={!!promoActing}
-                      style={{
-                        flex: 1, height: 36, borderRadius: 10, cursor: 'pointer',
-                        background: 'linear-gradient(135deg, #1a7a3a, #22c55e22)',
-                        border: '1px solid rgba(34,197,94,0.3)',
-                        color: '#22c55e', fontSize: 12, fontWeight: 800,
-                        letterSpacing: '0.06em', textTransform: 'uppercase',
-                        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-                        transition: 'all 0.15s',
-                        opacity: !!promoActing ? 0.5 : 1,
-                      }}
-                    >
-                      {isActing ? '…' : '✓ Approve'}
-                    </button>
-                    <button
-                      onClick={() => handlePromoVerdict(p.id, false)}
-                      disabled={!!promoActing}
-                      style={{
-                        flex: 1, height: 36, borderRadius: 10, cursor: 'pointer',
-                        background: 'rgba(239,68,68,0.08)',
-                        border: '1px solid rgba(239,68,68,0.25)',
-                        color: '#ef4444', fontSize: 12, fontWeight: 800,
-                        letterSpacing: '0.06em', textTransform: 'uppercase',
-                        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-                        transition: 'all 0.15s',
-                        opacity: !!promoActing ? 0.5 : 1,
-                      }}
-                    >
-                      {isActing ? '…' : '✕ Reject'}
-                    </button>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        ),
-      });
-    }
     if (showBeltNudge) {
       defs.push({
         id: 'belt_nudge',
@@ -2318,8 +2175,6 @@ export default function HomePage() {
     widgetDotTick,
     xpEvent,
     showBeltNudge,
-    pendingPromotions,
-    promoActing,
   ]);
 
   const { editMode, setEditMode, visibleDefs, hiddenDefs, hide, show, moveBefore } = useWidgetLayout(widgetDefs);

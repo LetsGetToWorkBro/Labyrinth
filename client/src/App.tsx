@@ -27,6 +27,7 @@ const SaunaPage          = lazy(() => import("@/pages/SaunaPage"));
 const WaiverPage         = lazy(() => import("@/pages/WaiverPage"));
 const BookingPage        = lazy(() => import("@/pages/BookingPage"));
 const BeltJourneyPage    = lazy(() => import("@/pages/BeltJourneyPage"));
+const BeltApprovalsPage  = lazy(() => import("@/pages/BeltApprovalsPage"));
 const ChatPage           = lazy(() => import("@/pages/ChatPage"));
 const GamesPage          = lazy(() => import("@/pages/GamesPage"));
 const LeaderboardPage    = lazy(() => import("@/pages/LeaderboardPage"));
@@ -2121,6 +2122,7 @@ function AppShell() {
             <Route path="/stats"     component={StatsPage} />
             <Route path="/belt"      component={BeltJourneyPage} />
             <Route path="/belt/:email" component={BeltJourneyPage} />
+            <Route path="/belt-approvals" component={BeltApprovalsPage} />
             <Route path="/profile"   component={ProfilePage} />
             <Route path="/profile/:email" component={ProfilePage} />
             <Route path="/chat"      component={ChatPage} />
