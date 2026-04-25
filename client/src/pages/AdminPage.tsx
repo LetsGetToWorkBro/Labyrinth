@@ -79,7 +79,7 @@ export default function AdminPage({ onBack }: { onBack: () => void }) {
     }
     setPublishing(true);
     try {
-      await gasCall("pinAnnouncement", {
+      const result = await gasCall("pinAnnouncement", {
         token: getToken() || "",
         title: annTitle,
         body: annMessage,
@@ -89,11 +89,15 @@ export default function AdminPage({ onBack }: { onBack: () => void }) {
         link: annCta,
         pinned: annPin,
       });
-      showToast("Announcement published");
-      window.dispatchEvent(new Event('announcement-updated'));
-      setAnnTitle("");
-      setAnnMessage("");
-      setAnnCta("");
+      if (result?.success === false) {
+        showToast(result.error || "Failed to publish", "error");
+      } else {
+        showToast("Announcement published");
+        window.dispatchEvent(new Event('announcement-updated'));
+        setAnnTitle("");
+        setAnnMessage("");
+        setAnnCta("");
+      }
     } catch (e) {
       showToast("Failed to publish", "error");
     } finally {
@@ -202,7 +206,7 @@ export default function AdminPage({ onBack }: { onBack: () => void }) {
   const handleSaveAll = async () => {
     setSaving(true);
     try {
-      await gasCall("saveGeoConfig", {
+      const result = await gasCall("saveGeoConfig", {
         token: getToken() || "",
         checkinWindowMinutes: gateWindow,
         checkinGateEnabled: gateEnabled,
@@ -212,10 +216,14 @@ export default function AdminPage({ onBack }: { onBack: () => void }) {
         geoLat,
         geoLng,
       });
-      try {
-        sessionStorage.setItem("lbjj_checkin_window", String(gateWindow));
-      } catch {}
-      showToast("System config saved");
+      if (result?.success === false) {
+        showToast(result.error || "Failed to save", "error");
+      } else {
+        try {
+          sessionStorage.setItem("lbjj_checkin_window", String(gateWindow));
+        } catch {}
+        showToast("System config saved");
+      }
     } catch {
       showToast("Failed to save", "error");
     } finally {

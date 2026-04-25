@@ -246,7 +246,13 @@ export async function gasCall(action: string, payload: Record<string, any> = {},
     }
 
     // Session expiry detection — clear auth and redirect to login
-    if (result && (result.code === 401 || (result.error && typeof result.error === 'string' && result.error.includes('Session expired')))) {
+    if (result && (
+      result.code === 401 ||
+      (result.error && typeof result.error === 'string' && (
+        result.error.includes('Session expired') ||
+        result.error === 'Invalid session'
+      ))
+    )) {
       localStorage.removeItem('lbjj_session_token');
       localStorage.removeItem('lbjj_member_profile');
       // Show a brief toast before redirecting
