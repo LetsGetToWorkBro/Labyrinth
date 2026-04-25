@@ -1,5 +1,5 @@
 /**
- * ProfilePage — view a member profile (own or another's).
+ * ProfilePage V2 — view a member profile (own or another's). Redesigned 2026-04-25.
  * Spec: profile_reimagine_v2.html
  *
  * Routes: /profile (own) and /profile/:email (other member)
