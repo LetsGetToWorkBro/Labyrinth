@@ -573,7 +573,7 @@ export interface BeltPromotion {
   approvedDate?: string;
 }
 
-export async function beltSavePromotion(data: { belt: string; stripes: number; date: string; note: string }): Promise<{ success: boolean; promotionId?: string }> {
+export async function beltSavePromotion(data: { belt: string; stripes: number; date: string; note: string; bar?: string; category?: string }): Promise<{ success: boolean; promotionId?: string }> {
   const token = getToken() || '';
   if (!token) return { success: false };
   try {
@@ -602,7 +602,7 @@ export async function beltDeletePromotion(promotionId: string): Promise<{ succes
   return gasCall('beltDeletePromotion', { token, promotionId });
 }
 
-export async function beltUpdatePromotion(data: { promotionId: string; belt: string; stripes: number; date: string; note: string }): Promise<{ success: boolean }> {
+export async function beltUpdatePromotion(data: { promotionId: string; belt: string; stripes: number; date: string; note: string; bar?: string; category?: string }): Promise<{ success: boolean }> {
   const token = getToken() || '';
   return gasCall('beltUpdatePromotion', { token, ...data });
 }

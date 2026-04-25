@@ -2,17 +2,25 @@ import React, { useState, useEffect, useRef, useCallback } from "react";
 import { createPortal } from "react-dom";
 import { beltGetPromotions, beltSavePromotion, beltDeletePromotion, beltUpdatePromotion } from "@/lib/api";
 
+type BeltCategory = 'Adult' | 'Kids';
+
 interface Promotion {
   id: string;
   belt: string;
   stripes: number;
+  bar?: 'none' | 'white' | 'black';
   date: string;
   note: string;
   status: "pending" | "approved" | "rejected";
+  category: BeltCategory;
 }
 
 const BELT_DEFS: Record<string, { base: string; light: string; dark: string; darkest: string; glow: string; name: string }> = {
   white:  { base: '#E5E5E5', light: '#FFFFFF', dark: '#B0B0B0', darkest: '#888888', glow: 'rgba(255,255,255,0.4)', name: 'White' },
+  grey:   { base: '#A0A0A0', light: '#C0C0C0', dark: '#808080', darkest: '#606060', glow: 'rgba(160,160,160,0.4)', name: 'Grey' },
+  yellow: { base: '#FFD700', light: '#FFEB3B', dark: '#FFA500', darkest: '#FF8C00', glow: 'rgba(255,215,0,0.5)',   name: 'Yellow' },
+  orange: { base: '#FF8C00', light: '#FFA500', dark: '#FF6347', darkest: '#FF4500', glow: 'rgba(255,140,0,0.5)',   name: 'Orange' },
+  green:  { base: '#228B22', light: '#32CD32', dark: '#006400', darkest: '#004000', glow: 'rgba(34,139,34,0.5)',   name: 'Green' },
   blue:   { base: '#1A56DB', light: '#4A7FF0', dark: '#103A99', darkest: '#0A2266', glow: 'rgba(26,86,219,0.5)',  name: 'Blue' },
   purple: { base: '#7E3AF2', light: '#A26DF8', dark: '#521BA6', darkest: '#2E0F5C', glow: 'rgba(126,58,242,0.5)', name: 'Purple' },
   brown:  { base: '#92400E', light: '#B85E24', dark: '#632A08', darkest: '#381603', glow: 'rgba(146,64,14,0.5)',  name: 'Brown' },
@@ -20,11 +28,18 @@ const BELT_DEFS: Record<string, { base: string; light: string; dark: string; dar
 };
 
 const BELT_NAMES: Record<string, string> = {
-  white: 'White Belt', blue: 'Blue Belt', purple: 'Purple Belt', brown: 'Brown Belt', black: 'Black Belt',
+  white: 'White Belt', grey: 'Grey Belt', yellow: 'Yellow Belt',
+  orange: 'Orange Belt', green: 'Green Belt',
+  blue: 'Blue Belt', purple: 'Purple Belt', brown: 'Brown Belt', black: 'Black Belt',
+};
+
+const BELT_CATEGORIES: Record<BeltCategory, string[]> = {
+  Adult: ['white', 'blue', 'purple', 'brown', 'black'],
+  Kids:  ['white', 'grey', 'yellow', 'orange', 'green'],
 };
 
 const BELT_AVG: Record<string, number> = { white: 18, blue: 30, purple: 30, brown: 24 };
-const BELT_ORDER = ['white', 'blue', 'purple', 'brown', 'black'];
+const BELT_ORDER = ['white', 'grey', 'yellow', 'orange', 'green', 'blue', 'purple', 'brown', 'black'];
 
 const STYLE_TAG_ID = 'belt-forge-v6-styles';
 const FONT_LINK_ID = 'belt-forge-v6-font';
@@ -229,7 +244,7 @@ const CSS_TEXT = `
 `;
 
 let svgUidCounter = 0;
-function beltSVG(belt: string, stripes = 0, size = 64, isLivePreview = false): string {
+function beltSVG(belt: string, stripes = 0, size = 64, isLivePreview = false, bar: 'none' | 'white' | 'black' = 'none'): string {
   svgUidCounter++;
   const c = BELT_DEFS[belt] || BELT_DEFS.white;
   const isBlack = belt === 'black';
@@ -247,6 +262,7 @@ function beltSVG(belt: string, stripes = 0, size = 64, isLivePreview = false): s
   const barGradId = 'barGrad-' + belt + '-' + svgUidCounter;
   const tapeGradId = 'tapeGrad-' + svgUidCounter;
   const patternId = 'weave-' + svgUidCounter;
+  const hBarGradId = 'hBarGrad-' + svgUidCounter;
 
   const liveStyles = isLivePreview ? `
     <style>
@@ -280,6 +296,14 @@ function beltSVG(belt: string, stripes = 0, size = 64, isLivePreview = false): s
         <stop offset="85%" stop-color="#CCCCCC" />
         <stop offset="100%" stop-color="#666666" />
       </linearGradient>
+      <linearGradient id="${hBarGradId}" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stop-color="${bar === 'white' ? '#D0D0D0' : '#1A1A1A'}" />
+        <stop offset="15%" stop-color="${bar === 'white' ? '#FFFFFF' : '#333333'}" />
+        <stop offset="35%" stop-color="${bar === 'white' ? '#F5F5F5' : '#222222'}" />
+        <stop offset="50%" stop-color="${bar === 'white' ? '#EEEEEE' : '#222222'}" />
+        <stop offset="85%" stop-color="${bar === 'white' ? '#D0D0D0' : '#1A1A1A'}" />
+        <stop offset="100%" stop-color="${bar === 'white' ? '#A0A0A0' : '#000000'}" />
+      </linearGradient>
       <pattern id="${patternId}" patternUnits="userSpaceOnUse" width="4" height="4">
         <path d="M-1,1 l2,-2 M0,4 l4,-4 M3,5 l2,-2" stroke="rgba(0,0,0,0.15)" stroke-width="0.8" />
         <path d="M-1,1 l2,-2 M0,4 l4,-4 M3,5 l2,-2" stroke="rgba(255,255,255,0.15)" stroke-width="0.8" transform="translate(1,0)" />
@@ -306,6 +330,27 @@ function beltSVG(belt: string, stripes = 0, size = 64, isLivePreview = false): s
     `;
   }
 
+  let barStripesSVG = '';
+  if (bar !== 'none') {
+    const barH = Math.round(beltH * 0.22);
+    const barStripY = beltY + Math.round((beltH - barH) / 2);
+    const leftWidth = barX;
+    const rightStart = barX + barW;
+    const rightWidth = size - barX - barW - 2;
+    barStripesSVG = `
+      <g>
+        <rect x="2" y="${barStripY}" width="${leftWidth - 2}" height="${barH}" fill="url(#${hBarGradId})" />
+        <rect x="2" y="${barStripY}" width="${leftWidth - 2}" height="${barH}" fill="url(#${patternId})" opacity="0.15" />
+        <rect x="${rightStart}" y="${barStripY}" width="${rightWidth}" height="${barH}" fill="url(#${hBarGradId})" />
+        <rect x="${rightStart}" y="${barStripY}" width="${rightWidth}" height="${barH}" fill="url(#${patternId})" opacity="0.15" />
+        <rect x="2" y="${barStripY}" width="${leftWidth - 2}" height="0.5" fill="rgba(255,255,255,0.3)" />
+        <rect x="${rightStart}" y="${barStripY}" width="${rightWidth}" height="0.5" fill="rgba(255,255,255,0.3)" />
+        <rect x="2" y="${barStripY + barH - 0.5}" width="${leftWidth - 2}" height="0.5" fill="rgba(0,0,0,0.4)" />
+        <rect x="${rightStart}" y="${barStripY + barH - 0.5}" width="${rightWidth}" height="0.5" fill="rgba(0,0,0,0.4)" />
+      </g>
+    `;
+  }
+
   let framingSVG = '';
   if (isBlack) {
     const fw = Math.max(1.5, size * 0.025);
@@ -328,6 +373,7 @@ function beltSVG(belt: string, stripes = 0, size = 64, isLivePreview = false): s
       ${defs}
       <rect x="2" y="${beltY}" width="${size - 4}" height="${beltH}" rx="${rx}" fill="url(#${gradId})" style="transition: fill 0.3s"/>
       <rect x="2" y="${beltY}" width="${size - 4}" height="${beltH}" rx="${rx}" fill="url(#${patternId})" />
+      ${barStripesSVG}
       <rect x="${barX}" y="${beltY}" width="${barW}" height="${beltH}" fill="url(#${barGradId})" />
       <rect x="${barX}" y="${beltY}" width="${barW}" height="${beltH}" fill="url(#${patternId})" />
       ${framingSVG}
@@ -427,7 +473,7 @@ function HeroCard({ current, promotions }: { current: Promotion; promotions: Pro
               <div className="bjv6-hero-belt-aura" style={{ background: `radial-gradient(circle, ${c.glow}, transparent 70%)` }} />
               <div
                 className="bjv6-belt-svg-wrap"
-                dangerouslySetInnerHTML={{ __html: beltSVG(current.belt, current.stripes, 110) }}
+                dangerouslySetInnerHTML={{ __html: beltSVG(current.belt, current.stripes, 110, false, current.bar || 'none') }}
               />
             </div>
             <div>
@@ -477,7 +523,7 @@ function TimelineNode({ p, i, isCurrent, onEdit, onDeleteCard }: { p: Promotion;
             className={`bjv6-node-orb ${isCurrent ? 'bjv6-current' : ''}`}
             style={{ ['--node-color' as any]: pColor } as React.CSSProperties}
             onClick={() => onEdit(p.id)}
-            dangerouslySetInnerHTML={{ __html: beltSVG(p.belt, p.stripes, 46) }}
+            dangerouslySetInnerHTML={{ __html: beltSVG(p.belt, p.stripes, 46, false, p.bar || 'none') }}
           />
         </div>
       </div>
@@ -548,16 +594,21 @@ function TimelineNode({ p, i, isCurrent, onEdit, onDeleteCard }: { p: Promotion;
 }
 
 function ForgeSheet({
-  open, isEditing, belt, stripes, date, note, onSetBelt, onSetStripes, onSetDate, onSetNote,
+  open, isEditing, belt, stripes, bar, date, note, category,
+  onSetBelt, onSetStripes, onSetBar, onSetDate, onSetNote,
   onClose, onSave, onDelete, saving,
 }: {
-  open: boolean; isEditing: boolean; belt: string; stripes: number; date: string; note: string;
+  open: boolean; isEditing: boolean; belt: string; stripes: number; bar: 'none' | 'white' | 'black'; date: string; note: string;
+  category: BeltCategory;
   onSetBelt: (b: string) => void; onSetStripes: (s: number) => void;
+  onSetBar: (b: 'none' | 'white' | 'black') => void;
   onSetDate: (d: string) => void; onSetNote: (n: string) => void;
   onClose: () => void; onSave: () => void; onDelete: () => void; saving: boolean;
 }) {
   const c = BELT_DEFS[belt] || BELT_DEFS.white;
-  const liveSvgKey = `${belt}-${stripes}`;
+  const liveSvgKey = `${belt}-${stripes}-${bar}`;
+  const visibleBelts = BELT_CATEGORIES[category];
+  const isKids = category === 'Kids';
   return (
     <div
       className={`bjv6-form-backdrop ${open ? 'bjv6-open' : ''}`}
@@ -576,7 +627,7 @@ function ForgeSheet({
           <div
             key={liveSvgKey}
             className="bjv6-forge-belt-container"
-            dangerouslySetInnerHTML={{ __html: beltSVG(belt, stripes, 180, true) }}
+            dangerouslySetInnerHTML={{ __html: beltSVG(belt, stripes, 180, true, bar) }}
           />
         </div>
 
@@ -586,7 +637,7 @@ function ForgeSheet({
             <span style={{ color: '#FFF' }}>{c.name}</span>
           </div>
           <div className="bjv6-swatch-row">
-            {BELT_ORDER.map((b) => (
+            {visibleBelts.map((b) => (
               <button
                 key={b}
                 className={`bjv6-swatch-btn ${b === belt ? 'bjv6-active' : ''}`}
@@ -596,6 +647,33 @@ function ForgeSheet({
               />
             ))}
           </div>
+
+          {isKids && (
+            <>
+              <div className="bjv6-forge-label">
+                <span>Horizontal Bar</span>
+                <span style={{ color: 'var(--gold)' }}>{bar === 'none' ? 'None' : bar === 'white' ? 'White' : 'Black'}</span>
+              </div>
+              <div style={{ display: 'flex', gap: 8, marginBottom: 24, background: 'rgba(255,255,255,0.02)', padding: 8, borderRadius: 20, border: '1px solid rgba(255,255,255,0.05)' }}>
+                {(['none', 'white', 'black'] as const).map((opt) => (
+                  <button
+                    key={opt}
+                    onClick={() => { onSetBar(opt); if (typeof navigator !== 'undefined' && navigator.vibrate) navigator.vibrate([20, 30, 20]); }}
+                    style={{
+                      flex: 1, padding: '12px 16px', borderRadius: 14, cursor: 'pointer', transition: 'all 0.3s',
+                      fontSize: 12, fontWeight: 700, fontFamily: 'inherit',
+                      background: bar === opt ? 'linear-gradient(135deg, #FFF0B3, #D4AF37)' : 'rgba(255,255,255,0.05)',
+                      border: bar === opt ? '1px solid #D4AF37' : '1px solid rgba(255,255,255,0.1)',
+                      color: bar === opt ? '#000' : '#888',
+                      boxShadow: bar === opt ? '0 4px 12px rgba(212,175,55,0.4)' : 'none',
+                    }}
+                  >
+                    {opt === 'none' ? 'None' : opt === 'white' ? 'White' : 'Black'}
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
 
           <div className="bjv6-forge-label">
             <span>Rank Stripes</span>
@@ -647,10 +725,10 @@ function ForgeSheet({
   );
 }
 
-function Ceremony({ belt, show, onClose }: { belt: string | null; show: boolean; onClose: () => void; }) {
+function Ceremony({ belt, bar, show, onClose }: { belt: string | null; bar?: 'none' | 'white' | 'black'; show: boolean; onClose: () => void; }) {
   if (!belt) return null;
   const c = BELT_DEFS[belt] || BELT_DEFS.white;
-  const ossText = belt === 'white' ? '#000' : '#FFF';
+  const ossText = belt === 'white' || belt === 'grey' || belt === 'yellow' ? '#000' : '#FFF';
   return (
     <div
       className={`bjv6-ceremony ${show ? 'bjv6-show' : ''}`}
@@ -662,7 +740,7 @@ function Ceremony({ belt, show, onClose }: { belt: string | null; show: boolean;
         <div className="bjv6-ceremony-eyebrow">New Promotion</div>
         <div
           className="bjv6-ceremony-belt"
-          dangerouslySetInnerHTML={{ __html: beltSVG(belt, 0, 220) }}
+          dangerouslySetInnerHTML={{ __html: beltSVG(belt, 0, 220, false, bar || 'none') }}
         />
         <div className="bjv6-ceremony-name">{BELT_NAMES[belt]}</div>
         <div className="bjv6-ceremony-sub">Coach verification pending.</div>
@@ -689,11 +767,14 @@ export default function BeltJourneyPage({ onBack }: { onBack?: () => void } = {}
   const [editingId, setEditingId] = useState<string | null>(null);
   const [forgeBelt, setForgeBelt] = useState<string>('white');
   const [forgeStripes, setForgeStripes] = useState<number>(0);
+  const [forgeBar, setForgeBar] = useState<'none' | 'white' | 'black'>('none');
   const [forgeDate, setForgeDate] = useState<string>(() => new Date().toISOString().split('T')[0]);
   const [forgeNote, setForgeNote] = useState<string>('');
   const [saving, setSaving] = useState(false);
   const [ceremonyBelt, setCeremonyBelt] = useState<string | null>(null);
+  const [ceremonyBar, setCeremonyBar] = useState<'none' | 'white' | 'black'>('none');
   const [ceremonyShow, setCeremonyShow] = useState(false);
+  const [activeBeltCategory, setActiveBeltCategory] = useState<BeltCategory>('Adult');
   const connectorRefs = useRef<Map<number, HTMLDivElement>>(new Map());
 
   // Inject styles + font + body bg
@@ -709,15 +790,17 @@ export default function BeltJourneyPage({ onBack }: { onBack?: () => void } = {}
       const list = await beltGetPromotions();
       let deletedIds: string[] = [];
       try { deletedIds = JSON.parse(localStorage.getItem('lbjj_belt_deleted_ids') || '[]'); } catch {}
-      const mapped = (list || [])
+      const mapped: Promotion[] = (list || [])
         .filter((p: any) => !deletedIds.includes(p.id))
         .map((p: any) => ({
           id: String(p.id),
           belt: String(p.belt || 'white').toLowerCase(),
           stripes: Number(p.stripes) || 0,
+          bar: (p.bar === 'white' || p.bar === 'black') ? p.bar : 'none',
           date: typeof p.date === 'string' ? p.date.split('T')[0] : String(p.date),
           note: p.note || '',
           status: (p.status || 'pending') as Promotion['status'],
+          category: (p.category === 'Kids' ? 'Kids' : 'Adult') as BeltCategory,
         }))
         .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
       setPromotions(mapped);
@@ -760,8 +843,9 @@ export default function BeltJourneyPage({ onBack }: { onBack?: () => void } = {}
 
   const openAdd = () => {
     setEditingId(null);
-    setForgeBelt('white');
+    setForgeBelt(BELT_CATEGORIES[activeBeltCategory][0]);
     setForgeStripes(0);
+    setForgeBar('none');
     setForgeDate(new Date().toISOString().split('T')[0]);
     setForgeNote('');
     setOpen(true);
@@ -773,6 +857,7 @@ export default function BeltJourneyPage({ onBack }: { onBack?: () => void } = {}
     setEditingId(p.id);
     setForgeBelt(p.belt);
     setForgeStripes(p.stripes);
+    setForgeBar(p.bar || 'none');
     setForgeDate(p.date);
     setForgeNote(p.note || '');
     setOpen(true);
@@ -790,21 +875,26 @@ export default function BeltJourneyPage({ onBack }: { onBack?: () => void } = {}
           promotionId: editingId,
           belt: forgeBelt,
           stripes: forgeStripes,
+          bar: forgeBar,
           date: forgeDate,
           note: forgeNote,
+          category: activeBeltCategory,
         });
       } else {
         await beltSavePromotion({
           belt: forgeBelt,
           stripes: forgeStripes,
+          bar: forgeBar,
           date: forgeDate,
           note: forgeNote,
+          category: activeBeltCategory,
         });
       }
       setOpen(false);
       await loadPromotions();
       if (isNew) {
         setCeremonyBelt(forgeBelt);
+        setCeremonyBar(forgeBar);
         setCeremonyShow(true);
         if (typeof navigator !== 'undefined' && navigator.vibrate) {
           navigator.vibrate([80, 400, 80, 150, 40, 80, 40]);
@@ -860,13 +950,14 @@ export default function BeltJourneyPage({ onBack }: { onBack?: () => void } = {}
     }
   };
 
-  const hasPromotions = promotions.length > 0;
+  const filteredPromotions = promotions.filter((p) => (p.category || 'Adult') === activeBeltCategory);
+  const hasPromotions = filteredPromotions.length > 0;
   const current = hasPromotions
-    ? [...promotions].sort((a, b) => {
+    ? [...filteredPromotions].sort((a, b) => {
         const ai = BELT_ORDER.indexOf(a.belt);
         const bi = BELT_ORDER.indexOf(b.belt);
         if (ai !== bi) return bi - ai;
-        return b.stripes - a.stripes;
+        return (b.stripes || 0) - (a.stripes || 0);
       })[0]
     : null;
 
@@ -890,6 +981,31 @@ export default function BeltJourneyPage({ onBack }: { onBack?: () => void } = {}
           <div style={{ width: 44 }} />
         </div>
 
+        <div style={{
+          display: 'flex', gap: 10, padding: '0 16px 18px',
+          borderBottom: '1px solid rgba(255,255,255,0.05)',
+          marginBottom: 20,
+        }}>
+          {(['Adult', 'Kids'] as const).map((cat) => (
+            <button
+              key={cat}
+              onClick={() => setActiveBeltCategory(cat)}
+              style={{
+                padding: '8px 20px', borderRadius: 12, cursor: 'pointer',
+                fontSize: 12, fontWeight: 700, letterSpacing: '0.05em',
+                transition: 'all 0.25s',
+                background: activeBeltCategory === cat ? 'rgba(212,175,55,0.15)' : 'rgba(255,255,255,0.03)',
+                border: `1px solid ${activeBeltCategory === cat ? '#D4AF37' : 'rgba(255,255,255,0.08)'}`,
+                color: activeBeltCategory === cat ? '#D4AF37' : '#888',
+                fontFamily: 'inherit',
+                WebkitTapHighlightColor: 'transparent',
+              }}
+            >
+              {cat}
+            </button>
+          ))}
+        </div>
+
         {loading && !hasPromotions && (
           <div className="bjv6-skeleton">
             <div className="bjv6-skeleton-card" style={{ height: 220 }} />
@@ -902,22 +1018,26 @@ export default function BeltJourneyPage({ onBack }: { onBack?: () => void } = {}
         {!loading && !hasPromotions && (
           <div className="bjv6-empty">
             <div className="bjv6-empty-title">The Journey Begins</div>
-            <div className="bjv6-empty-sub">Every black belt started right where you are.</div>
+            <div className="bjv6-empty-sub">
+              {activeBeltCategory === 'Kids'
+                ? 'No kids belts logged yet. Start the journey.'
+                : 'Every black belt started right where you are.'}
+            </div>
           </div>
         )}
 
         {hasPromotions && current && (
           <>
-            <HeroCard current={current} promotions={promotions} />
+            <HeroCard current={current} promotions={filteredPromotions} />
 
             <div className="bjv6-section-row">
               <div className="bjv6-section-lbl">The Path</div>
-              <div className="bjv6-section-count">{promotions.length} logged</div>
+              <div className="bjv6-section-count">{filteredPromotions.length} logged</div>
             </div>
 
             <div className="bjv6-timeline">
-              {promotions.map((p, i) => {
-                const isCurrent = i === promotions.length - 1;
+              {filteredPromotions.map((p, i) => {
+                const isCurrent = i === filteredPromotions.length - 1;
                 const node = (
                   <TimelineNode
                     key={`node-${p.id}`}
@@ -928,8 +1048,8 @@ export default function BeltJourneyPage({ onBack }: { onBack?: () => void } = {}
                     onDeleteCard={deleteById}
                   />
                 );
-                if (i < promotions.length - 1) {
-                  const nextP = promotions[i + 1];
+                if (i < filteredPromotions.length - 1) {
+                  const nextP = filteredPromotions[i + 1];
                   const m = monthsBetween(p.date, nextP.date);
                   const avg = BELT_AVG[p.belt] || 24;
                   const isEarly = m < avg;
@@ -985,7 +1105,7 @@ export default function BeltJourneyPage({ onBack }: { onBack?: () => void } = {}
               <line x1="12" y1="5" x2="12" y2="19"/>
               <line x1="5" y1="12" x2="19" y2="12"/>
             </svg>
-            <span>{promotions.length === 0 ? 'Log My First Belt' : 'Add Promotion'}</span>
+            <span>{filteredPromotions.length === 0 ? 'Log My First Belt' : 'Add Promotion'}</span>
           </button>
         </div>,
         portalTarget
@@ -997,10 +1117,13 @@ export default function BeltJourneyPage({ onBack }: { onBack?: () => void } = {}
           isEditing={!!editingId}
           belt={forgeBelt}
           stripes={forgeStripes}
+          bar={forgeBar}
           date={forgeDate}
           note={forgeNote}
+          category={activeBeltCategory}
           onSetBelt={setForgeBelt}
           onSetStripes={setForgeStripes}
+          onSetBar={setForgeBar}
           onSetDate={setForgeDate}
           onSetNote={setForgeNote}
           onClose={closeForm}
@@ -1012,7 +1135,7 @@ export default function BeltJourneyPage({ onBack }: { onBack?: () => void } = {}
       )}
 
       {portalTarget && createPortal(
-        <Ceremony belt={ceremonyBelt} show={ceremonyShow} onClose={handleCloseCeremony} />,
+        <Ceremony belt={ceremonyBelt} bar={ceremonyBar} show={ceremonyShow} onClose={handleCloseCeremony} />,
         portalTarget
       )}
     </div>
