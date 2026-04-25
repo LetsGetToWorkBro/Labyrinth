@@ -30,7 +30,7 @@ export function LiveStreamBanner({ stream }: LiveStreamBannerProps) {
   // 'expanded' = full player expanded
   // 'leaving'  = collapsing out
   const [phase, setPhase] = useState<'hidden' | 'entering' | 'visible' | 'expanded' | 'leaving'>('hidden');
-  const [dismissed, setDismissed] = useState(false);
+  const [dismissed, setDismissed] = useState<boolean>(() => false);
   const [viewers, setViewers] = useState(0);
   const [glitch, setGlitch] = useState(false);
   const [ambientRed, setAmbientRed] = useState(false);
@@ -45,22 +45,26 @@ export function LiveStreamBanner({ stream }: LiveStreamBannerProps) {
 
   // ── trigger entrance when stream goes live ─────────────────────────
   useEffect(() => {
-    if (!isLive || dismissed) {
-      if (phase !== 'hidden' && phase !== 'leaving') {
-        triggerLeave();
-      }
+    if (!isLive) {
+      if (phase !== 'hidden' && phase !== 'leaving') triggerLeave();
       return;
     }
 
-    // New stream came online (or same one while dismissed was reset)
+    // Check if this specific stream was dismissed
+    const dismissedId = (() => { try { return localStorage.getItem('lbjj_stream_dismissed') || ''; } catch { return ''; } })();
+    const wasDismissed = stream?.videoId && dismissedId === stream.videoId;
+    if (wasDismissed) return; // user dismissed this specific stream
+
     if (stream?.videoId && stream.videoId !== lastVideoId.current) {
       lastVideoId.current = stream.videoId;
       triggerEntrance();
     } else if (phase === 'hidden') {
+      // Stream was already live when page loaded
+      if (stream?.videoId) lastVideoId.current = stream.videoId;
       triggerEntrance();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isLive, stream?.videoId, dismissed]);
+  }, [isLive, stream?.videoId]);
 
   function triggerEntrance() {
     setDismissed(false);
@@ -109,6 +113,9 @@ export function LiveStreamBanner({ stream }: LiveStreamBannerProps) {
   function handleDismiss(e: React.MouseEvent) {
     e.stopPropagation();
     setDismissed(true);
+    if (stream?.videoId) {
+      try { localStorage.setItem('lbjj_stream_dismissed', stream.videoId); } catch {}
+    }
     triggerLeave();
   }
 

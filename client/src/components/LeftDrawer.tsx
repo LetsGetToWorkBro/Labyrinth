@@ -221,6 +221,7 @@ export function LeftDrawer() {
     {
       title: 'Community',
       items: [
+        { label: 'Live & Archive', path: '/live', icon: <span style={{ fontSize: 18 }}>🔴</span> },
         { label: 'Leaderboard', path: '/leaderboard', icon: <Medal size={18} color={GOLD} /> },
         { label: 'Chat', path: '/chat', icon: <MessageCircle size={18} color={GOLD} /> },
         { label: 'Games', path: '/games', icon: <Gamepad2 size={18} color={GOLD} /> },
