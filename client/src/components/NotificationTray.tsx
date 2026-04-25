@@ -79,7 +79,9 @@ function formatRelative(iso: string): string {
 
 function navigateTo(route: string) {
   if (!route) return;
-  const hash = route.startsWith('#') ? route : `#${route.startsWith('/') ? route : '/' + route}`;
+  // Normalize common aliases
+  const normalized = route === '/home' ? '/' : route;
+  const hash = normalized.startsWith('#') ? normalized : `#${normalized.startsWith('/') ? normalized : '/' + normalized}`;
   window.location.hash = hash;
 }
 

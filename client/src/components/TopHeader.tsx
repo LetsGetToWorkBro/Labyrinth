@@ -356,7 +356,7 @@ export function TopHeader({ onMenuOpen, onXpOpen }: { onMenuOpen: () => void; on
           type: 'level_up',
           title: 'Level Up! ⚡',
           body: `You reached Level ${newLv} — ${title}!`,
-          data: { route: '/home' },
+          data: { route: '/' },
         });
       } catch {}
       setFlashKey(k => k + 1);
