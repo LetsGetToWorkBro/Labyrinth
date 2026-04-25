@@ -184,6 +184,29 @@ function TabBar() {
   const { member, isAuthenticated } = useAuth();
   const [dmUnread, setDmUnread] = useState(0);
   const [claimableCount, setClaimableCount] = useState(() => computeClaimableAchievements());
+  const [beltNudge, setBeltNudge] = useState<boolean>(() => {
+    try {
+      const stored = localStorage.getItem('lbjj_belt_promotions');
+      const arr = stored ? JSON.parse(stored) : [];
+      return Array.isArray(arr) && arr.length === 0;
+    } catch { return true; }
+  });
+
+  useEffect(() => {
+    const handler = () => {
+      try {
+        const stored = localStorage.getItem('lbjj_belt_promotions');
+        const arr = stored ? JSON.parse(stored) : [];
+        setBeltNudge(Array.isArray(arr) && arr.length === 0);
+      } catch { setBeltNudge(true); }
+    };
+    window.addEventListener('belt-promotions-updated', handler);
+    window.addEventListener('storage', handler);
+    return () => {
+      window.removeEventListener('belt-promotions-updated', handler);
+      window.removeEventListener('storage', handler);
+    };
+  }, []);
 
   useEffect(() => {
     const handler = () => setNavPaths(getNavConfig());
@@ -332,7 +355,22 @@ function TabBar() {
                 )}
               </div>
             ) : (
-              <span style={{ fontSize: 20, lineHeight: 1 }}>{tab.emoji}</span>
+              <div style={{ position: 'relative', display: 'inline-flex' }}>
+                <span style={{ fontSize: 20, lineHeight: 1 }}>{tab.emoji}</span>
+                {tab.path === '/belt' && beltNudge && (
+                  <div
+                    aria-label="Belt journey not filled out"
+                    style={{
+                      position: 'absolute',
+                      top: -3, right: -6,
+                      width: 8, height: 8, borderRadius: '50%',
+                      background: '#D4AF37',
+                      border: '1.5px solid #0A0A0A',
+                      boxShadow: '0 0 6px rgba(212,175,55,0.8)',
+                    }}
+                  />
+                )}
+              </div>
             )}
             {/* Mat burn smear — belt-colored painterly blur under active icon */}
             {isActive && (

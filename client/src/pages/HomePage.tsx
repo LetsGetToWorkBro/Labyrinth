@@ -401,6 +401,29 @@ export default function HomePage() {
   const [showSeasonModal, setShowSeasonModal] = useState(false);
   const [widgetDotTick, setWidgetDotTick] = useState(0);
   const [showGameDayInfo, setShowGameDayInfo] = useState(false);
+  const [showBeltNudge, setShowBeltNudge] = useState<boolean>(() => {
+    try {
+      const stored = localStorage.getItem('lbjj_belt_promotions');
+      const arr = stored ? JSON.parse(stored) : [];
+      return Array.isArray(arr) && arr.length === 0;
+    } catch { return true; }
+  });
+
+  useEffect(() => {
+    const handler = () => {
+      try {
+        const stored = localStorage.getItem('lbjj_belt_promotions');
+        const arr = stored ? JSON.parse(stored) : [];
+        setShowBeltNudge(Array.isArray(arr) && arr.length === 0);
+      } catch {}
+    };
+    window.addEventListener('belt-promotions-updated', handler);
+    window.addEventListener('storage', handler);
+    return () => {
+      window.removeEventListener('belt-promotions-updated', handler);
+      window.removeEventListener('storage', handler);
+    };
+  }, []);
   // ─── 2× XP event ──────────────────────────────────────────
   const [xpEvent, setXpEvent] = useState<XpEvent | null>(null);
   const [isPulling, setIsPulling] = useState(false);
@@ -1981,6 +2004,48 @@ export default function HomePage() {
         ),
       });
     }
+    if (showBeltNudge) {
+      defs.push({
+        id: 'belt_nudge',
+        label: 'Belt Journey Nudge',
+        available: true,
+        render: () => (
+          <div className="mx-5 mb-3">
+            <a
+              href="/#/belt"
+              onClick={() => { document.documentElement.dataset.nav = 'forward'; }}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 14,
+                background: 'linear-gradient(135deg, rgba(212,175,55,0.12), rgba(212,175,55,0.04))',
+                border: '1px solid rgba(212,175,55,0.25)',
+                borderRadius: 16, padding: '14px 16px',
+                textDecoration: 'none', cursor: 'pointer',
+                margin: '0 0 12px',
+                WebkitTapHighlightColor: 'transparent',
+              }}
+            >
+              <div style={{
+                width: 42, height: 42, borderRadius: 12, flexShrink: 0,
+                background: 'rgba(212,175,55,0.15)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontSize: 22,
+              }}>🥋</div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 13, fontWeight: 800, color: '#D4AF37', letterSpacing: '0.02em', marginBottom: 2 }}>
+                  Log Your Belt Journey
+                </div>
+                <div style={{ fontSize: 11, color: '#888', lineHeight: 1.4 }}>
+                  Track every promotion — your path on the mats deserves a record.
+                </div>
+              </div>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#D4AF37" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, opacity: 0.7 }}>
+                <polyline points="9 18 15 12 9 6"/>
+              </svg>
+            </a>
+          </div>
+        ),
+      });
+    }
     defs.push({
       id: 'stats_row',
       label: 'Streak & Classes',
@@ -2102,6 +2167,7 @@ export default function HomePage() {
     leaderboard, prevPositions,
     widgetDotTick,
     xpEvent,
+    showBeltNudge,
   ]);
 
   const { editMode, setEditMode, visibleDefs, hiddenDefs, hide, show, moveBefore } = useWidgetLayout(widgetDefs);

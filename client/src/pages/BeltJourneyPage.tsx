@@ -724,6 +724,7 @@ export default function BeltJourneyPage({ onBack }: { onBack?: () => void } = {}
       try {
         localStorage.setItem('lbjj_belt_promotions_cache', JSON.stringify(mapped));
         localStorage.setItem('lbjj_belt_promotions', JSON.stringify(mapped));
+        window.dispatchEvent(new Event('belt-promotions-updated'));
       } catch {}
     } catch (err) {
       console.error('beltGetPromotions failed', err);
@@ -829,6 +830,7 @@ export default function BeltJourneyPage({ onBack }: { onBack?: () => void } = {}
         try {
           localStorage.setItem('lbjj_belt_promotions_cache', JSON.stringify(next));
           localStorage.setItem('lbjj_belt_promotions', JSON.stringify(next));
+          window.dispatchEvent(new Event('belt-promotions-updated'));
         } catch {}
         return next;
       });
