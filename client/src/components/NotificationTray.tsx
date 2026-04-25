@@ -458,6 +458,8 @@ export function NotificationBell() {
           alignItems: 'center',
           justifyContent: 'center',
           WebkitTapHighlightColor: 'transparent',
+          width: 24,
+          height: 24,
         }}
       >
         <Bell
@@ -476,8 +478,8 @@ export function NotificationBell() {
             aria-hidden
             style={{
               position: 'absolute',
-              top: -2,
-              right: -2,
+              top: -4,
+              right: -4,
               width: 8,
               height: 8,
               borderRadius: 999,
