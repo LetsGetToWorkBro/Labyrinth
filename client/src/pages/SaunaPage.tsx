@@ -1,5 +1,5 @@
-import { useState, useEffect, useRef, useMemo, useCallback } from "react";
-import { gasCall } from "@/lib/api";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
+import { gasCall, saunaCheckin, saunaCheckout } from "@/lib/api";
 
 type Session = {
   id: string | number;
@@ -8,8 +8,6 @@ type Session = {
   seconds: number;
   exiting?: boolean;
 };
-
-type MemberLite = { name: string };
 
 const MAX_CAPACITY = 6;
 const MAX_TIME_SEC = 20 * 60;
@@ -111,6 +109,26 @@ body.sauna-active .sauna-term .t-card.capacity .t-value { color: var(--heat-2); 
   box-shadow: 0 30px 60px rgba(0,0,0,0.8), inset 0 2px 0 rgba(255,255,255,0.05);
   position: relative; z-index: 10;
 }
+.sauna-term .checkin-row { display: flex; gap: 12px; align-items: stretch; }
+.sauna-term .checkin-id {
+  flex: 1; min-width: 0;
+  background: rgba(0,0,0,0.6); border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 14px; padding: 10px 16px;
+  display: flex; flex-direction: column; justify-content: center; gap: 2px;
+  min-height: 60px;
+}
+.sauna-term .checkin-id-label { font-size: 10px; font-weight: 800; letter-spacing: 0.15em; text-transform: uppercase; color: var(--text-muted); }
+.sauna-term .checkin-id-name { font-size: 18px; font-weight: 800; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+.sauna-term .btn-checkin-out {
+  background: linear-gradient(135deg, #00C853, #00FF7F) !important;
+  box-shadow: 0 10px 20px rgba(0, 255, 127, 0.25), inset 0 2px 2px rgba(255,255,255,0.3) !important;
+  color: #002b14 !important;
+}
+.sauna-term .btn-checkin-out:active:not(:disabled) {
+  box-shadow: 0 5px 10px rgba(0, 255, 127, 0.35), inset 0 2px 2px rgba(255,255,255,0.1) !important;
+}
+
 .sauna-term .search-row { display: flex; gap: 12px; position: relative; }
 .sauna-term .input-wrap { flex: 1; position: relative; }
 .sauna-term .input-wrap svg.search-icon { position: absolute; left: 16px; top: 50%; transform: translateY(-50%); width: 20px; height: 20px; stroke: var(--text-muted); z-index: 2; transition: stroke 0.3s; pointer-events: none; }
@@ -263,13 +281,19 @@ function injectCSSOnce() {
 export default function SaunaPage({ onBack }: { onBack?: () => void } = {}) {
   const [sessions, setSessions] = useState<Session[]>([]);
   const [dailyTotal, setDailyTotal] = useState(0);
-  const [members, setMembers] = useState<MemberLite[]>([]);
-  const [query, setQuery] = useState("");
-  const [selectedName, setSelectedName] = useState<string | null>(null);
-  const [showAC, setShowAC] = useState(false);
   const [scanning, setScanning] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const wrapRef = useRef<HTMLDivElement | null>(null);
+
+  const memberName = useMemo(() => {
+    try {
+      const profile = JSON.parse(localStorage.getItem("lbjj_member_profile") || "{}");
+      const name = String(profile.name || profile.Name || "").trim();
+      return name || "Member";
+    } catch {
+      return "Member";
+    }
+  }, []);
 
   // Inject CSS + set body bg + furnace glow element
   useEffect(() => {
@@ -298,29 +322,6 @@ export default function SaunaPage({ onBack }: { onBack?: () => void } = {}) {
     if (sessions.length > 0) document.body.classList.add("sauna-active");
     else document.body.classList.remove("sauna-active");
   }, [sessions.length]);
-
-  // Load members list for autocomplete on mount
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      try {
-        const res = await gasCall("members", {});
-        const list: any[] = res?.members || [];
-        if (!cancelled) {
-          setMembers(
-            list
-              .map((m) => ({ name: String(m?.name || "").trim() }))
-              .filter((m) => m.name.length > 0),
-          );
-        }
-      } catch (e) {
-        console.warn("sauna members fetch failed", e);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
 
   // Load active sessions + poll every 30s (pause when hidden)
   const refresh = useCallback(async () => {
@@ -414,50 +415,25 @@ export default function SaunaPage({ onBack }: { onBack?: () => void } = {}) {
     return () => window.clearInterval(iv);
   }, []);
 
-  // Close autocomplete on outside click
-  useEffect(() => {
-    const handler = (e: MouseEvent) => {
-      const t = e.target as HTMLElement | null;
-      if (!t || !wrapRef.current) return;
-      if (!wrapRef.current.contains(t)) setShowAC(false);
-    };
-    document.addEventListener("click", handler);
-    return () => document.removeEventListener("click", handler);
-  }, []);
-
-  const filtered = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    const seenNames = new Set(sessions.map((s) => s.name.toLowerCase()));
-    const base = members.filter((m) => !seenNames.has(m.name.toLowerCase()));
-    if (!q) return base.slice(0, 20);
-    return base.filter((m) => m.name.toLowerCase().includes(q)).slice(0, 20);
-  }, [query, members, sessions]);
-
-  const selectUser = (name: string) => {
-    setSelectedName(name);
-    setQuery(name);
-    setShowAC(false);
-  };
-
   const simulateNFC = () => {
     setScanning(true);
-    window.setTimeout(() => {
-      setScanning(false);
-      if (filtered.length > 0) selectUser(filtered[0].name);
-    }, 1000);
+    window.setTimeout(() => setScanning(false), 1000);
   };
+
+  const mySession = useMemo(
+    () =>
+      sessions.find(
+        (s) => !s.exiting && s.name.toLowerCase() === memberName.toLowerCase(),
+      ),
+    [sessions, memberName],
+  );
 
   const checkIn = async () => {
     if (submitting) return;
     if (sessions.length >= MAX_CAPACITY) return;
-    const name = (selectedName || query).trim();
-    if (!name) return;
-    // Don't double-add
-    if (sessions.some((s) => s.name.toLowerCase() === name.toLowerCase())) {
-      setSelectedName(null);
-      setQuery("");
-      return;
-    }
+    const name = memberName.trim();
+    if (!name || name === "Member") return;
+    if (mySession) return;
 
     setSubmitting(true);
     const optimistic: Session = {
@@ -467,22 +443,18 @@ export default function SaunaPage({ onBack }: { onBack?: () => void } = {}) {
       seconds: 0,
     };
     setSessions((prev) => [optimistic, ...prev]);
-    setSelectedName(null);
-    setQuery("");
 
     try {
-      const res = await gasCall("checkin", { name });
+      const res = await saunaCheckin(name);
       const serverId = res?.session?.id;
       if (serverId) {
         setSessions((prev) =>
           prev.map((s) => (s.id === optimistic.id ? { ...s, id: serverId } : s)),
         );
       }
-      // Kick a refresh shortly so server daily total / authoritative ids sync
       setTimeout(() => refresh(), 500);
     } catch (e) {
       console.error("sauna checkin failed", e);
-      // Roll back optimistic entry
       setSessions((prev) => prev.filter((s) => s.id !== optimistic.id));
     } finally {
       setSubmitting(false);
@@ -493,12 +465,11 @@ export default function SaunaPage({ onBack }: { onBack?: () => void } = {}) {
     const target = sessions.find((s) => s.id === id);
     if (!target || target.exiting) return;
 
-    // Start slide-out animation
     setSessions((prev) => prev.map((s) => (s.id === id ? { ...s, exiting: true } : s)));
     setDailyTotal((n) => n + 1);
 
     try {
-      await gasCall("checkout", { name: target.name });
+      await saunaCheckout(target.name);
     } catch (e) {
       console.error("sauna checkout failed", e);
     }
@@ -507,6 +478,10 @@ export default function SaunaPage({ onBack }: { onBack?: () => void } = {}) {
       setSessions((prev) => prev.filter((s) => s.id !== id));
       refresh();
     }, 400);
+  };
+
+  const checkOutMe = async () => {
+    if (mySession) await checkOut(mySession.id);
   };
 
   const handleBack = () => {
@@ -518,7 +493,9 @@ export default function SaunaPage({ onBack }: { onBack?: () => void } = {}) {
   const canCheckIn =
     !submitting &&
     currentCount < MAX_CAPACITY &&
-    (selectedName || query).trim().length > 0;
+    !mySession &&
+    memberName.trim().length > 0 &&
+    memberName !== "Member";
 
   return (
     <div className="sauna-term" ref={wrapRef}>
@@ -554,42 +531,10 @@ export default function SaunaPage({ onBack }: { onBack?: () => void } = {}) {
         </div>
 
         <div className="console">
-          <div className="search-row">
-            <div className="input-wrap">
-              <input
-                type="text"
-                className="search-input"
-                placeholder="Search name or scan NFC..."
-                value={query}
-                onChange={(e) => {
-                  setQuery(e.target.value);
-                  setSelectedName(null);
-                  setShowAC(true);
-                }}
-                onFocus={() => setShowAC(true)}
-                onClick={() => setShowAC(true)}
-                enterKeyHint="go"
-              />
-              <svg className="search-icon" viewBox="0 0 24 24" fill="none" strokeWidth="2">
-                <circle cx="11" cy="11" r="8" />
-                <line x1="21" y1="21" x2="16.65" y2="16.65" />
-              </svg>
-              <div className={`autocomplete ${showAC ? "show" : ""}`}>
-                {filtered.length === 0 ? (
-                  <div className="ac-empty">No matches</div>
-                ) : (
-                  filtered.map((m) => (
-                    <div
-                      key={m.name}
-                      className="ac-item"
-                      onClick={() => selectUser(m.name)}
-                    >
-                      <div className="ac-avatar">{getInitials(m.name)}</div>
-                      <div className="ac-name">{m.name}</div>
-                    </div>
-                  ))
-                )}
-              </div>
+          <div className="checkin-row">
+            <div className="checkin-id">
+              <div className="checkin-id-label">Checking in as</div>
+              <div className="checkin-id-name">{memberName}</div>
             </div>
             <button
               className={`btn-nfc ${scanning ? "scanning" : ""}`}
@@ -603,18 +548,33 @@ export default function SaunaPage({ onBack }: { onBack?: () => void } = {}) {
             </button>
           </div>
 
-          <button
-            className="btn-checkin"
-            onClick={checkIn}
-            disabled={!canCheckIn}
-            type="button"
-          >
-            Authorize Entry
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
-              <line x1="5" y1="12" x2="19" y2="12" />
-              <polyline points="12 5 19 12 12 19" />
-            </svg>
-          </button>
+          {mySession ? (
+            <button
+              className="btn-checkin btn-checkin-out"
+              onClick={checkOutMe}
+              disabled={submitting}
+              type="button"
+            >
+              You're In — Check Out
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                <polyline points="9 10 4 15 9 20" />
+                <path d="M20 4v7a4 4 0 0 1-4 4H4" />
+              </svg>
+            </button>
+          ) : (
+            <button
+              className="btn-checkin"
+              onClick={checkIn}
+              disabled={!canCheckIn}
+              type="button"
+            >
+              Check Me In
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                <line x1="5" y1="12" x2="19" y2="12" />
+                <polyline points="12 5 19 12 12 19" />
+              </svg>
+            </button>
+          )}
         </div>
 
         <div className="section-lbl">Active Sessions</div>
