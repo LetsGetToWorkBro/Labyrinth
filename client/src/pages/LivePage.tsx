@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
-import { getStreamStatus, getStreamArchive, getEmbedUrl } from "@/lib/streaming";
-import type { StreamStatus, ArchiveEntry } from "@/lib/streaming";
+import { getStreamStatus, getStreamArchive, getEmbedUrl, getNextStreams } from "@/lib/streaming";
+import type { StreamStatus, ArchiveEntry, NextUpItem } from "@/lib/streaming";
+import { gasCall, getToken } from "@/lib/api";
 import { SkeletonCard, ErrorState } from "@/components/StateComponents";
 import { X, Bell } from "lucide-react";
 
@@ -293,9 +294,6 @@ function NotifyToggle() {
 }
 
 // ── Next Up Row ────────────────────────────────────────────────────
-interface NextUpItem {
-  id: string; label: string; time: string; title: string; instructor: string; category: string;
-}
 function NextUpRow({ item }: { item: NextUpItem }) {
   const [timePart, ampm] = item.time.split(" ");
   const pillClass = item.category === "No-Gi" ? "lv3-nextup-pill nogi" : item.category === "Kids" ? "lv3-nextup-pill kids" : "lv3-nextup-pill";
@@ -363,12 +361,54 @@ export default function LivePage() {
     }
   };
 
-  // Upcoming streams — replace with real GAS/Supabase data
-  const nextUp: NextUpItem[] = [
-    { id: "nu1", label: "Tonight", time: "6:30 PM", title: "Advanced Gi", instructor: "Anthony", category: "Gi" },
-    { id: "nu2", label: "Tomorrow", time: "9:00 AM", title: "Foundations", instructor: "Coach D", category: "No-Gi" },
-    { id: "nu3", label: "Fri", time: "5:30 PM", title: "Kids Class", instructor: "Jessica", category: "Kids" },
-  ];
+  const [nextUp, setNextUp] = useState<NextUpItem[]>([]);
+  useEffect(() => {
+    getNextStreams().then(setNextUp);
+  }, []);
+
+  // ── Tune In XP ──────────────────────────────────────────────────
+  const TUNE_IN_KEY = stream.videoId ? `lbjj_tunein_${stream.videoId}` : "";
+  const [tunedIn, setTunedIn] = useState(false);
+  const [tuningIn, setTuningIn] = useState(false);
+
+  useEffect(() => {
+    if (!TUNE_IN_KEY) { setTunedIn(false); return; }
+    try { setTunedIn(!!localStorage.getItem(TUNE_IN_KEY)); } catch { setTunedIn(false); }
+  }, [TUNE_IN_KEY]);
+
+  const handleTuneIn = async () => {
+    if (tunedIn || !stream.isLive || tuningIn || !TUNE_IN_KEY) return;
+    setTuningIn(true);
+    try {
+      const token = getToken();
+      if (!token) { setTuningIn(false); return; }
+      const currentXP = (() => {
+        try {
+          const s = JSON.parse(localStorage.getItem('lbjj_game_stats_v2') || '{}');
+          return s.totalXP || s.xp || 0;
+        } catch { return 0; }
+      })();
+      const newXP = currentXP + 15;
+      try {
+        const stats = JSON.parse(localStorage.getItem('lbjj_game_stats_v2') || '{}');
+        stats.totalXP = newXP;
+        stats.xp = newXP;
+        localStorage.setItem('lbjj_game_stats_v2', JSON.stringify(stats));
+        window.dispatchEvent(new Event('xp-updated'));
+      } catch {}
+      await gasCall('saveMemberStats', {
+        token,
+        totalPoints: newXP,
+        source: 'stream_watch',
+      });
+      localStorage.setItem(TUNE_IN_KEY, '1');
+      setTunedIn(true);
+    } catch (e) {
+      console.error('Tune in XP error:', e);
+    } finally {
+      setTuningIn(false);
+    }
+  };
 
   // YouTube live chat URL — only valid when actually embedded on your domain
   const chatUrl = stream.videoId
@@ -452,6 +492,35 @@ export default function LivePage() {
                     <button key={emoji} className="lv3-reaction-btn" onClick={() => sendReaction(emoji)}>{emoji}</button>
                   ))}
                 </div>
+
+                {/* Tune In XP button */}
+                <button
+                  onClick={handleTuneIn}
+                  disabled={tunedIn || tuningIn}
+                  style={{
+                    width: '100%',
+                    padding: '13px',
+                    borderRadius: 14,
+                    cursor: tunedIn ? 'default' : 'pointer',
+                    background: tunedIn
+                      ? 'rgba(34,197,94,0.08)'
+                      : 'linear-gradient(135deg, rgba(212,175,55,0.15), rgba(212,175,55,0.05))',
+                    border: `1px solid ${tunedIn ? 'rgba(34,197,94,0.3)' : 'rgba(212,175,55,0.25)'}`,
+                    color: tunedIn ? '#22c55e' : '#D4AF37',
+                    fontSize: 13,
+                    fontWeight: 800,
+                    letterSpacing: '0.04em',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: 8,
+                    transition: 'all 0.2s',
+                    margin: '8px 4px 4px',
+                    WebkitTapHighlightColor: 'transparent',
+                  }}
+                >
+                  {tunedIn ? '✓ Tuned In — +15 XP earned' : tuningIn ? 'Checking in…' : '📡 Tune In — Earn 15 XP'}
+                </button>
               </div>
             </div>
           )}

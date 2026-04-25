@@ -8,6 +8,9 @@
  *   dismissed → collapses back out (spring up)
  *
  * CSS transitions replace GSAP; same easing curves and timing.
+ *
+ * NOTE: Currently returns null when stream is offline. Future enhancement: when
+ * offline, show next scheduled stream time using getNextStreams() from streaming.ts.
  */
 
 import React, { useState, useEffect, useRef } from 'react';
