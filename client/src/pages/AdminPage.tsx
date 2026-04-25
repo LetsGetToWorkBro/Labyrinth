@@ -90,10 +90,10 @@ export default function AdminPage({ onBack }: { onBack: () => void }) {
         pinned: annPin,
       });
       console.log('[AdminPage] pinAnnouncement result:', JSON.stringify(result));
-      if (result?.success === false) {
-        showToast(result.error || "Failed to publish", "error");
+      if (!result || result?.success === false) {
+        showToast(`Pin failed: ${result?.error || 'No response'}`, "error");
       } else {
-        showToast("Announcement published");
+        showToast("✓ Announcement pinned to home screens");
         window.dispatchEvent(new Event('announcement-updated'));
         setAnnTitle("");
         setAnnMessage("");
@@ -207,6 +207,7 @@ export default function AdminPage({ onBack }: { onBack: () => void }) {
   const handleSaveAll = async () => {
     setSaving(true);
     try {
+      console.log('[AdminPage] saveGeoConfig payload:', { checkinWindowMinutes: gateWindow, checkinGateEnabled: gateEnabled, geoEnabled, geoLocation, geoRadiusYards: geoRadius, geoLat, geoLng });
       const result = await gasCall("saveGeoConfig", {
         token: getToken() || "",
         checkinWindowMinutes: gateWindow,
@@ -656,7 +657,7 @@ const rootStyle: React.CSSProperties = {
   fontFamily: "Inter, system-ui, sans-serif",
   minHeight: "100vh",
   padding: "20px 20px",
-  paddingBottom: "calc(140px + env(safe-area-inset-bottom, 0px))",
+  paddingBottom: "calc(180px + env(safe-area-inset-bottom, 34px))",
   WebkitFontSmoothing: "antialiased",
 };
 
@@ -850,7 +851,7 @@ function StyleBlock() {
       .lbj-btn-secondary.btn-announcement:hover:not(:disabled) { background: rgba(244, 63, 94, 0.2); }
 
       .lbj-save-bar {
-        position: fixed; bottom: calc(64px + env(safe-area-inset-bottom, 0px)); left: 50%; transform: translateX(-50%); z-index: 10;
+        position: fixed; bottom: calc(72px + env(safe-area-inset-bottom, 34px)); left: 50%; transform: translateX(-50%); z-index: 10;
         width: calc(430px - 40px); max-width: calc(100% - 40px);
         background: rgba(10,10,12,0.9); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
         border: 1px solid rgba(200,162,76,0.5); padding: 16px; border-radius: 16px;
