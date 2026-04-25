@@ -504,8 +504,8 @@ export function TopHeader({ onMenuOpen, onXpOpen }: { onMenuOpen: () => void; on
         backdropFilter:'blur(14px)',WebkitBackdropFilter:'blur(14px)',
         borderBottom: hdrGlow ? `1px solid ${tok.primary}` : '1px solid rgba(255,255,255,.05)',
         boxShadow: hdrGlow ? `0 2px 28px ${tok.glow}` : 'none',
-        paddingTop:'max(8px,env(safe-area-inset-top,8px))',
-        paddingBottom:8,paddingLeft:10,paddingRight:10,
+        paddingTop:'max(4px,env(safe-area-inset-top,4px))',
+        paddingBottom:5,paddingLeft:10,paddingRight:10,
         transition:'border-color .9s ease,box-shadow .9s ease',
       }}>
         <div style={{ display:'flex',alignItems:'center',gap:10 }}>
@@ -518,7 +518,7 @@ export function TopHeader({ onMenuOpen, onXpOpen }: { onMenuOpen: () => void; on
           {/* Center: LV chip + title + belt + XP bar */}
           <div style={{ flex:1,minWidth:0 }}>
             {/* Row 1 */}
-            <div style={{ display:'flex',alignItems:'center',gap:6,marginBottom:5 }}>
+            <div style={{ display:'flex',alignItems:'center',gap:6,marginBottom:3 }}>
               <span style={{
                 fontSize:10,fontWeight:900,color:tok.chipC,
                 background:tok.chipBg,
