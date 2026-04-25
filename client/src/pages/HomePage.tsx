@@ -320,18 +320,27 @@ const haptic = (pattern: number | number[] = 10) => {
 
 function parseClassMinutes(timeStr: string): number {
   if (!timeStr) return 0;
+  // ISO datetime string (from GAS decimal time serialization)
   if (timeStr.includes('T') && timeStr.includes('Z')) {
     const d = new Date(timeStr);
     return d.getUTCHours() * 60 + d.getUTCMinutes();
   }
-  const match = timeStr.match(/^(\d+):(\d+)\s*(AM|PM)$/i);
-  if (!match) return 0;
-  let h = parseInt(match[1], 10);
-  const m = parseInt(match[2], 10);
-  const period = match[3].toUpperCase();
-  if (period === 'PM' && h !== 12) h += 12;
-  if (period === 'AM' && h === 12) h = 0;
-  return h * 60 + m;
+  // HH:MM AM/PM format (e.g. "6:30 AM", "5:15 PM")
+  const ampm = timeStr.match(/^(\d+):(\d+)\s*(AM|PM)$/i);
+  if (ampm) {
+    let h = parseInt(ampm[1], 10);
+    const m = parseInt(ampm[2], 10);
+    const period = ampm[3].toUpperCase();
+    if (period === 'PM' && h !== 12) h += 12;
+    if (period === 'AM' && h === 12) h = 0;
+    return h * 60 + m;
+  }
+  // 24h format (e.g. "06:30", "18:30") — CLASS_SCHEDULE stores times this way
+  const h24 = timeStr.match(/^(\d{1,2}):(\d{2})$/);
+  if (h24) {
+    return parseInt(h24[1], 10) * 60 + parseInt(h24[2], 10);
+  }
+  return 0;
 }
 
 function formatClassTime(timeStr: string): string {
