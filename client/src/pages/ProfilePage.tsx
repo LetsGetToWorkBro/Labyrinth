@@ -12,6 +12,8 @@ import { getActualLevel } from '@/lib/xp';
 import { gasCall } from '@/lib/api';
 import { ALL_ACHIEVEMENTS } from '@/lib/achievements';
 
+const _PROFILE_V = 'v2.1';
+
 // ─── Belt SVG (mirrors BeltJourneyPage.tsx) ──────────────────────
 const BELT_DEFS: Record<string, { base: string; light: string; dark: string; darkest: string; glow: string; name: string }> = {
   white:  { base: '#E5E5E5', light: '#FFFFFF', dark: '#B0B0B0', darkest: '#888888', glow: 'rgba(255,255,255,0.4)', name: 'White' },
