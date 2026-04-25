@@ -221,7 +221,16 @@ export function LeftDrawer() {
     {
       title: 'Community',
       items: [
-        { label: 'Live & Archive', path: '/live', icon: <span style={{ fontSize: 18 }}>🔴</span> },
+        { label: 'Live & Archive', path: '/live', icon: (
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: GOLD }}>
+            <path d="M2 12C2 6.48 6.48 2 12 2s10 4.48 10 10-4.48 10-10 10S2 17.52 2 12z" opacity="0.15" fill="currentColor" stroke="none"/>
+            <circle cx="12" cy="12" r="3" fill="currentColor" stroke="none"/>
+            <path d="M6.34 6.34a8 8 0 0 0 0 11.32"></path>
+            <path d="M17.66 6.34a8 8 0 0 1 0 11.32"></path>
+            <path d="M9.17 9.17a4 4 0 0 0 0 5.66"></path>
+            <path d="M14.83 9.17a4 4 0 0 1 0 5.66"></path>
+          </svg>
+        ) },
         { label: 'Leaderboard', path: '/leaderboard', icon: <Medal size={18} color={GOLD} /> },
         { label: 'Chat', path: '/chat', icon: <MessageCircle size={18} color={GOLD} /> },
         { label: 'Games', path: '/games', icon: <Gamepad2 size={18} color={GOLD} /> },
