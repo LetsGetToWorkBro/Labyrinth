@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { createPortal } from "react-dom";
+import { useParams } from "wouter";
 import { beltGetPromotions, beltSavePromotion, beltDeletePromotion, beltUpdatePromotion } from "@/lib/api";
 
 type BeltCategory = 'Adult' | 'Kids';
@@ -506,7 +507,7 @@ function HeroCard({ current, promotions }: { current: Promotion; promotions: Pro
   );
 }
 
-function TimelineNode({ p, i, isCurrent, onEdit, onDeleteCard }: { p: Promotion; i: number; isCurrent: boolean; onEdit: (id: string) => void; onDeleteCard: (id: string) => void }) {
+function TimelineNode({ p, i, isCurrent, onEdit, onDeleteCard, readOnly }: { p: Promotion; i: number; isCurrent: boolean; onEdit: (id: string) => void; onDeleteCard: (id: string) => void; readOnly?: boolean }) {
   const pColor = (BELT_DEFS[p.belt] || BELT_DEFS.white).base;
   const [confirming, setConfirming] = useState(false);
   const cardStyle = {
@@ -521,8 +522,8 @@ function TimelineNode({ p, i, isCurrent, onEdit, onDeleteCard }: { p: Promotion;
           {isCurrent && <div className="bjv6-current-star">★</div>}
           <div
             className={`bjv6-node-orb ${isCurrent ? 'bjv6-current' : ''}`}
-            style={{ ['--node-color' as any]: pColor } as React.CSSProperties}
-            onClick={() => onEdit(p.id)}
+            style={{ ['--node-color' as any]: pColor, cursor: readOnly ? 'default' : 'pointer' } as React.CSSProperties}
+            onClick={() => { if (!readOnly) onEdit(p.id); }}
             dangerouslySetInnerHTML={{ __html: beltSVG(p.belt, p.stripes, 46, false, p.bar || 'none') }}
           />
         </div>
@@ -532,11 +533,11 @@ function TimelineNode({ p, i, isCurrent, onEdit, onDeleteCard }: { p: Promotion;
         style={cardStyle}
       >
         <div className="bjv6-node-card-row1">
-          <div onClick={() => onEdit(p.id)} style={{ flex: 1, cursor: 'pointer' }}>
+          <div onClick={() => { if (!readOnly) onEdit(p.id); }} style={{ flex: 1, cursor: readOnly ? 'default' : 'pointer' }}>
             <span className="bjv6-node-belt-name">{BELT_NAMES[p.belt] || 'Belt'}</span>
             {p.stripes > 0 && <span className="bjv6-node-stripes">{p.stripes}s</span>}
           </div>
-          {confirming ? (
+          {readOnly ? null : confirming ? (
             <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
               <button
                 onClick={(e) => { e.stopPropagation(); onDeleteCard(p.id); setConfirming(false); }}
@@ -761,6 +762,10 @@ function Ceremony({ belt, bar, show, onClose }: { belt: string | null; bar?: 'no
 }
 
 export default function BeltJourneyPage({ onBack }: { onBack?: () => void } = {}) {
+  const params = useParams<{ email?: string }>();
+  const viewEmail = params?.email ? decodeURIComponent(params.email) : null;
+  const isViewMode = !!viewEmail;
+  const [viewerName, setViewerName] = useState<string | null>(null);
   const [promotions, setPromotions] = useState<Promotion[]>([]);
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(false);
@@ -787,9 +792,17 @@ export default function BeltJourneyPage({ onBack }: { onBack?: () => void } = {}
 
   const loadPromotions = useCallback(async () => {
     try {
-      const list = await beltGetPromotions();
+      const list = await beltGetPromotions(viewEmail || undefined);
       let deletedIds: string[] = [];
-      try { deletedIds = JSON.parse(localStorage.getItem('lbjj_belt_deleted_ids') || '[]'); } catch {}
+      if (!isViewMode) {
+        try { deletedIds = JSON.parse(localStorage.getItem('lbjj_belt_deleted_ids') || '[]'); } catch {}
+      }
+      // Capture viewer's display name from the response (if GAS includes memberName/name)
+      if (isViewMode && Array.isArray(list) && list.length) {
+        const first: any = list[0];
+        const n = first.memberName || first.name || null;
+        if (n) setViewerName(String(n));
+      }
       const mapped: Promotion[] = (list || [])
         .filter((p: any) => !deletedIds.includes(p.id))
         .map((p: any) => ({
@@ -805,30 +818,43 @@ export default function BeltJourneyPage({ onBack }: { onBack?: () => void } = {}
         .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
       setPromotions(mapped);
       try {
-        localStorage.setItem('lbjj_belt_promotions_cache', JSON.stringify(mapped));
-        localStorage.setItem('lbjj_belt_promotions', JSON.stringify(mapped));
-        window.dispatchEvent(new Event('belt-promotions-updated'));
+        if (isViewMode && viewEmail) {
+          localStorage.setItem(`lbjj_belt_promotions_${viewEmail}`, JSON.stringify(mapped));
+        } else {
+          localStorage.setItem('lbjj_belt_promotions_cache', JSON.stringify(mapped));
+          localStorage.setItem('lbjj_belt_promotions', JSON.stringify(mapped));
+          window.dispatchEvent(new Event('belt-promotions-updated'));
+        }
       } catch {}
     } catch (err) {
       console.error('beltGetPromotions failed', err);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [isViewMode, viewEmail]);
 
   useEffect(() => {
     try {
-      const cached = localStorage.getItem('lbjj_belt_promotions_cache') || localStorage.getItem('lbjj_belt_promotions');
+      const cacheKey = isViewMode && viewEmail
+        ? `lbjj_belt_promotions_${viewEmail}`
+        : null;
+      const cached = cacheKey
+        ? localStorage.getItem(cacheKey)
+        : (localStorage.getItem('lbjj_belt_promotions_cache') || localStorage.getItem('lbjj_belt_promotions'));
       if (cached) {
         const list = JSON.parse(cached);
         if (Array.isArray(list) && list.length) {
           setPromotions(list);
           setLoading(false);
         }
+      } else {
+        // switching modes — reset
+        setPromotions([]);
+        setLoading(true);
       }
     } catch {}
     loadPromotions();
-  }, [loadPromotions]);
+  }, [loadPromotions, isViewMode, viewEmail]);
 
   // Animate connector heights after render
   useEffect(() => {
@@ -944,6 +970,10 @@ export default function BeltJourneyPage({ onBack }: { onBack?: () => void } = {}
   };
 
   const handleBack = () => {
+    if (isViewMode && typeof window !== 'undefined') {
+      window.history.back();
+      return;
+    }
     if (onBack) onBack();
     else if (typeof window !== 'undefined') {
       window.location.hash = '/';
@@ -977,7 +1007,11 @@ export default function BeltJourneyPage({ onBack }: { onBack?: () => void } = {}
               <polyline points="15 18 9 12 15 6"/>
             </svg>
           </button>
-          <div className="bjv6-top-title">Belt Journey</div>
+          <div className="bjv6-top-title">
+            {isViewMode
+              ? `${(viewerName || viewEmail || 'Member').split(' ')[0]}'s Journey`
+              : 'Belt Journey'}
+          </div>
           <div style={{ width: 44 }} />
         </div>
 
@@ -1046,6 +1080,7 @@ export default function BeltJourneyPage({ onBack }: { onBack?: () => void } = {}
                     isCurrent={isCurrent}
                     onEdit={openEdit}
                     onDeleteCard={deleteById}
+                    readOnly={isViewMode}
                   />
                 );
                 if (i < filteredPromotions.length - 1) {
@@ -1098,7 +1133,7 @@ export default function BeltJourneyPage({ onBack }: { onBack?: () => void } = {}
         )}
       </div>
 
-      {portalTarget && createPortal(
+      {!isViewMode && portalTarget && createPortal(
         <div className="bjv6-bottom-bar">
           <button className="bjv6-bottom-add-btn" onClick={openAdd}>
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round">
@@ -1111,7 +1146,7 @@ export default function BeltJourneyPage({ onBack }: { onBack?: () => void } = {}
         portalTarget
       )}
 
-      {portalTarget && createPortal(
+      {!isViewMode && portalTarget && createPortal(
         <ForgeSheet
           open={open}
           isEditing={!!editingId}

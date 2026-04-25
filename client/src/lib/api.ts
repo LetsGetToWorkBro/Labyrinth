@@ -586,11 +586,11 @@ export async function beltSavePromotion(data: { belt: string; stripes: number; d
   }
 }
 
-export async function beltGetPromotions(): Promise<BeltPromotion[]> {
+export async function beltGetPromotions(memberEmail?: string): Promise<BeltPromotion[]> {
   const token = getToken() || '';
   if (!token) return [];
   try {
-    const result = await gasCall("beltGetPromotions", { token });
+    const result = await gasCall("beltGetPromotions", memberEmail ? { token, memberEmail } : { token });
     return result.promotions || [];
   } catch (err) {
     console.error("beltGetPromotions failed:", err);

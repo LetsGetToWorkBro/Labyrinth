@@ -2119,6 +2119,7 @@ function AppShell() {
             <Route path="/calendar"  component={CalendarPage} />
             <Route path="/stats"     component={StatsPage} />
             <Route path="/belt"      component={BeltJourneyPage} />
+            <Route path="/belt/:email" component={BeltJourneyPage} />
             <Route path="/chat"      component={ChatPage} />
             <Route path="/schedule"  component={SchedulePage} />
             <Route path="/sauna"     component={SaunaPage} />

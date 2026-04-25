@@ -1,6 +1,7 @@
 import { CalendarSparkIcon, GamepadIcon, BoltIcon } from "@/components/icons/LbjjIcons";
 import { EmptyState } from '@/components/StateComponents';
 import React, { useState, useEffect, useCallback } from 'react';
+import { useLocation } from 'wouter';
 import { getLeaderboard, type LeaderboardEntry } from '@/lib/api';
 import { useAuth } from '@/lib/auth-context';
 import { RefreshCw } from 'lucide-react';
@@ -48,6 +49,7 @@ function BeltMini({ belt }: { belt: string }) {
 
 export default function LeaderboardPage() {
   const { member } = useAuth();
+  const [, navigate] = useLocation();
   const [tab, setTab] = useState<Tab>('classes');
   const [period, setPeriod] = useState<Period>('weekly');
   const [classEntries, setClassEntries] = useState<LeaderboardEntry[]>([]);
@@ -273,10 +275,15 @@ export default function LeaderboardPage() {
             const prevPos = entry.name ? prevPositions[entry.name] : undefined;
             const rankDelta = prevPos !== undefined && prevPos !== rank ? prevPos - rank : null;
 
+            const entryEmail = (entry as any).email as string | undefined;
+            const onRowTap = () => {
+              if (entryEmail) navigate(`/belt/${encodeURIComponent(entryEmail)}`);
+            };
             return (
               <div
                 key={i}
                 className="lb-stagger"
+                onClick={entryEmail ? onRowTap : undefined}
                 style={{
                   animationDelay: `${Math.min(i, 10) * 60}ms`,
                   background: isMe ? `rgba(232,175,52,0.06)` : rc.cardBg,
@@ -287,6 +294,8 @@ export default function LeaderboardPage() {
                   animation: i === 0 ? 'lb-pulse-glow 2s ease-in-out infinite alternate' : `lb-stagger-in ${Math.min(i, 10) * 60}ms cubic-bezier(0.16,1,0.3,1) both`,
                   position: 'relative', overflow: 'hidden',
                   boxShadow: rank <= 3 ? `0 0 ${rank === 1 ? 20 : 12}px ${rc.cardBorder}` : 'none',
+                  cursor: entryEmail ? 'pointer' : 'default',
+                  WebkitTapHighlightColor: 'transparent',
                 }}
               >
                 {/* Rank badge */}

@@ -7,6 +7,7 @@
  */
 
 import React, { useState, useRef, useEffect, useCallback } from "react";
+import { useLocation } from "wouter";
 import { getBeltColor } from "@/lib/constants";
 import { ParagonRing } from "@/components/ParagonRing";
 import { getActualLevel } from "@/lib/xp";
@@ -1787,6 +1788,7 @@ function ProfileBody({ member, onDM }: { member: ChannelMember; onDM?: (m: Chann
   // ── Live enrichment from GAS ──────────────────────────────────────
   // ChannelMember only has name/belt/totalPoints from presence.
   // Fetch full profile (classesAttended, XP, achievements) by email.
+  const [, navigate] = useLocation();
   const [enriched, setEnriched] = useState<any>(null);
   const [badges, setBadges] = useState<any[]>([]);
 
@@ -1940,6 +1942,22 @@ function ProfileBody({ member, onDM }: { member: ChannelMember; onDM?: (m: Chann
           </div>
         );
       })()}
+
+      {/* Belt Journey CTA */}
+      {fullMember.email && (
+        <button
+          onClick={() => navigate(`/belt/${encodeURIComponent(fullMember.email!)}`)}
+          style={{
+            width: '100%', padding: '12px', borderRadius: 12,
+            background: 'rgba(212,175,55,0.1)', border: '1px solid rgba(212,175,55,0.2)',
+            color: '#D4AF37', fontSize: 13, fontWeight: 700, cursor: 'pointer',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+            marginTop: 8, WebkitTapHighlightColor: 'transparent',
+          }}
+        >
+          🥋 View Belt Journey
+        </button>
+      )}
 
       {/* Send Message CTA — only shown for others (onDM provided) */}
       {onDM && (
