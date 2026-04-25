@@ -477,9 +477,9 @@ export function NotificationBell() {
         }}
       >
         <Bell
-          size={18}
+          size={12}
           color={GOLD}
-          strokeWidth={2.2}
+          strokeWidth={2.5}
           style={{
             animation: showBadge
               ? 'bellPulse 2.2s ease-in-out infinite, bellShake 2.2s ease-in-out infinite'
