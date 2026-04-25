@@ -83,7 +83,7 @@ const CSS = `
   overflow: hidden;
   transition: height 0.3s cubic-bezier(0.16, 1, 0.3, 1), background 0.3s;
 }
-.v10-header.scrolled { height: 56px; background: rgba(3, 3, 5, 0.9); box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
+.v10-header.scrolled { height: 56px; background: rgba(3, 3, 5, 0.9); box-shadow: 0 10px 30px rgba(0,0,0,0.5); align-items: center; }
 
 .v10-logo-btn { width: 42px; height: 42px; cursor: pointer; background: none; border: none; padding: 0; position: relative; display: grid; place-items: center; border-radius: 50%; transition: all 0.3s; }
 .v10-logo-btn:active { transform: scale(0.92); }
