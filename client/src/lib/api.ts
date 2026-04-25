@@ -213,20 +213,16 @@ export async function gasCall(action: string, payload: Record<string, any> = {},
   const fullPayload = { action, ...payload };
   const jsonPayload = JSON.stringify(fullPayload);
 
-  // Always POST when a session token is present so it never leaks into URLs,
-  // server logs, browser history, or referrer headers. Unauthenticated public
-  // calls (schedule, stream status, trial booking) can still use GET.
-  const hasToken = !!payload?.token || !!getToken();
-  const isLarge = jsonPayload.length > 4000;
-  const usePost = hasToken || isLarge;
-
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), GAS_TIMEOUT_MS);
 
   try {
     let response: Response;
-    if (usePost) {
-      // POST as text/plain — GAS reads via e.postData.contents
+    // GAS POST is broken in this deployment (redirects to /macros/echo → 405).
+    // Always use GET with payload as query param — router.gs reads e.parameter.payload.
+    // For large payloads (>6000 chars, e.g. base64 PFP uploads), fall back to POST.
+    const isLarge = jsonPayload.length > 6000;
+    if (isLarge) {
       response = await fetch(_gasEndpoint, {
         method: "POST",
         headers: { "Content-Type": "text/plain" },
