@@ -34,6 +34,22 @@ type Tab = 'classes' | 'games';
 type SortBy = 'level' | 'classes';
 type Period = 'weekly' | 'monthly' | 'allTime';
 
+function cleanDisplayName(name: string): string {
+  if (!name) return 'Member';
+  if (name.includes('@')) {
+    const local = name.split('@')[0];
+    return local
+      .replace(/[._+\-]/g, ' ')
+      .replace(/\d+/g, '')
+      .trim()
+      .split(' ')
+      .filter(Boolean)
+      .map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+      .join(' ') || 'Member';
+  }
+  return name;
+}
+
 // ─── Mini belt SVG ─────────────────────────────────────────────────
 function BeltMini({ belt }: { belt: string }) {
   const b = (belt || 'white').toLowerCase();
@@ -95,7 +111,10 @@ export default function LeaderboardPage() {
       setClassEntries(classes);
       setGameEntries(games);
       const newPositions: Record<string, number> = {};
-      classes.forEach((e, i) => { if (e.name) newPositions[e.name] = i + 1; });
+      classes.forEach((e, i) => {
+        const key = (e as any).email || e.name;
+        if (key) newPositions[key] = i + 1;
+      });
       localStorage.setItem('lbjj_lb_positions_v1', JSON.stringify(newPositions));
       setPrevPositions(p => ({ ...p }));
     } catch (err) { console.error('[Leaderboard] Failed:', err); }
@@ -272,7 +291,8 @@ export default function LeaderboardPage() {
             const entryLevel = getActualLevel(entryXP);
             const beltKey = (entry.belt || 'white').toLowerCase();
             const beltTint = BELT_TINTS[beltKey] || '#888';
-            const prevPos = entry.name ? prevPositions[entry.name] : undefined;
+            const prevKey = (entry as any).email || entry.name;
+            const prevPos = prevKey ? prevPositions[prevKey] : undefined;
             const rankDelta = prevPos !== undefined && prevPos !== rank ? prevPos - rank : null;
 
             const entryEmail = (entry as any).email as string | undefined;
@@ -322,7 +342,7 @@ export default function LeaderboardPage() {
                     {entry.profilePic
                       ? <img src={entry.profilePic} style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%', display: 'block' }} alt="" />
                       : <div style={{ width: '100%', height: '100%', borderRadius: '50%', background: `${beltTint}22`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 15, fontWeight: 800, color: beltTint }}>
-                          {(entry.name || '?')[0].toUpperCase()}
+                          {(cleanDisplayName(entry.name) || '?')[0].toUpperCase()}
                         </div>
                     }
                   </ParagonRing>
@@ -337,7 +357,7 @@ export default function LeaderboardPage() {
                     lineHeight: 1.1, letterSpacing: '-0.01em',
                     textShadow: rank <= 3 ? `0 0 12px ${rc.name}50` : 'none',
                   }}>
-                    {entry.name}{isMe ? ' (You)' : ''}
+                    {cleanDisplayName(entry.name)}{isMe ? ' (You)' : ''}
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 4 }}>
                     <BeltMini belt={beltKey} />
@@ -384,10 +404,10 @@ export default function LeaderboardPage() {
                 <span style={{ fontSize: 13, fontWeight: 700, color: '#e8af34' }}>#{userRank}</span>
                 <ParagonRing level={entryLevel} size={32} showOrbit={false}>
                   <div style={{ width: '100%', height: '100%', borderRadius: '50%', background: 'rgba(232,175,52,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 800, color: '#e8af34' }}>
-                    {(userEntry.name || '?')[0].toUpperCase()}
+                    {(cleanDisplayName(userEntry.name) || '?')[0].toUpperCase()}
                   </div>
                 </ParagonRing>
-                <div style={{ flex: 1, fontSize: 13, fontWeight: 700, color: '#e8af34' }}>{userEntry.name} (You)</div>
+                <div style={{ flex: 1, fontSize: 13, fontWeight: 700, color: '#e8af34' }}>{cleanDisplayName(userEntry.name)} (You)</div>
                 <div style={{ fontSize: 16, fontWeight: 900, color: '#e8af34', fontFamily: 'var(--font-display,system-ui)' }}>
                   {sortBy === 'level' ? (entryLevel || 0) : (userEntry.classCount || 0)}
                 </div>

@@ -80,7 +80,6 @@ const CSS = `
   border-bottom: 1px solid rgba(255,255,255,0.06);
   display: grid; grid-template-columns: auto 1fr auto; gap: 12px; align-items: center;
   padding: 0 16px; z-index: 100;
-  padding-top: env(safe-area-inset-top, 0px);
   transition: height 0.3s cubic-bezier(0.16, 1, 0.3, 1), background 0.3s;
 }
 .v10-header.scrolled { height: 56px; background: rgba(3, 3, 5, 0.9); box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
@@ -89,7 +88,7 @@ const CSS = `
 .v10-logo-btn:active { transform: scale(0.92); }
 .v10-lab-logo { width: 100%; height: 100%; background-color: var(--theme-color); -webkit-mask-image: var(--lbj-logo-mask); mask-image: var(--lbj-logo-mask); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; transition: background-color 0.5s; filter: drop-shadow(0 0 6px var(--theme-glow)); }
 
-.v10-center-col { display: flex; flex-direction: column; justify-content: center; gap: 6px; min-width: 0; }
+.v10-center-col { display: flex; flex-direction: column; justify-content: center; gap: 4px; min-width: 0; }
 .v10-center-top { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
 .v10-title-group { display: flex; align-items: center; gap: 6px; min-width: 0; }
 .v10-lv-pill { background: var(--theme-grad); color: #000; font-size: 11px; font-weight: 900; padding: 2px 6px; border-radius: 6px; box-shadow: 0 2px 8px var(--theme-glow); transition: all 0.5s; flex-shrink: 0; }
@@ -278,17 +277,27 @@ export function TopHeader({ onMenuOpen, onXpOpen }: { onMenuOpen: () => void; on
     return () => window.removeEventListener('hashchange', h);
   }, []);
 
-  // Scroll — listen on .app-content (the actual scroll container), fallback to window
+  // Scroll — listen broadly so we catch any page-specific scroll container
   useEffect(() => {
-    const container = document.querySelector('.app-content') as HTMLElement | null;
-    const target: HTMLElement | Window = container || window;
-    const onScroll = () => {
-      const scrollTop = container ? container.scrollTop : window.scrollY;
+    const checkScroll = () => {
+      const appContent = document.querySelector('.app-content') as HTMLElement | null;
+      const docEl = document.documentElement;
+      const scrollTop = Math.max(
+        window.scrollY || 0,
+        docEl?.scrollTop || 0,
+        appContent?.scrollTop || 0,
+      );
       setScrolled(scrollTop > 20);
     };
-    onScroll();
-    target.addEventListener('scroll', onScroll, { passive: true } as any);
-    return () => target.removeEventListener('scroll', onScroll as any);
+    checkScroll();
+
+    window.addEventListener('scroll', checkScroll, { passive: true });
+    document.addEventListener('scroll', checkScroll, { passive: true, capture: true });
+
+    return () => {
+      window.removeEventListener('scroll', checkScroll);
+      document.removeEventListener('scroll', checkScroll, { capture: true } as any);
+    };
   }, []);
 
   // Initial level
