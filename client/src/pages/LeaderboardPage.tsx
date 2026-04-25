@@ -277,7 +277,7 @@ export default function LeaderboardPage() {
 
             const entryEmail = (entry as any).email as string | undefined;
             const onRowTap = () => {
-              if (entryEmail) navigate(`/belt/${encodeURIComponent(entryEmail)}`);
+              if (entryEmail) navigate(`/profile/${encodeURIComponent(entryEmail)}`);
             };
             return (
               <div

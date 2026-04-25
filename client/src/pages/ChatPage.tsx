@@ -1946,7 +1946,7 @@ function ProfileBody({ member, onDM }: { member: ChannelMember; onDM?: (m: Chann
       {/* Belt Journey CTA */}
       {fullMember.email && (
         <button
-          onClick={() => navigate(`/belt/${encodeURIComponent(fullMember.email!)}`)}
+          onClick={() => navigate(`/profile/${encodeURIComponent(fullMember.email!)}`)}
           style={{
             width: '100%', padding: '12px', borderRadius: 12,
             background: 'rgba(212,175,55,0.1)', border: '1px solid rgba(212,175,55,0.2)',

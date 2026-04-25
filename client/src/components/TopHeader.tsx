@@ -278,12 +278,17 @@ export function TopHeader({ onMenuOpen, onXpOpen }: { onMenuOpen: () => void; on
     return () => window.removeEventListener('hashchange', h);
   }, []);
 
-  // Scroll
+  // Scroll — listen on .app-content (the actual scroll container), fallback to window
   useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 20);
+    const container = document.querySelector('.app-content') as HTMLElement | null;
+    const target: HTMLElement | Window = container || window;
+    const onScroll = () => {
+      const scrollTop = container ? container.scrollTop : window.scrollY;
+      setScrolled(scrollTop > 20);
+    };
     onScroll();
-    window.addEventListener('scroll', onScroll, { passive: true });
-    return () => window.removeEventListener('scroll', onScroll);
+    target.addEventListener('scroll', onScroll, { passive: true } as any);
+    return () => target.removeEventListener('scroll', onScroll as any);
   }, []);
 
   // Initial level
@@ -339,7 +344,7 @@ export function TopHeader({ onMenuOpen, onXpOpen }: { onMenuOpen: () => void; on
     ? member.name.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase()
     : '?';
 
-  const goAccount = () => { window.location.hash = '/account'; };
+  const goAccount = () => { window.location.hash = '/profile'; };
 
   // Orbs vary by theme
   const orbs = (() => {
@@ -366,8 +371,7 @@ export function TopHeader({ onMenuOpen, onXpOpen }: { onMenuOpen: () => void; on
       <div
         aria-hidden
         style={{
-          height: 78,
-          paddingTop: 'env(safe-area-inset-top, 0px)',
+          height: 'calc(78px + env(safe-area-inset-top, 0px))',
           flexShrink: 0,
           width: '100%',
         }}
