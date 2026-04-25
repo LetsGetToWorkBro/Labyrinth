@@ -179,9 +179,36 @@ const CSS = `
 .xp-text { font-size: 10px; font-weight: 700; color: #888; flex-shrink: 0; font-variant-numeric: tabular-nums; transition: color 0.3s; width: 42px; text-align: right; }
 
 /* Paragon avatar */
-.v10-paragon-avatar { width: 52px; height: 52px; min-width: 52px; min-height: 52px; border-radius: 50%; position: relative; cursor: pointer; flex-shrink: 0; transition: width 0.3s cubic-bezier(0.16,1,0.3,1), height 0.3s cubic-bezier(0.16,1,0.3,1), min-width 0.3s cubic-bezier(0.16,1,0.3,1), min-height 0.3s cubic-bezier(0.16,1,0.3,1); background: none; border: none; padding: 0; overflow: visible; }
-.v10-paragon-avatar:active { transform: scale(0.92); }
-.v10-header.scrolled .v10-paragon-avatar { width: 36px; height: 36px; min-width: 36px; min-height: 36px; }
+.v10-paragon-avatar {
+  position: relative;
+  cursor: pointer;
+  flex-shrink: 0;
+  background: none;
+  border: none;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: visible;
+}
+.v10-paragon-avatar:active .v10-avatar-inner { transform: scale(0.92); }
+
+.v10-avatar-inner {
+  width: 52px;
+  height: 52px;
+  min-width: 52px;
+  min-height: 52px;
+  border-radius: 50%;
+  position: relative;
+  transition: width 0.3s cubic-bezier(0.16,1,0.3,1), height 0.3s cubic-bezier(0.16,1,0.3,1), min-width 0.3s cubic-bezier(0.16,1,0.3,1), min-height 0.3s cubic-bezier(0.16,1,0.3,1);
+  flex-shrink: 0;
+}
+.v10-header.scrolled .v10-avatar-inner {
+  width: 36px;
+  height: 36px;
+  min-width: 36px;
+  min-height: 36px;
+}
 .v10-ring { position: absolute; inset: 0; transition: all 0.5s; z-index: 2; pointer-events: none; }
 .v10-avatar-img { position: absolute; inset: 4px; border-radius: 50%; background: #333; overflow: hidden; border: 1px solid rgba(0,0,0,0.5); transition: inset 0.3s; z-index: 1; display: flex; align-items: center; justify-content: center; color: #fff; font-weight: 800; font-size: 16px; }
 .v10-header.scrolled .v10-avatar-img { inset: 2px; }
@@ -435,17 +462,19 @@ export function TopHeader({ onMenuOpen, onXpOpen }: { onMenuOpen: () => void; on
       </div>
 
       <button
-        className={`v10-paragon-avatar ${spinKey > 0 ? 'v10-ring-spin' : ''}`}
+        className="v10-paragon-avatar"
         onClick={goAccount}
         aria-label="View account"
         key={`av-${spinKey}`}
       >
-        <div className="v10-ring" />
-        <div>{orbs}</div>
-        <div className="v10-avatar-img">
-          {avatarSrc
-            ? <img src={avatarSrc} alt="Profile" />
-            : <span>{initials}</span>}
+        <div className={`v10-avatar-inner ${spinKey > 0 ? 'v10-ring-spin' : ''}`}>
+          <div className="v10-ring" />
+          <div>{orbs}</div>
+          <div className="v10-avatar-img">
+            {avatarSrc
+              ? <img src={avatarSrc} alt="Profile" />
+              : <span>{initials}</span>}
+          </div>
         </div>
       </button>
     </header>
