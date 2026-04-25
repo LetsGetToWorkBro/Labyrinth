@@ -80,6 +80,7 @@ const CSS = `
   border-bottom: 1px solid rgba(255,255,255,0.06);
   display: grid; grid-template-columns: auto 1fr auto; gap: 12px; align-items: center;
   padding: 0 16px; z-index: 100;
+  overflow: hidden;
   transition: height 0.3s cubic-bezier(0.16, 1, 0.3, 1), background 0.3s;
 }
 .v10-header.scrolled { height: 56px; background: rgba(3, 3, 5, 0.9); box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
@@ -88,7 +89,7 @@ const CSS = `
 .v10-logo-btn:active { transform: scale(0.92); }
 .v10-lab-logo { width: 100%; height: 100%; background-color: var(--theme-color); -webkit-mask-image: var(--lbj-logo-mask); mask-image: var(--lbj-logo-mask); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; transition: background-color 0.5s; filter: drop-shadow(0 0 6px var(--theme-glow)); }
 
-.v10-center-col { display: flex; flex-direction: column; justify-content: center; gap: 4px; min-width: 0; }
+.v10-center-col { display: flex; flex-direction: column; justify-content: flex-end; gap: 2px; min-width: 0; padding-bottom: 8px; }
 .v10-center-top { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
 .v10-title-group { display: flex; align-items: center; gap: 6px; min-width: 0; }
 .v10-lv-pill { background: var(--theme-grad); color: #000; font-size: 11px; font-weight: 900; padding: 2px 6px; border-radius: 6px; box-shadow: 0 2px 8px var(--theme-glow); transition: all 0.5s; flex-shrink: 0; }
@@ -177,9 +178,9 @@ const CSS = `
 .xp-text { font-size: 10px; font-weight: 700; color: #888; flex-shrink: 0; font-variant-numeric: tabular-nums; transition: color 0.3s; width: 42px; text-align: right; }
 
 /* Paragon avatar */
-.v10-paragon-avatar { width: 52px; height: 52px; position: relative; cursor: pointer; flex-shrink: 0; transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1); background: none; border: none; padding: 0; }
+.v10-paragon-avatar { width: 52px; height: 52px; aspect-ratio: 1; position: relative; cursor: pointer; flex-shrink: 0; transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1); background: none; border: none; padding: 0; }
 .v10-paragon-avatar:active { transform: scale(0.92); }
-.v10-header.scrolled .v10-paragon-avatar { width: 36px; height: 36px; }
+.v10-header.scrolled .v10-paragon-avatar { width: 36px; height: 36px; aspect-ratio: 1; }
 .v10-ring { position: absolute; inset: 0; transition: all 0.5s; z-index: 2; pointer-events: none; }
 .v10-avatar-img { position: absolute; inset: 4px; border-radius: 50%; background: #333; overflow: hidden; border: 1px solid rgba(0,0,0,0.5); transition: inset 0.3s; z-index: 1; display: flex; align-items: center; justify-content: center; color: #fff; font-weight: 800; font-size: 16px; }
 .v10-header.scrolled .v10-avatar-img { inset: 2px; }
@@ -251,8 +252,17 @@ export function TopHeader({ onMenuOpen, onXpOpen }: { onMenuOpen: () => void; on
   const prevLevelRef = useRef(1);
   const lockedRef = useRef(false);
   const xpFillRef = useRef<HTMLDivElement>(null);
+  const spacerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => { injectStyles(); }, []);
+
+  useEffect(() => {
+    if (spacerRef.current) {
+      spacerRef.current.style.height = scrolled
+        ? 'calc(56px + env(safe-area-inset-top, 0px))'
+        : 'calc(78px + env(safe-area-inset-top, 0px))';
+    }
+  }, [scrolled]);
 
   // XP sync
   useEffect(() => {
@@ -378,11 +388,13 @@ export function TopHeader({ onMenuOpen, onXpOpen }: { onMenuOpen: () => void; on
     <>
       {/* Spacer reserves vertical space since the header is position:fixed */}
       <div
+        ref={spacerRef}
         aria-hidden
         style={{
           height: 'calc(78px + env(safe-area-inset-top, 0px))',
           flexShrink: 0,
           width: '100%',
+          transition: 'height 0.3s cubic-bezier(0.16,1,0.3,1)',
         }}
       />
       <header
