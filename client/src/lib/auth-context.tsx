@@ -311,7 +311,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     localStorage.removeItem('lbjj_token_created');
     localStorage.removeItem('lbjj_member_profile');
     localStorage.removeItem('lbjj_member_email');
-    localStorage.removeItem('lbjj_game_stats_v2');
     localStorage.removeItem('lbjj_checkins_today');
     localStorage.removeItem('lbjj_weekly_training');
     localStorage.removeItem('lbjj_saved_pass');
@@ -320,6 +319,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     localStorage.removeItem('lbjj_stream_status');
     // lbjj_streak_cache intentionally preserved — it's device-local and survives sign-out
     // lbjj_profile_picture intentionally preserved — it's device-local and survives sign-out
+    // lbjj_game_stats_v2 intentionally preserved — XP/level progress is device-local and survives sign-out
+    // lbjj_achievements / lbjj_achievement_xp_claimed intentionally preserved — earned achievements persist
+    // lbjj_checkin_history intentionally preserved — device-local check-in history survives sign-out
     localStorage.removeItem('lbjj_belt_promotions_cache');
     localStorage.removeItem('lbjj_classes_cache');
     setIsAuthenticated(false);

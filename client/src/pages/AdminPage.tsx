@@ -89,6 +89,7 @@ export default function AdminPage({ onBack }: { onBack: () => void }) {
         link: annCta,
         pinned: annPin,
       });
+      console.log('[AdminPage] pinAnnouncement result:', JSON.stringify(result));
       if (result?.success === false) {
         showToast(result.error || "Failed to publish", "error");
       } else {
