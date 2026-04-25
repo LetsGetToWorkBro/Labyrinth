@@ -571,6 +571,8 @@ export interface BeltPromotion {
   status: "pending" | "approved" | "rejected";
   approvedBy?: string;
   approvedDate?: string;
+  bar?: string;       // 'none' | 'white' | 'black'
+  category?: string;  // 'Adult' | 'Kids'
 }
 
 export async function beltSavePromotion(data: { belt: string; stripes: number; date: string; note: string; bar?: string; category?: string }): Promise<{ success: boolean; promotionId?: string }> {
