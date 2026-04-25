@@ -532,8 +532,6 @@ export function TopHeader({ onMenuOpen, onXpOpen }: { onMenuOpen: () => void; on
               <div style={{ fontSize:9,fontWeight:800,padding:'2px 6px',borderRadius:4,textTransform:'uppercase',letterSpacing:'.08em',background:bs.bg,color:bs.color,border:bs.border,flexShrink:0,...(belt==='black'?{borderLeft:'3px solid #ef4444'}:{}) }}>
                 {belt}
               </div>
-              {/* Notification bell — inline with belt pill */}
-              <NotificationBell />
             </div>
 
             {/* Row 2: bar + nums + online */}
@@ -570,6 +568,7 @@ export function TopHeader({ onMenuOpen, onXpOpen }: { onMenuOpen: () => void; on
                 {xpInLevel.toLocaleString()}/{xpNeeded.toLocaleString()}
               </span>
               <OnlineBubble compact />
+              <NotificationBell />
             </div>
           </div>
 

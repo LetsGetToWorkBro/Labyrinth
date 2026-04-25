@@ -458,14 +458,12 @@ export function NotificationBell() {
           alignItems: 'center',
           justifyContent: 'center',
           WebkitTapHighlightColor: 'transparent',
-          height: 16,  // match row height — prevents bell from inflating header
-          lineHeight: 1,
         }}
       >
         <Bell
-          size={12}
+          size={18}
           color={GOLD}
-          strokeWidth={2.5}
+          strokeWidth={2.2}
           style={{
             animation: showBadge
               ? 'bellPulse 2.2s ease-in-out infinite, bellShake 2.2s ease-in-out infinite'
