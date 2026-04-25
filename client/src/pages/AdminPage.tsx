@@ -11,6 +11,7 @@
  */
 
 import React, { useState, useEffect, useCallback, useRef } from "react";
+import { createPortal } from "react-dom";
 import { useAuth } from "@/lib/auth-context";
 import { gasCall, getToken } from "@/lib/api";
 
@@ -54,6 +55,7 @@ function scopeToHours(scope: ScopeType, validUntil: string): number {
 
 export default function AdminPage({ onBack }: { onBack: () => void }) {
   const { member } = useAuth();
+  const portalTarget = typeof document !== 'undefined' ? document.body : null;
 
   // Toast
   const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
@@ -593,11 +595,14 @@ export default function AdminPage({ onBack }: { onBack: () => void }) {
         </div>
 
         {/* SAVE BAR */}
-        <div className="lbj-save-bar">
-          <button className="lbj-btn-save" onClick={handleSaveAll} disabled={saving}>
-            {saving ? "Saving…" : "Save System Config"}
-          </button>
-        </div>
+        {portalTarget && createPortal(
+          <div className="lbj-save-bar">
+            <button className="lbj-btn-save" onClick={handleSaveAll} disabled={saving}>
+              {saving ? "Saving…" : "Save System Config"}
+            </button>
+          </div>,
+          portalTarget
+        )}
 
         {toast && (
           <div
