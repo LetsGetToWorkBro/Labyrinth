@@ -90,6 +90,7 @@ export default function AdminPage({ onBack }: { onBack: () => void }) {
         pinned: annPin,
       });
       showToast("Announcement published");
+      window.dispatchEvent(new Event('announcement-updated'));
       setAnnTitle("");
       setAnnMessage("");
       setAnnCta("");
@@ -645,7 +646,8 @@ const rootStyle: React.CSSProperties = {
   color: "#f5f5f5",
   fontFamily: "Inter, system-ui, sans-serif",
   minHeight: "100vh",
-  padding: "20px 20px 140px",
+  padding: "20px 20px",
+  paddingBottom: "calc(140px + env(safe-area-inset-bottom, 0px))",
   WebkitFontSmoothing: "antialiased",
 };
 
@@ -839,7 +841,7 @@ function StyleBlock() {
       .lbj-btn-secondary.btn-announcement:hover:not(:disabled) { background: rgba(244, 63, 94, 0.2); }
 
       .lbj-save-bar {
-        position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); z-index: 10;
+        position: fixed; bottom: calc(64px + env(safe-area-inset-bottom, 0px)); left: 50%; transform: translateX(-50%); z-index: 10;
         width: calc(430px - 40px); max-width: calc(100% - 40px);
         background: rgba(10,10,12,0.9); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
         border: 1px solid rgba(200,162,76,0.5); padding: 16px; border-radius: 16px;

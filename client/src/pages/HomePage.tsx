@@ -1544,7 +1544,14 @@ export default function HomePage() {
   const [pinnedAnnouncement, setPinnedAnnouncement] = useState<PinnedAnnouncement | null>(null);
 
   useEffect(() => {
-    getPinnedAnnouncement().then(ann => setPinnedAnnouncement(ann)).catch(() => {});
+    const fetchAnn = () => getPinnedAnnouncement().then(ann => setPinnedAnnouncement(ann)).catch(() => {});
+    fetchAnn();
+    const interval = setInterval(fetchAnn, 30_000);
+    window.addEventListener('announcement-updated', fetchAnn);
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('announcement-updated', fetchAnn);
+    };
   }, []);
 
   // ─── Deferred non-critical data (leaderboard + announcements) ────
