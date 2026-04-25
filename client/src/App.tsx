@@ -36,6 +36,7 @@ const AchievementsPage   = lazy(() => import("@/pages/AchievementsPage"));
 const LivePage           = lazy(() => import("@/pages/LivePage"));
 const CheckInHistoryPage = lazy(() => import("@/pages/CheckInHistoryPage"));
 const SeasonPage         = lazy(() => import("@/pages/SeasonPage"));
+const ProfilePage        = lazy(() => import("@/pages/ProfilePage"));
 const NotFound           = lazy(() => import("@/pages/not-found"));
 
 // ─── ChunkErrorBoundary — auto-retries lazy-chunk load failures ────────
@@ -2120,6 +2121,8 @@ function AppShell() {
             <Route path="/stats"     component={StatsPage} />
             <Route path="/belt"      component={BeltJourneyPage} />
             <Route path="/belt/:email" component={BeltJourneyPage} />
+            <Route path="/profile"   component={ProfilePage} />
+            <Route path="/profile/:email" component={ProfilePage} />
             <Route path="/chat"      component={ChatPage} />
             <Route path="/schedule"  component={SchedulePage} />
             <Route path="/sauna"     component={SaunaPage} />
