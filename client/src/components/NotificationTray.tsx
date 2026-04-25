@@ -443,20 +443,6 @@ export function NotificationBell() {
 
   return (
     <>
-      <style>{`
-        @keyframes bellPulse {
-          0%,100% { transform: scale(1); filter: drop-shadow(0 0 0 rgba(200,162,76,0)); }
-          50%     { transform: scale(1.12); filter: drop-shadow(0 0 6px rgba(200,162,76,0.6)); }
-        }
-        @keyframes bellShake {
-          0%,100% { transform: rotate(0deg); }
-          15%     { transform: rotate(-10deg); }
-          30%     { transform: rotate(8deg); }
-          45%     { transform: rotate(-6deg); }
-          60%     { transform: rotate(4deg); }
-          75%     { transform: rotate(-2deg); }
-        }
-      `}</style>
       <button
         onClick={toggleTray}
         aria-label={`Notifications${showBadge ? ` — ${unreadCount} unread` : ''}`}
