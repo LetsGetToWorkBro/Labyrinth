@@ -1,1197 +1,614 @@
-import { EmptyState, SkeletonList, ErrorState as PageErrorState } from '@/components/StateComponents';
 /**
- * AdminPage.tsx — Labyrinth BJJ Admin Panel
+ * AdminPage.tsx — Labyrinth BJJ "Academy Controls"
  *
- * Injected into the same member portal. Accessible only when
- * member.isAdmin is true (role: owner | admin | coach | instructor).
+ * Single-page admin panel. Four sections:
+ *   1. Broadcast Announcement  → gasCall('pinAnnouncement')
+ *   2. Dynamic XP Multiplier   → gasCall('setXpEvent') / getXpEvent
+ *   3. Check-In Time Gate      → gasCall('saveGeoConfig') / getGeoConfig
+ *   4. Location Geo-Lock       → gasCall('saveGeoConfig') / getGeoConfig
  *
- * Secondary access: Ctrl+Shift+A keyboard shortcut (see App.tsx).
- *
- * Tabs:
- *   [Dashboard]  — live KPIs from getDashboard
- *   [Members]    — searchable table, inline belt/status edit
- *   [Trials]     — upcoming trial bookings feed
- *   [Notes]      — per-member comms & notes
+ * Sticky bottom "Save System Config" saves all four geo/time-gate fields at once.
  */
 
 import React, { useState, useEffect, useCallback, useRef } from "react";
-import { ListSkeleton } from "@/components/LoadingSkeleton";
 import { useAuth } from "@/lib/auth-context";
-import {
-  adminGetDashboard,
-  adminGetMembers,
-  adminUpdateMember,
-  adminGetMemberComms,
-  adminSaveNote,
-  adminGetBookings,
-  beltSavePromotion,
-  gasCall,
-  getToken,
-  cachedGasCall,
-  getPinnedAnnouncement,
-  clearPinnedAnnouncement,
-  pinAnnouncement,
-  type AdminMember,
-  type AdminDashboard,
-  type MemberComm,
-  type PinnedAnnouncement,
-} from "@/lib/api";
-import { AnnouncementCard } from "@/components/AnnouncementCard";
-import { getBeltColor } from "@/lib/constants";
-import { BeltDot } from "@/components/BeltBadge";
-import {
-  LayoutDashboard, Users, CalendarDays, MessageSquare, Settings,
-  RefreshCw, Search, ChevronDown, ChevronRight, Check,
-  X, Loader2, Save, AlertCircle, ArrowLeft,
-} from "lucide-react";
+import { gasCall, getToken } from "@/lib/api";
 
-const GOLD = "#C8A24C";
-const BELT_OPTIONS = ["White", "Blue", "Purple", "Brown", "Black", "Grey", "Yellow", "Orange", "Green"];
-const STATUS_OPTIONS = ["Active", "Trial", "Paused", "Failed", "Cancelled"];
-type AdminTab = "dashboard" | "members" | "trials" | "notes" | "settings";
+type BadgeType = "priority" | "event" | "schedule" | "reminder" | "new";
+type ScopeType = "week" | "month" | "always";
 
-// ─── Root ──────────────────────────────────────────────────────────
+const BADGE_LABEL: Record<BadgeType, string> = {
+  priority: "Priority Update",
+  event: "Event",
+  schedule: "Schedule Change",
+  reminder: "Reminder",
+  new: "New",
+};
+
+const DAY_LETTERS = ["M", "T", "W", "T", "F", "S", "S"];
+const DAY_NAMES = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
+
+function scopeToHours(scope: ScopeType, validUntil: string): number {
+  if (scope === "always") return 8760;
+  if (scope === "month") {
+    const now = new Date();
+    const end = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+    return Math.max(1, Math.round((end.getTime() - now.getTime()) / 3_600_000));
+  }
+  if (scope === "week") {
+    const now = new Date();
+    const day = now.getDay(); // 0=Sun
+    const daysUntilSunday = day === 0 ? 0 : 7 - day;
+    const end = new Date(now);
+    end.setDate(end.getDate() + daysUntilSunday);
+    end.setHours(23, 59, 59, 999);
+    return Math.max(1, Math.round((end.getTime() - now.getTime()) / 3_600_000));
+  }
+  if (validUntil) {
+    const end = new Date(validUntil + "T23:59:59");
+    const hrs = Math.round((end.getTime() - Date.now()) / 3_600_000);
+    if (hrs > 0) return hrs;
+  }
+  return 24;
+}
 
 export default function AdminPage({ onBack }: { onBack: () => void }) {
   const { member } = useAuth();
-  const [tab, setTab] = useState<AdminTab>("dashboard");
+
+  // Toast
+  const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
+  const showToast = useCallback((message: string, type: "success" | "error" = "success") => {
+    setToast({ message, type });
+    window.setTimeout(() => setToast(null), 2600);
+  }, []);
+
+  // ── Section 1: Announcement ────────────────────────────────────────
+  const [annTitle, setAnnTitle] = useState("");
+  const [annMessage, setAnnMessage] = useState("");
+  const [annBadge, setAnnBadge] = useState<BadgeType>("priority");
+  const [annCta, setAnnCta] = useState("");
+  const [annPin, setAnnPin] = useState(true);
+  const [publishing, setPublishing] = useState(false);
+
+  const handlePublish = async () => {
+    if (!annTitle.trim() && !annMessage.trim()) {
+      showToast("Title or message required", "error");
+      return;
+    }
+    setPublishing(true);
+    try {
+      await gasCall("pinAnnouncement", {
+        token: getToken() || "",
+        title: annTitle,
+        body: annMessage,
+        message: annMessage, // GAS legacy field
+        badge: BADGE_LABEL[annBadge],
+        ctaUrl: annCta,
+        link: annCta,
+        pinned: annPin,
+      });
+      showToast("Announcement published");
+      setAnnTitle("");
+      setAnnMessage("");
+      setAnnCta("");
+    } catch (e) {
+      showToast("Failed to publish", "error");
+    } finally {
+      setPublishing(false);
+    }
+  };
+
+  // ── Section 2: XP Event ────────────────────────────────────────────
+  const [xpEnabled, setXpEnabled] = useState(true);
+  const [xpDay, setXpDay] = useState(2); // Wednesday default (matches mock)
+  const [xpTime, setXpTime] = useState("06:30");
+  const [xpValidUntil, setXpValidUntil] = useState("");
+  const [xpScope, setXpScope] = useState<ScopeType>("week");
+  const [xpMultiplier, setXpMultiplier] = useState(1.5);
+  const [xpSaving, setXpSaving] = useState(false);
+
+  // Pre-populate on mount
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await gasCall("getXpEvent", {});
+        if (res && typeof res === "object") {
+          setXpEnabled(!!res.active);
+          const mult = Number(res.multiplier);
+          if (mult === 1.25 || mult === 1.5 || mult === 2) setXpMultiplier(mult);
+          const label = String(res.label || "");
+          const dayMatch = DAY_NAMES.findIndex((d) => label.toLowerCase().includes(d.toLowerCase()));
+          if (dayMatch >= 0) setXpDay(dayMatch);
+        }
+      } catch {}
+      try {
+        const geo = await gasCall("getGeoConfig", {});
+        if (geo && typeof geo === "object") {
+          if (typeof geo.checkinWindowMinutes === "number") setGateWindow(geo.checkinWindowMinutes);
+          if (typeof geo.checkinGateEnabled === "boolean") setGateEnabled(geo.checkinGateEnabled);
+          if (typeof geo.geoEnabled === "boolean") setGeoEnabled(geo.geoEnabled);
+          if (typeof geo.geoLocation === "string" && geo.geoLocation) setGeoLocation(geo.geoLocation);
+          if (typeof geo.geoRadiusYards === "number") setGeoRadius(geo.geoRadiusYards);
+          if (typeof geo.geoLat === "number") setGeoLat(geo.geoLat);
+          if (typeof geo.geoLng === "number") setGeoLng(geo.geoLng);
+        }
+      } catch {}
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const handleSaveXpEvent = async () => {
+    setXpSaving(true);
+    try {
+      if (!xpEnabled) {
+        await gasCall("setXpEvent", { token: getToken() || "", active: false });
+        showToast("XP event disabled");
+      } else {
+        await gasCall("setXpEvent", {
+          token: getToken() || "",
+          active: true,
+          label: `${xpMultiplier}× XP — ${DAY_NAMES[xpDay]}s`,
+          durationHours: scopeToHours(xpScope, xpValidUntil),
+          multiplier: xpMultiplier,
+        });
+        showToast("XP event saved");
+      }
+    } catch {
+      showToast("Failed to save XP event", "error");
+    } finally {
+      setXpSaving(false);
+    }
+  };
+
+  // ── Section 3: Check-In Time Gate ─────────────────────────────────
+  const [gateEnabled, setGateEnabled] = useState(true);
+  const [gateWindow, setGateWindow] = useState(60); // minutes
+
+  // ── Section 4: Geo-Lock ───────────────────────────────────────────
+  const [geoEnabled, setGeoEnabled] = useState(true);
+  const [geoLocation, setGeoLocation] = useState("Labyrinth BJJ, Fulshear, TX");
+  const [geoRadius, setGeoRadius] = useState(500);
+  const [geoLat, setGeoLat] = useState<number | null>(null);
+  const [geoLng, setGeoLng] = useState<number | null>(null);
+  const [geoLocating, setGeoLocating] = useState(false);
+
+  const handleUseCurrentLocation = () => {
+    if (!navigator.geolocation) {
+      showToast("Geolocation not supported", "error");
+      return;
+    }
+    setGeoLocating(true);
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        setGeoLat(pos.coords.latitude);
+        setGeoLng(pos.coords.longitude);
+        setGeoLocation(`${pos.coords.latitude.toFixed(6)}, ${pos.coords.longitude.toFixed(6)}`);
+        setGeoLocating(false);
+        showToast("Location captured");
+      },
+      () => {
+        setGeoLocating(false);
+        showToast("Failed to get location", "error");
+      },
+      { enableHighAccuracy: true, timeout: 10_000 }
+    );
+  };
+
+  // ── Save all (sticky bar) ────────────────────────────────────────
+  const [saving, setSaving] = useState(false);
+  const handleSaveAll = async () => {
+    setSaving(true);
+    try {
+      await gasCall("saveGeoConfig", {
+        token: getToken() || "",
+        checkinWindowMinutes: gateWindow,
+        checkinGateEnabled: gateEnabled,
+        geoEnabled,
+        geoLocation,
+        geoRadiusYards: geoRadius,
+        geoLat,
+        geoLng,
+      });
+      try {
+        sessionStorage.setItem("lbjj_checkin_window", String(gateWindow));
+      } catch {}
+      showToast("System config saved");
+    } catch {
+      showToast("Failed to save", "error");
+    } finally {
+      setSaving(false);
+    }
+  };
 
   if (!member?.isAdmin) {
     return (
-      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", height: "100%", gap: 12, color: "#666" }}>
-        <AlertCircle size={32} />
-        <p style={{ fontSize: 14 }}>Access denied. Admin role required.</p>
-        <button onClick={onBack} style={{ fontSize: 13, color: GOLD, background: "none", border: "none", cursor: "pointer" }}>← Back</button>
+      <div style={{ padding: 40, color: "#EAEAEA", fontFamily: "Inter, system-ui, sans-serif", background: "#050505", minHeight: "100vh" }}>
+        <button onClick={onBack} style={backBtnStyle} aria-label="Back">←</button>
+        <div style={{ marginTop: 80, textAlign: "center", color: "#888891" }}>Admin access required.</div>
       </div>
     );
   }
 
-  return (
-    <div style={{ display: "flex", flexDirection: "column", height: "100%", backgroundColor: "#0A0A0A" }}>
-      {/* Header */}
-      <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "12px 16px", borderBottom: "1px solid #1A1A1A", flexShrink: 0 }}>
-        <button onClick={onBack} style={{ color: "#666", background: "none", border: "none", cursor: "pointer", padding: 4 }}>
-          <ArrowLeft size={18} />
-        </button>
-        <div style={{ flex: 1 }}>
-          <span style={{ fontSize: 15, fontWeight: 700, color: "#F0F0F0" }}>Admin Panel</span>
-          <span style={{ fontSize: 11, color: "#555", marginLeft: 8 }}>{member.name} · {member.role || "admin"}</span>
-        </div>
-        {/* Role pill */}
-        <span style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", padding: "3px 8px", borderRadius: 6, backgroundColor: `${GOLD}18`, color: GOLD, border: `1px solid ${GOLD}30` }}>
-          {(member.role || "admin").toUpperCase()}
-        </span>
-      </div>
-
-      {/* Tab bar */}
-      <div style={{ display: "flex", borderBottom: "1px solid #1A1A1A", flexShrink: 0, overflowX: "auto" }}>
-        {([
-          { id: "dashboard", label: "Dashboard", icon: <LayoutDashboard size={14} /> },
-          { id: "members",   label: "Members",   icon: <Users size={14} /> },
-          { id: "trials",    label: "Trials",    icon: <CalendarDays size={14} /> },
-          { id: "notes",     label: "Notes",     icon: <MessageSquare size={14} /> },
-          { id: "settings",  label: "Settings",  icon: <Settings size={14} /> },
-        ] as { id: AdminTab; label: string; icon: React.ReactNode }[]).map(t => (
-          <button
-            key={t.id}
-            onClick={() => setTab(t.id)}
-            style={{
-              display: "flex", alignItems: "center", gap: 6,
-              padding: "11px 16px", fontSize: 12, fontWeight: 600,
-              color: tab === t.id ? GOLD : "#666",
-              background: "none", border: "none", borderBottom: tab === t.id ? `2px solid ${GOLD}` : "2px solid transparent",
-              cursor: "pointer", whiteSpace: "nowrap", transition: "color 0.15s",
-            }}
-          >
-            {t.icon}{t.label}
-          </button>
-        ))}
-      </div>
-
-      {/* Tab content */}
-      <div style={{ flex: 1, overflowY: "auto" }}>
-        {tab === "dashboard" && <DashboardTab />}
-        {tab === "members"   && <MembersTab />}
-        {tab === "trials"    && <TrialsTab />}
-        {tab === "notes"     && <NotesTab />}
-        {tab === "settings"  && <SettingsTab />}
-      </div>
-    </div>
-  );
-}
-
-// ─── Dashboard Tab ────────────────────────────────────────────────
-
-function DashboardTab() {
-  const [data, setData] = useState<AdminDashboard | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
-
-  const load = useCallback(async () => {
-    setLoading(true); setError("");
-    const d = await adminGetDashboard();
-    if (d) setData(d); else setError("Could not load dashboard. Tap to retry.");
-    setLoading(false);
-  }, []);
-
-  useEffect(() => { load(); }, [load]);
-
-  if (loading) return <LoadingState rows={4} />;
-  if (error) return <AdminErrorState message={error} onRetry={load} />;
-  if (!data) return null;
-
-  const beltCounts = { White: 0, Blue: 0, Purple: 0, Brown: 0, Black: 0 };
+  const radarScale = Math.max(30, (geoRadius / 2000) * 150);
 
   return (
-    <div style={{ padding: "16px" }}>
-      {/* KPI cards */}
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 16 }}>
-        <KpiCard label="Active Members" value={data.activeMembers} color={GOLD} />
-        <KpiCard label="MRR" value={`$${Math.round(data.mrr).toLocaleString()}`} color="#4CAF80" />
-        <KpiCard label="Collected (mo.)" value={`$${Math.round(data.monthlyPaid).toLocaleString()}`} color="#4CAF80" />
-        <KpiCard label="Failed Payments" value={data.failedPayments} color={data.failedPayments > 0 ? "#E05555" : "#4CAF80"} />
-        <KpiCard label="New This Month" value={data.newMembers} color="#3B9EFF" />
-        <KpiCard label="Upcoming Trials" value={data.upcomingTrials} color="#E08228" />
-      </div>
-
-      {/* Overdue payments */}
-      {data.overduePayments?.length > 0 && (
-        <Section title={`Overdue (${data.overduePayments.length})`} accent="#E05555">
-          {data.overduePayments.slice(0, 5).map((p, i) => (
-            <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 0", borderBottom: "1px solid #111" }}>
-              <div>
-                <p style={{ fontSize: 13, fontWeight: 600, color: "#F0F0F0", margin: 0 }}>{p.name}</p>
-                <p style={{ fontSize: 11, color: "#666", margin: "2px 0 0" }}>{p.description} · {new Date(p.date).toLocaleDateString()}</p>
-              </div>
-              <span style={{ fontSize: 13, fontWeight: 700, color: "#E05555" }}>${Number(p.amount).toFixed(2)}</span>
+    <div style={rootStyle}>
+      <StyleBlock />
+      <div style={{ maxWidth: 600, margin: "0 auto", position: "relative" }}>
+        {/* Header with back button */}
+        <div className="lbj-admin-header">
+          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+            <button onClick={onBack} style={backBtnStyle} aria-label="Back">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="19" y1="12" x2="5" y2="12" />
+                <polyline points="12 19 5 12 12 5" />
+              </svg>
+            </button>
+            <div className="lbj-page-title">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" />
+                <circle cx="12" cy="12" r="3" />
+              </svg>
+              Academy Controls
             </div>
-          ))}
-        </Section>
-      )}
+          </div>
+          <div className="lbj-status-badge">Live</div>
+        </div>
 
-      {/* Recent payments */}
-      {data.recentPayments?.length > 0 && (
-        <Section title="Recent Payments">
-          {data.recentPayments.slice(0, 6).map((p, i) => (
-            <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "7px 0", borderBottom: "1px solid #111" }}>
-              <div>
-                <p style={{ fontSize: 13, fontWeight: 500, color: "#F0F0F0", margin: 0 }}>{p.name || (p as any).MemberName}</p>
-                <p style={{ fontSize: 11, color: "#666", margin: "2px 0 0" }}>{p.type || (p as any).Type}</p>
+        {/* CARD 1: ANNOUNCEMENT */}
+        <div className="lbj-card" style={{ borderColor: "rgba(244, 63, 94, 0.3)" }}>
+          <div className="lbj-card-glow ann" />
+          <div className="lbj-c-header">
+            <div>
+              <div className="lbj-c-title ann">
+                <svg viewBox="0 0 24 24" fill="none" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M3 11l18-5v12L3 14v-3z" />
+                  <path d="M11.6 16.8a3 3 0 1 1-5.8-1.6" />
+                </svg>
+                Broadcast Announcement
               </div>
-              <div style={{ textAlign: "right" }}>
-                <p style={{ fontSize: 13, fontWeight: 600, color: (p.status || (p as any).Status) === "Succeeded" ? "#4CAF80" : "#E05555", margin: 0 }}>
-                  ${Number(p.amount || (p as any).Amount || 0).toFixed(2)}
-                </p>
-                <p style={{ fontSize: 10, color: "#555", margin: "2px 0 0" }}>{new Date(p.date || (p as any).Date).toLocaleDateString()}</p>
-              </div>
+              <div className="lbj-c-desc">Push an alert directly to members' devices and home screens.</div>
             </div>
-          ))}
-        </Section>
-      )}
-
-      {/* Belt distribution (from members count estimate) */}
-      <Section title="Belt Distribution (All Members)">
-        {Object.entries(beltCounts).map(([belt, count]) => (
-          <div key={belt} style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
-            <BeltDot belt={belt} size={10} />
-            <span style={{ fontSize: 12, color: "#999", flex: 1 }}>{belt}</span>
-            <span style={{ fontSize: 12, fontWeight: 600, color: "#F0F0F0" }}>{count}</span>
           </div>
-        ))}
-        <p style={{ fontSize: 11, color: "#555", marginTop: 4 }}>Open Members tab for live distribution.</p>
-      </Section>
-    </div>
-  );
-}
 
-// ─── Members Tab ──────────────────────────────────────────────────
-
-function MembersTab() {
-  const [members, setMembers] = useState<AdminMember[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
-  const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState("");
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [editData, setEditData] = useState<Partial<AdminMember>>({});
-  const [saving, setSaving] = useState(false);
-  const [saveMsg, setSaveMsg] = useState("");
-  const [coachNoteText, setCoachNoteText] = useState('');
-  const [coachNoteSaving, setCoachNoteSaving] = useState(false);
-  const [coachNoteSaved, setCoachNoteSaved] = useState(false);
-
-  const saveCoachNote = async (memberEmail: string) => {
-    if (!coachNoteText.trim()) return;
-    setCoachNoteSaving(true);
-    try {
-      await gasCall('saveCoachNote', {
-        token: getToken() || localStorage.getItem('lbjj_session_token') || '',
-        memberEmail,
-        note: coachNoteText.trim(),
-        date: new Date().toISOString().split('T')[0],
-      });
-      setCoachNoteText('');
-      setCoachNoteSaved(true);
-      setTimeout(() => setCoachNoteSaved(false), 2000);
-    } catch {}
-    setCoachNoteSaving(false);
-  };
-
-  const load = useCallback(async () => {
-    setLoading(true); setError("");
-    const list = await adminGetMembers();
-    if (list.length > 0) {
-      setMembers(list);
-    } else {
-      setError("Could not load members.");
-    }
-    setLoading(false);
-  }, []);
-
-  useEffect(() => { load(); }, [load]);
-
-  const filtered = members.filter(m => {
-    const q = search.toLowerCase();
-    const matchSearch = !q || (m.Name || "").toLowerCase().includes(q) || (m.Email || "").toLowerCase().includes(q) || (m.Phone || "").includes(q);
-    const matchStatus = !statusFilter || (m.Status || "").toLowerCase() === statusFilter.toLowerCase();
-    return matchSearch && matchStatus;
-  });
-
-  // Belt distribution derived from filtered list
-  const beltDist: Record<string, number> = {};
-  members.forEach(m => {
-    const b = (m.Belt || "White").trim();
-    const normalized = b.charAt(0).toUpperCase() + b.slice(1).toLowerCase();
-    beltDist[normalized] = (beltDist[normalized] || 0) + 1;
-  });
-
-  const startEdit = (m: AdminMember) => {
-    setEditingId(m.ID || String(m._row));
-    setEditData({ Belt: m.Belt, Status: m.Status, Notes: m.Notes, Plan: m.Plan });
-  };
-
-  const cancelEdit = () => { setEditingId(null); setEditData({}); setSaveMsg(""); };
-
-  const saveEdit = async (m: AdminMember) => {
-    setSaving(true); setSaveMsg("");
-    const id = m.ID || String(m._row);
-    const result = await adminUpdateMember({ ID: id, _row: m._row, ...editData });
-    setSaving(false);
-    if (result.success) {
-      // Auto-write Belt Journey entry when admin changes a member's belt
-      if (editData.Belt && editData.Belt !== m.Belt) {
-        beltSavePromotion({
-          belt: editData.Belt,
-          stripes: 0,
-          date: new Date().toISOString().split('T')[0],
-          note: 'Approved by coach',
-        }).catch(() => {});
-      }
-      setMembers(prev => prev.map(x => (x.ID === m.ID || x._row === m._row) ? { ...x, ...editData } : x));
-      setSaveMsg("Saved");
-      setTimeout(() => { setEditingId(null); setSaveMsg(""); }, 1000);
-    } else {
-      setSaveMsg(result.error || "Save failed");
-    }
-  };
-
-  if (loading) return <ListSkeleton count={8} />;
-  if (error && members.length === 0) return <AdminErrorState message={error} onRetry={load} />;
-
-  const activeCount = members.filter(m => m.StripeSubscriptionID && m.StripeSubscriptionID.trim() !== '').length;
-  const trialCount = 0;
-
-  return (
-    <div style={{ padding: "16px" }}>
-      {/* Summary line */}
-      <div style={{ display: "flex", gap: 16, marginBottom: 12, fontSize: 12, color: "#666" }}>
-        <span><strong style={{ color: "#F0F0F0" }}>{members.length}</strong> total</span>
-        <span><strong style={{ color: "#4CAF80" }}>{activeCount}</strong> active</span>
-        <span><strong style={{ color: "#E08228" }}>{trialCount}</strong> trials</span>
-      </div>
-
-      {/* Belt mini-chart */}
-      <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 14 }}>
-        {Object.entries(beltDist).sort((a, b) => b[1] - a[1]).map(([belt, count]) => (
-          <div key={belt} style={{ display: "flex", alignItems: "center", gap: 4, padding: "3px 8px", borderRadius: 6, backgroundColor: "#111", border: "1px solid #1A1A1A" }}>
-            <BeltDot belt={belt} size={8} />
-            <span style={{ fontSize: 11, color: "#999" }}>{belt}</span>
-            <span style={{ fontSize: 11, fontWeight: 700, color: "#F0F0F0" }}>{count}</span>
+          <div className="lbj-input-group">
+            <label>Title</label>
+            <input
+              type="text"
+              className="lbj-input"
+              placeholder="e.g., Gym Closed for ADCC"
+              value={annTitle}
+              onChange={(e) => setAnnTitle(e.target.value)}
+            />
           </div>
-        ))}
-      </div>
 
-      {/* Search + filter */}
-      <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
-        <div style={{ flex: 1, display: "flex", alignItems: "center", gap: 8, backgroundColor: "#111", borderRadius: 10, padding: "8px 12px", border: "1px solid #1A1A1A" }}>
-          <Search size={14} style={{ color: "#555", flexShrink: 0 }} />
-          <input
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-            placeholder="Search name, email, phone..."
-            style={{ flex: 1, background: "none", border: "none", outline: "none", fontSize: 13, color: "#F0F0F0" }}
-          />
-          {search && <button onClick={() => setSearch("")} style={{ color: "#555", background: "none", border: "none", cursor: "pointer", padding: 0 }}><X size={14} /></button>}
-        </div>
-        <select
-          value={statusFilter}
-          onChange={e => setStatusFilter(e.target.value)}
-          style={{ backgroundColor: "#111", border: "1px solid #1A1A1A", borderRadius: 10, padding: "8px 10px", fontSize: 12, color: "#F0F0F0", outline: "none" }}
-        >
-          <option value="">All</option>
-          {STATUS_OPTIONS.map(s => <option key={s} value={s}>{s}</option>)}
-        </select>
-      </div>
-
-      {/* Member list */}
-      {filtered.length === 0 ? (
-        <EmptyState illustration="members" heading="No members found" description="Try adjusting your search or filter." compact />
-      ) : (
-        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-          {filtered.map(m => {
-            const id = m.ID || String(m._row);
-            const isEditing = editingId === id;
-            return (
-              <div key={id} style={{ backgroundColor: "#111", borderRadius: 12, border: `1px solid ${isEditing ? GOLD + "40" : "#1A1A1A"}`, overflow: "hidden", transition: "border-color 0.2s" }}>
-                {/* Row header */}
-                <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "11px 14px" }}>
-                  {/* Belt dot */}
-                  <BeltDot belt={m.Belt || "white"} size={10} />
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <p style={{ fontSize: 14, fontWeight: 600, color: "#F0F0F0", margin: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{m.Name}</p>
-                    {m.Phone && (
-                      <div style={{ fontSize: 11, color: '#666', marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                        {m.Phone}
-                      </div>
-                    )}
-                    {m.Email && (
-                      <div style={{ fontSize: 11, color: '#555', marginTop: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                        {m.Email}
-                      </div>
-                    )}
-                  </div>
-                  <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 4, flexShrink: 0 }}>
-                    <StatusBadge status={m.Status} />
-                    <span style={{ fontSize: 10, color: "#555" }}>{m.Plan}</span>
-                  </div>
-                  <button
-                    onClick={() => isEditing ? cancelEdit() : startEdit(m)}
-                    style={{ marginLeft: 4, color: isEditing ? "#E05555" : "#555", background: "none", border: "none", cursor: "pointer", padding: 4 }}
-                  >
-                    {isEditing ? <X size={16} /> : <ChevronDown size={16} />}
-                  </button>
-                </div>
-
-                {/* Edit panel */}
-                {isEditing && (
-                  <div style={{ padding: "0 14px 14px", borderTop: "1px solid #1A1A1A" }}>
-                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginTop: 12 }}>
-                      <LabeledSelect
-                        label="Belt"
-                        value={editData.Belt || m.Belt || ""}
-                        options={BELT_OPTIONS}
-                        onChange={v => setEditData(p => ({ ...p, Belt: v }))}
-                      />
-                      <LabeledSelect
-                        label="Status"
-                        value={editData.Status || m.Status || ""}
-                        options={STATUS_OPTIONS}
-                        onChange={v => setEditData(p => ({ ...p, Status: v }))}
-                      />
-                    </div>
-                    <div style={{ marginTop: 10 }}>
-                      <label style={{ fontSize: 10, color: "#666", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em" }}>Notes</label>
-                      <textarea
-                        value={editData.Notes ?? m.Notes ?? ""}
-                        onChange={e => setEditData(p => ({ ...p, Notes: e.target.value }))}
-                        rows={2}
-                        style={{ width: "100%", marginTop: 4, backgroundColor: "#0D0D0D", border: "1px solid #222", borderRadius: 8, padding: "8px 10px", fontSize: 12, color: "#F0F0F0", outline: "none", resize: "none", boxSizing: "border-box" }}
-                      />
-                    </div>
-                    {/* Coach Note */}
-                    <div style={{ marginTop: 12, borderTop: '1px solid #1A1A1A', paddingTop: 12 }}>
-                      <div style={{ fontSize: 11, fontWeight: 700, color: '#666', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 8 }}>
-                        Coach Note
-                      </div>
-                      <textarea
-                        value={coachNoteText}
-                        onChange={e => setCoachNoteText(e.target.value)}
-                        placeholder="e.g. Good guard retention today. Consider entering next local tournament."
-                        rows={2}
-                        style={{
-                          width: '100%', background: '#111', border: '1px solid #222', borderRadius: 8,
-                          color: '#F0F0F0', fontSize: 13, padding: '8px 10px', resize: 'none',
-                          fontFamily: 'inherit', boxSizing: 'border-box',
-                        }}
-                      />
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 6 }}>
-                        <button
-                          onClick={() => saveCoachNote(m.Email)}
-                          disabled={coachNoteSaving || !coachNoteText.trim()}
-                          style={{
-                            padding: '8px 16px', borderRadius: 8,
-                            background: '#C8A24C', color: '#000', fontWeight: 700, fontSize: 12,
-                            border: 'none', cursor: coachNoteText.trim() ? 'pointer' : 'default',
-                            opacity: coachNoteText.trim() ? 1 : 0.4,
-                          }}
-                        >
-                          {coachNoteSaving ? 'Saving…' : 'Save Note'}
-                        </button>
-                        {coachNoteSaved && <span style={{ fontSize: 12, color: '#4CAF80' }}>Saved</span>}
-                      </div>
-                    </div>
-
-                    <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 8, marginTop: 10 }}>
-                      {saveMsg && <span style={{ fontSize: 12, color: saveMsg === "Saved" ? "#4CAF80" : "#E05555" }}>{saveMsg}</span>}
-                      <button
-                        onClick={() => saveEdit(m)}
-                        disabled={saving}
-                        style={{ display: "flex", alignItems: "center", gap: 6, padding: "8px 16px", borderRadius: 8, backgroundColor: GOLD, color: "#0A0A0A", fontSize: 13, fontWeight: 700, border: "none", cursor: saving ? "default" : "pointer", opacity: saving ? 0.7 : 1 }}
-                      >
-                        {saving ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
-                        Save
-                      </button>
-                    </div>
-                  </div>
-                )}
-              </div>
-            );
-          })}
-        </div>
-      )}
-    </div>
-  );
-}
-
-// ─── Trial status auto-age ────────────────────────────────────────
-
-function getTrialStatus(booking: any): string {
-  const raw = booking.status || booking.Status || 'New';
-  if (raw.toLowerCase() !== 'new') return raw;
-
-  const dateStr = booking.date || booking.Date || booking.createdAt || booking.timestamp;
-  if (!dateStr) return raw;
-
-  const daysOld = (Date.now() - new Date(dateStr).getTime()) / (1000 * 60 * 60 * 24);
-  if (daysOld > 14) return 'Stale';
-  if (daysOld > 7) return 'Follow Up';
-  return 'New';
-}
-
-// ─── Trials Tab ────────────────────────────────────────────────────
-
-function TrialsTab() {
-  const [bookings, setBookings] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
-
-  const load = useCallback(async () => {
-    setLoading(true); setError("");
-    const list = await adminGetBookings();
-    setBookings(list);
-    if (list.length === 0) setError("No upcoming trial bookings.");
-    setLoading(false);
-  }, []);
-
-  useEffect(() => { load(); }, [load]);
-
-  if (loading) return <LoadingState rows={3} />;
-
-  return (
-    <div style={{ padding: "16px" }}>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
-        <span style={{ fontSize: 13, color: "#666" }}>{bookings.length} upcoming {bookings.length === 1 ? "trial" : "trials"}</span>
-        <button onClick={load} style={{ color: "#555", background: "none", border: "none", cursor: "pointer", padding: 4 }}>
-          <RefreshCw size={14} />
-        </button>
-      </div>
-      {bookings.length === 0 ? (
-        <div style={{ textAlign: "center", padding: "32px 0", color: "#555", fontSize: 13 }}>No trial bookings right now.</div>
-      ) : (
-        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-          {bookings.map((b, i) => (
-            <div key={i} style={{ backgroundColor: "#111", borderRadius: 12, border: "1px solid #1A1A1A", padding: "12px 14px" }}>
-              <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between" }}>
-                <div>
-                  <p style={{ fontSize: 14, fontWeight: 600, color: "#F0F0F0", margin: 0 }}>{b.name}</p>
-                  <p style={{ fontSize: 12, color: "#666", margin: "3px 0 0" }}>{b.classType}</p>
-                  {b.email && <p style={{ fontSize: 11, color: "#555", margin: "2px 0 0" }}>{b.email}</p>}
-                  {b.phone && <p style={{ fontSize: 11, color: "#555", margin: "1px 0 0" }}>{b.phone}</p>}
-                </div>
-                <div style={{ textAlign: "right", flexShrink: 0, marginLeft: 10 }}>
-                  <StatusBadge status={getTrialStatus(b)} />
-                  <p style={{ fontSize: 11, color: "#555", margin: "4px 0 0" }}>{b.date ? new Date(b.date).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" }) : ""}</p>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
-// ─── Notes/Comms Tab ──────────────────────────────────────────────
-
-function NotesTab() {
-  const [members, setMembers] = useState<AdminMember[]>([]);
-  const [loadingMembers, setLoadingMembers] = useState(true);
-  const [selectedMember, setSelectedMember] = useState<AdminMember | null>(null);
-  const [comms, setComms] = useState<MemberComm[]>([]);
-  const [loadingComms, setLoadingComms] = useState(false);
-  const [noteText, setNoteText] = useState("");
-  const [saving, setSaving] = useState(false);
-  const [search, setSearch] = useState("");
-
-  // Announcement compose state
-  const [annTitle, setAnnTitle]       = useState("");
-  const [annText, setAnnText]         = useState("");
-  const [annBadge, setAnnBadge]       = useState("Priority Update");
-  const [annLink, setAnnLink]         = useState("");
-  const [annLinkLabel, setAnnLinkLabel] = useState("Learn More");
-  const [annSending, setAnnSending]   = useState(false);
-  const [annSent, setAnnSent]         = useState(false);
-  const [showPreview, setShowPreview] = useState(false);
-
-  useEffect(() => {
-    adminGetMembers().then(list => { setMembers(list); setLoadingMembers(false); });
-  }, []);
-
-  const sendAnnouncement = async () => {
-    if (!annText.trim()) return;
-    setAnnSending(true);
-    try {
-      const token = getToken() || localStorage.getItem('lbjj_session_token') || '';
-      // Always pin to home with the new rich format
-      await Promise.all([
-        gasCall('chatSendMessage', { token, channel: 'announcements', text: annText.trim() }),
-        pinAnnouncement({
-          message: annText.trim(),
-          title: annTitle.trim() || undefined,
-          badge: annBadge.trim() || 'Priority Update',
-          link: annLink.trim() || undefined,
-          linkLabel: annLinkLabel.trim() || 'Learn More',
-        }),
-      ]);
-      setAnnTitle('');
-      setAnnText('');
-      setAnnBadge('Priority Update');
-      setAnnLink('');
-      setAnnLinkLabel('Learn More');
-      setShowPreview(false);
-      setAnnSent(true);
-      setTimeout(() => setAnnSent(false), 2500);
-    } catch {}
-    setAnnSending(false);
-  };
-
-  const selectMember = useCallback(async (m: AdminMember) => {
-    setSelectedMember(m);
-    setComms([]);
-    setLoadingComms(true);
-    const c = await adminGetMemberComms(m.Name, m.Email);
-    setComms(c);
-    setLoadingComms(false);
-  }, []);
-
-  const saveNote = async () => {
-    if (!noteText.trim() || !selectedMember) return;
-    setSaving(true);
-    const res = await adminSaveNote(selectedMember.Name, selectedMember.Email, noteText.trim());
-    setSaving(false);
-    if (res.success) {
-      setNoteText("");
-      const c = await adminGetMemberComms(selectedMember.Name, selectedMember.Email);
-      setComms(c);
-    }
-  };
-
-  const filteredMembers = members.filter(m => {
-    const q = search.toLowerCase();
-    return !q || (m.Name || "").toLowerCase().includes(q) || (m.Email || "").toLowerCase().includes(q);
-  });
-
-  if (selectedMember) {
-    return (
-      <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
-        {/* Member header */}
-        <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "12px 16px", borderBottom: "1px solid #1A1A1A", flexShrink: 0 }}>
-          <button onClick={() => setSelectedMember(null)} style={{ color: "#666", background: "none", border: "none", cursor: "pointer", padding: 4 }}>
-            <ArrowLeft size={18} />
-          </button>
-          <div style={{ flex: 1 }}>
-            <p style={{ margin: 0, fontSize: 14, fontWeight: 600, color: "#F0F0F0" }}>{selectedMember.Name}</p>
-            <p style={{ margin: "2px 0 0", fontSize: 11, color: "#666" }}>{selectedMember.Email} · {selectedMember.Plan || "No plan"}</p>
+          <div className="lbj-input-group">
+            <label>Message</label>
+            <textarea
+              className="lbj-input"
+              placeholder="Enter your announcement details here..."
+              value={annMessage}
+              onChange={(e) => setAnnMessage(e.target.value)}
+            />
           </div>
-        </div>
 
-        {/* Comms list */}
-        <div style={{ flex: 1, overflowY: "auto", padding: "12px 16px" }}>
-          {loadingComms ? (
-            <LoadingState rows={3} />
-          ) : comms.length === 0 ? (
-            <EmptyState illustration="chat" heading="No messages yet" description="Notes and messages for this member will appear here." compact />
-          ) : (
-            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-              {comms.map((c, i) => (
-                <div key={i} style={{ backgroundColor: "#111", borderRadius: 10, border: "1px solid #1A1A1A", padding: "10px 12px" }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
-                    <span style={{ fontSize: 11, fontWeight: 600, color: GOLD }}>{c.type || "Note"}</span>
-                    <span style={{ fontSize: 10, color: "#555" }}>{c.date ? new Date(c.date).toLocaleDateString() : ""}</span>
-                  </div>
-                  {c.subject && <p style={{ fontSize: 12, fontWeight: 600, color: "#DDD", margin: "0 0 3px" }}>{c.subject}</p>}
-                  <p style={{ fontSize: 12, color: "#999", margin: 0, lineHeight: 1.5 }}>{c.message}</p>
+          <div className="lbj-input-group">
+            <label>Badge Label</label>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+              {(Object.keys(BADGE_LABEL) as BadgeType[]).map((type) => (
+                <div
+                  key={type}
+                  className={`lbj-badge-pill ${annBadge === type ? "active" : ""}`}
+                  data-type={type}
+                  onClick={() => setAnnBadge(type)}
+                >
+                  {BADGE_LABEL[type]}
                 </div>
               ))}
             </div>
-          )}
-        </div>
-
-        {/* Add note input */}
-        <div style={{ padding: "10px 16px", borderTop: "1px solid #1A1A1A", flexShrink: 0, paddingBottom: "max(10px, env(safe-area-inset-bottom, 10px))" }}>
-          <div style={{ display: "flex", gap: 8 }}>
-            <textarea
-              value={noteText}
-              onChange={e => setNoteText(e.target.value)}
-              placeholder="Add a note about this member..."
-              rows={2}
-              style={{ flex: 1, backgroundColor: "#111", border: "1px solid #222", borderRadius: 10, padding: "10px 12px", fontSize: 13, color: "#F0F0F0", outline: "none", resize: "none" }}
-            />
-            <button
-              onClick={saveNote}
-              disabled={!noteText.trim() || saving}
-              style={{ alignSelf: "flex-end", width: 40, height: 40, borderRadius: "50%", backgroundColor: noteText.trim() ? GOLD : "#1A1A1A", color: noteText.trim() ? "#0A0A0A" : "#444", border: "none", cursor: noteText.trim() ? "pointer" : "default", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}
-            >
-              {saving ? <Loader2 size={16} className="animate-spin" /> : <Check size={16} />}
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div style={{ padding: "16px" }}>
-      {/* Compose Announcement */}
-      <div style={{ background: '#0f0e0d', borderRadius: 16, border: '1px solid rgba(239,68,68,0.2)', padding: 16, marginBottom: 16 }}>
-        <div style={{ fontSize: 11, fontWeight: 800, color: '#ef4444', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 14, display: 'flex', alignItems: 'center', gap: 6 }}>
-          <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#ef4444', animation: 'ann-pulse 2s infinite' }} />
-          New Announcement
-        </div>
-
-        {/* Title */}
-        <div style={{ marginBottom: 10 }}>
-          <div style={{ fontSize: 10, fontWeight: 700, color: '#666', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 5 }}>Title</div>
-          <input
-            value={annTitle}
-            onChange={e => setAnnTitle(e.target.value)}
-            placeholder="e.g. Gordon Ryan Seminar"
-            style={{ width: '100%', background: '#1a1918', border: '1px solid #2a2826', borderRadius: 10, color: '#F0F0F0', fontSize: 13, padding: '9px 12px', outline: 'none', boxSizing: 'border-box' as const }}
-          />
-        </div>
-
-        {/* Message */}
-        <div style={{ marginBottom: 10 }}>
-          <div style={{ fontSize: 10, fontWeight: 700, color: '#666', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 5 }}>Message</div>
-          <textarea
-            value={annText}
-            onChange={e => setAnnText(e.target.value)}
-            placeholder="Full announcement text visible when members expand the card..."
-            rows={3}
-            style={{ width: '100%', background: '#1a1918', border: '1px solid #2a2826', borderRadius: 10, color: '#F0F0F0', fontSize: 13, padding: '9px 12px', resize: 'none', fontFamily: 'inherit', boxSizing: 'border-box' as const, outline: 'none' }}
-          />
-        </div>
-
-        {/* Badge label */}
-        <div style={{ marginBottom: 10 }}>
-          <div style={{ fontSize: 10, fontWeight: 700, color: '#666', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 5 }}>Badge Label</div>
-          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-            {['Priority Update', 'Event', 'Schedule Change', 'Reminder', 'New'].map(opt => (
-              <button key={opt} onClick={() => setAnnBadge(opt)} style={{
-                padding: '5px 10px', borderRadius: 20, fontSize: 11, fontWeight: 700,
-                background: annBadge === opt ? 'rgba(239,68,68,0.15)' : '#1a1918',
-                border: annBadge === opt ? '1px solid rgba(239,68,68,0.4)' : '1px solid #2a2826',
-                color: annBadge === opt ? '#ef4444' : '#a8a29e',
-                cursor: 'pointer', transition: 'all 0.2s',
-              }}>{opt}</button>
-            ))}
-            <input
-              value={['Priority Update','Event','Schedule Change','Reminder','New'].includes(annBadge) ? '' : annBadge}
-              onChange={e => setAnnBadge(e.target.value)}
-              placeholder="Custom…"
-              style={{ width: 80, background: '#1a1918', border: '1px solid #2a2826', borderRadius: 20, color: '#F0F0F0', fontSize: 11, padding: '5px 10px', outline: 'none', boxSizing: 'border-box' as const }}
-            />
-          </div>
-        </div>
-
-        {/* Optional link */}
-        <div style={{ marginBottom: 14 }}>
-          <div style={{ fontSize: 10, fontWeight: 700, color: '#666', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 5 }}>CTA Link (optional)</div>
-          <div style={{ display: 'flex', gap: 8 }}>
-            <input
-              value={annLink}
-              onChange={e => setAnnLink(e.target.value)}
-              placeholder="https://..."
-              style={{ flex: 2, background: '#1a1918', border: '1px solid #2a2826', borderRadius: 10, color: '#F0F0F0', fontSize: 12, padding: '8px 12px', outline: 'none', boxSizing: 'border-box' as const }}
-            />
-            <input
-              value={annLinkLabel}
-              onChange={e => setAnnLinkLabel(e.target.value)}
-              placeholder="Button text"
-              style={{ flex: 1, background: '#1a1918', border: '1px solid #2a2826', borderRadius: 10, color: '#F0F0F0', fontSize: 12, padding: '8px 12px', outline: 'none', boxSizing: 'border-box' as const }}
-            />
-          </div>
-        </div>
-
-        {/* Preview toggle */}
-        {annText.trim() && (
-          <button onClick={() => setShowPreview(v => !v)} style={{
-            width: '100%', padding: '9px', borderRadius: 10, marginBottom: 10,
-            background: showPreview ? 'rgba(255,255,255,0.06)' : '#1a1918',
-            border: '1px solid rgba(255,255,255,0.08)', color: '#a8a29e',
-            fontSize: 12, fontWeight: 700, cursor: 'pointer',
-            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-          }}>
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="14" height="14">
-              <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>
-            </svg>
-            {showPreview ? 'Hide Preview' : 'Preview Card'}
-          </button>
-        )}
-
-        {/* Live preview */}
-        {showPreview && annText.trim() && (
-          <div style={{ marginBottom: 14, opacity: 0.9 }}>
-            <AnnouncementCard announcement={{
-              message: annText,
-              title: annTitle || 'New Announcement',
-              badge: annBadge || 'Priority Update',
-              link: annLink || undefined,
-              linkLabel: annLinkLabel || 'Learn More',
-              ts: new Date().toISOString(),
-            }} />
-          </div>
-        )}
-
-        {/* Send */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <button
-            onClick={sendAnnouncement}
-            disabled={annSending || !annText.trim()}
-            style={{
-              flex: 1, padding: '12px', borderRadius: 12,
-              background: annText.trim() ? '#ef4444' : '#1a1918',
-              color: annText.trim() ? '#fff' : '#444',
-              fontWeight: 800, fontSize: 13, border: 'none',
-              cursor: annText.trim() ? 'pointer' : 'default',
-              opacity: annSending ? 0.7 : 1,
-              boxShadow: annText.trim() ? '0 4px 16px rgba(239,68,68,0.3)' : 'none',
-              transition: 'all 0.3s',
-            }}
-          >
-            {annSending ? 'Sending…' : 'Pin to All Home Screens'}
-          </button>
-          {annSent && <span style={{ fontSize: 12, color: '#10b981', fontWeight: 700 }}>✓ Sent</span>}
-        </div>
-      </div>
-
-      <div style={{ display: "flex", alignItems: "center", gap: 8, backgroundColor: "#111", borderRadius: 10, padding: "8px 12px", border: "1px solid #1A1A1A", marginBottom: 12 }}>
-        <Search size={14} style={{ color: "#555" }} />
-        <input
-          value={search}
-          onChange={e => setSearch(e.target.value)}
-          placeholder="Find a member..."
-          style={{ flex: 1, background: "none", border: "none", outline: "none", fontSize: 13, color: "#F0F0F0" }}
-        />
-      </div>
-      {loadingMembers ? (
-        <LoadingState rows={4} />
-      ) : (
-        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-          {filteredMembers.map(m => (
-            <button
-              key={m.ID || m._row}
-              onClick={() => selectMember(m)}
-              style={{ display: "flex", alignItems: "center", gap: 10, padding: "11px 14px", backgroundColor: "#111", borderRadius: 12, border: "1px solid #1A1A1A", cursor: "pointer", textAlign: "left" }}
-            >
-              <BeltDot belt={m.Belt || "white"} size={10} />
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <p style={{ fontSize: 13, fontWeight: 600, color: "#F0F0F0", margin: 0 }}>{m.Name}</p>
-                <p style={{ fontSize: 11, color: "#666", margin: "2px 0 0", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{m.Email}</p>
-              </div>
-              <ChevronRight size={14} style={{ color: "#333", flexShrink: 0 }} />
-            </button>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
-// ─── Settings Tab ────────────────────────────────────────────
-
-function SettingsTab() {
-  // Check-in gate settings
-  const [checkinWindowMinutes, setCheckinWindowMinutes] = useState(() =>
-    parseInt(localStorage.getItem('lbjj_checkin_window_minutes') || '60')
-  );
-  const [checkinGateEnabled, setCheckinGateEnabled] = useState(() =>
-    localStorage.getItem('lbjj_checkin_gate_enabled') !== 'false'
-  );
-  const [checkinSettingsSaved, setCheckinSettingsSaved] = useState(false);
-
-  const saveCheckinSettings = () => {
-    localStorage.setItem('lbjj_checkin_window_minutes', String(checkinWindowMinutes));
-    localStorage.setItem('lbjj_checkin_gate_enabled', String(checkinGateEnabled));
-    setCheckinSettingsSaved(true);
-    setTimeout(() => setCheckinSettingsSaved(false), 2000);
-  };
-
-  const [geoEnabled, setGeoEnabled] = useState(false);
-  const [gymLat, setGymLat] = useState('');
-  const [gymLng, setGymLng] = useState('');
-  const [radiusYards, setRadiusYards] = useState('500');
-  const [saving, setSaving] = useState(false);
-  const [saved, setSaved] = useState(false);
-  const [detecting, setDetecting] = useState(false);
-  const [addressQuery, setAddressQuery] = useState('2500 William Tracy Blvd, Fulshear, TX 77441');
-  const [geocoding, setGeocoding] = useState(false);
-
-  // Pinned announcement state
-  const [pinnedAnn, setPinnedAnn] = useState<{ message: string; ts: string } | null>(null);
-  const [clearingPin, setClearingPin] = useState(false);
-
-  const searchAddress = async () => {
-    if (!addressQuery.trim()) return;
-    setGeocoding(true);
-    let found = false;
-    // Primary: Nominatim (OpenStreetMap, no CORS issues, no API key)
-    try {
-      const res = await fetch(
-        `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(addressQuery)}&format=json&limit=3&addressdetails=1`,
-        { headers: { 'Accept-Language': 'en' } }
-      );
-      const data = await res.json();
-      if (Array.isArray(data) && data.length > 0) {
-        const r = data[0];
-        setGymLat(parseFloat(r.lat).toFixed(6));
-        setGymLng(parseFloat(r.lon).toFixed(6));
-        setAddressQuery(r.display_name.split(',').slice(0, 3).join(',').trim());
-        found = true;
-      }
-    } catch { /* try fallback */ }
-    // Fallback: Photon (Komoot)
-    if (!found) {
-      try {
-        const res = await fetch(
-          `https://photon.komoot.io/api/?q=${encodeURIComponent(addressQuery)}&limit=3&lang=en`
-        );
-        const data = await res.json();
-        const features = data?.features || [];
-        if (features.length > 0) {
-          const [lng, lat] = features[0].geometry.coordinates;
-          setGymLat(parseFloat(lat).toFixed(6));
-          setGymLng(parseFloat(lng).toFixed(6));
-          const p = features[0].properties;
-          const matched = [p.name, p.street, p.city, p.state].filter(Boolean).join(', ');
-          setAddressQuery(matched);
-          found = true;
-        }
-      } catch { /* both failed */ }
-    }
-    if (!found) {
-      alert('Address not found. Try: "2500 Main St, Fulshear, TX 77441"');
-    }
-    setGeocoding(false);
-  };
-
-  // Load existing config on mount
-  useEffect(() => {
-    // TODO: GAS action needed — getGeoConfig
-    cachedGasCall('getGeoConfig', {}, 60_000).then((res: any) => {
-      if (res?.config) {
-        setGeoEnabled(res.config.enabled === true || res.config.enabled === 'true');
-        setGymLat(res.config.lat || '');
-        setGymLng(res.config.lng || '');
-        setRadiusYards(res.config.radiusYards || '500');
-      }
-    }).catch(() => {});
-    // Load pinned announcement
-    getPinnedAnnouncement().then(ann => setPinnedAnn(ann)).catch(() => {});
-  }, []);
-
-  const detectLocation = () => {
-    setDetecting(true);
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        setGymLat(pos.coords.latitude.toFixed(6));
-        setGymLng(pos.coords.longitude.toFixed(6));
-        setDetecting(false);
-      },
-      () => { setDetecting(false); alert('Could not get location. Enter manually.'); },
-      { enableHighAccuracy: true, timeout: 10000 }
-    );
-  };
-
-  const save = async () => {
-    setSaving(true);
-    const token = localStorage.getItem('lbjj_session_token') || '';
-    try {
-      // TODO: GAS action needed — saveGeoConfig
-      await gasCall('saveGeoConfig', {
-        token,
-        enabled: geoEnabled,
-        lat: parseFloat(gymLat) || 0,
-        lng: parseFloat(gymLng) || 0,
-        radiusYards: parseInt(radiusYards) || 500,
-      });
-      setSaved(true);
-      setTimeout(() => setSaved(false), 2000);
-    } catch { alert('Failed to save. Try again.'); }
-    setSaving(false);
-  };
-
-  return (
-    <div style={{ padding: '16px 20px' }}>
-
-      {/* ── Check-In Window Settings ──────────────────────────────── */}
-      <div style={{ marginBottom: 24 }}>
-        <div style={{ fontSize: 14, fontWeight: 700, color: '#F0F0F0', marginBottom: 4 }}>Check-In Window</div>
-        <div style={{ fontSize: 12, color: '#666', marginBottom: 16 }}>
-          Control how early members can check into class.
-        </div>
-
-        {/* Gate toggle */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 14px', background: '#111', borderRadius: 10, border: '1px solid #1A1A1A', marginBottom: 12 }}>
-          <div>
-            <div style={{ fontSize: 13, fontWeight: 600, color: '#F0F0F0' }}>Enable Check-In Time Gate</div>
-            <div style={{ fontSize: 11, color: '#555' }}>Block early check-ins outside the window</div>
-          </div>
-          <button
-            onClick={() => setCheckinGateEnabled(v => !v)}
-            style={{
-              width: 44, height: 24, borderRadius: 12, border: 'none', cursor: 'pointer',
-              background: checkinGateEnabled ? '#C8A24C' : '#333',
-              position: 'relative', transition: 'background 0.2s',
-            }}
-          >
-            <div style={{
-              width: 18, height: 18, borderRadius: '50%', background: '#FFF',
-              position: 'absolute', top: 3,
-              left: checkinGateEnabled ? 23 : 3,
-              transition: 'left 0.2s',
-            }}/>
-          </button>
-        </div>
-
-        {/* Window slider */}
-        <div style={{ opacity: checkinGateEnabled ? 1 : 0.5, transition: 'opacity 0.2s', pointerEvents: checkinGateEnabled ? 'auto' : 'none' }}>
-          <label style={{ fontSize: 10, color: '#666', display: 'block', marginBottom: 4 }}>CHECK-IN OPENS X MINUTES BEFORE CLASS</label>
-          <input
-            type="range"
-            min="15" max="240" step="15"
-            value={checkinWindowMinutes}
-            onChange={e => setCheckinWindowMinutes(parseInt(e.target.value))}
-            style={{ width: '100%', accentColor: '#C8A24C', marginBottom: 4 }}
-          />
-          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: '#444', marginBottom: 10 }}>
-            <span>15 min</span>
-            <span style={{ color: '#C8A24C', fontWeight: 600 }}>{checkinWindowMinutes >= 60 ? `${checkinWindowMinutes/60}h` : `${checkinWindowMinutes}min`} before class</span>
-            <span>4h</span>
           </div>
 
-          {/* Preset buttons */}
-          <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
-            {[30, 60, 120].map(mins => (
-              <button
-                key={mins}
-                onClick={() => setCheckinWindowMinutes(mins)}
-                style={{
-                  flex: 1, padding: '7px 0', borderRadius: 8, border: '1px solid',
-                  borderColor: checkinWindowMinutes === mins ? '#C8A24C' : '#222',
-                  background: checkinWindowMinutes === mins ? 'rgba(200,162,76,0.12)' : '#111',
-                  color: checkinWindowMinutes === mins ? '#C8A24C' : '#666',
-                  fontWeight: 600, fontSize: 11, cursor: 'pointer',
-                }}
-              >
-                {mins >= 60 ? `${mins/60}hr` : `${mins}min`}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        <button
-          onClick={saveCheckinSettings}
-          style={{ width: '100%', padding: '12px', borderRadius: 10, background: '#C8A24C', color: '#000', fontWeight: 700, fontSize: 13, border: 'none', cursor: 'pointer' }}
-        >
-          {checkinSettingsSaved ? 'Saved ✓' : 'Save Check-In Settings'}
-        </button>
-      </div>
-
-      <div style={{ marginBottom: 24 }}>
-        <div style={{ fontSize: 14, fontWeight: 700, color: '#F0F0F0', marginBottom: 4 }}>Check-In Geo Lock</div>
-        <div style={{ fontSize: 12, color: '#666', marginBottom: 16 }}>
-          Require members to be physically at the gym to check into class.
-        </div>
-
-        {/* Toggle */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 14px', background: '#111', borderRadius: 10, border: '1px solid #1A1A1A', marginBottom: 12 }}>
-          <div>
-            <div style={{ fontSize: 13, fontWeight: 600, color: '#F0F0F0' }}>Enable Geo Lock</div>
-            <div style={{ fontSize: 11, color: '#555' }}>Members must share location to check in</div>
-            {!geoEnabled && <div style={{ fontSize: 10, color: '#888', marginTop: 4 }}>Geo lock is off until you press Save Settings</div>}
-          </div>
-          <button
-            onClick={() => setGeoEnabled(v => !v)}
-            style={{
-              width: 32, height: 18, borderRadius: 9, border: 'none', cursor: 'pointer',
-              background: geoEnabled ? '#C8A24C' : '#333',
-              position: 'relative', transition: 'background 0.2s', flexShrink: 0,
-            }}
-          >
-            <div style={{
-              width: 12, height: 12, borderRadius: '50%', background: '#FFF',
-              position: 'absolute', top: 3,
-              left: geoEnabled ? 17 : 3,
-              transition: 'left 0.2s',
-            }}/>
-          </button>
-        </div>
-
-        {/* Coordinates */}
-        <div style={{ opacity: geoEnabled ? 1 : 0.5, transition: 'opacity 0.2s', pointerEvents: geoEnabled ? 'auto' : 'none' }}>
-          {/* Address search */}
-          <div style={{ marginBottom: 10 }}>
-            <label style={{ fontSize: 10, color: '#666', display: 'block', marginBottom: 4 }}>SEARCH GYM ADDRESS</label>
-            <div style={{ display: 'flex', gap: 8 }}>
+          <div className="lbj-input-group">
+            <label>CTA Link (Optional)</label>
+            <div className="lbj-input-with-icon">
+              <svg viewBox="0 0 24 24" fill="none" strokeWidth="2">
+                <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
+                <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
+              </svg>
               <input
-                value={addressQuery}
-                onChange={e => setAddressQuery(e.target.value)}
-                onKeyDown={e => e.key === 'Enter' && searchAddress()}
-                placeholder="123 Main St, Fulshear, TX"
-                disabled={!geoEnabled}
-                style={{ flex: 1, background: '#111', border: '1px solid #222', borderRadius: 8, color: '#F0F0F0', padding: '9px 10px', fontSize: 13, boxSizing: 'border-box' as const }}
+                type="url"
+                className="lbj-input"
+                placeholder="https://..."
+                value={annCta}
+                onChange={(e) => setAnnCta(e.target.value)}
               />
-              <button
-                onClick={searchAddress}
-                disabled={!geoEnabled || geocoding || !addressQuery.trim()}
-                style={{ padding: '9px 14px', borderRadius: 8, background: '#1A1A1A', color: '#C8A24C', fontWeight: 700, fontSize: 12, border: '1px solid #333', cursor: 'pointer', flexShrink: 0 }}
-              >
-                {geocoding ? '\u2026' : 'Find'}
-              </button>
             </div>
           </div>
 
-          {/* OR detect location */}
-          <button onClick={detectLocation} disabled={!geoEnabled || detecting}
-            style={{ width: '100%', padding: '8px', borderRadius: 8, marginBottom: 10, background: 'rgba(200,162,76,0.06)', border: '1px solid rgba(200,162,76,0.2)', color: '#C8A24C', fontWeight: 600, fontSize: 11, cursor: 'pointer' }}>
-            {detecting ? 'Detecting\u2026' : '\uD83D\uDCCD Use My Current Location'}
+          <div className="lbj-flex-row-check" style={{ marginBottom: 16 }}>
+            <span>
+              <svg viewBox="0 0 24 24" fill="none" strokeWidth="2">
+                <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48" />
+              </svg>
+              Pin to All Home Screens
+            </span>
+            <label className="lbj-toggle toggle-danger">
+              <input type="checkbox" checked={annPin} onChange={(e) => setAnnPin(e.target.checked)} />
+              <span className="lbj-slider" />
+            </label>
+          </div>
+
+          <button
+            className="lbj-btn-secondary btn-announcement"
+            onClick={handlePublish}
+            disabled={publishing}
+          >
+            {publishing ? (
+              <Spinner />
+            ) : (
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M22 2L11 13" />
+                <path d="M22 2l-7 20-4-9-9-4 20-7z" />
+              </svg>
+            )}
+            {publishing ? "Publishing…" : "Publish Announcement"}
           </button>
+        </div>
 
-          {/* Coordinates display (read-only when address found) */}
-          {(gymLat && gymLng) && (
-            <div style={{ fontSize: 11, color: '#555', marginBottom: 8, padding: '6px 10px', background: '#0D0D0D', borderRadius: 8, border: '1px solid #1A1A1A' }}>
-              \uD83D\uDCCC {parseFloat(gymLat).toFixed(4)}, {parseFloat(gymLng).toFixed(4)}
-            </div>
-          )}
-
-          {/* Map preview with radius circle */}
-          {gymLat && gymLng && (
-            <div style={{ marginBottom: 10, borderRadius: 12, overflow: 'hidden', border: '1px solid #1A1A1A', position: 'relative' }}>
-              <img
-                src={`https://maps.geoapify.com/v1/staticmap?style=osm-bright-smooth&width=640&height=320&center=lonlat:${gymLng},${gymLat}&zoom=15&marker=lonlat:${gymLng},${gymLat};type:material;color:%23C8A24C;size:large&apiKey=e9e00c76e0d04afc9f12f4d05ab3b5cd`}
-                alt="Gym location map"
-                style={{ width: '100%', height: 160, objectFit: 'cover', display: 'block' }}
-                onError={(e) => {
-                  const img = e.target as HTMLImageElement;
-                  if (!img.src.includes('openstreetmap.de')) {
-                    img.src = 'https://staticmap.openstreetmap.de/staticmap.php?center=' + gymLat + ',' + gymLng + '&zoom=15&size=640x320&markers=' + gymLat + ',' + gymLng + ',red-pushpin';
-                  } else {
-                    img.style.display = 'none';
-                  }
-                }}
-              />
-              <div style={{
-                position: 'absolute', inset: 0,
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                pointerEvents: 'none',
-              }}>
-                <svg width="320" height="160" viewBox="0 0 320 160" style={{ width: '100%', height: '100%' }}>
-                  {(() => {
-                    const metersPerPx = 4.8;
-                    const radiusMeters = (parseInt(radiusYards) || 500) * 0.9144;
-                    const radiusPx = Math.min(Math.max(radiusMeters / metersPerPx, 10), 80);
-                    return (
-                      <>
-                        <circle cx="160" cy="80" r={radiusPx} fill="rgba(200,162,76,0.15)" stroke="#C8A24C" strokeWidth="2" strokeDasharray="6 3"/>
-                        <circle cx="160" cy="80" r="6" fill="#C8A24C"/>
-                        <circle cx="160" cy="80" r="3" fill="#000"/>
-                      </>
-                    );
-                  })()}
+        {/* CARD 2: XP */}
+        <div className="lbj-card" style={{ borderColor: "rgba(245, 158, 11, 0.3)" }}>
+          <div className="lbj-card-glow xp" />
+          <div className="lbj-c-header">
+            <div>
+              <div className="lbj-c-title xp">
+                <svg viewBox="0 0 24 24" fill="none" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
                 </svg>
+                Dynamic XP Multiplier
+              </div>
+              <div className="lbj-c-desc">Boost class attendance by offering bonus XP.</div>
+            </div>
+            <label className="lbj-toggle">
+              <input type="checkbox" checked={xpEnabled} onChange={(e) => setXpEnabled(e.target.checked)} />
+              <span className="lbj-slider" />
+            </label>
+          </div>
+
+          <div className="lbj-input-group">
+            <label>Select Day</label>
+            <div className="lbj-day-pills">
+              {DAY_LETTERS.map((letter, i) => (
+                <div
+                  key={i}
+                  className={`lbj-day-pill ${xpDay === i ? "active" : ""}`}
+                  onClick={() => setXpDay(i)}
+                  title={DAY_NAMES[i]}
+                >
+                  {letter}
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div style={{ display: "flex", gap: 16 }}>
+            <div className="lbj-input-group" style={{ flex: 1 }}>
+              <label>Time Slot</label>
+              <div className="lbj-input-with-icon">
+                <svg viewBox="0 0 24 24" fill="none" strokeWidth="2">
+                  <circle cx="12" cy="12" r="10" />
+                  <polyline points="12 6 12 12 16 14" />
+                </svg>
+                <input
+                  type="time"
+                  className="lbj-input"
+                  value={xpTime}
+                  onChange={(e) => setXpTime(e.target.value)}
+                  style={{ colorScheme: "dark" }}
+                />
               </div>
             </div>
-          )}
-
-          {/* Radius number input */}
-          <div>
-            <label style={{ fontSize: 10, color: '#666', display: 'block', marginBottom: 4 }}>RADIUS</label>
-            <input type="number" value={radiusYards} onChange={e => setRadiusYards(e.target.value)} disabled={!geoEnabled}
-              placeholder="500" style={{ width: '100%', background: '#111', border: '1px solid #222', borderRadius: 8, color: '#F0F0F0', padding: '8px 10px', fontSize: 13, boxSizing: 'border-box' as const }}/>
+            <div className="lbj-input-group" style={{ flex: 1 }}>
+              <label>Valid Until</label>
+              <div className="lbj-input-with-icon">
+                <svg viewBox="0 0 24 24" fill="none" strokeWidth="2">
+                  <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
+                  <line x1="16" y1="2" x2="16" y2="6" />
+                  <line x1="8" y1="2" x2="8" y2="6" />
+                  <line x1="3" y1="10" x2="21" y2="10" />
+                </svg>
+                <input
+                  type="date"
+                  className="lbj-input"
+                  value={xpValidUntil}
+                  onChange={(e) => setXpValidUntil(e.target.value)}
+                  style={{ colorScheme: "dark" }}
+                />
+              </div>
+            </div>
           </div>
 
-          {/* Radius slider */}
-          <input
-            type="range"
-            min="50" max="2000" step="50"
-            value={radiusYards}
-            onChange={e => setRadiusYards(e.target.value)}
-            disabled={!geoEnabled}
-            style={{ width: '100%', marginTop: 6, accentColor: '#C8A24C' }}
-          />
-          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: '#444', marginTop: 2 }}>
-            <span>50 yd</span>
-            <span style={{ color: '#C8A24C', fontWeight: 600 }}>{radiusYards} yd &middot; {((parseInt(radiusYards)||0)/1760).toFixed(2)} mi</span>
-            <span>2000 yd</span>
+          <div className="lbj-input-group">
+            <label>Duration / Scope</label>
+            <div className="lbj-pills-wrap">
+              {([
+                { k: "week", label: "Just This Week" },
+                { k: "month", label: "All Month" },
+                { k: "always", label: "Always On" },
+              ] as { k: ScopeType; label: string }[]).map((opt) => (
+                <div
+                  key={opt.k}
+                  className={`lbj-pill ${xpScope === opt.k ? "active" : ""}`}
+                  onClick={() => setXpScope(opt.k)}
+                >
+                  {opt.label}
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="lbj-input-group">
+            <label>Multiplier Level</label>
+            <div className="lbj-xp-pills">
+              {[1.25, 1.5, 2].map((m) => (
+                <div
+                  key={m}
+                  className={`lbj-xp-pill ${xpMultiplier === m ? "active" : ""}`}
+                  onClick={() => setXpMultiplier(m)}
+                >
+                  {m.toFixed(2)}x
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <button className="lbj-btn-secondary" onClick={handleSaveXpEvent} disabled={xpSaving}>
+            {xpSaving ? <Spinner /> : null}
+            {xpSaving ? "Saving…" : (xpEnabled ? "Add Multiplier Event" : "Disable Multiplier")}
+          </button>
+        </div>
+
+        {/* CARD 3: TIME GATE */}
+        <div className="lbj-card">
+          <div className="lbj-card-glow" />
+          <div className="lbj-c-header">
+            <div>
+              <div className="lbj-c-title">
+                <svg viewBox="0 0 24 24" fill="none" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="12" cy="12" r="10" />
+                  <polyline points="12 6 12 12 16 14" />
+                </svg>
+                Check-In Time Gate
+              </div>
+              <div className="lbj-c-desc">Block early check-ins outside the window.</div>
+            </div>
+            <label className="lbj-toggle">
+              <input type="checkbox" checked={gateEnabled} onChange={(e) => setGateEnabled(e.target.checked)} />
+              <span className="lbj-slider" />
+            </label>
+          </div>
+
+          <div className="lbj-input-group" style={{ marginBottom: 0 }}>
+            <label>Window Opens Before Class</label>
+            <div className="lbj-pills-wrap">
+              {[
+                { m: 15, label: "15 Min" },
+                { m: 30, label: "30 Min" },
+                { m: 60, label: "1 Hour" },
+                { m: 120, label: "2 Hours" },
+                { m: 240, label: "4 Hours" },
+              ].map((opt) => (
+                <div
+                  key={opt.m}
+                  className={`lbj-pill ${gateWindow === opt.m ? "active" : ""}`}
+                  onClick={() => setGateWindow(opt.m)}
+                >
+                  {opt.label}
+                </div>
+              ))}
+            </div>
           </div>
         </div>
 
-        <button onClick={save} disabled={saving}
-          style={{ marginTop: 16, width: '100%', padding: '12px', borderRadius: 10, background: '#C8A24C', color: '#000', fontWeight: 700, fontSize: 13, border: 'none', cursor: 'pointer' }}>
-          {saving ? 'Saving\u2026' : saved ? 'Saved \u2713' : 'Save Settings'}
-        </button>
-      </div>
+        {/* CARD 4: GEO-LOCK */}
+        <div className="lbj-card">
+          <div className="lbj-card-glow" />
+          <div className="lbj-c-header">
+            <div>
+              <div className="lbj-c-title">
+                <svg viewBox="0 0 24 24" fill="none" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
+                  <circle cx="12" cy="10" r="3" />
+                </svg>
+                Location Geo-Lock
+              </div>
+              <div className="lbj-c-desc">Require members to be physically inside the academy radius.</div>
+            </div>
+            <label className="lbj-toggle">
+              <input type="checkbox" checked={geoEnabled} onChange={(e) => setGeoEnabled(e.target.checked)} />
+              <span className="lbj-slider" />
+            </label>
+          </div>
 
-      {/* Pinned Announcement Management */}
-      <div style={{ marginBottom: 24 }}>
-        <div style={{ fontSize: 14, fontWeight: 700, color: '#F0F0F0', marginBottom: 4 }}>Pinned Announcement</div>
-        <div style={{ fontSize: 12, color: '#666', marginBottom: 12 }}>
-          The pinned announcement appears on every member's home screen.
-        </div>
-        {pinnedAnn ? (
-          <div style={{ background: '#111', borderRadius: 10, border: '1px solid #1A1A1A', padding: '12px 14px', marginBottom: 10 }}>
-            <div style={{ fontSize: 10, fontWeight: 700, color: '#C8A24C', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 6 }}>Currently Pinned</div>
-            <div style={{ fontSize: 13, color: '#CCC', lineHeight: 1.5, marginBottom: 10 }}>{pinnedAnn.message}</div>
-            <div style={{ fontSize: 10, color: '#555', marginBottom: 10 }}>Pinned {pinnedAnn.ts ? new Date(pinnedAnn.ts).toLocaleDateString() : ''}</div>
+          <div className="lbj-input-group">
+            <label>Academy Coordinates</label>
+            <div className="lbj-input-with-icon">
+              <svg viewBox="0 0 24 24" fill="none" strokeWidth="2">
+                <circle cx="11" cy="11" r="8" />
+                <line x1="21" y1="21" x2="16.65" y2="16.65" />
+              </svg>
+              <input
+                type="text"
+                className="lbj-input"
+                value={geoLocation}
+                onChange={(e) => setGeoLocation(e.target.value)}
+              />
+            </div>
+          </div>
+
+          <div className="lbj-input-group">
             <button
-              onClick={async () => {
-                setClearingPin(true);
-                try {
-                  await clearPinnedAnnouncement();
-                  setPinnedAnn(null);
-                } catch {}
-                setClearingPin(false);
-              }}
-              disabled={clearingPin}
-              style={{ padding: '8px 16px', borderRadius: 8, background: 'rgba(224,85,85,0.12)', color: '#E05555', fontWeight: 700, fontSize: 12, border: '1px solid rgba(224,85,85,0.3)', cursor: 'pointer' }}
+              className="lbj-btn-secondary"
+              style={{ background: "rgba(255,255,255,0.02)", border: "1px dashed rgba(255,255,255,0.15)" }}
+              onClick={handleUseCurrentLocation}
+              disabled={geoLocating}
             >
-              {clearingPin ? 'Clearing…' : 'Clear Pinned Announcement'}
+              {geoLocating ? <Spinner /> : (
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <polygon points="3 11 22 2 13 21 11 13 3 11" />
+                </svg>
+              )}
+              {geoLocating ? "Locating…" : "Use My Current Location"}
             </button>
           </div>
-        ) : (
-          <div style={{ background: '#111', borderRadius: 10, border: '1px solid #1A1A1A', padding: '14px', fontSize: 13, color: '#555' }}>
-            No announcement pinned. Send one from the Notes tab with "Pin to Home Dashboard" enabled.
+
+          <div className="lbj-input-group" style={{ marginTop: 24 }}>
+            <div className="lbj-range-header">
+              <label style={{ margin: 0 }}>Allowed Radius</label>
+              <div style={{ textAlign: "right" }}>
+                <div className="lbj-range-val">{geoRadius} yd</div>
+                <div className="lbj-range-sub">~ {(geoRadius / 1760).toFixed(2)} miles</div>
+              </div>
+            </div>
+            <input
+              type="range"
+              min={50}
+              max={2000}
+              step={50}
+              value={geoRadius}
+              onChange={(e) => setGeoRadius(Number(e.target.value))}
+            />
+          </div>
+
+          <div className="lbj-radar-box">
+            <div className="lbj-radar-grid" />
+            <div
+              className="lbj-radar-ring"
+              style={{ width: radarScale, height: radarScale }}
+            />
+            <div className="lbj-radar-center" />
+            <div style={{ position: "absolute", bottom: 8, right: 10, fontSize: 9, color: "#888891", fontFamily: "monospace" }}>
+              GPS: {geoEnabled ? "ACTIVE" : "OFF"}
+            </div>
+          </div>
+        </div>
+
+        {/* SAVE BAR */}
+        <div className="lbj-save-bar">
+          <button className="lbj-btn-save" onClick={handleSaveAll} disabled={saving}>
+            {saving ? "Saving…" : "Save System Config"}
+          </button>
+        </div>
+
+        {toast && (
+          <div
+            className="lbj-toast"
+            style={{
+              background: toast.type === "error" ? "rgba(239,68,68,0.15)" : "rgba(34,197,94,0.15)",
+              borderColor: toast.type === "error" ? "rgba(239,68,68,0.5)" : "rgba(34,197,94,0.5)",
+              color: toast.type === "error" ? "#fca5a5" : "#86efac",
+            }}
+          >
+            {toast.message}
           </div>
         )}
       </div>
@@ -1199,59 +616,247 @@ function SettingsTab() {
   );
 }
 
-// ─── Shared UI helpers ────────────────────────────────────────────
+// ── helpers ──────────────────────────────────────────────────────────
 
-function KpiCard({ label, value, color }: { label: string; value: number | string; color: string }) {
+function Spinner() {
   return (
-    <div style={{ backgroundColor: "#111", borderRadius: 12, border: "1px solid #1A1A1A", padding: "14px 14px 12px" }}>
-      <p style={{ fontSize: 10, color: "#666", textTransform: "uppercase", letterSpacing: "0.06em", fontWeight: 600, margin: "0 0 6px" }}>{label}</p>
-      <p style={{ fontSize: 22, fontWeight: 800, color, margin: 0, lineHeight: 1 }}>{value}</p>
-    </div>
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2.5"
+      strokeLinecap="round"
+      style={{ animation: "lbj-spin 1s linear infinite" }}
+    >
+      <path d="M21 12a9 9 0 1 1-6.219-8.56" />
+    </svg>
   );
 }
 
-function Section({ title, children, accent }: { title: string; children: React.ReactNode; accent?: string }) {
+const rootStyle: React.CSSProperties = {
+  background: "#050505",
+  color: "#f5f5f5",
+  fontFamily: "Inter, system-ui, sans-serif",
+  minHeight: "100vh",
+  padding: "20px 20px 140px",
+  WebkitFontSmoothing: "antialiased",
+};
+
+const backBtnStyle: React.CSSProperties = {
+  background: "transparent",
+  border: "none",
+  color: "#fff",
+  width: 36,
+  height: 36,
+  borderRadius: 10,
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  cursor: "pointer",
+  padding: 0,
+};
+
+function StyleBlock() {
   return (
-    <div style={{ backgroundColor: "#111", borderRadius: 12, border: `1px solid ${accent ? accent + "25" : "#1A1A1A"}`, padding: "14px", marginBottom: 12 }}>
-      <p style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: accent || "#666", margin: "0 0 10px" }}>{title}</p>
-      {children}
-    </div>
+    <style>{`
+      @keyframes lbj-spin { to { transform: rotate(360deg); } }
+      @keyframes lbj-radar-pulse { 0% { transform: scale(0.5); opacity: 0.8; } 100% { transform: scale(2); opacity: 0; } }
+      @keyframes lbj-toast-in { from { opacity: 0; transform: translate(-50%, 20px); } to { opacity: 1; transform: translate(-50%, 0); } }
+
+      .lbj-admin-header {
+        display: flex; justify-content: space-between; align-items: center;
+        margin-bottom: 24px; padding-bottom: 16px;
+        border-bottom: 1px solid rgba(255,255,255,0.06);
+      }
+      .lbj-page-title {
+        font-size: 20px; font-weight: 900; letter-spacing: -0.02em;
+        display: flex; align-items: center; gap: 10px; color: #f5f5f5;
+      }
+      .lbj-page-title svg { stroke: #C8A24C; }
+      .lbj-status-badge {
+        font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.1em;
+        background: rgba(34, 197, 94, 0.1); color: #22c55e;
+        padding: 4px 10px; border-radius: 6px; border: 1px solid rgba(34, 197, 94, 0.2);
+      }
+
+      .lbj-card {
+        background: linear-gradient(160deg, rgba(20,20,24,0.6) 0%, rgba(10,10,12,0.8) 100%);
+        border: 1px solid rgba(255,255,255,0.06);
+        border-radius: 16px; padding: 24px; margin-bottom: 20px;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.02);
+        position: relative; overflow: hidden;
+      }
+      .lbj-card-glow {
+        position: absolute; top: 0; left: 0; right: 0; height: 2px;
+        background: linear-gradient(90deg, transparent, #C8A24C, transparent);
+        opacity: 0.2;
+      }
+      .lbj-card-glow.xp { background: linear-gradient(90deg, transparent, #fbbf24, #f59e0b, transparent); opacity: 0.5; }
+      .lbj-card-glow.ann { background: linear-gradient(90deg, transparent, #ef4444, #f43f5e, transparent); opacity: 0.5; }
+
+      .lbj-c-header {
+        display: flex; justify-content: space-between; align-items: flex-start;
+        margin-bottom: 20px; gap: 12px;
+      }
+      .lbj-c-title { font-size: 16px; font-weight: 800; margin-bottom: 4px; display: flex; align-items: center; gap: 8px; color: #f5f5f5; }
+      .lbj-c-title svg { width: 18px; height: 18px; stroke: #888891; }
+      .lbj-c-title.xp svg { stroke: #fbbf24; fill: rgba(251, 191, 36, 0.2); }
+      .lbj-c-title.ann svg { stroke: #f43f5e; fill: rgba(244, 63, 94, 0.2); }
+      .lbj-c-desc { font-size: 13px; color: #888891; line-height: 1.5; max-width: 85%; }
+
+      .lbj-toggle { position: relative; display: inline-block; width: 44px; height: 24px; flex-shrink: 0; }
+      .lbj-toggle input { opacity: 0; width: 0; height: 0; }
+      .lbj-slider {
+        position: absolute; cursor: pointer; inset: 0;
+        background-color: rgba(255,255,255,0.1);
+        border-radius: 24px; transition: 0.3s;
+        border: 1px solid rgba(255,255,255,0.05);
+      }
+      .lbj-slider:before {
+        position: absolute; content: "";
+        height: 18px; width: 18px; left: 3px; bottom: 2px;
+        background-color: #fff; border-radius: 50%; transition: 0.3s;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.5);
+      }
+      .lbj-toggle input:checked + .lbj-slider { background-color: #C8A24C; box-shadow: 0 0 12px rgba(200,162,76,0.3); border-color: #FFD700; }
+      .lbj-toggle input:checked + .lbj-slider:before { transform: translateX(19px); }
+      .lbj-toggle.toggle-danger input:checked + .lbj-slider { background-color: #ef4444; box-shadow: 0 0 12px rgba(239,68,68,0.3); border-color: #f87171; }
+
+      .lbj-input-group { margin-bottom: 16px; position: relative; }
+      .lbj-input-group label {
+        display: block; font-size: 11px; font-weight: 700; text-transform: uppercase;
+        letter-spacing: 0.1em; color: #888891; margin-bottom: 8px;
+      }
+      .lbj-input-with-icon { position: relative; }
+      .lbj-input-with-icon svg {
+        position: absolute; left: 14px; top: 12px;
+        width: 16px; height: 16px; stroke: #888891; pointer-events: none;
+      }
+      .lbj-input {
+        width: 100%; background: rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.06);
+        color: #fff; font-family: 'Inter', sans-serif; font-size: 14px;
+        padding: 12px 14px; border-radius: 10px; transition: all 0.2s;
+      }
+      .lbj-input-with-icon .lbj-input { padding-left: 40px; }
+      .lbj-input:focus { outline: none; border-color: #C8A24C; box-shadow: 0 0 0 3px rgba(200,162,76,0.15); }
+      textarea.lbj-input { resize: vertical; min-height: 80px; line-height: 1.5; }
+
+      .lbj-pills-wrap {
+        display: flex; gap: 8px; flex-wrap: wrap;
+        background: rgba(0,0,0,0.3); padding: 6px; border-radius: 12px;
+        border: 1px solid rgba(255,255,255,0.06);
+      }
+      .lbj-pill {
+        flex: 1; min-width: 60px; text-align: center;
+        padding: 10px 12px; font-size: 12px; font-weight: 600; color: #888891;
+        cursor: pointer; border-radius: 8px; transition: all 0.2s;
+        border: 1px solid transparent; white-space: nowrap;
+      }
+      .lbj-pill:hover { background: rgba(255,255,255,0.05); color: #fff; }
+      .lbj-pill.active {
+        background: rgba(200,162,76,0.15); color: #FFD700;
+        border: 1px solid rgba(200,162,76,0.5); box-shadow: inset 0 1px 0 rgba(255,255,255,0.1);
+      }
+
+      .lbj-badge-pill { padding: 8px 12px; border-radius: 8px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; border: 1px solid rgba(255,255,255,0.06); background: rgba(0,0,0,0.4); color: #888891; cursor: pointer; transition: 0.2s; user-select: none; }
+      .lbj-badge-pill:hover { background: rgba(255,255,255,0.05); }
+      .lbj-badge-pill.active[data-type="priority"] { background: rgba(239,68,68,0.15); color: #fca5a5; border-color: rgba(239,68,68,0.5); }
+      .lbj-badge-pill.active[data-type="event"] { background: rgba(200,162,76,0.15); color: #FFD700; border-color: rgba(200,162,76,0.5); }
+      .lbj-badge-pill.active[data-type="schedule"] { background: rgba(59,130,246,0.15); color: #93c5fd; border-color: rgba(59,130,246,0.5); }
+      .lbj-badge-pill.active[data-type="reminder"] { background: rgba(168,85,247,0.15); color: #d8b4fe; border-color: rgba(168,85,247,0.5); }
+      .lbj-badge-pill.active[data-type="new"] { background: rgba(34,197,94,0.15); color: #86efac; border-color: rgba(34,197,94,0.5); }
+
+      .lbj-day-pills { display: flex; gap: 6px; margin-bottom: 0; }
+      .lbj-day-pill {
+        width: 36px; height: 36px; border-radius: 10px; display: grid; place-items: center; font-size: 13px; font-weight: 700;
+        background: rgba(255,255,255,0.05); color: #888891; border: 1px solid rgba(255,255,255,0.06); cursor: pointer; transition: all 0.2s;
+      }
+      .lbj-day-pill.active { background: #fff; color: #000; border-color: #fff; box-shadow: 0 4px 12px rgba(255,255,255,0.2); }
+
+      .lbj-xp-pills { display: flex; gap: 8px; margin-bottom: 0; }
+      .lbj-xp-pill {
+        flex: 1; padding: 12px 0; border-radius: 12px; text-align: center;
+        font-size: 16px; font-weight: 900; font-style: italic; color: #888891;
+        background: rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.06); cursor: pointer; transition: all 0.2s;
+      }
+      .lbj-xp-pill.active {
+        background: linear-gradient(135deg, #f59e0b, #d97706); color: #000;
+        border-color: #fbbf24; box-shadow: 0 8px 20px rgba(245, 158, 11, 0.4), inset 0 2px 0 rgba(255,255,255,0.4);
+        transform: translateY(-2px);
+      }
+
+      .lbj-range-header { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 12px; }
+      .lbj-range-val { font-size: 20px; font-weight: 800; color: #C8A24C; }
+      .lbj-range-sub { font-size: 12px; color: #888891; font-weight: 500; }
+      .lbj-card input[type=range] { -webkit-appearance: none; appearance: none; width: 100%; background: transparent; }
+      .lbj-card input[type=range]::-webkit-slider-thumb {
+        -webkit-appearance: none; appearance: none; height: 24px; width: 24px; border-radius: 50%;
+        background: #FFD700; cursor: pointer; margin-top: -10px;
+        box-shadow: 0 0 10px rgba(200,162,76,0.5), inset 0 -2px 4px rgba(0,0,0,0.3); border: 2px solid #fff;
+      }
+      .lbj-card input[type=range]::-webkit-slider-runnable-track { width: 100%; height: 6px; cursor: pointer; background: rgba(255,255,255,0.1); border-radius: 4px; box-shadow: inset 0 1px 2px rgba(0,0,0,0.5); }
+      .lbj-card input[type=range]::-moz-range-thumb { height: 24px; width: 24px; border-radius: 50%; background: #FFD700; cursor: pointer; border: 2px solid #fff; }
+      .lbj-card input[type=range]::-moz-range-track { width: 100%; height: 6px; background: rgba(255,255,255,0.1); border-radius: 4px; }
+
+      .lbj-radar-box {
+        width: 100%; height: 120px; background: rgba(0,0,0,0.4);
+        border: 1px solid rgba(255,255,255,0.06); border-radius: 12px; margin-top: 20px;
+        display: flex; align-items: center; justify-content: center; position: relative; overflow: hidden;
+      }
+      .lbj-radar-grid {
+        position: absolute; inset: 0;
+        background-image: linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px);
+        background-size: 20px 20px; background-position: center;
+      }
+      .lbj-radar-center { width: 8px; height: 8px; background: #ef4444; border-radius: 50%; box-shadow: 0 0 8px #ef4444; position: relative; z-index: 2; }
+      .lbj-radar-ring { position: absolute; border-radius: 50%; border: 1px solid #C8A24C; background: rgba(200,162,76,0.1); animation: lbj-radar-pulse 3s infinite; }
+
+      .lbj-flex-row-check {
+        display: flex; align-items: center; justify-content: space-between;
+        background: rgba(255,255,255,0.02); padding: 14px 16px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.06);
+      }
+      .lbj-flex-row-check span { font-size: 14px; font-weight: 600; color: #fff; display: flex; align-items: center; gap: 8px; }
+      .lbj-flex-row-check span svg { stroke: #C8A24C; width: 18px; height: 18px; }
+
+      .lbj-btn-secondary {
+        background: rgba(255,255,255,0.05); color: #fff; font-size: 13px; font-weight: 700;
+        border: 1px solid rgba(255,255,255,0.06); padding: 12px 16px; border-radius: 10px; cursor: pointer;
+        display: flex; align-items: center; gap: 8px; transition: all 0.2s; justify-content: center; width: 100%;
+        font-family: 'Inter', sans-serif;
+      }
+      .lbj-btn-secondary:hover:not(:disabled) { background: rgba(255,255,255,0.1); }
+      .lbj-btn-secondary:disabled { opacity: 0.6; cursor: not-allowed; }
+      .lbj-btn-secondary.btn-announcement {
+        background: rgba(244, 63, 94, 0.1); color: #fecdd3; border: 1px solid rgba(244, 63, 94, 0.3);
+      }
+      .lbj-btn-secondary.btn-announcement:hover:not(:disabled) { background: rgba(244, 63, 94, 0.2); }
+
+      .lbj-save-bar {
+        position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); z-index: 10;
+        width: calc(100% - 40px); max-width: 600px;
+        background: rgba(10,10,12,0.9); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+        border: 1px solid rgba(200,162,76,0.5); padding: 16px; border-radius: 16px;
+        display: flex; gap: 12px; box-shadow: 0 20px 40px rgba(0,0,0,0.8), 0 0 20px rgba(200,162,76,0.1);
+      }
+      .lbj-btn-save {
+        flex: 1; background: linear-gradient(135deg, #C8A24C, #FFD700);
+        color: #000; font-size: 15px; font-weight: 900; text-transform: uppercase;
+        letter-spacing: 0.05em; padding: 16px; border-radius: 10px; border: none;
+        cursor: pointer; box-shadow: inset 0 1px 1px rgba(255,255,255,0.5); transition: transform 0.1s;
+        font-family: 'Inter', sans-serif;
+      }
+      .lbj-btn-save:active:not(:disabled) { transform: scale(0.98); }
+      .lbj-btn-save:disabled { opacity: 0.7; cursor: not-allowed; }
+
+      .lbj-toast {
+        position: fixed; bottom: 100px; left: 50%; transform: translateX(-50%);
+        padding: 12px 18px; border-radius: 10px; border: 1px solid;
+        font-size: 13px; font-weight: 700; z-index: 20;
+        backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+        animation: lbj-toast-in 0.25s ease-out;
+      }
+    `}</style>
   );
-}
-
-function StatusBadge({ status }: { status: string }) {
-  const colors: Record<string, string> = {
-    Active: "#4CAF80", Trial: "#E08228", Paused: "#3B9EFF",
-    Failed: "#E05555", Cancelled: "#666", New: "#E08228", Confirmed: "#4CAF80",
-    'Follow Up': "#E08228", Stale: "#555",
-  };
-  const c = colors[status] || "#888";
-  return (
-    <span style={{ fontSize: 10, fontWeight: 700, padding: "2px 7px", borderRadius: 5, backgroundColor: `${c}18`, color: c, border: `1px solid ${c}30` }}>
-      {status}
-    </span>
-  );
-}
-
-function LabeledSelect({ label, value, options, onChange }: { label: string; value: string; options: string[]; onChange: (v: string) => void }) {
-  return (
-    <div>
-      <label style={{ display: "block", fontSize: 10, color: "#666", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 4 }}>{label}</label>
-      <select
-        value={value}
-        onChange={e => onChange(e.target.value)}
-        style={{ width: "100%", backgroundColor: "#0D0D0D", border: "1px solid #222", borderRadius: 8, padding: "8px 10px", fontSize: 13, color: "#F0F0F0", outline: "none" }}
-      >
-        {options.map(o => <option key={o} value={o}>{o}</option>)}
-      </select>
-    </div>
-  );
-}
-
-function LoadingState({ rows }: { rows: number }) {
-  return <SkeletonList count={rows} />;
-}
-
-function AdminErrorState({ message, onRetry }: { message: string; onRetry: () => void }) {
-  return <PageErrorState message={message} onRetry={onRetry} compact />;
 }
