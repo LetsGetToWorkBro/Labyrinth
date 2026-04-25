@@ -121,12 +121,15 @@ body.sauna-active .sauna-term .t-card.capacity .t-value { color: var(--heat-2); 
 .sauna-term .checkin-id-name { font-size: 18px; font-weight: 800; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
 .sauna-term .btn-checkin-out {
-  background: linear-gradient(135deg, #00C853, #00FF7F) !important;
-  box-shadow: 0 10px 20px rgba(0, 255, 127, 0.25), inset 0 2px 2px rgba(255,255,255,0.3) !important;
-  color: #002b14 !important;
+  background: rgba(255,255,255,0.08) !important;
+  border: 1px solid rgba(255,255,255,0.15) !important;
+  box-shadow: none !important;
+  color: #fff !important;
 }
 .sauna-term .btn-checkin-out:active:not(:disabled) {
-  box-shadow: 0 5px 10px rgba(0, 255, 127, 0.35), inset 0 2px 2px rgba(255,255,255,0.1) !important;
+  background: rgba(255,255,255,0.12) !important;
+  box-shadow: none !important;
+  transform: scale(0.96);
 }
 
 .sauna-term .search-row { display: flex; gap: 12px; position: relative; }
@@ -237,11 +240,11 @@ body.sauna-active .sauna-term .t-card.capacity .t-value { color: var(--heat-2); 
 
 .sauna-term .btn-checkout {
   width: 52px; height: 52px; border-radius: 14px; flex-shrink: 0; margin-left: 8px;
-  background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1);
-  display: grid; place-items: center; color: var(--text-muted); cursor: pointer; transition: all 0.2s;
+  background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1);
+  display: grid; place-items: center; color: rgba(255,255,255,0.5); cursor: pointer;
+  transition: background 0.15s, transform 0.1s;
 }
-.sauna-term .btn-checkout:active { transform: scale(0.9); }
-.sauna-term .btn-checkout.ready { background: rgba(255, 0, 0, 0.1); border-color: rgba(255, 0, 0, 0.4); color: #ff4444; }
+.sauna-term .btn-checkout:active { background: rgba(255,255,255,0.12); transform: scale(0.92); }
 
 .sauna-term .rules-box {
   background: rgba(12,12,14,0.6); border: 1px solid var(--border); border-radius: 16px; padding: 20px;
@@ -276,6 +279,50 @@ function injectCSSOnce() {
   style.id = "sauna-terminal-css";
   style.textContent = CSS;
   document.head.appendChild(style);
+}
+
+const SAUNA_LS_KEY = "lbjj_sauna_sessions";
+const SAUNA_LS_MAX_AGE_MS = 3 * 60 * 60 * 1000; // 3 hours
+
+type LocalSauna = { name: string; checkedInAt: string };
+
+function readLocalSaunaSessions(): LocalSauna[] {
+  try {
+    const raw = JSON.parse(localStorage.getItem(SAUNA_LS_KEY) || "[]");
+    if (!Array.isArray(raw)) return [];
+    const fresh = raw.filter((s: any) => {
+      const t = new Date(s?.checkedInAt).getTime();
+      return s && typeof s.name === "string" && !isNaN(t) && Date.now() - t < SAUNA_LS_MAX_AGE_MS;
+    });
+    if (fresh.length !== raw.length) {
+      localStorage.setItem(SAUNA_LS_KEY, JSON.stringify(fresh));
+    }
+    return fresh;
+  } catch {
+    return [];
+  }
+}
+
+function addLocalSaunaSession(name: string) {
+  try {
+    const sessions = readLocalSaunaSessions();
+    if (!sessions.find((s) => s.name.toLowerCase() === name.toLowerCase())) {
+      sessions.push({ name, checkedInAt: new Date().toISOString() });
+      localStorage.setItem(SAUNA_LS_KEY, JSON.stringify(sessions));
+    }
+  } catch {
+    /* noop */
+  }
+}
+
+function removeLocalSaunaSession(name: string) {
+  try {
+    const sessions = readLocalSaunaSessions();
+    const filtered = sessions.filter((s) => s.name.toLowerCase() !== name.toLowerCase());
+    localStorage.setItem(SAUNA_LS_KEY, JSON.stringify(filtered));
+  } catch {
+    /* noop */
+  }
 }
 
 export default function SaunaPage({ onBack }: { onBack?: () => void } = {}) {
@@ -327,13 +374,34 @@ export default function SaunaPage({ onBack }: { onBack?: () => void } = {}) {
   const refresh = useCallback(async () => {
     try {
       const res = await gasCall("getActiveSessions", {});
-      const raw: any[] = res?.sessions || res?.active || [];
+      const gasSessions: any[] = res?.sessions || res?.active || [];
       const daily = typeof res?.dailyTotal === "number"
         ? res.dailyTotal
         : typeof res?.todayCount === "number"
           ? res.todayCount
           : 0;
       setDailyTotal(daily);
+
+      // Merge GAS results with localStorage fallback. GAS takes priority,
+      // but any local sessions GAS doesn't know about (likely lost in its
+      // non-persistent store) are kept so cards don't disappear.
+      const localSessions = readLocalSaunaSessions();
+      const raw: any[] = [...gasSessions];
+      for (const ls of localSessions) {
+        const exists = raw.find(
+          (gs: any) => String(gs?.name || "").toLowerCase() === ls.name.toLowerCase(),
+        );
+        if (!exists) {
+          raw.push({
+            name: ls.name,
+            checkedInAt: ls.checkedInAt,
+            secondsElapsed: Math.max(
+              0,
+              Math.floor((Date.now() - new Date(ls.checkedInAt).getTime()) / 1000),
+            ),
+          });
+        }
+      }
 
       setSessions((prev) => {
         const next: Session[] = raw.map((s: any) => {
@@ -443,6 +511,7 @@ export default function SaunaPage({ onBack }: { onBack?: () => void } = {}) {
       seconds: 0,
     };
     setSessions((prev) => [optimistic, ...prev]);
+    addLocalSaunaSession(name);
 
     try {
       const res = await saunaCheckin(name);
@@ -456,6 +525,7 @@ export default function SaunaPage({ onBack }: { onBack?: () => void } = {}) {
     } catch (e) {
       console.error("sauna checkin failed", e);
       setSessions((prev) => prev.filter((s) => s.id !== optimistic.id));
+      removeLocalSaunaSession(name);
     } finally {
       setSubmitting(false);
     }
@@ -467,6 +537,7 @@ export default function SaunaPage({ onBack }: { onBack?: () => void } = {}) {
 
     setSessions((prev) => prev.map((s) => (s.id === id ? { ...s, exiting: true } : s)));
     setDailyTotal((n) => n + 1);
+    removeLocalSaunaSession(target.name);
 
     try {
       await saunaCheckout(target.name);
@@ -600,7 +671,6 @@ export default function SaunaPage({ onBack }: { onBack?: () => void } = {}) {
             const pct = Math.min((s.seconds / MAX_TIME_SEC) * 100, 100);
             const timerCls = danger ? "danger" : warning ? "warning" : "";
             const barCls = danger ? "danger" : warning ? "warning" : "";
-            const btnCls = warning || danger ? "ready" : "";
             return (
               <div
                 key={String(s.id)}
@@ -623,7 +693,7 @@ export default function SaunaPage({ onBack }: { onBack?: () => void } = {}) {
                   </div>
                 </div>
                 <button
-                  className={`btn-checkout ${btnCls}`}
+                  className="btn-checkout"
                   onClick={() => checkOut(s.id)}
                   aria-label={`Check out ${s.name}`}
                   type="button"
