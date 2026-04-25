@@ -1976,6 +1976,7 @@ export default function HomePage() {
             isGameDay={isGameDay}
             onCheckIn={() => handleHomeCheckIn(nextClass)}
             onOpenSchedule={() => { window.location.hash = '#/schedule'; }}
+            onAlreadyCheckedIn={() => showAlreadyCheckedInModal(nextClass?.name || 'class')}
           />
         ),
       });

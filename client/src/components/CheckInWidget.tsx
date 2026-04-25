@@ -30,6 +30,7 @@ interface CheckInWidgetProps {
   isGameDay: boolean;
   onCheckIn: () => void;
   onOpenSchedule: () => void;
+  onAlreadyCheckedIn?: () => void;
 }
 
 // State definitions matching HTML
@@ -79,7 +80,7 @@ const TYPE_TAG: Record<string, { bg: string; color: string; border: string; labe
 export function CheckInWidget({
   nextClass, classesToday, timeUntilClass,
   checkinPhase, alreadyCheckedIn, isGameDay,
-  onCheckIn, onOpenSchedule,
+  onCheckIn, onOpenSchedule, onAlreadyCheckedIn,
 }: CheckInWidgetProps) {
   // collapsible removed — widget is always fully expanded
   const cardRef = useRef<HTMLDivElement>(null);
@@ -307,14 +308,8 @@ export function CheckInWidget({
           {(
             <button
               ref={btnRef}
-              aria-disabled={isCheckedIn}
-              tabIndex={isCheckedIn ? -1 : 0}
               onClick={(e) => {
-                if (isCheckedIn) return;
-                // Visual press-down: scale down briefly, then call onCheckIn
-                // onCheckIn handles window check — if too early it shows the error
-                // The particles only fire on actual success (CheckInWidget spawnParticles
-                // is called from HomePage after the window check passes)
+                // Visual press-down regardless of state
                 const btn = e.currentTarget as HTMLButtonElement;
                 btn.style.transform = 'scale(0.93)';
                 btn.style.transition = 'transform 0.08s ease';
@@ -323,6 +318,10 @@ export function CheckInWidget({
                   btn.style.transition = 'transform 0.2s cubic-bezier(0.175,0.885,0.32,1.275)';
                   setTimeout(() => { btn.style.transition = ''; }, 220);
                 }, 80);
+                if (isCheckedIn) {
+                  onAlreadyCheckedIn?.();
+                  return;
+                }
                 onCheckIn();
               }}
               style={{
@@ -339,12 +338,12 @@ export function CheckInWidget({
                 letterSpacing: '0.05em',
                 textTransform: 'uppercase',
                 display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-                cursor: isCheckedIn ? 'default' : 'pointer',
+                cursor: 'pointer',
                 transition: 'all 0.2s',
                 position: 'relative', overflow: 'hidden',
                 flex: isCheckedIn || !timeUntilClass ? 1 : undefined,
                 animation: !isCheckedIn ? 'ciw-btn-breathe 2s infinite alternate ease-in-out' : 'none',
-                pointerEvents: isCheckedIn ? 'none' : 'auto',
+                pointerEvents: 'auto',
                 boxShadow: isCheckedIn && stateIdx >= 3
                   ? '0 4px 24px rgba(239,68,68,0.5)'
                   : isCheckedIn && stateIdx === 2

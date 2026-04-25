@@ -242,7 +242,7 @@ export function LeftDrawer() {
             { label: 'Academy Stats', path: '/stats', icon: <BarChart2 size={18} color={GOLD} /> },
             { label: 'Waiver & Agreement', path: '/waiver', icon: <BookOpen size={18} color={GOLD} /> },
             { label: 'Message Blast', path: '/messages', icon: <Megaphone size={18} color={GOLD} /> },
-            { label: 'Admin Panel', onClick: () => { close(); navigate('/admin'); }, icon: <UserIcon size={18} color={GOLD} /> },
+            { label: 'Admin Panel', path: '/admin', icon: <UserIcon size={18} color={GOLD} /> },
           ],
         }]
       : []),
