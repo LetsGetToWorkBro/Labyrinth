@@ -192,8 +192,9 @@ const ACCOUNT_V2_CSS = `
   --card: rgba(13,15,20,0.7);
   --border: rgba(255,255,255,0.07);
   --text: #f0f2f5;
-  --muted: #6b7280;
+  --muted: #9ca3af;
   --subtle: rgba(255,255,255,0.04);
+  padding-top: 0; /* safe area handled by top-nav */
 }
 
 .acv2-root * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
@@ -207,7 +208,8 @@ const ACCOUNT_V2_CSS = `
 
 /* TOP NAV */
 .acv2-root .top-nav {
-  position: sticky; top: 0; z-index: 50; padding: 14px 20px;
+  position: sticky; top: 0; z-index: 50;
+  padding: calc(14px + env(safe-area-inset-top, 0px)) 20px 14px;
   display: flex; justify-content: space-between; align-items: center;
   background: rgba(5,6,10,0.85); backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px);
   border-bottom: 1px solid rgba(255,255,255,0.04);
@@ -216,6 +218,8 @@ const ACCOUNT_V2_CSS = `
   display: flex; align-items: center; gap: 6px;
   background: none; border: none; color: var(--text);
   font: 600 15px/1 'Inter',sans-serif; cursor: pointer; transition: opacity 0.2s;
+  min-height: 44px;
+  min-width: 44px;
 }
 .acv2-root .nav-back:active { opacity: 0.6; }
 .acv2-root .nav-title { font-size: 15px; font-weight: 700; color: var(--muted); }
@@ -262,7 +266,10 @@ const ACCOUNT_V2_CSS = `
 .acv2-root .avatar img { width: 100%; height: 100%; object-fit: cover; }
 .acv2-root .avatar-edit {
   position: absolute; bottom: -2px; right: -2px; z-index: 3;
-  width: 28px; height: 28px; border-radius: 50%;
+  width: 28px; height: 28px;
+  padding: 8px;
+  margin: -8px;
+  border-radius: 50%;
   background: var(--th); border: 2px solid var(--bg);
   display: grid; place-items: center; color: var(--bg);
 }
@@ -487,10 +494,11 @@ export default function AccountPage() {
 
   // Delete confirmation
   const [deleteConfirmText, setDeleteConfirmText] = useState('');
+  const [deleting, setDeleting] = useState(false);
 
   // Toast
   const [toast, setToast] = useState('');
-  const showToast = useCallback((msg: string) => {
+  const showToast = useCallback((msg: string, _isError?: boolean) => {
     setToast(msg);
     setTimeout(() => setToast(''), 2500);
   }, []);
@@ -798,17 +806,15 @@ export default function AccountPage() {
             </div>
 
             <div className="cc-list">
-              <div className="cc-row">
-                <div className="cc-icon"><svg width="24" height="16" viewBox="0 0 24 16" fill="none"><rect width="24" height="16" rx="3" fill="#1a1f36"/><circle cx="8" cy="8" r="4" fill="#ff5f00"/><circle cx="13" cy="8" r="4" fill="#f59e0b" fillOpacity="0.8"/></svg></div>
-                <div className="cc-details">
-                  <div className="cc-num">&bull;&bull;&bull;&bull; 4242</div>
-                  <div className="cc-exp">Exp 12/28</div>
+              <div style={{ padding: '14px 16px', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 14 }}>
+                <div style={{ fontSize: 13, color: 'var(--muted)' }}>
+                  {(member as any)?.lastFour
+                    ? `•••• ${(member as any).lastFour}`
+                    : 'Payment managed through membership portal'}
                 </div>
-                <div className="cc-primary-badge">Primary</div>
               </div>
-              <div className="cc-add" onClick={() => showToast('Coming soon')}>
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-                Add New Card
+              <div style={{ padding: '12px 16px', color: 'var(--muted)', fontSize: 12, textAlign: 'center' }}>
+                Card management available at labyrinth.vision
               </div>
             </div>
           </div>
@@ -843,15 +849,15 @@ export default function AccountPage() {
             </div>
             <div className="form-group">
               <label>Primary Email</label>
-              <input type="email" className="form-input" value={member?.email || ''} disabled style={{ opacity: 0.6 }} />
+              <input type="email" inputMode="email" autoCapitalize="none" autoCorrect="off" className="form-input" value={member?.email || ''} disabled style={{ opacity: 0.6 }} />
             </div>
             <div className="form-group">
               <label>Secondary Email</label>
-              <input type="email" className="form-input" placeholder="backup@email.com" value={secondaryEmail} onChange={e => setSecondaryEmail(e.target.value)} />
+              <input type="email" inputMode="email" autoCapitalize="none" autoCorrect="off" className="form-input" placeholder="backup@email.com" value={secondaryEmail} onChange={e => setSecondaryEmail(e.target.value)} />
             </div>
             <div className="form-group">
               <label>Phone Number</label>
-              <input type="tel" className="form-input" value={phone} onChange={e => setPhone(e.target.value)} />
+              <input type="tel" inputMode="tel" className="form-input" value={phone} onChange={e => setPhone(e.target.value)} />
             </div>
             <div className="form-group">
               <label>Emergency Contact</label>
@@ -892,9 +898,8 @@ export default function AccountPage() {
                 <div style={{ fontSize: 11, color: 'var(--muted)' }}>Add dependents to manage their profiles</div>
               </div>
             )}
-            <div className="cc-add" onClick={() => showToast('Add dependent coming soon')} style={{ marginTop: 12 }}>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-              Add Dependent
+            <div style={{ padding: '12px 16px', color: 'var(--muted)', fontSize: 12, textAlign: 'center', marginTop: 12 }}>
+              Contact staff to add family members
             </div>
           </div>
         </div>
@@ -945,26 +950,9 @@ export default function AccountPage() {
         {/* ═══════ VIEW: CONNECTED APPS ═══════ */}
         <div className={`view ${view === 'connected' ? 'active' : ''}`}>
           <div className="card card-pad">
-            <div className="toggle-row">
-              <div className="toggle-info">
-                <div className="toggle-title" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>Apple Health</div>
-                <div className="toggle-desc">Sync workouts and calories</div>
-              </div>
-              <div className="switch" onClick={() => showToast('Coming soon')} />
-            </div>
-            <div className="toggle-row">
-              <div className="toggle-info">
-                <div className="toggle-title">Whoop</div>
-                <div className="toggle-desc">Import strain and recovery data</div>
-              </div>
-              <div className="switch" onClick={() => showToast('Coming soon')} />
-            </div>
-            <div className="toggle-row" style={{ borderBottom: 'none' }}>
-              <div className="toggle-info">
-                <div className="toggle-title">Garmin</div>
-                <div className="toggle-desc">Sync activity and heart rate</div>
-              </div>
-              <div className="switch" onClick={() => showToast('Coming soon')} />
+            {/* Connected Apps — coming in future update */}
+            <div style={{ padding: '12px 0', borderBottom: '1px solid var(--border)' }}>
+              <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--muted)' }}>Apple Health, Whoop, and Garmin integrations are coming in a future update.</div>
             </div>
           </div>
         </div>
@@ -972,26 +960,26 @@ export default function AccountPage() {
         {/* ═══════ VIEW: NOTIFICATIONS ═══════ */}
         <div className={`view ${view === 'notif' ? 'active' : ''}`}>
           <div className="card card-pad">
-            <div className="toggle-row">
+            <div className="toggle-row" onClick={() => toggleNotif('push')} style={{ cursor: 'pointer' }}>
               <div className="toggle-info">
                 <div className="toggle-title">Push Notifications</div>
                 <div className="toggle-desc">Class updates and app alerts</div>
               </div>
-              <div className={`switch ${notifPrefs.push ? 'on' : ''}`} onClick={() => toggleNotif('push')} />
+              <div className={`switch ${notifPrefs.push ? 'on' : ''}`} />
             </div>
-            <div className="toggle-row">
+            <div className="toggle-row" onClick={() => toggleNotif('email')} style={{ cursor: 'pointer' }}>
               <div className="toggle-info">
                 <div className="toggle-title">Email Reminders</div>
                 <div className="toggle-desc">Schedule and billing receipts</div>
               </div>
-              <div className={`switch ${notifPrefs.email ? 'on' : ''}`} onClick={() => toggleNotif('email')} />
+              <div className={`switch ${notifPrefs.email ? 'on' : ''}`} />
             </div>
-            <div className="toggle-row">
+            <div className="toggle-row" onClick={() => toggleNotif('marketing')} style={{ cursor: 'pointer' }}>
               <div className="toggle-info">
                 <div className="toggle-title">Marketing & Promos</div>
                 <div className="toggle-desc">Merch drops and seminars</div>
               </div>
-              <div className={`switch ${notifPrefs.marketing ? 'on' : ''}`} onClick={() => toggleNotif('marketing')} />
+              <div className={`switch ${notifPrefs.marketing ? 'on' : ''}`} />
             </div>
           </div>
         </div>
@@ -999,19 +987,19 @@ export default function AccountPage() {
         {/* ═══════ VIEW: PRIVACY & SECURITY ═══════ */}
         <div className={`view ${view === 'privacy' ? 'active' : ''}`}>
           <div className="card card-pad">
-            <div className="toggle-row">
+            <div className="toggle-row" onClick={() => setPrivacyPrefs(p => ({ ...p, publicProfile: !p.publicProfile }))} style={{ cursor: 'pointer' }}>
               <div className="toggle-info">
                 <div className="toggle-title">Public Profile</div>
                 <div className="toggle-desc">Let other members see your belt rank</div>
               </div>
-              <div className={`switch ${privacyPrefs.publicProfile ? 'on' : ''}`} onClick={() => setPrivacyPrefs(p => ({ ...p, publicProfile: !p.publicProfile }))} />
+              <div className={`switch ${privacyPrefs.publicProfile ? 'on' : ''}`} />
             </div>
-            <div className="toggle-row" style={{ marginBottom: 16 }}>
+            <div className="toggle-row" onClick={() => setPrivacyPrefs(p => ({ ...p, leaderboard: !p.leaderboard }))} style={{ marginBottom: 16, cursor: 'pointer' }}>
               <div className="toggle-info">
                 <div className="toggle-title">Leaderboard Opt-In</div>
                 <div className="toggle-desc">Appear on global XP leaderboards</div>
               </div>
-              <div className={`switch ${privacyPrefs.leaderboard ? 'on' : ''}`} onClick={() => setPrivacyPrefs(p => ({ ...p, leaderboard: !p.leaderboard }))} />
+              <div className={`switch ${privacyPrefs.leaderboard ? 'on' : ''}`} />
             </div>
             <div className="sec-title" style={{ marginTop: 24 }}>Change Password</div>
             <div className="form-group">
@@ -1083,11 +1071,24 @@ export default function AccountPage() {
             </div>
             <button
               className="btn btn-danger"
-              style={{ marginTop: 16, opacity: deleteConfirmText !== 'DELETE' ? 0.5 : 1 }}
-              disabled={deleteConfirmText !== 'DELETE'}
-              onClick={() => { window.location.href = 'mailto:info@labyrinth.vision?subject=Account%20Deletion%20Request&body=Please%20delete%20my%20account%20(' + encodeURIComponent(member?.email || '') + ')'; }}
+              style={{ marginTop: 16, opacity: deleteConfirmText !== 'DELETE' || deleting ? 0.5 : 1 }}
+              disabled={deleteConfirmText !== 'DELETE' || deleting}
+              onClick={async () => {
+                if (!member?.email) return;
+                setDeleting(true);
+                try {
+                  const token = localStorage.getItem('lbjj_session_token') || '';
+                  await gasCall('requestAccountDeletion', { token, email: member.email, reason: 'User requested via app' });
+                  navTo('main', 'My Account');
+                  showToast('Deletion requested — your account will be removed within 48 hours.');
+                } catch {
+                  showToast('Could not submit request. Contact info@labyrinth.vision', true);
+                } finally {
+                  setDeleting(false);
+                }
+              }}
             >
-              Confirm Deletion
+              {deleting ? 'Submitting…' : 'Confirm Deletion Request'}
             </button>
           </div>
         </div>

@@ -505,6 +505,17 @@
   }
 }
 
+/* App Store: prevent text selection globally (native-app feel),
+   except in form fields and contenteditable areas */
+html, body, #root {
+  -webkit-user-select: none;
+  user-select: none;
+}
+input, textarea, [contenteditable="true"] {
+  -webkit-user-select: text;
+  user-select: text;
+}
+
 /* Mobile app feel */
 .app-shell {
   height: 100%;

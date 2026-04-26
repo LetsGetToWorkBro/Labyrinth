@@ -227,6 +227,9 @@ export default function LoginPage() {
   const [forgotSent,    setForgotSent]    = useState(false);
   const [slowWarning,   setSlowWarning]   = useState(false);
 
+  // Disable 3D parallax while an input is focused (keyboard would tilt the card)
+  const [inputFocused,  setInputFocused]  = useState(false);
+
   // Parse #setup?token=...&email=... (or ?token=...&email=...) on mount.
   // If present, switch to the setup screen pre-filled. Strip the params from
   // the URL after capture so a refresh doesn't re-trigger.
@@ -333,6 +336,12 @@ export default function LoginPage() {
       mxRef.current = (window.innerWidth  / 2 - e.pageX) / 40;
       myRef.current = (window.innerHeight / 2 - e.pageY) / 40;
     };
+    const onTouchMove = (e: TouchEvent) => {
+      const touch = e.touches[0];
+      if (!touch) return;
+      mxRef.current = (window.innerWidth / 2 - touch.pageX) / 40;
+      myRef.current = (window.innerHeight / 2 - touch.pageY) / 40;
+    };
     const tick = () => {
       cxRef.current += (mxRef.current - cxRef.current) * 0.1;
       cyRef.current += (myRef.current - cyRef.current) * 0.1;
@@ -342,10 +351,12 @@ export default function LoginPage() {
     };
     if (!prefersReduced) {
       window.addEventListener("mousemove", onMove);
+      window.addEventListener('touchmove', onTouchMove, { passive: true });
       rafRef.current = requestAnimationFrame(tick);
     }
     return () => {
       window.removeEventListener("mousemove", onMove);
+      window.removeEventListener('touchmove', onTouchMove);
       if (rafRef.current) cancelAnimationFrame(rafRef.current);
     };
   }, [screen]);
@@ -924,11 +935,23 @@ export default function LoginPage() {
           <p style={{ fontSize:15,color:"#666",fontWeight:500,letterSpacing:"0.05em" }}>
             {bioDesc}
           </p>
+          {bioPhase !== 'success' && (
+            <button
+              onClick={() => { setBioOpen(false); setBioPhase('idle'); }}
+              style={{
+                marginTop: 24, background: 'none', border: '1px solid rgba(255,255,255,0.1)',
+                borderRadius: 12, padding: '12px 32px', color: 'rgba(255,255,255,0.5)',
+                fontSize: 13, fontWeight: 600, cursor: 'pointer',
+              }}
+            >
+              Cancel
+            </button>
+          )}
         </div>
       </div>
 
       {/* ── Card ── */}
-      <div className="lg-wrap" ref={wrapRef} style={{ transformStyle:"preserve-3d" }}>
+      <div className="lg-wrap" ref={wrapRef} style={{ transformStyle: inputFocused ? "flat" : "preserve-3d" }}>
         <div className="lg-card">
           <div className="lg-greeting">{getGreeting()}</div>
 
@@ -954,6 +977,8 @@ export default function LoginPage() {
               autoCorrect="off"
               autoComplete="email"
               spellCheck={false}
+              onFocus={() => setInputFocused(true)}
+              onBlur={() => setInputFocused(false)}
             />
 
             {/* Password with reveal toggle */}
@@ -964,6 +989,12 @@ export default function LoginPage() {
                 required
                 value={password}
                 onChange={e => setPassword(e.target.value)}
+                onFocus={(e) => {
+                  setInputFocused(true);
+                  const target = e.target;
+                  setTimeout(() => target.scrollIntoView({ behavior: 'smooth', block: 'center' }), 300);
+                }}
+                onBlur={() => setInputFocused(false)}
                 autoComplete="current-password"
                 autoCapitalize="none"
                 autoCorrect="off"
@@ -1106,10 +1137,11 @@ export default function LoginPage() {
 }
 
 // ─── Floating label input ───────────────────────────────────────────
-function FloatInput({ label, id: idProp, value, onChange, type = "text", name, autoCapitalize, autoCorrect, spellCheck, autoComplete }: {
+function FloatInput({ label, id: idProp, value, onChange, type = "text", name, autoCapitalize, autoCorrect, spellCheck, autoComplete, onFocus, onBlur }: {
   label: string; id?: string; value: string; onChange: (v: string) => void;
   type?: string; name?: string; autoCapitalize?: string; autoCorrect?: string;
   spellCheck?: boolean; autoComplete?: string;
+  onFocus?: () => void; onBlur?: () => void;
 }) {
   const inputId = idProp || `fi-${label.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '')}`;
   return (
@@ -1121,6 +1153,14 @@ function FloatInput({ label, id: idProp, value, onChange, type = "text", name, a
         required
         value={value}
         onChange={e => onChange(e.target.value)}
+        onFocus={(e) => {
+          onFocus?.();
+          const target = e.target;
+          setTimeout(() => {
+            target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          }, 300);
+        }}
+        onBlur={() => onBlur?.()}
         autoCapitalize={autoCapitalize}
         autoCorrect={autoCorrect}
         spellCheck={spellCheck}
