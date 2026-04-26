@@ -2184,9 +2184,9 @@ body::before {
   content: '';
   position: fixed; inset: 0; z-index: 0; pointer-events: none;
   background:
-    radial-gradient(ellipse 100% 50% at 50% -5%,  rgba(var(--th-rgb),.18), transparent 58%),
-    radial-gradient(ellipse 55%  28% at 10% 45%,  rgba(var(--th-rgb),.05), transparent 55%),
-    radial-gradient(ellipse 55%  28% at 90% 65%,  rgba(var(--th-rgb),.04), transparent 55%);
+    radial-gradient(ellipse 110% 55% at 50% -8%,  rgba(var(--th-rgb),.38), transparent 60%),
+    radial-gradient(ellipse 60%  35% at  8% 40%,  rgba(var(--th-rgb),.14), transparent 58%),
+    radial-gradient(ellipse 60%  35% at 92% 60%,  rgba(var(--th-rgb),.12), transparent 58%);
   transition: background 0.9s cubic-bezier(0.16,1,0.3,1);
   animation: ambientBreathe 7s ease-in-out infinite;
 }
@@ -2196,20 +2196,23 @@ body::after {
   content: '';
   position: fixed; inset: 0; z-index: 0; pointer-events: none;
   background:
-    radial-gradient(ellipse 50% 22% at 50% 102%, rgba(var(--th-rgb),.07), transparent 60%);
+    radial-gradient(ellipse 60% 30% at 50% 105%, rgba(var(--th-rgb),.18), transparent 62%);
   transition: background 0.9s cubic-bezier(0.16,1,0.3,1);
 }
 
 @keyframes ambientBreathe {
-  0%,100% { opacity: .85; }
+  0%,100% { opacity: .80; }
   50%      { opacity: 1;   }
 }
 
-/* ── Per-belt intensity tuning ── */
-[data-belt="white"]  body::before { opacity: .55; }
-[data-belt="black"]  body::before { opacity: 1;   }
-[data-belt="grey"]   body::before { opacity: .65; }
-[data-belt="gray"]   body::before { opacity: .65; }
+/* ── Per-belt intensity tuning (html[data-belt] → body::before) ── */
+html[data-belt="white"]  body::before { opacity: .50; }
+html[data-belt="blue"]   body::before { opacity: .90; }
+html[data-belt="purple"] body::before { opacity: .95; }
+html[data-belt="brown"]  body::before { opacity: .90; }
+html[data-belt="black"]  body::before { opacity: 1;   }
+html[data-belt="grey"]   body::before { opacity: .60; }
+html[data-belt="gray"]   body::before { opacity: .60; }
 
 /* ── Nav border picks up belt color ── */
 .v10-header {
