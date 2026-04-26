@@ -34,6 +34,40 @@ function fetchAndCacheAppConfig() {
     .catch(() => {});
 }
 
+// One-time re-sync for members with stale GAS XP data
+// Fires silently on first app open after the POST→GET GAS fix (2026-04-25)
+const RESYNC_AFTER = 1745632800000; // Apr 25 2026 18:00 UTC (approx when GET fix deployed)
+const RESYNC_KEY = 'lbjj_xp_resync_done_v2';
+
+function triggerXPResyncIfNeeded() {
+  try {
+    const lastResync = parseInt(localStorage.getItem(RESYNC_KEY) || '0');
+    if (lastResync > RESYNC_AFTER) return; // already resynced post-fix
+
+    const stats = JSON.parse(localStorage.getItem('lbjj_game_stats_v2') || '{}');
+    const localXP = Math.max(stats.xp || 0, stats.totalXP || 0);
+    if (localXP === 0) return; // nothing to sync
+
+    const token = localStorage.getItem('lbjj_session_token');
+    if (!token) return;
+
+    // Fire-and-forget — import inline to avoid circular deps
+    import('@/lib/api').then(({ gasCall }) => {
+      gasCall('saveMemberStats', {
+        token,
+        totalPoints: localXP,
+        currentStreak: stats.currentStreak || 0,
+        maxStreak: stats.maxStreak || 0,
+        classesAttended: stats.classesAttended || 0,
+        source: 'resync_v2',
+      }).then(() => {
+        localStorage.setItem(RESYNC_KEY, Date.now().toString());
+        console.log('[XP resync] synced', localXP, 'XP to GAS');
+      }).catch(() => {});
+    });
+  } catch {}
+}
+
 function sanitizeProfileForStorage(profile: any) {
   if (!profile) return profile;
   const sanitized = { ...profile };
@@ -107,6 +141,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         syncBeltTheme(savedProfile);
         setIsLoading(false);
         fetchAndCacheAppConfig();
+        triggerXPResyncIfNeeded();
 
         // If cached profile claims isAdmin, re-verify with server in background
         if (savedProfile?.isAdmin) {
@@ -218,6 +253,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             if (normalized.familyMembers) setFamilyMembers(normalized.familyMembers);
             cacheMemberPfp(normalized);
             syncBeltTheme(normalized);
+            triggerXPResyncIfNeeded();
 
             // Refresh token timestamp so biometric logins always extend the session
             localStorage.setItem('lbjj_token_created', Date.now().toString());
