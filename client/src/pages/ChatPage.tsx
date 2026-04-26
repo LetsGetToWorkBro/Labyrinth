@@ -582,6 +582,7 @@ export default function ChatPage() {
   const openProfile = useCallback((m: ChannelMember) => {
     setMembersOpen(false);
     if (m.email) {
+      try { sessionStorage.setItem('lbjj_profile_view_name', m.name || ''); } catch {}
       navigate(`/profile/${encodeURIComponent(m.email)}`);
       return;
     }
@@ -1951,7 +1952,10 @@ function ProfileBody({ member, onDM }: { member: ChannelMember; onDM?: (m: Chann
       {/* Belt Journey CTA */}
       {fullMember.email && (
         <button
-          onClick={() => navigate(`/profile/${encodeURIComponent(fullMember.email!)}`)}
+          onClick={() => {
+            try { sessionStorage.setItem('lbjj_profile_view_name', fullMember.name || ''); } catch {}
+            navigate(`/profile/${encodeURIComponent(fullMember.email!)}`);
+          }}
           style={{
             width: '100%', padding: '12px', borderRadius: 12,
             background: 'rgba(212,175,55,0.1)', border: '1px solid rgba(212,175,55,0.2)',

@@ -400,11 +400,16 @@ export default function ProfilePage() {
     } else if (viewEmail) {
       setLoading(true);
       const token = (() => { try { return localStorage.getItem('lbjj_session_token') || ''; } catch { return ''; } })();
-      gasCall('getMemberByEmail', { token, email: viewEmail })
+      const nameHint = (() => { try { return sessionStorage.getItem('lbjj_profile_view_name') || ''; } catch { return ''; } })();
+      gasCall('getMemberByEmail', { token, email: viewEmail, memberName: nameHint })
         .then((res: any) => {
           const m = res?.member || res || {};
+          const returnedName = m.name || m.Name || '';
+          const displayName = (returnedName && !returnedName.includes('@'))
+            ? returnedName
+            : (nameHint || viewEmail.split('@')[0] || 'Member');
           setProfileData({
-            name: m.name || m.Name || viewEmail.split('@')[0] || 'Member',
+            name: displayName,
             email: viewEmail,
             belt: (m.belt || m.Belt || 'white').toLowerCase(),
             stripes: Number(m.stripes || m.Stripes || 0),
