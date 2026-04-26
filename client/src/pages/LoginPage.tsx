@@ -198,10 +198,10 @@ export default function LoginPage() {
         const first = LOCATIONS[0];
         if (first) {
           setLocation(first);
-          setActiveLocation(first);
+          setActiveLocation(first.id);
         }
       } else {
-        setActiveLocation(location);
+        setActiveLocation(location.id);
       }
       const loginRes = await login(setupEmail.trim(), setupPw);
       setSetupLoading(false);
@@ -227,11 +227,12 @@ export default function LoginPage() {
   const rafRef  = useRef<number>();
 
   useEffect(() => {
+    if (screen !== 'gateway') return;
+    const prefersReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     const onMove = (e: MouseEvent) => {
       mxRef.current = (window.innerWidth  / 2 - e.pageX) / 40;
       myRef.current = (window.innerHeight / 2 - e.pageY) / 40;
     };
-    window.addEventListener("mousemove", onMove);
     const tick = () => {
       cxRef.current += (mxRef.current - cxRef.current) * 0.1;
       cyRef.current += (myRef.current - cyRef.current) * 0.1;
@@ -239,11 +240,27 @@ export default function LoginPage() {
         wrapRef.current.style.transform = `rotateY(${cxRef.current}deg) rotateX(${cyRef.current}deg)`;
       rafRef.current = requestAnimationFrame(tick);
     };
-    rafRef.current = requestAnimationFrame(tick);
+    if (!prefersReduced) {
+      window.addEventListener("mousemove", onMove);
+      rafRef.current = requestAnimationFrame(tick);
+    }
     return () => {
       window.removeEventListener("mousemove", onMove);
       if (rafRef.current) cancelAnimationFrame(rafRef.current);
     };
+  }, [screen]);
+
+  // Escape key closes modals
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setShowLocModal(false);
+        setBioOpen(false);
+        setShowBioAgreement(false);
+      }
+    };
+    document.addEventListener('keydown', handler);
+    return () => document.removeEventListener('keydown', handler);
   }, []);
 
   // Boot typewriter
@@ -278,7 +295,7 @@ export default function LoginPage() {
     if (!location) { setShowLocModal(true); return; }
     setLoading(true);
     try {
-      setActiveLocation(location);
+      setActiveLocation(location.id);
       const res = await login(email.trim(), password);
       if (!res.success) {
         setError(res.error || "Access denied."); setLoading(false); return;
@@ -287,6 +304,8 @@ export default function LoginPage() {
       const bootShown = localStorage.getItem('lbjj_boot_shown');
       if (!bootShown) {
         runBoot(() => {});
+      } else {
+        setLoading(false);
       }
     } catch {
       setError("Connection failed. Try again."); setLoading(false);
@@ -341,7 +360,7 @@ export default function LoginPage() {
       setReqError("Too many requests. Wait a minute."); return;
     }
     if (!reqName.trim() || !reqEmail.trim()) { setReqError("Name and email are required."); return; }
-    if (SUSPICIOUS_NAMES.some(n => reqName.toLowerCase().includes(n))) {
+    if (SUSPICIOUS_NAMES.some(n => new RegExp(`\\b${n}\\b`, 'i').test(reqName))) {
       setReqError("Please enter your real name."); return;
     }
     if (!EMAIL_REGEX.test(reqEmail.trim())) { setReqError("Enter a valid email address."); return; }
@@ -353,10 +372,11 @@ export default function LoginPage() {
     setReqLoading(false);
   };
 
-  const hasBio = !!(localStorage.getItem("lbjj_passkey_registered")
-                  || localStorage.getItem("lbjj_passkey_id")
-                  || localStorage.getItem("lbjj_passkey_credential_id")
-                  || localStorage.getItem("lbjj_session_token"));
+  const hasBio = !!(
+    localStorage.getItem("lbjj_passkey_registered") ||
+    localStorage.getItem("lbjj_passkey_id") ||
+    localStorage.getItem("lbjj_passkey_credential_id")
+  );
 
   // ── BOOT SCREEN ───────────────────────────────────────────────────
   if (bootActive) return (
@@ -420,6 +440,7 @@ export default function LoginPage() {
             <div style={{ position: "relative", marginBottom: 22 }}>
               <input
                 type={setupShowPw ? "text" : "password"}
+                name="password"
                 required
                 value={setupPw}
                 onChange={e => setSetupPw(e.target.value)}
@@ -457,6 +478,7 @@ export default function LoginPage() {
             <div style={{ position: "relative", marginBottom: 22 }}>
               <input
                 type={setupShowPw ? "text" : "password"}
+                name="password-confirm"
                 required
                 value={setupPw2}
                 onChange={e => setSetupPw2(e.target.value)}
@@ -525,11 +547,11 @@ export default function LoginPage() {
           ) : (
             <form onSubmit={handleRequestAccess}>
               {reqError && <ErrorBox msg={reqError} />}
-              <FloatInput label="Full Name"       value={reqName}  onChange={setReqName}
+              <FloatInput label="Full Name"       name="name" autoComplete="name" value={reqName}  onChange={setReqName}
                 type="text"  autoCapitalize="words" autoCorrect="off" spellCheck={false} />
-              <FloatInput label="Email Address"   value={reqEmail} onChange={setReqEmail}
+              <FloatInput label="Email Address"   name="email" autoComplete="email" value={reqEmail} onChange={setReqEmail}
                 type="email" autoCapitalize="none"  autoCorrect="off" />
-              <FloatInput label="Phone (optional)" value={reqPhone} onChange={setReqPhone}
+              <FloatInput label="Phone (optional)" name="phone" autoComplete="tel" value={reqPhone} onChange={setReqPhone}
                 type="tel" />
               <button type="submit" disabled={reqLoading} className="lg-btn-gold">
                 {reqLoading ? "Sending..." : "Submit Request"}
@@ -575,7 +597,7 @@ export default function LoginPage() {
             </div>
             {LOCATIONS.map((loc, i) => (
               <button key={loc.id}
-                onClick={() => { setLocation(loc); setActiveLocation(loc); setShowLocModal(false); setError(""); }}
+                onClick={() => { setLocation(loc); setActiveLocation(loc.id); setShowLocModal(false); setError(""); }}
                 style={{ width:"100%",marginBottom:i < LOCATIONS.length-1 ? 10 : 0,
                   padding:"16px 20px",borderRadius:14,
                   background:"rgba(255,255,255,0.03)",
@@ -710,6 +732,7 @@ export default function LoginPage() {
             {/* Email */}
             <FloatInput
               label="Email Address"
+              name="email"
               value={email}
               onChange={setEmail}
               type="email"
@@ -723,6 +746,7 @@ export default function LoginPage() {
             <div style={{ position:"relative",marginBottom:22 }}>
               <input
                 type={showPw ? "text" : "password"}
+                name="password"
                 required
                 value={password}
                 onChange={e => setPassword(e.target.value)}
@@ -850,14 +874,17 @@ export default function LoginPage() {
 }
 
 // ─── Floating label input ───────────────────────────────────────────
-function FloatInput({ label, value, onChange, type = "text", autoCapitalize, autoCorrect, spellCheck, autoComplete }: {
-  label: string; value: string; onChange: (v: string) => void;
-  type?: string; autoCapitalize?: string; autoCorrect?: string;
+function FloatInput({ label, id: idProp, value, onChange, type = "text", name, autoCapitalize, autoCorrect, spellCheck, autoComplete }: {
+  label: string; id?: string; value: string; onChange: (v: string) => void;
+  type?: string; name?: string; autoCapitalize?: string; autoCorrect?: string;
   spellCheck?: boolean; autoComplete?: string;
 }) {
+  const inputId = idProp || `fi-${label.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '')}`;
   return (
     <div style={{ position:"relative",marginBottom:22 }}>
       <input
+        id={inputId}
+        name={name}
         type={type}
         required
         value={value}
@@ -868,7 +895,7 @@ function FloatInput({ label, value, onChange, type = "text", autoCapitalize, aut
         autoComplete={autoComplete}
         className="lg-input"
       />
-      <label className="lg-label"
+      <label htmlFor={inputId} className="lg-label"
         style={value ? {
           top:-10,left:16,fontSize:"9px",fontWeight:900,color:GOLD,
           background:"#0c0c0c",padding:"2px 8px",borderRadius:6,
@@ -885,7 +912,7 @@ function FloatInput({ label, value, onChange, type = "text", autoCapitalize, aut
 // ─── Error box ──────────────────────────────────────────────────────
 function ErrorBox({ msg }: { msg: string }) {
   return (
-    <div style={{ color:"#ef4444",fontSize:13,fontWeight:700,marginBottom:16,
+    <div role="alert" style={{ color:"#ef4444",fontSize:13,fontWeight:700,marginBottom:16,
       padding:"10px 14px",background:"rgba(239,68,68,0.08)",borderRadius:10,
       border:"1px solid rgba(239,68,68,0.2)",lineHeight:1.4 }}>
       {msg}
@@ -944,6 +971,12 @@ const KF = `
   @keyframes lg-spinRev { 100%{transform:rotate(-360deg)} }
   @keyframes lg-shine { to{background-position:right center} }
   @keyframes lg-blink { 0%,100%{opacity:1}50%{opacity:0} }
+  @media (prefers-reduced-motion: reduce) {
+    .lg-card, .lg-logo, .lg-greeting { animation: none !important; opacity: 1 !important; transform: none !important; }
+    .lg-btn-gold { animation: none !important; }
+    .lg-bio-mesh, .lg-bio-ring, .lg-bio-ring2, .lg-bio-laser { animation: none !important; }
+    .lg-bg-drift, .lg-bg-ring { animation: none !important; }
+  }
 `;
 
 // ─── Styles ─────────────────────────────────────────────────────────

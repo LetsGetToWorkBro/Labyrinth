@@ -3,7 +3,7 @@
 // The endpoint is dynamic — set per selected location at login
 
 import * as Sentry from "@sentry/react";
-import { getActiveGasUrl, getSavedLocationId, saveLocationId } from "./locations";
+import { getActiveGasUrl, getSavedLocationId, saveLocationId, LOCATIONS } from "./locations";
 
 // GAS cold-starts take ~22s — timeout must clear that
 const GAS_TIMEOUT_MS = 35000;
@@ -31,6 +31,12 @@ function showSessionExpiredToast() {
 
 /** Called when user picks a location on the login screen */
 export function setActiveLocation(locationId: string): void {
+  // Validate against known locations — prevent open endpoint injection
+  const KNOWN_IDS = LOCATIONS.map(l => l.id);
+  if (!KNOWN_IDS.includes(locationId)) {
+    console.warn('[api] Rejected unknown location ID:', locationId);
+    return;
+  }
   saveLocationId(locationId);
   _gasEndpoint = getActiveGasUrl(locationId);
 }
@@ -270,9 +276,11 @@ export async function gasCall(action: string, payload: Record<string, any> = {},
       console.warn(`gasCall ${action} retry ${retryCount + 1}/${GAS_MAX_RETRIES}`);
       return gasCall(action, payload, retryCount + 1);
     }
+    const SENSITIVE = ['password', 'token', 'pw', 'pass', 'secret', 'setuppw', 'confirmpw'];
+    const safeKeys = Object.keys(payload || {}).filter(k => !SENSITIVE.includes(k.toLowerCase()));
     Sentry.captureException(err, {
       tags: { action, layer: 'gas' },
-      extra: { retryCount, payloadKeys: Object.keys(payload || {}) },
+      extra: { retryCount, payloadKeys: safeKeys },
     });
     console.error(`gasCall ${action} failed:`, err);
     throw err;
