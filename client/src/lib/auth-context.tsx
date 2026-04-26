@@ -119,6 +119,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
   const [member, setMemberState] = useState<MemberProfile | null>(null);
   const [familyMembers, setFamilyMembers] = useState<FamilyMember[]>([]);
+
+  // Re-fetch app config (check-in window, geo settings) whenever the app
+  // comes back to the foreground or every 5 minutes while active.
+  // This ensures admin setting changes propagate without requiring sign-out.
+  useEffect(() => {
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') fetchAndCacheAppConfig();
+    };
+    document.addEventListener('visibilitychange', onVisible);
+    const interval = setInterval(fetchAndCacheAppConfig, 5 * 60 * 1000); // every 5 min
+    return () => {
+      document.removeEventListener('visibilitychange', onVisible);
+      clearInterval(interval);
+    };
+  }, []);
   // Only true once GAS has confirmed isAdmin — localStorage cache alone is not trusted.
   // Use this for gating admin routes/UI; use isAdmin for quick UX hints only.
   const [isAdminVerified, setIsAdminVerified] = useState(false);
