@@ -30,6 +30,9 @@ function fetchAndCacheAppConfig() {
       if (Number.isFinite(mins) && mins > 0) {
         try { sessionStorage.setItem('lbjj_checkin_window', String(mins)); } catch {}
       }
+      // Cache gate enabled flag (default true if not set)
+      const gateEnabled = cfg?.checkinGateEnabled !== false;
+      try { sessionStorage.setItem('lbjj_checkin_gate_enabled', gateEnabled ? '1' : '0'); } catch {}
     })
     .catch(() => {});
 }

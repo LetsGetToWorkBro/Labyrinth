@@ -1129,7 +1129,8 @@ export default function HomePage() {
 
     // ── Check-in window enforcement ──────────────────────────────────
     // Uses parseClassMinutes() which handles both ISO and HH:MM AM/PM formats.
-    if (cls?.isToday !== false) {
+    const gateEnabled = (() => { try { return sessionStorage.getItem('lbjj_checkin_gate_enabled') !== '0'; } catch { return true; } })();
+    if (gateEnabled && cls?.isToday !== false) {
       // Admin-configured check-in window (default 60 min). Fetched from GAS on login
       // and cached in sessionStorage (not localStorage — a user could pre-set a
       // writable localStorage key to bypass the window entirely).
