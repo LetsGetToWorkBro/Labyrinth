@@ -29,6 +29,69 @@ const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const requestAccessAttempts: number[] = [];
 
 // ─── Biometric trigger ──────────────────────────────────────────────
+async function registerWebAuthnPasskey(email: string): Promise<boolean> {
+  if (!navigator.credentials || !window.PublicKeyCredential) {
+    return false;
+  }
+  try {
+    const { gasCall } = await import('@/lib/api');
+    const challengeRes = await gasCall('getWebAuthnChallenge', { email });
+    if (!challengeRes?.success || !challengeRes?.challenge) return false;
+
+    const challengeBytes = Uint8Array.from(atob(challengeRes.challenge), c => c.charCodeAt(0));
+
+    const credential = await navigator.credentials.create({
+      publicKey: {
+        challenge: challengeBytes,
+        rp: { name: 'Labyrinth BJJ', id: window.location.hostname },
+        user: {
+          id: new TextEncoder().encode(email),
+          name: email,
+          displayName: email,
+        },
+        pubKeyCredParams: [
+          { type: 'public-key', alg: -7 },
+          { type: 'public-key', alg: -257 },
+        ],
+        authenticatorSelection: {
+          authenticatorAttachment: 'platform',
+          userVerification: 'required',
+          residentKey: 'preferred',
+        },
+        timeout: 60000,
+      },
+    }) as PublicKeyCredential | null;
+
+    if (!credential) return false;
+
+    const credId = btoa(String.fromCharCode(...new Uint8Array(credential.rawId)));
+    localStorage.setItem('lbjj_passkey_credential_id', credId);
+    localStorage.setItem('lbjj_passkey_registered', 'true');
+    localStorage.setItem('lbjj_passkey_email', email);
+
+    const response = credential.response as AuthenticatorAttestationResponse;
+    let pubKeyB64 = '';
+    try {
+      const pubKeyBuf = response.getPublicKey?.();
+      if (pubKeyBuf) pubKeyB64 = btoa(String.fromCharCode(...new Uint8Array(pubKeyBuf)));
+    } catch {}
+
+    await gasCall('registerPasskey', {
+      email,
+      credentialId: credId,
+      challenge: challengeRes.challenge,
+      publicKey: pubKeyB64,
+    });
+
+    return true;
+  } catch (err: any) {
+    const msg = (err?.message || err?.name || '').toString().toLowerCase();
+    if (msg.includes('cancel') || msg.includes('abort') || msg.includes('not allowed')) return false;
+    console.error('[WebAuthn register]', err);
+    return false;
+  }
+}
+
 async function triggerBiometricPrompt(): Promise<"native"|"webauthn"|"failed"> {
   const isNative = typeof (window as any).Capacitor !== "undefined"
     && (window as any).Capacitor?.isNativePlatform?.();
@@ -56,16 +119,30 @@ async function triggerBiometricPrompt(): Promise<"native"|"webauthn"|"failed"> {
     const saved = localStorage.getItem("lbjj_passkey_credential_id")
                 || localStorage.getItem("lbjj_passkey_id");
     if (!saved) return "failed";
-    const challenge = new Uint8Array(32);
-    crypto.getRandomValues(challenge);
-    await navigator.credentials.get({
+
+    // Get server-issued challenge
+    const { gasCall: _gasCall } = await import('@/lib/api');
+    const emailForChallenge = localStorage.getItem('lbjj_passkey_email') || '';
+    const challengeRes = await _gasCall('getWebAuthnChallenge', { email: emailForChallenge });
+    if (!challengeRes?.success || !challengeRes?.challenge) return "failed";
+
+    const challengeBytes = Uint8Array.from(atob(challengeRes.challenge), c => c.charCodeAt(0));
+    const credBytes = Uint8Array.from(atob(saved), c => c.charCodeAt(0));
+
+    const assertion = await navigator.credentials.get({
       publicKey: {
-        challenge,
-        allowCredentials: [{ id: Uint8Array.from(atob(saved), c => c.charCodeAt(0)), type: "public-key" }],
-        userVerification: "required",
+        challenge: challengeBytes,
+        allowCredentials: [{ id: credBytes, type: 'public-key' }],
+        userVerification: 'required',
         timeout: 60000,
       },
-    });
+    }) as PublicKeyCredential | null;
+
+    if (!assertion) return "failed";
+
+    // Store challenge and credential ID for verifyPasskey call in openBioVault
+    localStorage.setItem('lbjj_pending_challenge', challengeRes.challenge);
+    localStorage.setItem('lbjj_pending_credid', saved);
     return "webauthn";
   } catch { return "failed"; }
 }
@@ -391,6 +468,31 @@ export default function LoginPage() {
       setBioDesc("Could not verify identity.");
       setTimeout(() => { setBioOpen(false); setBioPhase("idle"); }, 2200);
       return;
+    }
+    if (result === "webauthn") {
+      // Verify with GAS using the server-issued challenge
+      try {
+        const pendingChallenge = localStorage.getItem('lbjj_pending_challenge');
+        const pendingCredId = localStorage.getItem('lbjj_pending_credid');
+        const emailForVerify = (email || localStorage.getItem('lbjj_passkey_email') || '').trim();
+
+        if (pendingChallenge && pendingCredId && emailForVerify) {
+          const { gasCall: _gc } = await import('@/lib/api');
+          const verifyRes = await _gc('verifyPasskey', {
+            email: emailForVerify,
+            credentialId: pendingCredId,
+            challenge: pendingChallenge,
+          });
+
+          localStorage.removeItem('lbjj_pending_challenge');
+          localStorage.removeItem('lbjj_pending_credid');
+
+          if (verifyRes?.success && verifyRes?.token) {
+            localStorage.setItem('lbjj_session_token', verifyRes.token);
+            localStorage.setItem('lbjj_token_created', Date.now().toString());
+          }
+        }
+      } catch {}
     }
     setBioPhase("success");
     setBioTitle("Signature Verified");
@@ -750,7 +852,37 @@ export default function LoginPage() {
             <button
               onClick={async () => {
                 setShowBioAgreement(false);
-                openBioVault();
+                const isNative = typeof (window as any).Capacitor !== "undefined"
+                  && (window as any).Capacitor?.isNativePlatform?.();
+
+                if (!isNative && window.PublicKeyCredential) {
+                  // Web: register passkey FIRST, then open vault for visual feedback
+                  const emailForReg = (email || localStorage.getItem('lbjj_passkey_email') || '').trim();
+                  if (!emailForReg) {
+                    setError('Enter your email first to set up biometrics.');
+                    return;
+                  }
+                  setBioOpen(true);
+                  setBioPhase("scanning");
+                  setBioTitle("Setting Up Biometrics");
+                  setBioDesc("Follow your device's prompt to register.");
+
+                  const ok = await registerWebAuthnPasskey(emailForReg);
+                  if (ok) {
+                    setBioPhase("success");
+                    setBioTitle("Biometrics Registered");
+                    setBioDesc("You can now sign in with biometrics.");
+                    setTimeout(() => { setBioOpen(false); setBioPhase("idle"); }, 2000);
+                  } else {
+                    setBioPhase("fail");
+                    setBioTitle("Registration Failed");
+                    setBioDesc("Biometrics not available. Use email to sign in.");
+                    setTimeout(() => { setBioOpen(false); setBioPhase("idle"); }, 2200);
+                  }
+                } else {
+                  // Native: go straight to vault (existing flow)
+                  openBioVault();
+                }
               }}
               style={{ width:"100%",padding:"18px",borderRadius:16,border:"none",
                 fontFamily:"system-ui,sans-serif",fontSize:16,fontWeight:900,
