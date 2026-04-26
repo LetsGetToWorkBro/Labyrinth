@@ -2188,10 +2188,12 @@ html[data-nav="tab"] ::view-transition-new(root) {
 body::before {
   content: '';
   position: fixed; inset: 0; z-index: 9998; pointer-events: none;
+  /* Top centre bloom starts above the viewport (-20%) so toolbar only catches
+     the soft fade edge, not the bright core. Side wisps add ambient depth. */
   background:
-    radial-gradient(ellipse 110% 55% at 50% -8%,  rgba(var(--th-rgb),.55), transparent 60%),
-    radial-gradient(ellipse 60%  35% at  8% 40%,  rgba(var(--th-rgb),.18), transparent 58%),
-    radial-gradient(ellipse 60%  35% at 92% 60%,  rgba(var(--th-rgb),.15), transparent 58%);
+    radial-gradient(ellipse 100% 45% at 50% -20%, rgba(var(--th-rgb),.50), transparent 62%),
+    radial-gradient(ellipse 55%  30% at  8% 50%,  rgba(var(--th-rgb),.14), transparent 58%),
+    radial-gradient(ellipse 55%  30% at 92% 70%,  rgba(var(--th-rgb),.12), transparent 58%);
   mix-blend-mode: screen;
   transition: background 0.9s cubic-bezier(0.16,1,0.3,1);
   animation: ambientBreathe 7s ease-in-out infinite;
@@ -2202,23 +2204,23 @@ body::after {
   content: '';
   position: fixed; inset: 0; z-index: 9997; pointer-events: none;
   background:
-    radial-gradient(ellipse 60% 30% at 50% 105%, rgba(var(--th-rgb),.22), transparent 62%);
+    radial-gradient(ellipse 60% 28% at 50% 108%, rgba(var(--th-rgb),.18), transparent 62%);
   mix-blend-mode: screen;
   transition: background 0.9s cubic-bezier(0.16,1,0.3,1);
 }
 
 @keyframes ambientBreathe {
-  0%,100% { opacity: .80; }
+  0%,100% { opacity: .75; }
   50%      { opacity: 1;   }
 }
 
 /* ── Per-belt intensity tuning (html[data-belt] → body::before) ── */
 /* Adult belts */
-html[data-belt="white"]        body::before { opacity: .50; }
-html[data-belt="blue"]         body::before { opacity: .90; }
-html[data-belt="purple"]       body::before { opacity: .95; }
-html[data-belt="brown"]        body::before { opacity: .90; }
-html[data-belt="black"]        body::before { opacity: 1;   }
+html[data-belt="white"]        body::before { opacity: .45; }
+html[data-belt="blue"]         body::before { opacity: .80; }
+html[data-belt="purple"]       body::before { opacity: .85; }
+html[data-belt="brown"]        body::before { opacity: .80; }
+html[data-belt="black"]        body::before { opacity: .60; } /* gold is bright — keep subtle */
 /* Kids grey series */
 html[data-belt="grey"]         body::before { opacity: .65; }
 html[data-belt="gray"]         body::before { opacity: .65; }
