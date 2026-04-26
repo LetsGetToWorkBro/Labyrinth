@@ -2181,13 +2181,18 @@ html[data-nav="tab"] ::view-transition-new(root) {
    ═══════════════════════════════════════════════════════════════════ */
 
 /* ── Belt Atmosphere Layer 1: Top aurora ── */
+/* z-index 9998 paints above all page content but below modals (z-index 2000+).
+   mix-blend-mode:screen composites the color over dark backgrounds without
+   blocking touch events (pointer-events:none). This makes the aurora visible
+   even when individual pages have solid inline backgrounds. */
 body::before {
   content: '';
-  position: fixed; inset: 0; z-index: 0; pointer-events: none;
+  position: fixed; inset: 0; z-index: 9998; pointer-events: none;
   background:
-    radial-gradient(ellipse 110% 55% at 50% -8%,  rgba(var(--th-rgb),.38), transparent 60%),
-    radial-gradient(ellipse 60%  35% at  8% 40%,  rgba(var(--th-rgb),.14), transparent 58%),
-    radial-gradient(ellipse 60%  35% at 92% 60%,  rgba(var(--th-rgb),.12), transparent 58%);
+    radial-gradient(ellipse 110% 55% at 50% -8%,  rgba(var(--th-rgb),.55), transparent 60%),
+    radial-gradient(ellipse 60%  35% at  8% 40%,  rgba(var(--th-rgb),.18), transparent 58%),
+    radial-gradient(ellipse 60%  35% at 92% 60%,  rgba(var(--th-rgb),.15), transparent 58%);
+  mix-blend-mode: screen;
   transition: background 0.9s cubic-bezier(0.16,1,0.3,1);
   animation: ambientBreathe 7s ease-in-out infinite;
 }
@@ -2195,9 +2200,10 @@ body::before {
 /* ── Belt Atmosphere Layer 2: Bottom floor bloom ── */
 body::after {
   content: '';
-  position: fixed; inset: 0; z-index: 0; pointer-events: none;
+  position: fixed; inset: 0; z-index: 9997; pointer-events: none;
   background:
-    radial-gradient(ellipse 60% 30% at 50% 105%, rgba(var(--th-rgb),.18), transparent 62%);
+    radial-gradient(ellipse 60% 30% at 50% 105%, rgba(var(--th-rgb),.22), transparent 62%);
+  mix-blend-mode: screen;
   transition: background 0.9s cubic-bezier(0.16,1,0.3,1);
 }
 
@@ -2224,6 +2230,15 @@ html[data-belt="gray"]   body::before { opacity: .60; }
 .app-content, .app-shell, main, [class*="page"], [class*="Page"] {
   position: relative;
   z-index: 2;
+}
+
+/* ── Make app shell transparent so aurora bleeds through ── */
+.app-shell {
+  background: transparent !important;
+}
+/* App-content pages: use a very dark semi-transparent base so aurora is subtly visible */
+.app-content {
+  background: rgba(3,3,3,0.82) !important;
 }
 
 /* belt-aurora-v2 */
