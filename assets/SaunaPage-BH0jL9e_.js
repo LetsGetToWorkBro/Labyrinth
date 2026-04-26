@@ -1,4 +1,4 @@
-import{j as e}from"./vendor-query-C1Sv77l2.js";import{a as c}from"./vendor-router-ODl1pWfb.js";import{h as Y,N as X,O as H}from"./index-B5Nw8Rd_.js";import"./vendor-react-D2Kp-oPc.js";const S=6,C=1200,U=3e4,P=`
+import{j as e}from"./vendor-query-C1Sv77l2.js";import{a as c}from"./vendor-router-ODl1pWfb.js";import{h as Y,N as X,O as H}from"./index-C5rZwUzw.js";import"./vendor-react-D2Kp-oPc.js";const S=6,C=1200,U=3e4,P=`
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@600;800&display=swap');
 
 .sauna-term, .sauna-term * { box-sizing: border-box; user-select: none; }
