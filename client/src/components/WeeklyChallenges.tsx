@@ -13,6 +13,7 @@
  */
 import React, { useMemo, useEffect, useState } from 'react';
 import { Dumbbell, Sunrise, Calendar, Trophy, Moon, Flame, Shield } from 'lucide-react';
+import { gasCall } from '@/lib/api';
 
 export type WeeklyChallengeType =
   | 'classes'
@@ -179,6 +180,19 @@ export function WeeklyChallengesWidget({
   });
   const [claiming, setClaiming] = useState(false);
 
+  // On mount: load claimed state from GAS to restore across devices/sign-outs.
+  useEffect(() => {
+    const token = localStorage.getItem('lbjj_session_token') || '';
+    if (!token || claimed) return; // already claimed locally — no need to fetch
+    gasCall('getWeeklyClaim', { token, week: wk }).then((res: any) => {
+      if (res?.claimed) {
+        try { localStorage.setItem(claimedKey, '1'); } catch {}
+        setClaimed(true);
+      }
+    }).catch(() => {});
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [wk]);
+
   // Recompute when localStorage changes (e.g. after a check-in).
   useEffect(() => {
     const onXp = () => setTick(t => t + 1);
@@ -211,9 +225,25 @@ export function WeeklyChallengesWidget({
     if (!allComplete || claimed || claiming) return;
     setClaiming(true);
     const gained = totalBonus * (xpMultiplier || 1);
+
+    // Persist locally first for instant feedback
     try { localStorage.setItem(claimedKey, '1'); } catch {}
     setClaimed(true);
+
+    // Award XP via onClaim (HomePage handles localStorage + GAS saveMemberStats)
     try { onClaim?.(gained); } catch {}
+
+    // Also persist claim to GAS so it survives sign-out / other devices
+    const token = localStorage.getItem('lbjj_session_token') || '';
+    if (token) {
+      gasCall('saveWeeklyClaim', {
+        token,
+        week: wk,
+        xpAwarded: gained,
+        challenges: seeds.map(s => s.id),
+      }).catch(() => {});
+    }
+
     // Nuclear VFX — gold burst overlay.
     playChallengeClaimVFX(gained);
     setTimeout(() => setClaiming(false), 600);

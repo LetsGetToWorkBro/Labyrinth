@@ -49,21 +49,21 @@ function rankBar(belt: string) {
 // ─── Per-member localStorage namespacing ─────────────────────────
 const NAMESPACED_KEYS = [
   'lbjj_game_stats_v2',
-  'lbjj_achievements',
-  'lbjj_achievement_xp_claimed',
-  'lbjj_achievement_dates',
   'lbjj_profile_picture',
   'lbjj_checkin_history',
   'lbjj_weekly_training',
   'lbjj_first_message_sent',
   'lbjj_passkey_registered',
-  // Added: keep per-member state isolated so switching profiles doesn't
+  // Keep per-member state isolated so switching profiles doesn't
   // bleed streak / belts / cached profile / onboarding state across members.
   'lbjj_streak_cache',
   'lbjj_member_profile',
   'lbjj_account_token_created',
   'lbjj_onboarding_complete',
   'lbjj_belt_promotions_cache',
+  // NOTE: lbjj_achievements, lbjj_achievement_xp_claimed, lbjj_achievement_dates,
+  // and lbjj_season_claimed are intentionally NOT namespaced — XP claims are
+  // non-reversible device-wide state that must persist across profile switches.
 ] as const;
 
 // Season count keys need special handling (dynamic month suffix)

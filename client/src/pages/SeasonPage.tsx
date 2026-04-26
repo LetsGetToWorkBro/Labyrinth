@@ -10,7 +10,7 @@
  */
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { getMemberCheckIns } from '@/lib/api';
+import { getMemberCheckIns, gasCall, saveMemberStats } from '@/lib/api';
 import { useAuth } from '@/lib/auth-context';
 import { X } from 'lucide-react';
 
@@ -74,21 +74,47 @@ export default function SeasonPage() {
   const cacheRefs = useRef<(HTMLDivElement | null)[]>([]);
 
   useEffect(() => {
-    getMemberCheckIns().then((data: any[]) => {
-      const ym = getCurrentYearMonth();
-      const thisMonth = data.filter(c => {
+    const token = localStorage.getItem('lbjj_session_token') || '';
+    const ym = getCurrentYearMonth();
+
+    // Load check-ins AND server-side season claim state in parallel
+    Promise.all([
+      getMemberCheckIns(),
+      token ? gasCall('getSeasonClaims', { token, month: ym }) : Promise.resolve(null),
+    ]).then(([checkInData, claimRes]) => {
+      // Check-ins for this month
+      const thisMonth = (checkInData as any[]).filter(c => {
         const dateStr = (c.timestamp || c.date || c.checkInDate || c.classDate || '').toString();
         return dateStr.startsWith(ym);
       }).length;
       setMonthClasses(thisMonth);
+
+      // Merge server claimed state with local — server is source of truth,
+      // but never remove a locally-claimed tier (offline resilience).
+      if (claimRes?.claimed && typeof claimRes.claimed === 'object') {
+        setClaimed(prev => {
+          const merged = { ...prev, ...claimRes.claimed };
+          try { localStorage.setItem('lbjj_season_claimed', JSON.stringify(merged)); } catch {}
+          return merged;
+        });
+      }
+
       setLoading(false);
       setTimeout(() => setArcAnimate(true), 100);
     }).catch(() => setLoading(false));
   }, []);
 
+  // Keep xpBank in sync with xp-updated events (checkins, achievement claims, etc.)
+  useEffect(() => {
+    const sync = () => {
+      try { const s = JSON.parse(localStorage.getItem('lbjj_game_stats_v2') || '{}'); setXpBank(s.xp || 0); } catch {}
+    };
+    window.addEventListener('xp-updated', sync);
+    return () => window.removeEventListener('xp-updated', sync);
+  }, []);
+
   const pct = Math.min(monthClasses / MAX_CLASSES, 1);
   // Half-circle arc: r=60, circumference=376.99, half=188.5
-  // strokeDashoffset: 377 = empty, 377 - 188.5 * pct = partial fill
   const arcOffset = 377 - (arcAnimate ? pct * 188.5 : 0);
 
   const handleClaim = useCallback((tierIdx: number) => {
@@ -98,26 +124,43 @@ export default function SeasonPage() {
 
     const newClaimed = { ...claimed, [tierIdx]: true };
     setClaimed(newClaimed);
-    localStorage.setItem('lbjj_season_claimed', JSON.stringify(newClaimed));
+    try { localStorage.setItem('lbjj_season_claimed', JSON.stringify(newClaimed)); } catch {}
 
     // Shockwave
     setShockwave(tierIdx);
     setTimeout(() => setShockwave(null), 900);
 
-    // Update XP
-    const newXP = xpBank + tier.xp;
+    // Update XP locally first for instant feedback
+    const s = (() => { try { return JSON.parse(localStorage.getItem('lbjj_game_stats_v2') || '{}'); } catch { return {}; } })();
+    const newXP = (s.xp || 0) + tier.xp;
+    s.xp = newXP; s.totalXP = Math.max(s.totalXP || 0, newXP);
+    try { localStorage.setItem('lbjj_game_stats_v2', JSON.stringify(s)); } catch {}
     setXpBank(newXP);
-    try {
-      const s = JSON.parse(localStorage.getItem('lbjj_game_stats_v2') || '{}');
-      s.xp = newXP; s.totalXP = Math.max(s.totalXP || 0, newXP);
-      localStorage.setItem('lbjj_game_stats_v2', JSON.stringify(s));
-      window.dispatchEvent(new CustomEvent('xp-updated'));
-    } catch {}
+    window.dispatchEvent(new CustomEvent('xp-updated'));
+
+    // Persist claim + XP to GAS (fire-and-forget)
+    const token = localStorage.getItem('lbjj_session_token') || '';
+    if (token) {
+      const ym = getCurrentYearMonth();
+      gasCall('saveSeasonClaim', {
+        token,
+        month: ym,
+        tierIdx,
+        xpAwarded: tier.xp,
+        tierTitle: tier.title,
+      }).catch(() => {});
+      // Also push new XP total to Members sheet so leaderboard stays in sync
+      saveMemberStats({
+        xp: newXP,
+        streak: s.currentStreak || 0,
+        maxStreak: s.maxStreak || 0,
+      }).catch(() => {});
+    }
 
     // Flying XP
     const cacheEl = cacheRefs.current[tierIdx];
     if (cacheEl && xpBankRef.current) spawnFlyXP(cacheEl, xpBankRef.current, tier.xp);
-  }, [claimed, monthClasses, xpBank]);
+  }, [claimed, monthClasses]);
 
   return (
     <>
