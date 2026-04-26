@@ -24,17 +24,30 @@ function cacheMemberPfp(m: any) {
 // sessionStorage is used deliberately — localStorage can be pre-set by a user
 // trying to bypass the check-in window. sessionStorage is wiped on tab close.
 function fetchAndCacheAppConfig() {
-  gasCall('getAppConfig', {})
-    .then((cfg: any) => {
-      const mins = parseInt(cfg?.checkinWindowMinutes, 10);
-      if (Number.isFinite(mins) && mins > 0) {
-        try { sessionStorage.setItem('lbjj_checkin_window', String(mins)); } catch {}
-      }
-      // Cache gate enabled flag (default true if not set)
-      const gateEnabled = cfg?.checkinGateEnabled !== false;
-      try { sessionStorage.setItem('lbjj_checkin_gate_enabled', gateEnabled ? '1' : '0'); } catch {}
-    })
-    .catch(() => {});
+  // Fetch both app config (check-in window) and geo config (lat/lng/radius) in parallel
+  Promise.all([
+    gasCall('getAppConfig', {}),
+    gasCall('getGeoConfig', {}),
+  ]).then(([cfg, geo]: [any, any]) => {
+    // Check-in window
+    const mins = parseInt(cfg?.checkinWindowMinutes, 10);
+    if (Number.isFinite(mins) && mins > 0) {
+      try { sessionStorage.setItem('lbjj_checkin_window', String(mins)); } catch {}
+    }
+    const gateEnabled = cfg?.checkinGateEnabled !== false;
+    try { sessionStorage.setItem('lbjj_checkin_gate_enabled', gateEnabled ? '1' : '0'); } catch {}
+
+    // Geo-lock config — cache into localStorage so geo.ts can read it
+    if (geo?.success !== false) {
+      const geoConfig = {
+        enabled:     !!geo?.geoEnabled,
+        lat:         parseFloat(geo?.geoLat  ?? geo?.config?.lat  ?? 0) || 0,
+        lng:         parseFloat(geo?.geoLng  ?? geo?.config?.lng  ?? 0) || 0,
+        radiusYards: parseInt(geo?.geoRadiusYards ?? geo?.config?.radiusYards ?? 500) || 500,
+      };
+      try { localStorage.setItem('lbjj_geo_config', JSON.stringify(geoConfig)); } catch {}
+    }
+  }).catch(() => {});
 }
 
 // One-time re-sync for members with stale GAS XP data

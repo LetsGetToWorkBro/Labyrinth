@@ -179,6 +179,39 @@ export default function AdminPage({ onBack }: { onBack: () => void }) {
   const [geoLat, setGeoLat] = useState<number | null>(null);
   const [geoLng, setGeoLng] = useState<number | null>(null);
   const [geoLocating, setGeoLocating] = useState(false);
+  const [geoSearching, setGeoSearching] = useState(false);
+  const [geoSuggestions, setGeoSuggestions] = useState<Array<{display_name: string; lat: string; lon: string}>>([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const geoDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Geocode an address string using Nominatim (OpenStreetMap, free, no key)
+  const geocodeAddress = useCallback(async (query: string) => {
+    if (!query || query.length < 4) { setGeoSuggestions([]); return; }
+    setGeoSearching(true);
+    try {
+      const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&limit=5&countrycodes=us`;
+      const res = await fetch(url, { headers: { 'Accept-Language': 'en', 'User-Agent': 'LabyrinthBJJ/1.0' } });
+      const data = await res.json();
+      setGeoSuggestions(Array.isArray(data) ? data : []);
+      setShowSuggestions(true);
+    } catch { setGeoSuggestions([]); }
+    setGeoSearching(false);
+  }, []);
+
+  const handleAddressChange = (val: string) => {
+    setGeoLocation(val);
+    if (geoDebounceRef.current) clearTimeout(geoDebounceRef.current);
+    geoDebounceRef.current = setTimeout(() => geocodeAddress(val), 600);
+  };
+
+  const handleSelectSuggestion = (s: {display_name: string; lat: string; lon: string}) => {
+    setGeoLocation(s.display_name);
+    setGeoLat(parseFloat(s.lat));
+    setGeoLng(parseFloat(s.lon));
+    setGeoSuggestions([]);
+    setShowSuggestions(false);
+    showToast(`Pinned: ${parseFloat(s.lat).toFixed(5)}, ${parseFloat(s.lon).toFixed(5)}`);
+  };
 
   const handleUseCurrentLocation = () => {
     if (!navigator.geolocation) {
@@ -192,7 +225,8 @@ export default function AdminPage({ onBack }: { onBack: () => void }) {
         setGeoLng(pos.coords.longitude);
         setGeoLocation(`${pos.coords.latitude.toFixed(6)}, ${pos.coords.longitude.toFixed(6)}`);
         setGeoLocating(false);
-        showToast("Location captured");
+        setGeoSuggestions([]);
+        showToast("Location captured — " + pos.coords.latitude.toFixed(5) + ", " + pos.coords.longitude.toFixed(5));
       },
       () => {
         setGeoLocating(false);
@@ -543,19 +577,70 @@ export default function AdminPage({ onBack }: { onBack: () => void }) {
           </div>
 
           <div className="lbj-input-group">
-            <label>Academy Coordinates</label>
-            <div className="lbj-input-with-icon">
-              <svg viewBox="0 0 24 24" fill="none" strokeWidth="2">
-                <circle cx="11" cy="11" r="8" />
-                <line x1="21" y1="21" x2="16.65" y2="16.65" />
-              </svg>
-              <input
-                type="text"
-                className="lbj-input"
-                value={geoLocation}
-                onChange={(e) => setGeoLocation(e.target.value)}
-              />
+            <label>Academy Address or Coordinates</label>
+            <div style={{ position: 'relative' }}>
+              <div className="lbj-input-with-icon">
+                <svg viewBox="0 0 24 24" fill="none" strokeWidth="2">
+                  <circle cx="11" cy="11" r="8" />
+                  <line x1="21" y1="21" x2="16.65" y2="16.65" />
+                </svg>
+                <input
+                  type="text"
+                  className="lbj-input"
+                  placeholder="e.g. Labyrinth BJJ, Fulshear, TX"
+                  value={geoLocation}
+                  onChange={(e) => handleAddressChange(e.target.value)}
+                  onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
+                  onFocus={() => geoSuggestions.length > 0 && setShowSuggestions(true)}
+                />
+                {geoSearching && (
+                  <div style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)' }}>
+                    <Spinner />
+                  </div>
+                )}
+              </div>
+              {/* Autocomplete dropdown */}
+              {showSuggestions && geoSuggestions.length > 0 && (
+                <div style={{
+                  position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 100,
+                  background: '#111', border: '1px solid rgba(255,255,255,0.12)',
+                  borderRadius: 10, marginTop: 4, overflow: 'hidden',
+                  boxShadow: '0 8px 32px rgba(0,0,0,0.8)',
+                }}>
+                  {geoSuggestions.map((s, i) => (
+                    <button
+                      key={i}
+                      onMouseDown={() => handleSelectSuggestion(s)}
+                      style={{
+                        display: 'block', width: '100%', textAlign: 'left',
+                        padding: '10px 14px', background: 'transparent',
+                        border: 'none', borderBottom: i < geoSuggestions.length - 1 ? '1px solid rgba(255,255,255,0.05)' : 'none',
+                        color: '#e5e5e5', fontSize: 12, cursor: 'pointer',
+                        lineHeight: 1.4,
+                      }}
+                      onMouseEnter={e => (e.currentTarget.style.background = 'rgba(200,162,76,0.1)')}
+                      onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+                    >
+                      <div style={{ fontWeight: 600, color: '#fff', marginBottom: 2 }}>
+                        {s.display_name.split(',')[0]}
+                      </div>
+                      <div style={{ color: '#666', fontSize: 11 }}>
+                        {s.display_name.split(',').slice(1).join(',').trim()}
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
+            {/* Coordinates display */}
+            {geoLat !== null && geoLng !== null && (
+              <div style={{ marginTop: 8, fontSize: 11, color: '#C8A24C', fontFamily: 'monospace', display: 'flex', alignItems: 'center', gap: 6 }}>
+                <svg viewBox="0 0 24 24" fill="none" stroke="#C8A24C" strokeWidth="2" width="12" height="12">
+                  <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/>
+                </svg>
+                {geoLat.toFixed(6)}, {geoLng.toFixed(6)}
+              </div>
+            )}
           </div>
 
           <div className="lbj-input-group">
@@ -592,17 +677,30 @@ export default function AdminPage({ onBack }: { onBack: () => void }) {
             />
           </div>
 
-          <div className="lbj-radar-box">
-            <div className="lbj-radar-grid" />
-            <div
-              className="lbj-radar-ring"
-              style={{ width: radarScale, height: radarScale }}
-            />
-            <div className="lbj-radar-center" />
-            <div style={{ position: "absolute", bottom: 8, right: 10, fontSize: 9, color: "#888891", fontFamily: "monospace" }}>
-              GPS: {geoEnabled ? "ACTIVE" : "OFF"}
+          {/* Map preview — real OSM iframe when coords are set, radar fallback otherwise */}
+          {geoLat !== null && geoLng !== null ? (
+            <div style={{ borderRadius: 14, overflow: 'hidden', border: '1px solid rgba(255,255,255,0.08)', position: 'relative', height: 200 }}>
+              <iframe
+                key={`${geoLat.toFixed(4)}-${geoLng.toFixed(4)}-${geoRadius}`}
+                src={`https://www.openstreetmap.org/export/embed.html?bbox=${(geoLng - 0.008).toFixed(6)},${(geoLat - 0.005).toFixed(6)},${(geoLng + 0.008).toFixed(6)},${(geoLat + 0.005).toFixed(6)}&layer=mapnik&marker=${geoLat.toFixed(6)},${geoLng.toFixed(6)}`}
+                style={{ width: '100%', height: '100%', border: 'none', filter: 'invert(0.9) hue-rotate(180deg) saturate(0.7)' }}
+                title="Academy location"
+                loading="lazy"
+              />
+              <div style={{ position: 'absolute', bottom: 8, left: 10, fontSize: 10, color: '#C8A24C', fontFamily: 'monospace', background: 'rgba(0,0,0,0.7)', padding: '3px 8px', borderRadius: 6 }}>
+                {geoEnabled ? '● ACTIVE' : '● OFF'} · {geoRadius}yd radius
+              </div>
             </div>
-          </div>
+          ) : (
+            <div className="lbj-radar-box">
+              <div className="lbj-radar-grid" />
+              <div className="lbj-radar-ring" style={{ width: radarScale, height: radarScale }} />
+              <div className="lbj-radar-center" />
+              <div style={{ position: 'absolute', bottom: 8, right: 10, fontSize: 9, color: '#888891', fontFamily: 'monospace' }}>
+                GPS: {geoEnabled ? 'ACTIVE' : 'OFF'} — search an address above
+              </div>
+            </div>
+          )}
         </div>
 
         {/* SAVE BAR */}
