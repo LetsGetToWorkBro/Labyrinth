@@ -39,6 +39,22 @@ function fetchAndCacheAppConfig() {
 const RESYNC_AFTER = 1745632800000; // Apr 25 2026 18:00 UTC (approx when GET fix deployed)
 const RESYNC_KEY = 'lbjj_xp_resync_done_v2';
 
+// One-time migration: wipe lbjj_achievement_xp_claimed entries that were
+// written by the broken pre-fix build (before Apr 26 2026 02:00 UTC).
+// Those claims marked keys as claimed but never awarded XP, so we reset
+// so users can re-claim and actually receive their XP + animation.
+const ACH_CLAIM_MIGRATION_KEY = 'lbjj_ach_claim_migrated_v1';
+const ACH_CLAIM_MIGRATION_AFTER = 1745632800000; // same cutoff as XP resync
+function migrateAchievementClaims() {
+  try {
+    const done = parseInt(localStorage.getItem(ACH_CLAIM_MIGRATION_KEY) || '0');
+    if (done > ACH_CLAIM_MIGRATION_AFTER) return; // already migrated
+    // Clear the claimed set so every achievement can be re-claimed
+    localStorage.removeItem('lbjj_achievement_xp_claimed');
+    localStorage.setItem(ACH_CLAIM_MIGRATION_KEY, Date.now().toString());
+  } catch {}
+}
+
 function triggerXPResyncIfNeeded() {
   try {
     const lastResync = parseInt(localStorage.getItem(RESYNC_KEY) || '0');
@@ -141,6 +157,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         syncBeltTheme(savedProfile);
         setIsLoading(false);
         fetchAndCacheAppConfig();
+        migrateAchievementClaims();
         triggerXPResyncIfNeeded();
 
         // If cached profile claims isAdmin, re-verify with server in background
@@ -253,6 +270,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             if (normalized.familyMembers) setFamilyMembers(normalized.familyMembers);
             cacheMemberPfp(normalized);
             syncBeltTheme(normalized);
+            migrateAchievementClaims();
             triggerXPResyncIfNeeded();
 
             // Refresh token timestamp so biometric logins always extend the session
