@@ -70,6 +70,18 @@ async function triggerBiometricPrompt(): Promise<"native"|"webauthn"|"failed"> {
   } catch { return "failed"; }
 }
 
+// ─── Password strength ─────────────────────────────────────────────
+function calcPwStrength(pw: string): number {
+  if (!pw) return 0;
+  let score = 0;
+  if (pw.length >= 12) score++;
+  if (pw.length >= 16) score++;
+  if (/[A-Z]/.test(pw)) score++;
+  if (/[0-9]/.test(pw)) score++;
+  if (/[^A-Za-z0-9]/.test(pw)) score++;
+  return Math.min(score, 4);
+}
+
 // ─── Greeting ──────────────────────────────────────────────────────
 function getGreeting() {
   const h = new Date().getHours();
@@ -132,6 +144,11 @@ export default function LoginPage() {
   const [setupShowPw,   setSetupShowPw]   = useState(false);
   const [setupError,    setSetupError]    = useState("");
   const [setupLoading,  setSetupLoading]  = useState(false);
+  const [pwStrength,    setPwStrength]    = useState(0); // 0-4
+
+  // Forgot password / cold-start UX state
+  const [forgotSent,    setForgotSent]    = useState(false);
+  const [slowWarning,   setSlowWarning]   = useState(false);
 
   // Parse #setup?token=...&email=... (or ?token=...&email=...) on mount.
   // If present, switch to the setup screen pre-filled. Strip the params from
@@ -172,8 +189,14 @@ export default function LoginPage() {
   const handleCompleteSetup = async (e: React.FormEvent) => {
     e.preventDefault();
     setSetupError("");
-    if (!setupPw || setupPw.length < 8) {
-      setSetupError("Password must be at least 8 characters.");
+    const MIN_PW = 12;
+    const BLOCKED_PASSWORDS = ['password123','12345678901','labyrinthbjj','qwerty12345','iloveyou123'];
+    if (!setupPw || setupPw.length < MIN_PW) {
+      setSetupError(`Password must be at least ${MIN_PW} characters.`);
+      return;
+    }
+    if (BLOCKED_PASSWORDS.includes(setupPw.toLowerCase())) {
+      setSetupError('This password is too common. Please choose a stronger one.');
       return;
     }
     if (setupPw !== setupPw2) {
@@ -263,6 +286,13 @@ export default function LoginPage() {
     return () => document.removeEventListener('keydown', handler);
   }, []);
 
+  // Cold-start feedback — show after 8s of loading
+  useEffect(() => {
+    if (!loading) { setSlowWarning(false); return; }
+    const t = setTimeout(() => setSlowWarning(true), 8000);
+    return () => clearTimeout(t);
+  }, [loading]);
+
   // Boot typewriter
   const runBoot = useCallback((onDone: () => void) => {
     setBootActive(true);
@@ -296,9 +326,19 @@ export default function LoginPage() {
     setLoading(true);
     try {
       setActiveLocation(location.id);
-      const res = await login(email.trim(), password);
+      const res: any = await login(email.trim(), password);
       if (!res.success) {
-        setError(res.error || "Access denied."); setLoading(false); return;
+        const ERROR_MESSAGES: Record<string, string> = {
+          WRONG_PASSWORD: 'Incorrect password. Try again.',
+          EMAIL_NOT_FOUND: 'No account found with that email.',
+          SUSPENDED: 'Your membership is currently inactive. Contact the gym.',
+          TOO_MANY_ATTEMPTS: 'Too many attempts. Please wait 15 minutes.',
+          INVALID_TOKEN: 'Session expired. Please sign in again.',
+        };
+        const errMsg = (res.code && ERROR_MESSAGES[res.code])
+          || res.error
+          || 'Unable to sign in. Please try again.';
+        setError(errMsg); setLoading(false); return;
       }
       // Play boot sequence first login only, then auth context routes to HomePage.
       const bootShown = localStorage.getItem('lbjj_boot_shown');
@@ -309,6 +349,29 @@ export default function LoginPage() {
       }
     } catch {
       setError("Connection failed. Try again."); setLoading(false);
+    }
+  };
+
+  const handleForgotPassword = async () => {
+    if (!email.trim()) {
+      setError('Enter your email address first, then tap Forgot Password.');
+      return;
+    }
+    setLoading(true);
+    try {
+      const res: any = await gasCall('memberRequestPasswordReset', { email: email.trim() });
+      if (res?.success) {
+        setError(''); // clear errors
+        setForgotSent(true);
+        // Show success message inline
+        setError('Password reset link sent to ' + email + '. Check your email.');
+      } else {
+        setError(res?.error || 'Could not send reset email. Contact the gym.');
+      }
+    } catch {
+      setError('Could not send reset email. Check your connection.');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -443,7 +506,7 @@ export default function LoginPage() {
                 name="password"
                 required
                 value={setupPw}
-                onChange={e => setSetupPw(e.target.value)}
+                onChange={e => { const v = e.target.value; setSetupPw(v); setPwStrength(calcPwStrength(v)); }}
                 autoCapitalize="none"
                 autoCorrect="off"
                 spellCheck={false}
@@ -474,6 +537,25 @@ export default function LoginPage() {
                 {setupShowPw ? "HIDE" : "SHOW"}
               </button>
             </div>
+
+            {setupPw && (
+              <div style={{ marginTop: -12, marginBottom: 16 }}>
+                <div style={{ display: 'flex', gap: 4, marginBottom: 4 }}>
+                  {[1,2,3,4].map(i => (
+                    <div key={i} style={{
+                      flex: 1, height: 3, borderRadius: 2,
+                      background: i <= pwStrength
+                        ? pwStrength <= 1 ? '#ef4444' : pwStrength <= 2 ? '#f59e0b' : pwStrength <= 3 ? '#3b82f6' : '#22c55e'
+                        : 'rgba(255,255,255,0.1)',
+                      transition: 'background 0.3s',
+                    }} />
+                  ))}
+                </div>
+                <div style={{ fontSize: 10, color: pwStrength <= 1 ? '#ef4444' : pwStrength <= 2 ? '#f59e0b' : pwStrength <= 3 ? '#3b82f6' : '#22c55e' }}>
+                  {['','Weak','Fair','Strong','Very Strong'][pwStrength]}
+                </div>
+              </div>
+            )}
 
             <div style={{ position: "relative", marginBottom: 22 }}>
               <input
@@ -813,6 +895,24 @@ export default function LoginPage() {
             <button type="submit" disabled={loading} className="lg-btn-gold">
               {loading ? "Authenticating..." : "Enter the Academy"}
             </button>
+
+            <button
+              type="button"
+              onClick={handleForgotPassword}
+              style={{
+                background: 'none', border: 'none', color: 'rgba(255,255,255,0.4)',
+                fontSize: 13, fontWeight: 600, cursor: 'pointer', marginTop: 8,
+                textDecoration: 'underline', width: '100%', textAlign: 'center',
+              }}
+            >
+              Forgot password?
+            </button>
+
+            {slowWarning && (
+              <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', textAlign: 'center', marginTop: 8, animation: 'none' }}>
+                Taking longer than usual — server may be warming up...
+              </div>
+            )}
           </form>
 
           {/* Biometrics row — always shown, prompts agreement if not yet set up */}
