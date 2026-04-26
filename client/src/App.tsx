@@ -10,6 +10,10 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider, useAuth } from "@/lib/auth-context";
 import { GuestProfileProvider } from "@/lib/guest-profile";
 import { GameRecordProvider } from "@/lib/game-records";
+import { initBeltTheme } from "@/lib/beltTheme";
+
+// Apply cached belt theme synchronously, before React renders — zero-flash atmosphere.
+initBeltTheme();
 import { lazy, Suspense } from "react";
 import { LevelUpOverlay } from "@/components/LevelUpOverlay";
 import { DMProvider, dispatchOpenDMInbox } from "@/components/FloatingDMTray";

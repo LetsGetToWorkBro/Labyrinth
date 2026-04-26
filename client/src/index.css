@@ -12,6 +12,11 @@
 :root {
   font-size: 16px;
 
+  /* Belt theme — overridden by JS on boot */
+  --th: #e5e7eb;
+  --th-rgb: 229,231,235;
+  --th-glow: rgba(229,231,235,0.35);
+
   /* Labyrinth gold palette */
   --color-gold:           #c9a227;
   --color-gold-bright:    #e8b84b;
@@ -2166,4 +2171,53 @@ html[data-nav="tab"] ::view-transition-new(root) {
   45%     { transform: rotate(-6deg); }
   60%     { transform: rotate(4deg); }
   75%     { transform: rotate(-2deg); }
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   GLOBAL BELT THEME ATMOSPHERE
+   Driven by --th / --th-rgb / --th-glow on <html>
+   Set by lib/beltTheme.ts on boot and after auth resolves.
+   ═══════════════════════════════════════════════════════════════════ */
+
+/* ── Belt Atmosphere Layer 1: Top aurora ── */
+body::before {
+  content: '';
+  position: fixed; inset: 0; z-index: 0; pointer-events: none;
+  background:
+    radial-gradient(ellipse 100% 50% at 50% -5%,  rgba(var(--th-rgb),.18), transparent 58%),
+    radial-gradient(ellipse 55%  28% at 10% 45%,  rgba(var(--th-rgb),.05), transparent 55%),
+    radial-gradient(ellipse 55%  28% at 90% 65%,  rgba(var(--th-rgb),.04), transparent 55%);
+  transition: background 0.9s cubic-bezier(0.16,1,0.3,1);
+  animation: ambientBreathe 7s ease-in-out infinite;
+}
+
+/* ── Belt Atmosphere Layer 2: Bottom floor bloom ── */
+body::after {
+  content: '';
+  position: fixed; inset: 0; z-index: 0; pointer-events: none;
+  background:
+    radial-gradient(ellipse 50% 22% at 50% 102%, rgba(var(--th-rgb),.07), transparent 60%);
+  transition: background 0.9s cubic-bezier(0.16,1,0.3,1);
+}
+
+@keyframes ambientBreathe {
+  0%,100% { opacity: .85; }
+  50%      { opacity: 1;   }
+}
+
+/* ── Per-belt intensity tuning ── */
+[data-belt="white"]  body::before { opacity: .55; }
+[data-belt="black"]  body::before { opacity: 1;   }
+[data-belt="grey"]   body::before { opacity: .65; }
+[data-belt="gray"]   body::before { opacity: .65; }
+
+/* ── Nav border picks up belt color ── */
+.v10-header {
+  border-bottom-color: rgba(var(--th-rgb), 0.12) !important;
+}
+
+/* ── All content above atmosphere ── */
+.app-content, .app-shell, main, [class*="page"], [class*="Page"] {
+  position: relative;
+  z-index: 2;
 }
