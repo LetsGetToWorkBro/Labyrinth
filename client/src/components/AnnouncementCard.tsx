@@ -48,10 +48,24 @@ function spawnParticles(container: HTMLElement, color: string, count = 15) {
   }
 }
 
+// Persist acknowledged announcement IDs so they don't reappear after refresh
+function getAckedIds(): string[] {
+  try { return JSON.parse(localStorage.getItem('lbjj_acked_announcements') || '[]'); } catch { return []; }
+}
+function addAckedId(id: string) {
+  try {
+    const ids = getAckedIds();
+    if (!ids.includes(id)) { ids.push(id); localStorage.setItem('lbjj_acked_announcements', JSON.stringify(ids.slice(-50))); }
+  } catch {}
+}
+
 export function AnnouncementCard({ announcement }: AnnouncementCardProps) {
+  // Use ts as unique ID — each pinned announcement has a distinct timestamp
+  const annId = (announcement as any).id || announcement.ts || announcement.title || '';
+  const alreadyAcked = annId ? getAckedIds().includes(annId) : false;
   const [isExpanded, setIsExpanded] = useState(false);
-  const [isRead, setIsRead] = useState(false);
-  const [ackDone, setAckDone] = useState(false);
+  const [isRead, setIsRead] = useState(alreadyAcked);
+  const [ackDone, setAckDone] = useState(alreadyAcked);
   const [bodyHeight, setBodyHeight] = useState(0);
 
   const cardRef = useRef<HTMLDivElement>(null);
@@ -86,6 +100,7 @@ export function AnnouncementCard({ announcement }: AnnouncementCardProps) {
     e.stopPropagation();
     if (isRead || ackDone) return;
     setAckDone(true);
+    if (annId) addAckedId(annId);
 
     // Particle burst
     if (particleRef.current) spawnParticles(particleRef.current, '#10b981');
