@@ -53,12 +53,26 @@ export const BELT_THEMES: Record<string, BeltTheme> = {
  * Kids belts: combine belt + bar (e.g. 'grey' + 'white' → 'grey_white').
  */
 export function getBeltThemeKey(belt: string, bar?: string): string {
-  const b = (belt || 'white').toLowerCase().replace(/\s+/g, '_');
-  const isKids = ['grey','gray','yellow','orange','green'].includes(b.split('_')[0]);
+  // Normalise: lowercase, collapse spaces/slashes/dashes to underscore
+  // Handles: 'Grey/White', 'grey white', 'Grey-Black', 'grey_white', 'Grey'
+  const b = (belt || 'white').toLowerCase()
+    .replace(/[/\s-]+/g, '_')   // slash, space, dash → underscore
+    .replace(/_+/g, '_')         // collapse double underscores
+    .trim();
+
+  // If the belt value already contains a bar suffix (e.g. 'grey_white'), return as-is
+  // if it maps to a known theme key.
+  if (BELT_THEMES[b as keyof typeof BELT_THEMES]) return b;
+
+  // Otherwise try combining with the bar param
+  const base = b.split('_')[0]; // e.g. 'grey' from 'grey_white' or just 'grey'
+  const isKids = ['grey','gray','yellow','orange','green'].includes(base);
   if (!isKids) return b;
-  if (bar === 'white') return `${b}_white`;
-  if (bar === 'black') return `${b}_black`;
-  return b;
+
+  const barNorm = (bar || '').toLowerCase().trim();
+  if (barNorm === 'white') return `${base}_white`;
+  if (barNorm === 'black') return `${base}_black`;
+  return base;
 }
 
 /** Apply theme to <html> element via CSS custom properties */

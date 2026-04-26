@@ -2213,13 +2213,29 @@ body::after {
 }
 
 /* ── Per-belt intensity tuning (html[data-belt] → body::before) ── */
-html[data-belt="white"]  body::before { opacity: .50; }
-html[data-belt="blue"]   body::before { opacity: .90; }
-html[data-belt="purple"] body::before { opacity: .95; }
-html[data-belt="brown"]  body::before { opacity: .90; }
-html[data-belt="black"]  body::before { opacity: 1;   }
-html[data-belt="grey"]   body::before { opacity: .60; }
-html[data-belt="gray"]   body::before { opacity: .60; }
+/* Adult belts */
+html[data-belt="white"]        body::before { opacity: .50; }
+html[data-belt="blue"]         body::before { opacity: .90; }
+html[data-belt="purple"]       body::before { opacity: .95; }
+html[data-belt="brown"]        body::before { opacity: .90; }
+html[data-belt="black"]        body::before { opacity: 1;   }
+/* Kids grey series */
+html[data-belt="grey"]         body::before { opacity: .65; }
+html[data-belt="gray"]         body::before { opacity: .65; }
+html[data-belt="grey_white"]   body::before { opacity: .55; }
+html[data-belt="grey_black"]   body::before { opacity: .75; }
+/* Kids yellow series */
+html[data-belt="yellow_white"] body::before { opacity: .70; }
+html[data-belt="yellow"]       body::before { opacity: .85; }
+html[data-belt="yellow_black"] body::before { opacity: .90; }
+/* Kids orange series */
+html[data-belt="orange_white"] body::before { opacity: .70; }
+html[data-belt="orange"]       body::before { opacity: .85; }
+html[data-belt="orange_black"] body::before { opacity: .90; }
+/* Kids green series */
+html[data-belt="green_white"]  body::before { opacity: .70; }
+html[data-belt="green"]        body::before { opacity: .85; }
+html[data-belt="green_black"]  body::before { opacity: .90; }
 
 /* ── Nav border picks up belt color ── */
 .v10-header {
