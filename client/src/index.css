@@ -16,6 +16,7 @@
   --th: #e5e7eb;
   --th-rgb: 229,231,235;
   --th-glow: rgba(229,231,235,0.35);
+  --aurora-v: 2;
 
   /* Labyrinth gold palette */
   --color-gold:           #c9a227;
@@ -2224,3 +2225,5 @@ html[data-belt="gray"]   body::before { opacity: .60; }
   position: relative;
   z-index: 2;
 }
+
+/* belt-aurora-v2 */
