@@ -284,8 +284,12 @@ function SecretRevealOverlay({ achievement, onComplete }: { achievement: Achieve
 
 // ─── VFX: nuclear claim ───────────────────────────────────────────
 function triggerNuclearClaim(color: string, onDone?: () => void, xpAmount: number = 150) {
-  const vfx = document.getElementById('ach-vfx-layer');
-  if (!vfx) { onDone?.(); return; }
+  // Create a self-contained overlay so this works anywhere in the app,
+  // not dependent on #ach-vfx-layer being present in the DOM.
+  const vfx = document.createElement('div');
+  vfx.style.cssText = 'position:fixed;inset:0;pointer-events:none;z-index:19999;overflow:hidden;';
+  document.body.appendChild(vfx);
+  const cleanup = () => { try { document.body.removeChild(vfx); } catch {} };
   const cx = window.innerWidth / 2;
   const cy = window.innerHeight / 2;
 
@@ -352,7 +356,7 @@ function triggerNuclearClaim(color: string, onDone?: () => void, xpAmount: numbe
       { transform: 'translate(-50%,-50%) scale(1)', opacity: 1, filter: 'blur(0px)', offset: 0.15 },
       { transform: 'translate(-50%,-55%) scale(1)', opacity: 1, filter: 'blur(0px)', offset: 0.8 },
       { transform: 'translate(-50%,-80%) scale(1.1)', opacity: 0, filter: 'blur(15px)' },
-    ], { duration: 3500, easing: 'cubic-bezier(0.16,1,0.3,1)' }).onfinish = () => { xpc.remove(); onDone?.(); };
+    ], { duration: 3500, easing: 'cubic-bezier(0.16,1,0.3,1)' }).onfinish = () => { xpc.remove(); cleanup(); onDone?.(); };
   }, 500);
 }
 

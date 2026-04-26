@@ -344,7 +344,7 @@ export function TopHeader({ onMenuOpen, onXpOpen }: { onMenuOpen: () => void; on
     prevLevelRef.current = getActualLevel(xp);
   }, []);
 
-  // Watch for level up → trigger animations
+  // Watch for level up → trigger animations + global overlay
   useEffect(() => {
     const newLv = getActualLevel(liveXP);
     const oldLv = prevLevelRef.current;
@@ -359,6 +359,8 @@ export function TopHeader({ onMenuOpen, onXpOpen }: { onMenuOpen: () => void; on
           data: { route: '/' },
         });
       } catch {}
+      // Fire global event so App.tsx can show LevelUpOverlay
+      window.dispatchEvent(new CustomEvent('level-up', { detail: { newLevel: newLv, prevLevel: oldLv } }));
       setFlashKey(k => k + 1);
       setPopKey(k => k + 1);
       setSpinKey(k => k + 1);

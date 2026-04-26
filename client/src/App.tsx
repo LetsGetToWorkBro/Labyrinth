@@ -1029,6 +1029,16 @@ function AppShell() {
     setLevelUpState({ newLevel, prevLevel });
   }, []);
 
+  // Listen for level-up event dispatched by TopHeader
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const { newLevel, prevLevel } = (e as CustomEvent).detail;
+      handleLevelUp(newLevel, prevLevel);
+    };
+    window.addEventListener('level-up', handler);
+    return () => window.removeEventListener('level-up', handler);
+  }, [handleLevelUp]);
+
   // ── Clear game-active attribute on any route change ──────────
   useEffect(() => {
     const handler = () => {
