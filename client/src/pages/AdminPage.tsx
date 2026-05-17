@@ -136,9 +136,10 @@ export default function AdminPage({ onBack }: { onBack: () => void }) {
           if (typeof geo.checkinGateEnabled === "boolean") setGateEnabled(geo.checkinGateEnabled);
           if (typeof geo.geoEnabled === "boolean") setGeoEnabled(geo.geoEnabled);
           if (typeof geo.geoLocation === "string" && geo.geoLocation) setGeoLocation(geo.geoLocation);
-          if (typeof geo.geoRadiusYards === "number") setGeoRadius(geo.geoRadiusYards);
-          if (typeof geo.geoLat === "number") setGeoLat(geo.geoLat);
-          if (typeof geo.geoLng === "number") setGeoLng(geo.geoLng);
+          if (typeof geo.geoRadiusYards === "number" && geo.geoRadiusYards > 0) setGeoRadius(geo.geoRadiusYards);
+          // Only override defaults if GAS has real non-zero coords saved
+          if (typeof geo.geoLat === "number" && Math.abs(geo.geoLat) > 0.001) setGeoLat(geo.geoLat);
+          if (typeof geo.geoLng === "number" && Math.abs(geo.geoLng) > 0.001) setGeoLng(geo.geoLng);
         }
       } catch {}
     })();
@@ -174,26 +175,43 @@ export default function AdminPage({ onBack }: { onBack: () => void }) {
 
   // ── Section 4: Geo-Lock ───────────────────────────────────────────
   const [geoEnabled, setGeoEnabled] = useState(true);
-  const [geoLocation, setGeoLocation] = useState("Labyrinth BJJ, Fulshear, TX");
+  // Default: Labyrinth BJJ 6615 W Cross Creek Bend Ln Ste 400 Fulshear TX 77441
+  const DEFAULT_LAT = 29.7129281;
+  const DEFAULT_LNG = -95.8796741;
+  const DEFAULT_ADDR = '6615 W Cross Creek Bend Ln Ste 400, Fulshear, TX 77441';
+
+  const [geoLocation, setGeoLocation] = useState(DEFAULT_ADDR);
   const [geoRadius, setGeoRadius] = useState(500);
-  const [geoLat, setGeoLat] = useState<number | null>(null);
-  const [geoLng, setGeoLng] = useState<number | null>(null);
+  const [geoLat, setGeoLat] = useState<number | null>(DEFAULT_LAT);
+  const [geoLng, setGeoLng] = useState<number | null>(DEFAULT_LNG);
   const [geoLocating, setGeoLocating] = useState(false);
   const [geoSearching, setGeoSearching] = useState(false);
   const [geoSuggestions, setGeoSuggestions] = useState<Array<{display_name: string; lat: string; lon: string}>>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const geoDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Geocode an address string using Nominatim (OpenStreetMap, free, no key)
+  // Geocode using Photon (Komoot) — CORS-friendly, no API key, works in browser
   const geocodeAddress = useCallback(async (query: string) => {
     if (!query || query.length < 4) { setGeoSuggestions([]); return; }
     setGeoSearching(true);
     try {
-      const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&limit=5&countrycodes=us`;
-      const res = await fetch(url, { headers: { 'Accept-Language': 'en', 'User-Agent': 'LabyrinthBJJ/1.0' } });
+      const url = `https://photon.komoot.io/api/?q=${encodeURIComponent(query)}&limit=5&lang=en`;
+      const res = await fetch(url);
       const data = await res.json();
-      setGeoSuggestions(Array.isArray(data) ? data : []);
-      setShowSuggestions(true);
+      // Convert Photon GeoJSON to flat { display_name, lat, lon } format
+      const suggestions = (data.features || []).map((f: any) => ({
+        display_name: [
+          f.properties.name,
+          f.properties.housenumber && f.properties.street ? `${f.properties.housenumber} ${f.properties.street}` : f.properties.street,
+          f.properties.city,
+          f.properties.state,
+          f.properties.postcode,
+        ].filter(Boolean).join(', '),
+        lat: String(f.geometry.coordinates[1]),
+        lon: String(f.geometry.coordinates[0]),
+      }));
+      setGeoSuggestions(suggestions);
+      setShowSuggestions(suggestions.length > 0);
     } catch { setGeoSuggestions([]); }
     setGeoSearching(false);
   }, []);
