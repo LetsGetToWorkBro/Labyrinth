@@ -1,4 +1,4 @@
-// v2.1.1 — SVG audit complete
+// v2.2.0 — Unified auth (Supabase + biometric)
 import * as Sentry from "@sentry/react";
 import { NativeBiometric } from 'capacitor-native-biometric';
 import { Switch, Route, Router, useLocation } from "wouter";
@@ -11,6 +11,7 @@ import { AuthProvider, useAuth } from "@/lib/auth-context";
 import { GuestProfileProvider } from "@/lib/guest-profile";
 import { GameRecordProvider } from "@/lib/game-records";
 import { initBeltTheme } from "@/lib/beltTheme";
+import { startBiometricTokenRotation } from "@/lib/supabase-auth-bridge";
 
 // Apply cached belt theme synchronously, before React renders — zero-flash atmosphere.
 initBeltTheme();
@@ -44,6 +45,7 @@ const SeasonPage         = lazy(() => import("@/pages/SeasonPage"));
 const ProfilePage        = lazy(() => import("@/pages/ProfilePage"));
 const AccountPage        = lazy(() => import("@/pages/AccountPage"));
 const NotFound           = lazy(() => import("@/pages/not-found"));
+const RequestAccessPage  = lazy(() => import("@/pages/RequestAccessPage"));
 
 // ─── ChunkErrorBoundary — auto-retries lazy-chunk load failures ────────
 class ChunkErrorBoundary extends React.Component<{ children: React.ReactNode }, { hasError: boolean }> {
@@ -1002,6 +1004,13 @@ function AppShell() {
     try { sessionStorage.removeItem('chunk_retry'); } catch {}
   }, []);
 
+  // Start Supabase token rotation listener — keeps the biometric refresh_token current
+  // as Supabase automatically rotates tokens on every use.
+  useEffect(() => {
+    const unsub = startBiometricTokenRotation();
+    return unsub;
+  }, []);
+
   // ── Family profile picker ──────────────────────────────────────
   // Show picker after login when the account has sub-members.
   // "picked" persists in sessionStorage so navigation within the session doesn't re-show it.
@@ -1527,8 +1536,9 @@ function AppShell() {
             <Route path="/more"      component={MorePage} />
             <Route path="/account"    component={AccountPage} />
             <Route path="/messages"  component={MessagesPage} />
-            <Route path="/admin"     component={AdminGuard} />
-            <Route path="/reset"     component={ResetPasswordPage} />
+            <Route path="/admin"          component={AdminGuard} />
+            <Route path="/reset"          component={ResetPasswordPage} />
+            <Route path="/request-access" component={RequestAccessPage} />
             <Route path="/academy-stats"><Redirect to="/stats" /></Route>
             <Route component={NotFound} />
           </Switch>
