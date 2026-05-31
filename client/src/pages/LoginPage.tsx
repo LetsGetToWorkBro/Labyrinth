@@ -11,6 +11,8 @@ import { setActiveLocation, gasCall, memberCompleteSetup } from "@/lib/api";
 import { LOCATIONS, getSavedLocationId, type Location } from "@/lib/locations";
 import logoGold from "@assets/labyrinth-logo-gold.png";
 import { NativeBiometric } from "capacitor-native-biometric";
+import { syncGasSessionToSupabase, signOutSupabase, startBiometricTokenRotation } from "@/lib/supabase-auth-bridge";
+import { tryBiometricLogin, isBiometricEnabled } from "@/lib/biometric-auth";
 
 // ─── Constants ─────────────────────────────────────────────────────
 const GOLD      = "#D4AF37";
@@ -428,6 +430,8 @@ export default function LoginPage() {
           || 'Unable to sign in. Please try again.';
         setError(errMsg); setLoading(false); return;
       }
+      // Sync session to Supabase in background (enables stream portal SSO + biometric token)
+      syncGasSessionToSupabase(email.trim(), password).catch(() => {});
       // Play boot sequence first login only, then auth context routes to HomePage.
       const bootShown = localStorage.getItem('lbjj_boot_shown');
       if (!bootShown) {
