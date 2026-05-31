@@ -3,11 +3,15 @@
  *
  * Shown when an unauthenticated user lands on a protected route.
  * After submission they see a "pending approval" screen.
- * Admin approves in the /admin panel → inviteUserByEmail() fires.
+ *
+ * P1 fix (BUG-06/07): reverted to GAS-only submission path.
+ * Supabase access_requests table is not the source of truth — GAS sheet is.
+ * The Supabase submitAccessRequest() path is disabled until admin visibility
+ * is wired end-to-end.
  */
 
 import { useState } from "react";
-import { submitAccessRequest } from "@/lib/supabase";
+import { gasCall } from "@/lib/api";
 import logoGold from "@assets/labyrinth-logo-gold.png";
 
 const GOLD = "#D4AF37";
@@ -36,14 +40,17 @@ export default function RequestAccessPage() {
     }
 
     setLoading(true);
-    const result = await submitAccessRequest(name.trim(), email.trim(), message.trim());
-    setLoading(false);
-
-    if (!result.success) {
-      setError(result.error ?? "Something went wrong. Please try again.");
-      return;
+    try {
+      await gasCall("memberRequestAccess", {
+        name: name.trim(),
+        email: email.trim(),
+        phone: "",
+      });
+      setStep("pending");
+    } catch {
+      setError("Submission failed. Please try again.");
     }
-    setStep("pending");
+    setLoading(false);
   }
 
   return (
