@@ -11,8 +11,10 @@ import { setActiveLocation, gasCall, memberCompleteSetup } from "@/lib/api";
 import { LOCATIONS, getSavedLocationId, type Location } from "@/lib/locations";
 import logoGold from "@assets/labyrinth-logo-gold.png";
 import { NativeBiometric } from "capacitor-native-biometric";
-import { syncGasSessionToSupabase, signOutSupabase, startBiometricTokenRotation } from "@/lib/supabase-auth-bridge";
-import { tryBiometricLogin, isBiometricEnabled } from "@/lib/biometric-auth";
+import { syncGasSessionToSupabase } from "@/lib/supabase-auth-bridge";
+// signOutSupabase: moved to auth-context.tsx logout() — BUG-01 fix
+// startBiometricTokenRotation: used in App.tsx, not LoginPage
+// tryBiometricLogin, isBiometricEnabled: unused — Supabase biometric path is not wired
 
 // ─── Constants ─────────────────────────────────────────────────────
 const GOLD      = "#D4AF37";

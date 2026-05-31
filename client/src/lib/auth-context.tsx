@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, useCallback, useEffect } from "react";
 import type { MemberProfile, FamilyMember } from "./api";
 import { setToken, setMemberData, clearAuth, memberLogin as apiLogin, memberGetProfile, memberSwitchProfile as apiSwitchProfile, setActiveLocation, gasCall, normalizeAdminRole, syncAchievements } from "./api";
+import { signOutSupabase } from "./supabase-auth-bridge";
 import { ALL_ACHIEVEMENTS } from "./achievements";
 import { getSavedLocationId } from "./locations";
 import { setPfp, bulkSetPfp } from "./pfpCache";
@@ -431,6 +432,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setIsAdminVerified(false);
     // Clear family session so picker re-shows on next login
     try { sessionStorage.removeItem('lbjj_family_picked'); } catch {}
+    // Clear Supabase session so stream portal does not remain authenticated
+    // after GAS logout. Fire-and-forget — GAS auth is the source of truth.
+    signOutSupabase().catch(() => {});
   }, []);
 
   const refreshProfile = useCallback(async () => {
