@@ -212,7 +212,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         // Background validation — refresh profile but NEVER log out
         // Logging out here causes black screen / unexpected auth loss
         // GAS validates every call server-side, so client-side expiry is redundant
-        gasCall('memberGetProfile', { token: savedToken }).then((res: any) => {
+        gasCall('memberGetProfile', { token: savedToken }).then(async (res: any) => {
           const raw = res?.member || (res && typeof res === 'object' && res.name ? res : null);
           if (res?.success === false && !raw) {
             // Token stale — keep user logged in with cached profile, don't boot them
@@ -220,6 +220,34 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             return;
           }
           if (raw && typeof raw === 'object' && (raw.name || raw.email)) {
+            // Check if a specific family sub-profile was active before restart.
+            // GAS returns the account-holder profile by default; if the user had
+            // switched to a child/family member, we need to re-switch GAS server-side
+            // so all subsequent GAS calls operate on the correct row.
+            const activeRowStr = localStorage.getItem('lbjj_active_family_row');
+            if (activeRowStr) {
+              const activeRow = parseInt(activeRowStr, 10);
+              // GAS row numbers start at 2; raw.row is set if GAS returns it
+              const returnedRow = raw.row ? parseInt(String(raw.row), 10) : null;
+              if (!isNaN(activeRow) && returnedRow !== activeRow) {
+                // Re-switch GAS session to the previously active family member
+                try {
+                  const switched = await apiSwitchProfile(activeRow);
+                  const normalizedSwitched = normalizeAdminRole(switched);
+                  setMemberState(normalizedSwitched);
+                  setMemberData(normalizedSwitched);
+                  setIsAdminVerified(!!normalizedSwitched.isAdmin);
+                  localStorage.setItem('lbjj_member_profile', JSON.stringify(sanitizeProfileForStorage(normalizedSwitched)));
+                  if (normalizedSwitched.familyMembers) setFamilyMembers(normalizedSwitched.familyMembers);
+                  cacheMemberPfp(normalizedSwitched);
+                  syncBeltTheme(normalizedSwitched);
+                  return; // Done — don't fall through to update with account-holder profile
+                } catch {
+                  // Switch failed (network / row gone) — fall through to use base profile
+                  localStorage.removeItem('lbjj_active_family_row');
+                }
+              }
+            }
             // Always run through normalizeAdminRole so waiverSigned/agreementSigned
             // GAS strings ("TRUE"/"FALSE"/1/0) get coerced to booleans
             const normalized = normalizeAdminRole(raw);
@@ -439,7 +467,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const refreshProfile = useCallback(async () => {
     try {
-      const profile = await memberGetProfile();
+      // If a family sub-profile is active, refresh that row rather than the account holder
+      const activeRowStr = localStorage.getItem('lbjj_active_family_row');
+      let profile: any;
+      if (activeRowStr) {
+        const activeRow = parseInt(activeRowStr, 10);
+        if (!isNaN(activeRow)) {
+          try {
+            profile = await apiSwitchProfile(activeRow);
+          } catch {
+            // Row gone or network error — fall back to base profile and clear active row
+            localStorage.removeItem('lbjj_active_family_row');
+            profile = await memberGetProfile();
+          }
+        } else {
+          profile = await memberGetProfile();
+        }
+      } else {
+        profile = await memberGetProfile();
+      }
       setMemberState(profile);
       setMemberData(profile);
       setIsAdminVerified(!!profile.isAdmin);
@@ -468,6 +514,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (profile.familyMembers) setFamilyMembers(profile.familyMembers);
       cacheMemberPfp(profile);
       syncBeltTheme(profile);
+      // Persist switched profile so app restart restores the correct sub-profile
+      localStorage.setItem('lbjj_member_profile', JSON.stringify(sanitizeProfileForStorage(profile)));
+      localStorage.setItem('lbjj_active_family_row', String(targetRow));
       return { success: true };
     } catch (err: any) {
       return { success: false, error: err.message || "Failed to switch profile" };
