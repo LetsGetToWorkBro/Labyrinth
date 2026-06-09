@@ -776,10 +776,16 @@ export default function BeltJourneyPage({ onBack }: { onBack?: () => void } = {}
   const [forgeDate, setForgeDate] = useState<string>(() => new Date().toISOString().split('T')[0]);
   const [forgeNote, setForgeNote] = useState<string>('');
   const [saving, setSaving] = useState(false);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [ceremonyBelt, setCeremonyBelt] = useState<string | null>(null);
   const [ceremonyBar, setCeremonyBar] = useState<'none' | 'white' | 'black'>('none');
   const [ceremonyShow, setCeremonyShow] = useState(false);
-  const [activeBeltCategory, setActiveBeltCategory] = useState<BeltCategory>('Adult');
+  const [activeBeltCategory, setActiveBeltCategory] = useState<BeltCategory>(() => {
+    try {
+      const saved = localStorage.getItem('lbjj_belt_category');
+      return (saved === 'Kids' ? 'Kids' : 'Adult') as BeltCategory;
+    } catch { return 'Adult'; }
+  });
   const connectorRefs = useRef<Map<number, HTMLDivElement>>(new Map());
 
   // Inject styles + font + body bg
@@ -816,6 +822,15 @@ export default function BeltJourneyPage({ onBack }: { onBack?: () => void } = {}
           category: (p.category === 'Kids' ? 'Kids' : 'Adult') as BeltCategory,
         }))
         .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+      // After building mapped (already filtered by deletedIds), check which IDs GAS no longer returns
+      // and clean up stale deletedIds entries
+      if (!isViewMode) {
+        try {
+          const returnedIds = new Set((list || []).map((p: any) => String(p.id)));
+          const stillPending = deletedIds.filter((id: string) => returnedIds.has(id)); // still in GAS
+          localStorage.setItem('lbjj_belt_deleted_ids', JSON.stringify(stillPending));
+        } catch {}
+      }
       setPromotions(mapped);
       try {
         if (isViewMode && viewEmail) {
@@ -858,13 +873,13 @@ export default function BeltJourneyPage({ onBack }: { onBack?: () => void } = {}
 
   // Animate connector heights after render
   useEffect(() => {
-    const r = requestAnimationFrame(() => {
+    const timer = setTimeout(() => {
       connectorRefs.current.forEach((el) => {
         const pct = el.dataset.pct;
         if (pct) el.style.height = `${pct}%`;
       });
-    });
-    return () => cancelAnimationFrame(r);
+    }, 16);
+    return () => clearTimeout(timer);
   }, [promotions]);
 
   const openAdd = () => {
@@ -880,6 +895,7 @@ export default function BeltJourneyPage({ onBack }: { onBack?: () => void } = {}
   const openEdit = (id: string) => {
     const p = promotions.find((x) => x.id === id);
     if (!p) return;
+    setActiveBeltCategory(p.category || 'Adult');
     setEditingId(p.id);
     setForgeBelt(p.belt);
     setForgeStripes(p.stripes);
@@ -893,6 +909,7 @@ export default function BeltJourneyPage({ onBack }: { onBack?: () => void } = {}
 
   const handleSave = async () => {
     if (saving) return;
+    setErrorMsg(null);
     setSaving(true);
     const isNew = !editingId;
     try {
@@ -928,12 +945,14 @@ export default function BeltJourneyPage({ onBack }: { onBack?: () => void } = {}
       }
     } catch (err) {
       console.error('save promotion failed', err);
+      setErrorMsg('Failed to save. Please try again.');
     } finally {
       setSaving(false);
     }
   };
 
   const deleteById = async (id: string) => {
+    setErrorMsg(null);
     try {
       let deletedIds: string[] = [];
       try { deletedIds = JSON.parse(localStorage.getItem('lbjj_belt_deleted_ids') || '[]'); } catch {}
@@ -954,6 +973,14 @@ export default function BeltJourneyPage({ onBack }: { onBack?: () => void } = {}
       await loadPromotions();
     } catch (err) {
       console.error('delete promotion failed', err);
+      setErrorMsg('Failed to delete. Please try again.');
+      // rollback optimistic deletion from localStorage
+      try {
+        let dIds: string[] = JSON.parse(localStorage.getItem('lbjj_belt_deleted_ids') || '[]');
+        dIds = dIds.filter((x) => x !== id);
+        localStorage.setItem('lbjj_belt_deleted_ids', JSON.stringify(dIds));
+      } catch {}
+      await loadPromotions(); // re-fetch to restore
     }
   };
 
@@ -1015,6 +1042,31 @@ export default function BeltJourneyPage({ onBack }: { onBack?: () => void } = {}
           <div style={{ width: 44 }} />
         </div>
 
+        {errorMsg && (
+          <div
+            style={{
+              margin: '0 16px 12px',
+              padding: '12px 16px',
+              borderRadius: 12,
+              background: 'rgba(220,38,38,0.1)',
+              border: '1px solid rgba(220,38,38,0.25)',
+              color: '#f87171',
+              fontSize: 13,
+              fontWeight: 600,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: 8,
+            }}
+          >
+            <span>{errorMsg}</span>
+            <button
+              onClick={() => setErrorMsg(null)}
+              style={{ background: 'none', border: 'none', color: '#f87171', cursor: 'pointer', fontSize: 18, lineHeight: 1, padding: 0 }}
+            >×</button>
+          </div>
+        )}
+
         <div style={{
           display: 'flex', gap: 10, padding: '0 16px 18px',
           borderBottom: '1px solid rgba(255,255,255,0.05)',
@@ -1023,7 +1075,10 @@ export default function BeltJourneyPage({ onBack }: { onBack?: () => void } = {}
           {(['Adult', 'Kids'] as const).map((cat) => (
             <button
               key={cat}
-              onClick={() => setActiveBeltCategory(cat)}
+              onClick={() => {
+                setActiveBeltCategory(cat);
+                try { localStorage.setItem('lbjj_belt_category', cat); } catch {}
+              }}
               style={{
                 padding: '8px 20px', borderRadius: 12, cursor: 'pointer',
                 fontSize: 12, fontWeight: 700, letterSpacing: '0.05em',
