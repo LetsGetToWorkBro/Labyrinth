@@ -1013,10 +1013,15 @@ function AppShell() {
 
   // ── Family profile picker ──────────────────────────────────────
   // Show picker after login when the account has sub-members.
-  // "picked" persists in sessionStorage so navigation within the session doesn't re-show it.
+  // Skip the picker if the user already picked a profile in a previous session
+  // (lbjj_active_family_row persists in localStorage across cold opens).
   const [familyPicked, setFamilyPicked] = useState<boolean>(() => {
     // If already picked this session, skip
-    try { return sessionStorage.getItem('lbjj_family_picked') === '1'; } catch { return false; }
+    try { if (sessionStorage.getItem('lbjj_family_picked') === '1') return true; } catch {}
+    // Also skip if a family row was persisted from a prior session — user already chose
+    // who they want and the startup restore in auth-context will re-switch to that row.
+    try { if (localStorage.getItem('lbjj_family_picked_persistent') === '1') return true; } catch {}
+    return false;
   });
 
   // Only show the family picker when there are genuinely multiple distinct profiles to choose
@@ -1025,12 +1030,18 @@ function AppShell() {
 
   const handleFamilyPicked = () => {
     try { sessionStorage.setItem('lbjj_family_picked', '1'); } catch {}
+    // Also persist to localStorage so cold opens skip the picker (user already chose their profile)
+    // The active row itself is stored in lbjj_active_family_row by loadNamespaceForProfile / switchProfile
+    try { localStorage.setItem('lbjj_family_picked_persistent', '1'); } catch {}
     setFamilyPicked(true);
   };
 
-  // Listen for Switch Profile event from ProfileTray
+  // Listen for Switch Profile event from ProfileTray — clear persistence so picker re-shows
   useEffect(() => {
-    const handler = () => setFamilyPicked(false);
+    const handler = () => {
+      try { localStorage.removeItem('lbjj_family_picked_persistent'); } catch {}
+      setFamilyPicked(false);
+    };
     window.addEventListener('family-switch-profile', handler);
     return () => window.removeEventListener('family-switch-profile', handler);
   }, []);
