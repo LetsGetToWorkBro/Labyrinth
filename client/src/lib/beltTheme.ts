@@ -25,6 +25,11 @@ export const BELT_THEMES: Record<string, BeltTheme> = {
   brown:        { color:'#ea580c', rgb:'234,88,12',   name:'Blood Flame',    adult: true  },
   black:        { color:'#eab308', rgb:'234,179,8',   name:'Grandmaster',    adult: true  },
 
+  // ── Kids White Base Series ─────────────────────────────────
+  white_yellow: { color:'#F2C230', rgb:'242,194,48', name:'White Solar',  adult: false },
+  white_orange: { color:'#E67E22', rgb:'230,126,34', name:'White Ember',  adult: false },
+  white_green:  { color:'#2E9E5B', rgb:'46,158,91',  name:'White Forest', adult: false },
+
   // ── Kids Grey Series ───────────────────────────────────────
   grey_white:   { color:'#9ca3af', rgb:'156,163,175', name:'Grey Series I',  adult: false },
   grey:         { color:'#6b7280', rgb:'107,114,128', name:'Grey Series II', adult: false },
@@ -59,6 +64,14 @@ export function getBeltThemeKey(belt: string, bar?: string): string {
     .replace(/[/\s-]+/g, '_')   // slash, space, dash → underscore
     .replace(/_+/g, '_')         // collapse double underscores
     .trim();
+
+  // White base with a colored bar is a kids two-tone (e.g. 'white' + 'yellow').
+  // This check runs before the plain 'white' theme lookup below, which would
+  // otherwise return the adult white theme and ignore the bar.
+  const earlyBar = (bar || '').toLowerCase().trim();
+  if (b === 'white' && ['yellow','orange','green'].includes(earlyBar)) {
+    return `white_${earlyBar}`;
+  }
 
   // If the belt value already contains a bar suffix (e.g. 'grey_white'), return as-is
   // if it maps to a known theme key.

@@ -115,6 +115,48 @@ const BELT_VARIANTS: Record<string, SvgLoader[]> = {
     () => import("@assets/kids_green_4s.svg"),
   ],
   // Kids two-tone
+  "white/yellow": [
+    () => import("@assets/kids_white_yellow.svg"),
+    () => import("@assets/kids_white_yellow_1s.svg"),
+    () => import("@assets/kids_white_yellow_2s.svg"),
+    () => import("@assets/kids_white_yellow_3s.svg"),
+    () => import("@assets/kids_white_yellow_4s.svg"),
+  ],
+  "white-yellow": [
+    () => import("@assets/kids_white_yellow.svg"),
+    () => import("@assets/kids_white_yellow_1s.svg"),
+    () => import("@assets/kids_white_yellow_2s.svg"),
+    () => import("@assets/kids_white_yellow_3s.svg"),
+    () => import("@assets/kids_white_yellow_4s.svg"),
+  ],
+  "white/orange": [
+    () => import("@assets/kids_white_orange.svg"),
+    () => import("@assets/kids_white_orange_1s.svg"),
+    () => import("@assets/kids_white_orange_2s.svg"),
+    () => import("@assets/kids_white_orange_3s.svg"),
+    () => import("@assets/kids_white_orange_4s.svg"),
+  ],
+  "white-orange": [
+    () => import("@assets/kids_white_orange.svg"),
+    () => import("@assets/kids_white_orange_1s.svg"),
+    () => import("@assets/kids_white_orange_2s.svg"),
+    () => import("@assets/kids_white_orange_3s.svg"),
+    () => import("@assets/kids_white_orange_4s.svg"),
+  ],
+  "white/green": [
+    () => import("@assets/kids_white_green.svg"),
+    () => import("@assets/kids_white_green_1s.svg"),
+    () => import("@assets/kids_white_green_2s.svg"),
+    () => import("@assets/kids_white_green_3s.svg"),
+    () => import("@assets/kids_white_green_4s.svg"),
+  ],
+  "white-green": [
+    () => import("@assets/kids_white_green.svg"),
+    () => import("@assets/kids_white_green_1s.svg"),
+    () => import("@assets/kids_white_green_2s.svg"),
+    () => import("@assets/kids_white_green_3s.svg"),
+    () => import("@assets/kids_white_green_4s.svg"),
+  ],
   "grey/white": [
     () => import("@assets/kids_grey_white.svg"),
     () => import("@assets/kids_grey_white_1s.svg"),
@@ -303,6 +345,7 @@ export function BeltIcon({ belt, stripes = 0, width = 60, height, className, sty
 // All available belt keys for the belt selector
 export const ADULT_BELT_OPTIONS = ["white", "blue", "purple", "brown", "black"];
 export const KIDS_BELT_OPTIONS = [
+  "white/yellow", "white/orange", "white/green",
   "kids-white",
   "grey/white", "grey", "grey/black",
   "yellow/white", "yellow", "yellow/black",
@@ -317,6 +360,9 @@ export const BELT_DISPLAY_NAMES: Record<string, string> = {
   brown: "Brown",
   black: "Black",
   "kids-white": "White",
+  "white/yellow": "White / Yellow",
+  "white/orange": "White / Orange",
+  "white/green": "White / Green",
   "grey/white": "Grey / White",
   grey: "Grey",
   "grey/black": "Grey / Black",

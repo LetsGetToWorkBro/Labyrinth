@@ -1,6 +1,12 @@
 // Belt color mapping
 export const BELT_COLORS: Record<string, string> = {
   white: "#F0F0F0",
+  "white-yellow": "#F0F0F0",
+  "white/yellow": "#F0F0F0",
+  "white-orange": "#F0F0F0",
+  "white/orange": "#F0F0F0",
+  "white-green": "#F0F0F0",
+  "white/green": "#F0F0F0",
   blue: "#3B6FD8",
   purple: "#8B4FBF",
   brown: "#8B5E3C",
@@ -14,6 +20,12 @@ export const BELT_COLORS: Record<string, string> = {
 
 export const BELT_TEXT_COLORS: Record<string, string> = {
   white: "#0A0A0A",
+  "white-yellow": "#0A0A0A",
+  "white/yellow": "#0A0A0A",
+  "white-orange": "#0A0A0A",
+  "white/orange": "#0A0A0A",
+  "white-green": "#0A0A0A",
+  "white/green": "#0A0A0A",
   blue: "#FFFFFF",
   purple: "#FFFFFF",
   brown: "#FFFFFF",
